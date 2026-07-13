@@ -14,17 +14,31 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    primary: '#14747A',
+    accent: '#E8A93B',
   },
   dark: {
     text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
+    background: '#0A0A0D',
+    backgroundElement: '#1C1D21',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    primary: '#2BA3A3',
+    accent: '#E8A93B',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+/** Fixed brand colors for location category cards — same in light and dark mode. */
+export const CategoryColors: Record<string, string> = {
+  golf: '#4C5A26',
+  bmx: '#4C5A26',
+  skiing: '#1B2A4A',
+  swimming: '#163A4A',
+  festival: '#5C1B3A',
+  default: '#33363B',
+};
 
 export const Fonts = Platform.select({
   ios: {

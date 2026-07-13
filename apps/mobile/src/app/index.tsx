@@ -1,61 +1,77 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { CategoryChip } from '@/components/category-chip';
+import { LocationCard } from '@/components/location-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { mockLocations } from '@/data/mock-locations';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const DEFAULT_FILTERS = [
+  { slug: 'golf', label: 'Golf' },
+  { slug: 'skiing', label: 'Skiing' },
+  { slug: 'bmx', label: 'BMX' },
+];
 
 export default function HomeScreen() {
+  const [activeFilters, setActiveFilters] = useState(DEFAULT_FILTERS);
+
+  const visibleLocations =
+    activeFilters.length === 0
+      ? mockLocations
+      : mockLocations.filter((location) =>
+          activeFilters.some((filter) => filter.slug === location.categorySlug)
+        );
+
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <ThemedText type="subtitle">LocaStar</ThemedText>
+        </View>
+
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterRow}
+          contentContainerStyle={styles.filterRowContent}
+          data={activeFilters}
+          keyExtractor={(item) => item.slug}
+          ListHeaderComponent={
+            <Pressable style={styles.activitiesButton}>
+              <ThemedText type="smallBold" style={styles.activitiesButtonText}>
+                Activities ▾
+              </ThemedText>
+            </Pressable>
+          }
+          renderItem={({ item }) => (
+            <CategoryChip
+              label={item.label}
+              categorySlug={item.slug}
+              onRemove={() =>
+                setActiveFilters((current) => current.filter((f) => f.slug !== item.slug))
+              }
+            />
+          )}
+        />
+
+        <View style={styles.metaRow}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Total {visibleLocations.length}/{mockLocations.length}
           </ThemedText>
-        </ThemedView>
+          <Pressable style={styles.sortButton}>
+            <ThemedText type="small">Sort</ThemedText>
+          </Pressable>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+        <FlatList
+          data={visibleLocations}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => <LocationCard location={item} />}
+        />
       </SafeAreaView>
     </ThemedView>
   );
@@ -64,35 +80,51 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
+    width: '100%',
     maxWidth: MaxContentWidth,
+    alignSelf: 'center',
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
+  header: {
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+  },
+  filterRow: {
+    flexGrow: 0,
+  },
+  filterRowContent: {
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.two,
+    alignItems: 'center',
+  },
+  activitiesButton: {
+    backgroundColor: '#B5432E',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.five,
+    marginRight: Spacing.two,
+  },
+  activitiesButtonText: {
+    color: '#ffffff',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  sortButton: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.five,
+  },
+  listContent: {
+    paddingHorizontal: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.four,
+    gap: Spacing.three,
   },
 });
