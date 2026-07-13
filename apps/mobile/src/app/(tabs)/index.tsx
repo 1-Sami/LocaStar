@@ -1,4 +1,6 @@
 import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,12 +12,15 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useUserLocation } from '@/hooks/use-user-location';
+import { useAuth } from '@/lib/auth-context';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
+  const { session } = useAuth();
+  const router = useRouter();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
@@ -58,7 +63,38 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.header}>
-          <ThemedText type="subtitle">LocaStar</ThemedText>
+          <View style={styles.brandRow}>
+            {/* TODO: swap for the real logo asset once it's added to assets/images/logo.png */}
+            <View style={styles.logoPlaceholder}>
+              <ThemedText type="smallBold" style={styles.logoPlaceholderText}>
+                LS
+              </ThemedText>
+            </View>
+            <ThemedText type="subtitle" style={styles.brandText}>
+              LocaStar
+            </ThemedText>
+          </View>
+
+          {session ? (
+            <Pressable style={styles.accountRow} onPress={() => router.push('/profile')}>
+              <View style={styles.accountTextColumn}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Logged in
+                </ThemedText>
+                <ThemedText type="smallBold" numberOfLines={1}>
+                  {session.user.email}
+                </ThemedText>
+              </View>
+              <Image
+                source={{ uri: `https://picsum.photos/seed/${session.user.id}/200/200` }}
+                style={styles.avatar}
+              />
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => router.push('/sign-in')}>
+              <ThemedText type="linkPrimary">Log in</ThemedText>
+            </Pressable>
+          )}
         </View>
 
         <FlatList
@@ -158,9 +194,46 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.two,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  logoPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: Spacing.two,
+    backgroundColor: '#14747A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoPlaceholderText: {
+    color: '#ffffff',
+  },
+  brandText: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  accountTextColumn: {
+    alignItems: 'flex-end',
+    maxWidth: 140,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   filterRow: {
     flexGrow: 0,
