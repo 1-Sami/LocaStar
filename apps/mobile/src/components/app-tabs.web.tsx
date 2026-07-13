@@ -19,7 +19,9 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
+          {/* expo-router's typed-routes generation for grouped index routes doesn't
+              include the bare "/" it actually resolves to at runtime — see error case. */}
+          <TabTrigger name="home" href={'/' as never} asChild>
             <TabButton>Home</TabButton>
           </TabTrigger>
           <TabTrigger name="search" href="/search" asChild>
