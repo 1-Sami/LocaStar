@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Env files
+.env
+.env.local
+.env*.local
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+
+# Next.js
+apps/web/.next/
+apps/web/out/
+
+# Build output
+dist/
+build/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
