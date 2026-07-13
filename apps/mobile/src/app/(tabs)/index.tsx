@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
@@ -7,23 +8,51 @@ import { LocationCard } from '@/components/location-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { mockLocations } from '@/data/mock-locations';
-
-const DEFAULT_FILTERS = [
-  { slug: 'golf', label: 'Golf' },
-  { slug: 'skiing', label: 'Skiing' },
-  { slug: 'bmx', label: 'BMX' },
-];
+import { useSaves } from '@/hooks/use-saves';
+import { useUserLocation } from '@/hooks/use-user-location';
+import { nearbyLocationToCard } from '@/lib/location-adapters';
+import { supabase } from '@/lib/supabase';
 
 export default function HomeScreen() {
-  const [activeFilters, setActiveFilters] = useState(DEFAULT_FILTERS);
+  const { coords } = useUserLocation();
+  const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
 
-  const visibleLocations =
-    activeFilters.length === 0
-      ? mockLocations
-      : mockLocations.filter((location) =>
-          activeFilters.some((filter) => filter.slug === location.categorySlug)
-        );
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [locations, setLocations] = useState<NearbyLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCategories(supabase)
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
+
+  useEffect(() => {
+    if (!coords) return;
+    let cancelled = false;
+    setLoading(true);
+    fetchNearbyLocations(supabase, {
+      lat: coords.latitude,
+      lng: coords.longitude,
+      categorySlugs: activeSlugs,
+    })
+      .then((result) => {
+        if (!cancelled) setLocations(result);
+      })
+      .catch(() => {
+        if (!cancelled) setLocations([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coords, activeSlugs]);
+
+  const cards = locations.map(nearbyLocationToCard);
 
   return (
     <ThemedView style={styles.container}>
@@ -37,10 +66,10 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           style={styles.filterRow}
           contentContainerStyle={styles.filterRowContent}
-          data={activeFilters}
+          data={categories.filter((c) => activeSlugs.includes(c.slug))}
           keyExtractor={(item) => item.slug}
           ListHeaderComponent={
-            <Pressable style={styles.activitiesButton}>
+            <Pressable style={styles.activitiesButton} onPress={() => setPickerVisible(true)}>
               <ThemedText type="smallBold" style={styles.activitiesButtonText}>
                 Activities ▾
               </ThemedText>
@@ -48,31 +77,72 @@ export default function HomeScreen() {
           }
           renderItem={({ item }) => (
             <CategoryChip
-              label={item.label}
+              label={item.name}
               categorySlug={item.slug}
-              onRemove={() =>
-                setActiveFilters((current) => current.filter((f) => f.slug !== item.slug))
-              }
+              onRemove={() => setActiveSlugs((current) => current.filter((s) => s !== item.slug))}
             />
           )}
         />
 
         <View style={styles.metaRow}>
           <ThemedText type="small" themeColor="textSecondary">
-            Total {visibleLocations.length}/{mockLocations.length}
+            {loading ? 'Loading…' : `Total ${cards.length}`}
           </ThemedText>
           <Pressable style={styles.sortButton}>
             <ThemedText type="small">Sort</ThemedText>
           </Pressable>
         </View>
 
-        <FlatList
-          data={visibleLocations}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => <LocationCard location={item} />}
-        />
+        {loading ? (
+          <ActivityIndicator style={styles.loadingIndicator} />
+        ) : (
+          <FlatList
+            data={cards}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                No places found nearby yet.
+              </ThemedText>
+            }
+            renderItem={({ item }) => (
+              <LocationCard
+                location={item}
+                isFavorite={favoriteIds.has(item.id)}
+                isBucketListed={bucketListIds.has(item.id)}
+                onToggleFavorite={() => toggleFavorite(item.id)}
+                onToggleBucketList={() => toggleBucketList(item.id)}
+              />
+            )}
+          />
+        )}
       </SafeAreaView>
+
+      <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={() => setPickerVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setPickerVisible(false)}>
+          <ThemedView type="backgroundElement" style={styles.modalContent}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              Activities
+            </ThemedText>
+            {categories.map((category) => {
+              const active = activeSlugs.includes(category.slug);
+              return (
+                <Pressable
+                  key={category.slug}
+                  style={styles.modalRow}
+                  onPress={() =>
+                    setActiveSlugs((current) =>
+                      active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
+                    )
+                  }>
+                  <ThemedText type="default">{category.name}</ThemedText>
+                  <ThemedText type="default">{active ? '✓' : ''}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </ThemedView>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -126,5 +196,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.three,
+  },
+  loadingIndicator: {
+    marginTop: Spacing.six,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: Spacing.six,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  modalTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    marginBottom: Spacing.two,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
   },
 });
