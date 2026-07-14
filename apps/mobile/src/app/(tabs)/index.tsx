@@ -1,4 +1,5 @@
 import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -25,6 +26,8 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [sortBy, setSortBy] = useState<'distance' | 'rating'>('distance');
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [locations, setLocations] = useState<NearbyLocation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +45,7 @@ export default function HomeScreen() {
       lat: coords.latitude,
       lng: coords.longitude,
       categorySlugs: activeSlugs,
+      sort: sortBy,
     })
       .then((result) => {
         if (!cancelled) setLocations(result);
@@ -55,7 +59,7 @@ export default function HomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [coords, activeSlugs]);
+  }, [coords, activeSlugs, sortBy]);
 
   const cards = locations.map(nearbyLocationToCard);
 
@@ -106,6 +110,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.slug}
           ListHeaderComponent={
             <Pressable style={styles.activitiesButton} onPress={() => setPickerVisible(true)}>
+              <Ionicons name="filter" size={16} color="#ffffff" />
               <ThemedText type="smallBold" style={styles.activitiesButtonText}>
                 Activities ▾
               </ThemedText>
@@ -124,7 +129,7 @@ export default function HomeScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {loading ? 'Loading…' : `Total ${cards.length}`}
           </ThemedText>
-          <Pressable style={styles.sortButton}>
+          <Pressable style={styles.sortButton} onPress={() => setSortMenuVisible(true)}>
             <ThemedText type="small">Sort</ThemedText>
           </Pressable>
         </View>
@@ -148,6 +153,7 @@ export default function HomeScreen() {
                 isBucketListed={bucketListIds.has(item.id)}
                 onToggleFavorite={() => toggleFavorite(item.id)}
                 onToggleBucketList={() => toggleBucketList(item.id)}
+                onPress={() => router.push({ pathname: '/location/[id]', params: { id: item.id } })}
               />
             )}
           />
@@ -179,6 +185,33 @@ export default function HomeScreen() {
           </ThemedView>
         </Pressable>
       </Modal>
+
+      <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
+          <ThemedView type="backgroundElement" style={styles.modalContent}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              Sort by
+            </ThemedText>
+            {(
+              [
+                { key: 'distance', label: 'Distance' },
+                { key: 'rating', label: 'Highest rated' },
+              ] as const
+            ).map((option) => (
+              <Pressable
+                key={option.key}
+                style={styles.modalRow}
+                onPress={() => {
+                  setSortBy(option.key);
+                  setSortMenuVisible(false);
+                }}>
+                <ThemedText type="default">{option.label}</ThemedText>
+                <ThemedText type="default">{sortBy === option.key ? '✓' : ''}</ThemedText>
+              </Pressable>
+            ))}
+          </ThemedView>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -199,7 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
+    paddingBottom: Spacing.six,
   },
   brandRow: {
     flexDirection: 'row',
@@ -237,16 +270,21 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexGrow: 0,
+    minHeight: 44,
   },
   filterRowContent: {
     paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
     gap: Spacing.two,
     alignItems: 'center',
   },
   activitiesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
     backgroundColor: '#B5432E',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.two,
     borderRadius: Spacing.five,
     marginRight: Spacing.two,
   },
@@ -259,6 +297,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
+    marginTop: Spacing.four,
   },
   sortButton: {
     paddingHorizontal: Spacing.three,

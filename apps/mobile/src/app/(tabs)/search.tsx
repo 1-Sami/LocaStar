@@ -1,4 +1,5 @@
 import { fetchNearbyLocations, type NearbyLocation } from '@locastar/shared';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<NearbyLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const theme = useTheme();
+  const router = useRouter();
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
 
@@ -92,6 +94,7 @@ export default function SearchScreen() {
                 isBucketListed={bucketListIds.has(item.id)}
                 onToggleFavorite={() => toggleFavorite(item.id)}
                 onToggleBucketList={() => toggleBucketList(item.id)}
+                onPress={() => router.push({ pathname: '/location/[id]', params: { id: item.id } })}
               />
             )}
           />

@@ -2,7 +2,7 @@ import type { NearbyLocation, SavedLocation } from '@locastar/shared';
 
 import type { CardLocation } from '@/types/location';
 
-function placeholderImage(seed: string) {
+export function placeholderImage(seed: string) {
   return `https://picsum.photos/seed/locastar-${seed}/640/480`;
 }
 

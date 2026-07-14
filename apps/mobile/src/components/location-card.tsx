@@ -1,20 +1,13 @@
 import { Image } from 'expo-image';
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, Spacing } from '@/constants/theme';
+import { openDirections } from '@/lib/directions';
 import type { CardLocation } from '@/types/location';
 
-function openDirections(address: string) {
-  const encoded = encodeURIComponent(address);
-  const webFallback = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`;
-  const url = Platform.select({
-    ios: `https://maps.apple.com/?daddr=${encoded}`,
-    android: `google.navigation:q=${encoded}`,
-    default: webFallback,
-  });
-  Linking.openURL(url).catch(() => Linking.openURL(webFallback));
-}
+const CARD_HEIGHT = 168;
 
 export function LocationCard({
   location,
@@ -22,19 +15,37 @@ export function LocationCard({
   isBucketListed,
   onToggleFavorite,
   onToggleBucketList,
+  onPress,
 }: {
   location: CardLocation;
   isFavorite: boolean;
   isBucketListed: boolean;
   onToggleFavorite: () => void;
   onToggleBucketList: () => void;
+  onPress?: () => void;
 }) {
   const cardColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
 
   return (
-    <View style={[styles.card, { backgroundColor: cardColor }]}>
+    <Pressable style={[styles.card, { backgroundColor: cardColor }]} onPress={onPress}>
       <View style={styles.mainRow}>
-        <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
+        <View style={styles.leftColumn}>
+          <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
+          <View style={styles.captionRow}>
+            {location.distanceKm !== null ? (
+              <ThemedText type="small" style={styles.whiteTextSecondary} numberOfLines={1}>
+                ~{location.distanceKm} km from city
+              </ThemedText>
+            ) : (
+              <View />
+            )}
+            <Pressable onPress={() => openDirections(location.address ?? location.name)}>
+              <ThemedText type="smallBold" style={styles.whiteText}>
+                Directions
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.content}>
           <View style={styles.titleRow}>
@@ -54,54 +65,49 @@ export function LocationCard({
               </Pressable>
             </View>
           </View>
-          <ThemedText type="small" style={styles.whiteText}>
-            ★ {location.rating.toFixed(1)} · {location.reviewCount} reviews
-          </ThemedText>
+          <View style={styles.ratingRow}>
+            <StarRating rating={location.rating} />
+            <ThemedText type="small" style={styles.whiteText}>
+              {location.rating.toFixed(2)} · {location.reviewCount} reviews
+            </ThemedText>
+          </View>
           <ThemedText type="small" style={[styles.whiteText, styles.description]} numberOfLines={3}>
             {location.description}
           </ThemedText>
         </View>
       </View>
-
-      <View style={styles.footerRow}>
-        {location.distanceKm !== null ? (
-          <ThemedText type="small" style={styles.whiteTextSecondary}>
-            ~{location.distanceKm} km from city
-          </ThemedText>
-        ) : (
-          <View />
-        )}
-        <Pressable onPress={() => openDirections(location.address ?? location.name)}>
-          <ThemedText type="smallBold" style={styles.whiteText}>
-            Directions
-          </ThemedText>
-        </Pressable>
-      </View>
-    </View>
+    </Pressable>
   );
 }
 
-const IMAGE_SIZE = 96;
-
 const styles = StyleSheet.create({
   card: {
+    height: CARD_HEIGHT,
     borderRadius: Spacing.three,
-    overflow: 'hidden',
     padding: Spacing.three,
-    gap: Spacing.two,
+    overflow: 'hidden',
   },
   mainRow: {
+    flex: 1,
     flexDirection: 'row',
     gap: Spacing.three,
   },
+  leftColumn: {
+    width: '42%',
+  },
   image: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
+    width: '100%',
+    flex: 1,
     borderRadius: Spacing.two,
+  },
+  captionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.one,
   },
   content: {
     flex: 1,
-    gap: Spacing.half,
   },
   titleRow: {
     flexDirection: 'row',
@@ -111,6 +117,14 @@ const styles = StyleSheet.create({
   },
   titleText: {
     flex: 1,
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginTop: Spacing.half,
   },
   iconRow: {
     flexDirection: 'row',
@@ -118,15 +132,15 @@ const styles = StyleSheet.create({
   },
   iconInactive: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 26,
   },
   iconActiveFavorite: {
     color: '#4CD37A',
-    fontSize: 18,
+    fontSize: 26,
   },
   iconActiveBucket: {
     color: '#F5C242',
-    fontSize: 18,
+    fontSize: 26,
   },
   whiteText: {
     color: '#ffffff',
@@ -136,12 +150,6 @@ const styles = StyleSheet.create({
   },
   description: {
     color: 'rgba(255,255,255,0.85)',
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.one,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.25)',
+    marginTop: Spacing.three,
   },
 });

@@ -55,3 +55,61 @@ export async function fetchCategories(client: SupabaseClient): Promise<Category[
   if (error) throw error;
   return (data ?? []) as Category[];
 }
+
+export type LocationDetail = {
+  id: string;
+  kind: LocationKind;
+  name: string;
+  description: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  avg_rating: number;
+  review_count: number;
+  category_slug: string | null;
+  category_label: string | null;
+};
+
+type LocationDetailRow = {
+  id: string;
+  kind: LocationKind;
+  name: string;
+  description: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  avg_rating: number;
+  review_count: number;
+  location_categories: { categories: { slug: string; name: string } | null }[];
+};
+
+export async function fetchLocationById(client: SupabaseClient, id: string): Promise<LocationDetail | null> {
+  const { data, error } = await client
+    .from("locations")
+    .select(
+      "id, kind, name, description, address, phone, email, website, avg_rating, review_count, location_categories(categories(slug, name))"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as unknown as LocationDetailRow;
+  const primaryCategory = row.location_categories?.[0]?.categories ?? null;
+  return {
+    id: row.id,
+    kind: row.kind,
+    name: row.name,
+    description: row.description,
+    address: row.address,
+    phone: row.phone,
+    email: row.email,
+    website: row.website,
+    avg_rating: row.avg_rating,
+    review_count: row.review_count,
+    category_slug: primaryCategory?.slug ?? null,
+    category_label: primaryCategory?.name ?? null,
+  };
+}

@@ -21,6 +21,7 @@ function Section({
   bucketListIds,
   onToggleFavorite,
   onToggleBucketList,
+  onOpen,
 }: {
   title: string;
   items: CardLocation[];
@@ -28,6 +29,7 @@ function Section({
   bucketListIds: Set<string>;
   onToggleFavorite: (id: string) => void;
   onToggleBucketList: (id: string) => void;
+  onOpen: (id: string) => void;
 }) {
   if (items.length === 0) return null;
   return (
@@ -44,6 +46,7 @@ function Section({
             isBucketListed={bucketListIds.has(item.id)}
             onToggleFavorite={() => onToggleFavorite(item.id)}
             onToggleBucketList={() => onToggleBucketList(item.id)}
+            onPress={() => onOpen(item.id)}
           />
         ))}
       </View>
@@ -90,6 +93,7 @@ export default function FavoritesScreen() {
     await toggleBucketList(id);
     reload().catch(() => {});
   };
+  const handleOpen = (id: string) => router.push({ pathname: '/location/[id]', params: { id } });
 
   if (!session) {
     return (
@@ -126,6 +130,7 @@ export default function FavoritesScreen() {
               bucketListIds={bucketListIds}
               onToggleFavorite={handleToggleFavorite}
               onToggleBucketList={handleToggleBucketList}
+              onOpen={handleOpen}
             />
             <Section
               title="Bucket list"
@@ -134,6 +139,7 @@ export default function FavoritesScreen() {
               bucketListIds={bucketListIds}
               onToggleFavorite={handleToggleFavorite}
               onToggleBucketList={handleToggleBucketList}
+              onOpen={handleOpen}
             />
             <Section
               title="Shared"
@@ -142,6 +148,7 @@ export default function FavoritesScreen() {
               bucketListIds={bucketListIds}
               onToggleFavorite={handleToggleFavorite}
               onToggleBucketList={handleToggleBucketList}
+              onOpen={handleOpen}
             />
             {nothingSaved && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
