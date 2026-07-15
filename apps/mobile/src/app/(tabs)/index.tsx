@@ -1,8 +1,14 @@
-import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
+import {
+  fetchCategories,
+  fetchNearbyLocations,
+  fetchUnreadNotificationCount,
+  type Category,
+  type NearbyLocation,
+} from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
+import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
@@ -22,6 +29,7 @@ export default function HomeScreen() {
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
   const { session } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
@@ -30,12 +38,22 @@ export default function HomeScreen() {
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [locations, setLocations] = useState<NearbyLocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchCategories(supabase)
       .then(setCategories)
       .catch(() => setCategories([]));
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      fetchUnreadNotificationCount(supabase, session.user.id)
+        .then(setUnreadCount)
+        .catch(() => {});
+    }, [session])
+  );
 
   useEffect(() => {
     if (!coords) return;
@@ -80,20 +98,36 @@ export default function HomeScreen() {
           </View>
 
           {session ? (
-            <Pressable style={styles.accountRow} onPress={() => router.push('/profile')}>
-              <View style={styles.accountTextColumn}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Logged in
-                </ThemedText>
-                <ThemedText type="smallBold" numberOfLines={1}>
-                  {session.user.email}
-                </ThemedText>
-              </View>
-              <Image
-                source={{ uri: `https://picsum.photos/seed/${session.user.id}/200/200` }}
-                style={styles.avatar}
-              />
-            </Pressable>
+            <View style={styles.headerRightRow}>
+              <Pressable
+                style={styles.bellButton}
+                onPress={() => router.push('/notifications')}
+                hitSlop={8}
+                accessibilityLabel="Notifications">
+                <Ionicons name="notifications-outline" size={22} color={theme.text} />
+                {unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <ThemedText type="small" style={styles.unreadBadgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </ThemedText>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable style={styles.accountRow} onPress={() => router.push('/profile')}>
+                <View style={styles.accountTextColumn}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Logged in
+                  </ThemedText>
+                  <ThemedText type="smallBold" numberOfLines={1}>
+                    {session.user.email}
+                  </ThemedText>
+                </View>
+                <Image
+                  source={{ uri: `https://picsum.photos/seed/${session.user.id}/200/200` }}
+                  style={styles.avatar}
+                />
+              </Pressable>
+            </View>
           ) : (
             <Pressable onPress={() => router.push('/sign-in')}>
               <ThemedText type="linkPrimary">Log in</ThemedText>
@@ -253,6 +287,31 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 20,
     lineHeight: 24,
+  },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  bellButton: {
+    position: 'relative',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: '#E05252',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    lineHeight: 12,
   },
   accountRow: {
     flexDirection: 'row',

@@ -110,3 +110,49 @@ export async function fetchSharedLocations(
     .map((row) => mapJoinedLocation(row as unknown as JoinedLocationRow))
     .filter((location): location is SavedLocation => location !== null);
 }
+
+export type ShareCandidate = {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+export async function searchProfilesByUsername(
+  client: SupabaseClient,
+  query: string,
+  excludeUserId: string
+): Promise<ShareCandidate[]> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .not("username", "is", null)
+    .ilike("username", `%${query}%`)
+    .neq("id", excludeUserId)
+    .limit(10);
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    username: row.username as string,
+    displayName: row.display_name as string | null,
+    avatarUrl: row.avatar_url as string | null,
+  }));
+}
+
+export type ShareLocationInput = {
+  locationId: string;
+  senderId: string;
+  recipientId: string;
+  note: string | null;
+};
+
+export async function shareLocation(client: SupabaseClient, input: ShareLocationInput): Promise<void> {
+  const { error } = await client.from("location_shares").insert({
+    location_id: input.locationId,
+    sender_id: input.senderId,
+    recipient_id: input.recipientId,
+    note: input.note,
+  });
+  if (error) throw error;
+}

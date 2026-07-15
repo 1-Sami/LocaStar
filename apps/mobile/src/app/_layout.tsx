@@ -1,26 +1,49 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider } from '@/lib/auth-context';
+import { ThemeModeProvider, useThemeMode } from '@/lib/theme-mode-context';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function ThemedNavigation() {
+  const { resolvedScheme } = useThemeMode();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AuthProvider>
-        <AnimatedSplashOverlay />
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="sign-in" options={{ presentation: 'modal', title: 'Log in' }} />
-          <Stack.Screen name="sign-up" options={{ presentation: 'modal', title: 'Sign up' }} />
-          <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
-        </Stack>
-      </AuthProvider>
+    <ThemeProvider value={resolvedScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <AnimatedSplashOverlay />
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="sign-in" options={{ presentation: 'modal', title: 'Log in' }} />
+        <Stack.Screen name="sign-up" options={{ presentation: 'modal', title: 'Sign up' }} />
+        <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
+        <Stack.Screen name="my-reviews" options={{ title: 'My reviews' }} />
+        <Stack.Screen name="add-location" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="edit-location" options={{ presentation: 'modal', title: 'Edit location' }} />
+        <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+        <Stack.Screen name="settings/profile-picture" options={{ title: 'Profile picture' }} />
+        <Stack.Screen name="settings/password" options={{ title: 'Change password' }} />
+        <Stack.Screen name="settings/account" options={{ title: 'Account info' }} />
+        <Stack.Screen name="settings/address" options={{ title: 'Address' }} />
+        <Stack.Screen name="settings/theme" options={{ title: 'Theme' }} />
+        <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="about" options={{ title: 'About' }} />
+        <Stack.Screen name="admin-reports" options={{ title: 'Reports' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="lists/index" options={{ title: 'My lists' }} />
+        <Stack.Screen name="lists/[id]" options={{ title: 'List' }} />
+      </Stack>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <ThemeModeProvider>
+        <ThemedNavigation />
+      </ThemeModeProvider>
+    </AuthProvider>
   );
 }

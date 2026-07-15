@@ -1,4 +1,4 @@
-import type { NearbyLocation, SavedLocation } from '@locastar/shared';
+import type { ListItemLocation, NearbyLocation, SavedLocation } from '@locastar/shared';
 
 import type { CardLocation } from '@/types/location';
 
@@ -35,5 +35,21 @@ export function savedLocationToCard(location: SavedLocation): CardLocation {
     address: location.address,
     distanceKm: null,
     imageUrl: placeholderImage(location.location_id),
+  };
+}
+
+export function listItemToCard(item: ListItemLocation): CardLocation {
+  return {
+    id: item.locationId,
+    kind: item.kind,
+    name: item.name,
+    categorySlug: item.categorySlug ?? 'default',
+    categoryLabel: item.categorySlug ?? 'Other',
+    rating: item.avgRating,
+    reviewCount: item.reviewCount,
+    description: item.description ?? '',
+    address: item.address,
+    distanceKm: null,
+    imageUrl: placeholderImage(item.locationId),
   };
 }

@@ -69,6 +69,9 @@ export type LocationDetail = {
   review_count: number;
   category_slug: string | null;
   category_label: string | null;
+  created_by: string | null;
+  is_verified: boolean;
+  claimed_by: string | null;
 };
 
 type LocationDetailRow = {
@@ -82,14 +85,97 @@ type LocationDetailRow = {
   website: string | null;
   avg_rating: number;
   review_count: number;
+  created_by: string | null;
+  is_verified: boolean;
+  claimed_by: string | null;
   location_categories: { categories: { slug: string; name: string } | null }[];
 };
+
+export type LocationSubmission = {
+  kind: LocationKind;
+  name: string;
+  description: string | null;
+  address: string | null;
+  lat: number;
+  lng: number;
+  categoryIds: string[];
+  userId: string;
+};
+
+export async function submitLocation(client: SupabaseClient, input: LocationSubmission): Promise<string> {
+  const { data, error } = await client
+    .from("locations")
+    .insert({
+      kind: input.kind,
+      name: input.name,
+      description: input.description,
+      address: input.address,
+      geom: `POINT(${input.lng} ${input.lat})`,
+      created_by: input.userId,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const locationId = (data as { id: string }).id;
+
+  if (input.categoryIds.length > 0) {
+    const { error: categoryError } = await client
+      .from("location_categories")
+      .insert(input.categoryIds.map((categoryId) => ({ location_id: locationId, category_id: categoryId })));
+    if (categoryError) throw categoryError;
+  }
+
+  return locationId;
+}
+
+export async function addLocationPhoto(
+  client: SupabaseClient,
+  locationId: string,
+  userId: string,
+  storagePath: string
+): Promise<void> {
+  const { error } = await client
+    .from("location_photos")
+    .insert({ location_id: locationId, user_id: userId, storage_path: storagePath });
+  if (error) throw error;
+}
+
+export async function fetchLocationPhotos(client: SupabaseClient, locationId: string): Promise<string[]> {
+  const { data, error } = await client
+    .from("location_photos")
+    .select("storage_path")
+    .eq("location_id", locationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as { storage_path: string }[]).map(
+    (row) => client.storage.from("media").getPublicUrl(row.storage_path).data.publicUrl
+  );
+}
+
+export type LocationReportInput = {
+  locationId: string;
+  reporterId: string;
+  reason: string;
+  details: string | null;
+};
+
+export async function reportLocation(client: SupabaseClient, input: LocationReportInput): Promise<void> {
+  const { error } = await client.from("location_reports").insert({
+    location_id: input.locationId,
+    reporter_id: input.reporterId,
+    reason: input.reason,
+    details: input.details,
+  });
+  if (error) throw error;
+}
 
 export async function fetchLocationById(client: SupabaseClient, id: string): Promise<LocationDetail | null> {
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, avg_rating, review_count, location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, avg_rating, review_count, created_by, is_verified, claimed_by, location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -109,7 +195,56 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     website: row.website,
     avg_rating: row.avg_rating,
     review_count: row.review_count,
+    is_verified: row.is_verified,
+    claimed_by: row.claimed_by,
+    created_by: row.created_by,
     category_slug: primaryCategory?.slug ?? null,
     category_label: primaryCategory?.name ?? null,
   };
+}
+
+export type LocationUpdate = {
+  name: string;
+  description: string | null;
+  address: string | null;
+};
+
+export async function updateLocation(
+  client: SupabaseClient,
+  locationId: string,
+  input: LocationUpdate
+): Promise<void> {
+  const { error } = await client
+    .from("locations")
+    .update({ name: input.name, description: input.description, address: input.address })
+    .eq("id", locationId);
+  if (error) throw error;
+}
+
+export async function fetchLocationCategoryIds(client: SupabaseClient, locationId: string): Promise<string[]> {
+  const { data, error } = await client
+    .from("location_categories")
+    .select("category_id")
+    .eq("location_id", locationId);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.category_id as string);
+}
+
+export async function setLocationCategories(
+  client: SupabaseClient,
+  locationId: string,
+  categoryIds: string[]
+): Promise<void> {
+  const { error: deleteError } = await client
+    .from("location_categories")
+    .delete()
+    .eq("location_id", locationId);
+  if (deleteError) throw deleteError;
+
+  if (categoryIds.length > 0) {
+    const { error: insertError } = await client
+      .from("location_categories")
+      .insert(categoryIds.map((categoryId) => ({ location_id: locationId, category_id: categoryId })));
+    if (insertError) throw insertError;
+  }
 }

@@ -1,11 +1,28 @@
-import { fetchLocationById, fetchReviews, type LocationDetail, type Review } from '@locastar/shared';
+import {
+  fetchLocationById,
+  fetchLocationPhotos,
+  fetchMyClaimForLocation,
+  fetchReviews,
+  reportLocation,
+  reportReview,
+  setReviewLiked,
+  shareLocation,
+  submitBusinessClaim,
+  type BusinessClaim,
+  type LocationDetail,
+  type Review,
+} from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddToListModal } from '@/components/add-to-list-modal';
+import { ClaimBusinessModal } from '@/components/claim-business-modal';
+import { ReportModal } from '@/components/report-modal';
+import { ShareModal } from '@/components/share-modal';
 import { STAR_COLOR, StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -26,23 +43,41 @@ export default function LocationDetailScreen() {
 
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [locationReportVisible, setLocationReportVisible] = useState(false);
+  const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
+  const [shareVisible, setShareVisible] = useState(false);
+  const [addToListVisible, setAddToListVisible] = useState(false);
+  const [claimVisible, setClaimVisible] = useState(false);
+  const [myClaim, setMyClaim] = useState<BusinessClaim | null>(null);
+
+  const [heroWidth, setHeroWidth] = useState(() => Math.min(Dimensions.get('window').width, MaxContentWidth));
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       if (!id) return;
       let cancelled = false;
       setLoading(true);
-      Promise.all([fetchLocationById(supabase, id), fetchReviews(supabase, id)])
-        .then(([locationResult, reviewsResult]) => {
+      setActivePhotoIndex(0);
+      Promise.all([
+        fetchLocationById(supabase, id),
+        fetchReviews(supabase, id, session?.user.id),
+        fetchLocationPhotos(supabase, id),
+      ])
+        .then(([locationResult, reviewsResult, photosResult]) => {
           if (cancelled) return;
           setLocation(locationResult);
           setReviews(reviewsResult);
+          setPhotos(photosResult);
         })
         .catch(() => {
           if (!cancelled) {
             setLocation(null);
             setReviews([]);
+            setPhotos([]);
           }
         })
         .finally(() => {
@@ -51,7 +86,27 @@ export default function LocationDetailScreen() {
       return () => {
         cancelled = true;
       };
-    }, [id])
+    }, [id, session?.user.id])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || !session) {
+        setMyClaim(null);
+        return;
+      }
+      let cancelled = false;
+      fetchMyClaimForLocation(supabase, session.user.id, id)
+        .then((claim) => {
+          if (!cancelled) setMyClaim(claim);
+        })
+        .catch(() => {
+          if (!cancelled) setMyClaim(null);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [id, session])
   );
 
   if (loading) {
@@ -81,9 +136,72 @@ export default function LocationDetailScreen() {
 
   const isFavorite = favoriteIds.has(location.id);
   const isBucketListed = bucketListIds.has(location.id);
+  const heroImages = photos.length > 0 ? photos : [placeholderImage(location.id)];
   const ratingCounts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
   const maxCount = Math.max(1, ...ratingCounts);
   const myReview = session ? reviews.find((r) => r.user_id === session.user.id) : undefined;
+
+  const handleOpenLocationReport = () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    setLocationReportVisible(true);
+  };
+
+  const handleOpenReviewReport = (reviewId: string) => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    setReportingReviewId(reviewId);
+  };
+
+  const handleToggleLike = async (review: Review) => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    const nextLiked = !review.likedByMe;
+    setReviews((current) =>
+      current.map((r) =>
+        r.id === review.id ? { ...r, likedByMe: nextLiked, likeCount: r.likeCount + (nextLiked ? 1 : -1) } : r
+      )
+    );
+    try {
+      await setReviewLiked(supabase, review.id, session.user.id, nextLiked);
+    } catch {
+      setReviews((current) =>
+        current.map((r) =>
+          r.id === review.id ? { ...r, likedByMe: review.likedByMe, likeCount: review.likeCount } : r
+        )
+      );
+    }
+  };
+
+  const handleOpenShare = () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    setShareVisible(true);
+  };
+
+  const handleOpenAddToList = () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    setAddToListVisible(true);
+  };
+
+  const handleOpenClaim = () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    setClaimVisible(true);
+  };
 
   const handleWriteReview = () => {
     if (!session) {
@@ -106,8 +224,21 @@ export default function LocationDetailScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.heroWrapper}>
-            <Image source={{ uri: placeholderImage(location.id) }} style={styles.hero} contentFit="cover" />
+          <View style={styles.heroWrapper} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={(e) => {
+                if (heroWidth > 0) {
+                  setActivePhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth));
+                }
+              }}
+              scrollEventThrottle={32}>
+              {heroImages.map((uri, index) => (
+                <Image key={index} source={{ uri }} style={[styles.hero, { width: heroWidth }]} contentFit="cover" />
+              ))}
+            </ScrollView>
             <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="arrow-back" size={22} color="#ffffff" />
             </Pressable>
@@ -122,18 +253,52 @@ export default function LocationDetailScreen() {
                   {isBucketListed ? '★' : '☆'}
                 </ThemedText>
               </Pressable>
+              <Pressable
+                style={styles.heroIconButton}
+                onPress={handleOpenShare}
+                hitSlop={8}
+                accessibilityLabel="Share this location">
+                <Ionicons name="share-outline" size={20} color="#ffffff" />
+              </Pressable>
+              <Pressable
+                style={styles.heroIconButton}
+                onPress={handleOpenLocationReport}
+                hitSlop={8}
+                accessibilityLabel="Report this location">
+                <Ionicons name="flag-outline" size={20} color="#ffffff" />
+              </Pressable>
             </View>
+            {heroImages.length > 1 && (
+              <View style={styles.photoDotsRow} pointerEvents="none">
+                {heroImages.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[styles.photoDot, index === activePhotoIndex && styles.photoDotActive]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
 
           <View style={styles.body}>
-            {location.category_label && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {location.category_label.toUpperCase()}
+            <View style={styles.titleRow}>
+              {location.category_label && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {location.category_label.toUpperCase()}
+                </ThemedText>
+              )}
+              {session?.user.id === location.created_by && (
+                <Pressable onPress={() => router.push({ pathname: '/edit-location', params: { id: location.id } })}>
+                  <ThemedText type="linkPrimary">Edit</ThemedText>
+                </Pressable>
+              )}
+            </View>
+            <View style={styles.nameRow}>
+              <ThemedText type="default" style={styles.name}>
+                {location.name}
               </ThemedText>
-            )}
-            <ThemedText type="default" style={styles.name}>
-              {location.name}
-            </ThemedText>
+              {location.is_verified && <Ionicons name="checkmark-circle" size={20} color="#4CD37A" />}
+            </View>
 
             <View style={styles.ratingRow}>
               <StarRating rating={location.avg_rating} size={18} />
@@ -151,14 +316,36 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
-            <Pressable
-              style={styles.directionsButton}
-              onPress={() => openDirections(location.address ?? location.name)}>
-              <Ionicons name="navigate-outline" size={18} color="#ffffff" />
-              <ThemedText type="smallBold" style={styles.directionsButtonText}>
-                Directions
+            {location.is_verified ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.claimText}>
+                ✓ Verified business
               </ThemedText>
-            </Pressable>
+            ) : myClaim?.status === 'pending' ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.claimText}>
+                Claim pending review
+              </ThemedText>
+            ) : (
+              <Pressable onPress={handleOpenClaim}>
+                <ThemedText type="linkPrimary" style={styles.claimText}>
+                  Claim this business
+                </ThemedText>
+              </Pressable>
+            )}
+
+            <View style={styles.actionButtonsRow}>
+              <Pressable
+                style={styles.directionsButton}
+                onPress={() => openDirections(location.address ?? location.name)}>
+                <Ionicons name="navigate-outline" size={18} color="#ffffff" />
+                <ThemedText type="smallBold" style={styles.directionsButtonText}>
+                  Directions
+                </ThemedText>
+              </Pressable>
+              <Pressable style={styles.addToListButton} onPress={handleOpenAddToList}>
+                <Ionicons name="bookmark-outline" size={18} color={theme.text} />
+                <ThemedText type="smallBold">Add to list</ThemedText>
+              </Pressable>
+            </View>
 
             {location.description && (
               <ThemedText type="default" style={styles.description}>
@@ -221,6 +408,11 @@ export default function LocationDetailScreen() {
                           {new Date(review.created_at).toLocaleDateString()}
                         </ThemedText>
                       </View>
+                      <Pressable onPress={() => handleOpenReviewReport(review.id)} hitSlop={8}>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Report
+                        </ThemedText>
+                      </Pressable>
                     </View>
                     <StarRating rating={review.rating} size={14} />
                     {review.title && (
@@ -229,6 +421,16 @@ export default function LocationDetailScreen() {
                       </ThemedText>
                     )}
                     {review.body && <ThemedText type="default">{review.body}</ThemedText>}
+                    <Pressable style={styles.likeRow} onPress={() => handleToggleLike(review)} hitSlop={8}>
+                      <Ionicons
+                        name={review.likedByMe ? 'heart' : 'heart-outline'}
+                        size={16}
+                        color={review.likedByMe ? '#E05252' : theme.textSecondary}
+                      />
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {review.likeCount}
+                      </ThemedText>
+                    </Pressable>
                   </View>
                 ))}
               </View>
@@ -236,6 +438,80 @@ export default function LocationDetailScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <ReportModal
+        visible={locationReportVisible}
+        title="Report this location"
+        confirmationText="Our team will review this location."
+        onClose={() => setLocationReportVisible(false)}
+        onSubmit={async (reason, details) => {
+          if (!session) return;
+          await reportLocation(supabase, {
+            locationId: location.id,
+            reporterId: session.user.id,
+            reason,
+            details,
+          });
+        }}
+      />
+
+      <ReportModal
+        visible={reportingReviewId !== null}
+        title="Report this review"
+        confirmationText="Our team will review this review."
+        onClose={() => setReportingReviewId(null)}
+        onSubmit={async (reason, details) => {
+          if (!session || !reportingReviewId) return;
+          await reportReview(supabase, {
+            reviewId: reportingReviewId,
+            reporterId: session.user.id,
+            reason,
+            details,
+          });
+        }}
+      />
+
+      <ShareModal
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+        onShare={async (recipientId, note) => {
+          if (!session) return;
+          await shareLocation(supabase, {
+            locationId: location.id,
+            senderId: session.user.id,
+            recipientId,
+            note,
+          });
+        }}
+      />
+
+      {session && (
+        <AddToListModal
+          visible={addToListVisible}
+          userId={session.user.id}
+          locationId={location.id}
+          onClose={() => setAddToListVisible(false)}
+        />
+      )}
+
+      <ClaimBusinessModal
+        visible={claimVisible}
+        onClose={() => setClaimVisible(false)}
+        onSubmit={async (verificationNotes) => {
+          if (!session) return;
+          await submitBusinessClaim(supabase, location.id, session.user.id, verificationNotes);
+          setMyClaim({
+            id: '',
+            locationId: location.id,
+            locationName: location.name,
+            claimantId: session.user.id,
+            claimantName: '',
+            status: 'pending',
+            verificationNotes,
+            createdAt: new Date().toISOString(),
+          });
+        }}
+      />
     </ThemedView>
   );
 }
@@ -301,6 +577,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  photoDotsRow: {
+    position: 'absolute',
+    bottom: Spacing.two,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.half,
+  },
+  photoDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  photoDotActive: {
+    backgroundColor: '#ffffff',
+  },
   iconInactive: {
     color: '#ffffff',
     fontSize: 20,
@@ -316,11 +610,24 @@ const styles = StyleSheet.create({
   body: {
     padding: Spacing.four,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginTop: Spacing.half,
+  },
   name: {
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '700',
-    marginTop: Spacing.half,
+  },
+  claimText: {
+    marginTop: Spacing.one,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -337,20 +644,33 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
   directionsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
     gap: Spacing.one,
     backgroundColor: '#14747A',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two,
     borderRadius: Spacing.five,
-    marginTop: Spacing.three,
   },
   directionsButtonText: {
     color: '#ffffff',
+  },
+  addToListButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    backgroundColor: 'rgba(128,128,128,0.2)',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.five,
   },
   description: {
     marginTop: Spacing.four,
@@ -424,5 +744,12 @@ const styles = StyleSheet.create({
   },
   reviewTitle: {
     marginTop: Spacing.half,
+  },
+  likeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    marginTop: Spacing.one,
+    alignSelf: 'flex-start',
   },
 });

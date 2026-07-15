@@ -36,6 +36,10 @@ export function LocationCard({
               <ThemedText type="small" style={styles.whiteTextSecondary} numberOfLines={1}>
                 ~{location.distanceKm} km from city
               </ThemedText>
+            ) : location.address ? (
+              <ThemedText type="small" style={[styles.whiteTextSecondary, styles.addressText]} numberOfLines={1}>
+                {location.address}
+              </ThemedText>
             ) : (
               <View />
             )}
@@ -105,6 +109,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Spacing.one,
+  },
+  addressText: {
+    flex: 1,
+    marginRight: Spacing.one,
   },
   content: {
     flex: 1,
