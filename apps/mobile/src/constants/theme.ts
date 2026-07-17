@@ -37,6 +37,16 @@ export const CategoryColors: Record<string, string> = {
   skiing: '#1B2A4A',
   swimming: '#163A4A',
   festival: '#5C1B3A',
+  roads: '#4A4A52',
+  'gyms-outside': '#6B3F1D',
+  basketball: '#7A3B12',
+  football: '#1F5C33',
+  cricket: '#5C4B1F',
+  baseball: '#5C1F1F',
+  'bike-trails': '#2E4A1F',
+  'cross-country': '#2F4A3E',
+  'water-activities': '#0F4C5C',
+  parks: '#2E5C2E',
   default: '#33363B',
 };
 

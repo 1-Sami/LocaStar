@@ -1,4 +1,4 @@
-import { fetchSavedLocations, fetchSharedLocations } from '@locastar/shared';
+import { fetchSavedLocations, fetchSentShares, type SentShare } from '@locastar/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -33,9 +33,11 @@ function FullSection({
   onToggleBucketList,
   onOpen,
   onLayout,
+  noteForItem,
+  emptyMessage,
 }: {
   title: string;
-  badgeColor?: string;
+  badgeColor: string;
   items: CardLocation[];
   favoriteIds: Set<string>;
   bucketListIds: Set<string>;
@@ -43,30 +45,40 @@ function FullSection({
   onToggleBucketList: (id: string) => void;
   onOpen: (id: string) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
+  noteForItem?: (item: CardLocation, index: number) => string | null;
+  emptyMessage: string;
 }) {
-  if (items.length === 0) return null;
   return (
     <View style={styles.section} onLayout={onLayout}>
-      {badgeColor ? (
-        <SectionBadge label={title} backgroundColor={badgeColor} />
-      ) : (
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          {title} <ThemedText themeColor="textSecondary">{items.length}</ThemedText>
+      <SectionBadge label={title} count={items.length} backgroundColor={badgeColor} />
+      {items.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.sectionEmptyText}>
+          {emptyMessage}
         </ThemedText>
+      ) : (
+        <View style={styles.sectionList}>
+          {items.map((item, index) => {
+            const note = noteForItem?.(item, index);
+            return (
+              <View key={`${item.id}-${index}`} style={styles.cardWithNote}>
+                {note && (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
+                    {note}
+                  </ThemedText>
+                )}
+                <LocationCard
+                  location={item}
+                  isFavorite={favoriteIds.has(item.id)}
+                  isBucketListed={bucketListIds.has(item.id)}
+                  onToggleFavorite={() => onToggleFavorite(item.id)}
+                  onToggleBucketList={() => onToggleBucketList(item.id)}
+                  onPress={() => onOpen(item.id)}
+                />
+              </View>
+            );
+          })}
+        </View>
       )}
-      <View style={styles.sectionList}>
-        {items.map((item) => (
-          <LocationCard
-            key={item.id}
-            location={item}
-            isFavorite={favoriteIds.has(item.id)}
-            isBucketListed={bucketListIds.has(item.id)}
-            onToggleFavorite={() => onToggleFavorite(item.id)}
-            onToggleBucketList={() => onToggleBucketList(item.id)}
-            onPress={() => onOpen(item.id)}
-          />
-        ))}
-      </View>
     </View>
   );
 }
@@ -88,23 +100,28 @@ function FavoritesSection({
   onOpen: (id: string) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
 }) {
-  if (items.length === 0) return null;
   return (
     <View style={styles.section} onLayout={onLayout}>
-      <SectionBadge label="Favorites" backgroundColor="#E8A93B" textColor="#1A1400" />
-      <View style={styles.favoritesGrid}>
-        {items.map((item) => (
-          <FavoriteCard
-            key={item.id}
-            location={item}
-            isFavorite={favoriteIds.has(item.id)}
-            isBucketListed={bucketListIds.has(item.id)}
-            onToggleFavorite={() => onToggleFavorite(item.id)}
-            onToggleBucketList={() => onToggleBucketList(item.id)}
-            onPress={() => onOpen(item.id)}
-          />
-        ))}
-      </View>
+      <SectionBadge label="Favorites" count={items.length} backgroundColor="#E8A93B" textColor="#1A1400" />
+      {items.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.sectionEmptyText}>
+          Nothing saved yet — tap the heart on a location to start saving your favorites.
+        </ThemedText>
+      ) : (
+        <View style={styles.favoritesGrid}>
+          {items.map((item) => (
+            <FavoriteCard
+              key={item.id}
+              location={item}
+              isFavorite={favoriteIds.has(item.id)}
+              isBucketListed={bucketListIds.has(item.id)}
+              onToggleFavorite={() => onToggleFavorite(item.id)}
+              onToggleBucketList={() => onToggleBucketList(item.id)}
+              onPress={() => onOpen(item.id)}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -117,7 +134,7 @@ export default function FavoritesScreen() {
 
   const [favorites, setFavorites] = useState<CardLocation[]>([]);
   const [bucketList, setBucketList] = useState<CardLocation[]>([]);
-  const [shared, setShared] = useState<CardLocation[]>([]);
+  const [sentShares, setSentShares] = useState<SentShare[]>([]);
   const [loading, setLoading] = useState(true);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -145,14 +162,14 @@ export default function FavoritesScreen() {
     if (!session) return;
     setLoading(true);
     try {
-      const [favoriteRows, bucketListRows, sharedRows] = await Promise.all([
+      const [favoriteRows, bucketListRows, sentShareRows] = await Promise.all([
         fetchSavedLocations(supabase, session.user.id, 'favorite'),
         fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
-        fetchSharedLocations(supabase, session.user.id),
+        fetchSentShares(supabase, session.user.id),
       ]);
       setFavorites(favoriteRows.map(savedLocationToCard));
       setBucketList(bucketListRows.map(savedLocationToCard));
-      setShared(sharedRows.map(savedLocationToCard));
+      setSentShares(sentShareRows);
     } finally {
       setLoading(false);
     }
@@ -191,7 +208,12 @@ export default function FavoritesScreen() {
     );
   }
 
-  const nothingSaved = favorites.length === 0 && bucketList.length === 0 && shared.length === 0;
+  const sharedCards = sentShares.map(savedLocationToCard);
+  const sharedNote = (_item: CardLocation, index: number) => {
+    const share = sentShares[index];
+    const name = share?.recipientUsername ?? share?.recipientDisplayName;
+    return name ? `Shared with ${name}` : null;
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -219,22 +241,21 @@ export default function FavoritesScreen() {
               onToggleBucketList={handleToggleBucketList}
               onOpen={handleOpen}
               onLayout={handleSectionLayout('bucketList')}
+              emptyMessage="Nothing saved yet — tap the star on a location to start saving your planned trips."
             />
             <FullSection
               title="Shared"
-              items={shared}
+              badgeColor="#B0B4BA"
+              items={sharedCards}
               favoriteIds={favoriteIds}
               bucketListIds={bucketListIds}
               onToggleFavorite={handleToggleFavorite}
               onToggleBucketList={handleToggleBucketList}
               onOpen={handleOpen}
               onLayout={handleSectionLayout('shared')}
+              noteForItem={sharedNote}
+              emptyMessage="Nothing shared yet — share a location to see it here."
             />
-            {nothingSaved && (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                Nothing saved yet — tap the heart or star on a place to save it here.
-              </ThemedText>
-            )}
           </ScrollView>
         )}
       </SafeAreaView>
@@ -260,12 +281,15 @@ const styles = StyleSheet.create({
   section: {
     gap: Spacing.three,
   },
-  sectionTitle: {
-    fontSize: 20,
-    lineHeight: 26,
-  },
   sectionList: {
     gap: Spacing.three,
+  },
+  cardWithNote: {
+    gap: Spacing.one,
+  },
+  shareNote: {
+    textAlign: 'right',
+    fontStyle: 'italic',
   },
   favoritesGrid: {
     flexDirection: 'row',
@@ -296,8 +320,7 @@ const styles = StyleSheet.create({
   loadingIndicator: {
     marginTop: Spacing.six,
   },
-  emptyText: {
+  sectionEmptyText: {
     textAlign: 'center',
-    marginTop: Spacing.four,
   },
 });

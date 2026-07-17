@@ -303,7 +303,7 @@ export default function LocationDetailScreen() {
             <View style={styles.ratingRow}>
               <StarRating rating={location.avg_rating} size={18} />
               <ThemedText type="default">
-                {location.avg_rating.toFixed(2)} · {location.review_count} reviews
+                {location.avg_rating.toFixed(1)} · {location.review_count} reviews
               </ThemedText>
             </View>
 

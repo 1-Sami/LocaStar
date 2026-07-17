@@ -77,7 +77,7 @@ export default function ListDetailScreen() {
                   <View style={styles.ratingRow}>
                     <StarRating rating={item.avgRating} size={14} />
                     <ThemedText type="small" themeColor="textSecondary">
-                      {item.avgRating.toFixed(2)} · {item.reviewCount} reviews
+                      {item.avgRating.toFixed(1)} · {item.reviewCount} reviews
                     </ThemedText>
                   </View>
                   {item.note && (

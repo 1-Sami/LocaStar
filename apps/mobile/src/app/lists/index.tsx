@@ -1,15 +1,88 @@
-import { createList, fetchLists, type LocationList } from '@locastar/shared';
+import { createList, fetchLists, fetchProfile, setListLiked, setListVisibility, type LocationList } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { placeholderImage } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
+
+function formatCreatedLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function ListCard({
+  list,
+  ownerUsername,
+  onPress,
+  onToggleLike,
+  onToggleVisibility,
+}: {
+  list: LocationList;
+  ownerUsername: string;
+  onPress: () => void;
+  onToggleLike: () => void;
+  onToggleVisibility: () => void;
+}) {
+  const [main, ...rest] = list.previewLocationIds;
+
+  return (
+    <Pressable onPress={onPress}>
+      <View style={styles.card}>
+        <ThemedText type="smallBold" style={[styles.whiteText, styles.cardTitle]}>
+          {list.name}
+        </ThemedText>
+        <ThemedText type="small" style={styles.whiteTextSecondary}>
+          Created {formatCreatedLabel(list.createdAt)} by {ownerUsername}
+        </ThemedText>
+
+        {main && (
+          <View style={styles.collage}>
+            <Image source={{ uri: placeholderImage(main) }} style={styles.mainPhoto} contentFit="cover" />
+            {rest.length > 0 && (
+              <View style={styles.subPhotoRow}>
+                {rest.map((locationId) => (
+                  <Image
+                    key={locationId}
+                    source={{ uri: placeholderImage(locationId) }}
+                    style={styles.subPhoto}
+                    contentFit="cover"
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={styles.footerRow}>
+          <Pressable style={styles.likeButton} onPress={onToggleLike} hitSlop={8}>
+            <Ionicons
+              name={list.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
+              size={18}
+              color={list.likedByMe ? '#4CD37A' : '#ffffff'}
+            />
+            <ThemedText type="smallBold" style={styles.whiteText}>
+              {list.likeCount}
+            </ThemedText>
+          </Pressable>
+          <Pressable style={styles.visibilityBadge} onPress={onToggleVisibility} hitSlop={8}>
+            <Ionicons name={list.isPublic ? 'globe-outline' : 'lock-closed-outline'} size={14} color="#ffffff" />
+            <ThemedText type="small" style={styles.whiteText}>
+              {list.isPublic ? 'Public' : 'Private'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function MyListsScreen() {
   const { session } = useAuth();
@@ -17,18 +90,26 @@ export default function MyListsScreen() {
   const theme = useTheme();
 
   const [lists, setLists] = useState<LocationList[]>([]);
+  const [username, setUsername] = useState('you');
   const [loading, setLoading] = useState(true);
   const [createVisible, setCreateVisible] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!session) return;
     setLoading(true);
-    fetchLists(supabase, session.user.id)
-      .then(setLists)
+    Promise.all([
+      fetchLists(supabase, session.user.id),
+      fetchProfile(supabase, session.user.id).catch(() => null),
+    ])
+      .then(([listRows, profile]) => {
+        setLists(listRows);
+        setUsername(profile?.username ?? profile?.display_name ?? 'you');
+      })
       .catch(() => setLists([]))
       .finally(() => setLoading(false));
   }, [session]);
@@ -44,16 +125,36 @@ export default function MyListsScreen() {
     setCreating(true);
     setError(null);
     try {
-      await createList(supabase, session.user.id, name.trim(), description.trim() || null);
+      await createList(supabase, session.user.id, name.trim(), description.trim() || null, isPublic);
       setCreateVisible(false);
       setName('');
       setDescription('');
+      setIsPublic(false);
       reload();
     } catch {
       setError('Something went wrong creating the list. Try again.');
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleToggleLike = async (list: LocationList) => {
+    if (!session) return;
+    const nextLiked = !list.likedByMe;
+    setLists((current) =>
+      current.map((item) =>
+        item.id === list.id
+          ? { ...item, likedByMe: nextLiked, likeCount: item.likeCount + (nextLiked ? 1 : -1) }
+          : item
+      )
+    );
+    setListLiked(supabase, list.id, session.user.id, nextLiked).catch(() => reload());
+  };
+
+  const handleToggleVisibility = async (list: LocationList) => {
+    const nextPublic = !list.isPublic;
+    setLists((current) => current.map((item) => (item.id === list.id ? { ...item, isPublic: nextPublic } : item)));
+    setListVisibility(supabase, list.id, nextPublic).catch(() => reload());
   };
 
   return (
@@ -75,19 +176,14 @@ export default function MyListsScreen() {
               </ThemedText>
             ) : (
               lists.map((list) => (
-                <Pressable key={list.id} onPress={() => router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name } })}>
-                  <ThemedView type="backgroundElement" style={styles.card}>
-                    <ThemedText type="smallBold">{list.name}</ThemedText>
-                    {list.description && (
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {list.description}
-                      </ThemedText>
-                    )}
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
+                <ListCard
+                  key={list.id}
+                  list={list}
+                  ownerUsername={username}
+                  onPress={() => router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name } })}
+                  onToggleLike={() => handleToggleLike(list)}
+                  onToggleVisibility={() => handleToggleVisibility(list)}
+                />
               ))
             )}
           </ScrollView>
@@ -116,6 +212,15 @@ export default function MyListsScreen() {
               style={[styles.input, styles.descriptionInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
               multiline
             />
+            <View style={styles.visibilityRow}>
+              <View style={styles.visibilityRowText}>
+                <ThemedText type="default">Public list</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {isPublic ? 'Anyone with access can view this list.' : 'Only you can see this list.'}
+                </ThemedText>
+              </View>
+              <Switch value={isPublic} onValueChange={setIsPublic} trackColor={{ true: Colors.light.primary }} />
+            </View>
             {error && (
               <ThemedText type="small" style={styles.errorText}>
                 {error}
@@ -166,9 +271,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
   },
   card: {
-    borderRadius: Spacing.two,
+    borderRadius: Spacing.three,
     padding: Spacing.three,
-    gap: Spacing.half,
+    gap: Spacing.two,
+    backgroundColor: '#1B2A4A',
+  },
+  cardTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  collage: {
+    gap: Spacing.two,
+  },
+  mainPhoto: {
+    width: '100%',
+    height: 150,
+    borderRadius: Spacing.two,
+  },
+  subPhotoRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  subPhoto: {
+    flex: 1,
+    height: 90,
+    borderRadius: Spacing.two,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.one,
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  visibilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  whiteText: {
+    color: '#ffffff',
+  },
+  whiteTextSecondary: {
+    color: 'rgba(255,255,255,0.75)',
   },
   modalRoot: {
     flex: 1,
@@ -196,6 +345,17 @@ const styles = StyleSheet.create({
   descriptionInput: {
     height: 70,
     textAlignVertical: 'top',
+  },
+  visibilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginTop: Spacing.one,
+  },
+  visibilityRowText: {
+    flex: 1,
+    gap: Spacing.half,
   },
   errorText: {
     color: '#E05252',

@@ -29,10 +29,17 @@ export {
   setSaved,
   fetchSavedLocations,
   fetchSharedLocations,
+  fetchSentShares,
   searchProfilesByUsername,
   shareLocation,
 } from "./api/saves";
-export type { SaveKind, SavedLocation, ShareCandidate, ShareLocationInput } from "./api/saves";
+export type {
+  SaveKind,
+  SavedLocation,
+  SentShare,
+  ShareCandidate,
+  ShareLocationInput,
+} from "./api/saves";
 
 export { fetchReviews, submitReview, reportReview, setReviewLiked } from "./api/reviews";
 export type { Review, ReviewInput, ReviewReportInput } from "./api/reviews";
@@ -80,6 +87,8 @@ export {
   fetchLists,
   createList,
   deleteList,
+  setListVisibility,
+  setListLiked,
   fetchListItems,
   addLocationToList,
   removeLocationFromList,

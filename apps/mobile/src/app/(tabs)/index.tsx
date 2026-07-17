@@ -1,15 +1,8 @@
-import {
-  fetchCategories,
-  fetchNearbyLocations,
-  fetchUnreadNotificationCount,
-  type Category,
-  type NearbyLocation,
-} from '@locastar/shared';
+import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
@@ -20,14 +13,17 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
-import { useAuth } from '@/lib/auth-context';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
+
+const SORT_OPTIONS = [
+  { key: 'distance', label: 'Distance' },
+  { key: 'rating', label: 'Highest rated' },
+] as const;
 
 export default function HomeScreen() {
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
-  const { session } = useAuth();
   const router = useRouter();
   const theme = useTheme();
 
@@ -38,22 +34,12 @@ export default function HomeScreen() {
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [locations, setLocations] = useState<NearbyLocation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchCategories(supabase)
       .then(setCategories)
       .catch(() => setCategories([]));
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!session) return;
-      fetchUnreadNotificationCount(supabase, session.user.id)
-        .then(setUnreadCount)
-        .catch(() => {});
-    }, [session])
-  );
 
   useEffect(() => {
     if (!coords) return;
@@ -84,57 +70,6 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            {/* TODO: swap for the real logo asset once it's added to assets/images/logo.png */}
-            <View style={styles.logoPlaceholder}>
-              <ThemedText type="smallBold" style={styles.logoPlaceholderText}>
-                LS
-              </ThemedText>
-            </View>
-            <ThemedText type="subtitle" style={styles.brandText}>
-              LocaStar
-            </ThemedText>
-          </View>
-
-          {session ? (
-            <View style={styles.headerRightRow}>
-              <Pressable
-                style={styles.bellButton}
-                onPress={() => router.push('/notifications')}
-                hitSlop={8}
-                accessibilityLabel="Notifications">
-                <Ionicons name="notifications-outline" size={22} color={theme.text} />
-                {unreadCount > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <ThemedText type="small" style={styles.unreadBadgeText}>
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </ThemedText>
-                  </View>
-                )}
-              </Pressable>
-              <Pressable style={styles.accountRow} onPress={() => router.push('/profile')}>
-                <View style={styles.accountTextColumn}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Logged in
-                  </ThemedText>
-                  <ThemedText type="smallBold" numberOfLines={1}>
-                    {session.user.email}
-                  </ThemedText>
-                </View>
-                <Image
-                  source={{ uri: `https://picsum.photos/seed/${session.user.id}/200/200` }}
-                  style={styles.avatar}
-                />
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable onPress={() => router.push('/sign-in')}>
-              <ThemedText type="linkPrimary">Log in</ThemedText>
-            </Pressable>
-          )}
-        </View>
-
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -163,8 +98,11 @@ export default function HomeScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {loading ? 'Loading…' : `Total ${cards.length}`}
           </ThemedText>
-          <Pressable style={styles.sortButton} onPress={() => setSortMenuVisible(true)}>
-            <ThemedText type="small">Sort</ThemedText>
+          <Pressable
+            style={[styles.sortButton, { backgroundColor: theme.backgroundSelected }]}
+            onPress={() => setSortMenuVisible(true)}>
+            <ThemedText type="small">{SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort'}</ThemedText>
+            <Ionicons name="chevron-down" size={14} color={theme.text} />
           </Pressable>
         </View>
 
@@ -200,22 +138,24 @@ export default function HomeScreen() {
             <ThemedText type="subtitle" style={styles.modalTitle}>
               Activities
             </ThemedText>
-            {categories.map((category) => {
-              const active = activeSlugs.includes(category.slug);
-              return (
-                <Pressable
-                  key={category.slug}
-                  style={styles.modalRow}
-                  onPress={() =>
-                    setActiveSlugs((current) =>
-                      active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
-                    )
-                  }>
-                  <ThemedText type="default">{category.name}</ThemedText>
-                  <ThemedText type="default">{active ? '✓' : ''}</ThemedText>
-                </Pressable>
-              );
-            })}
+            <ScrollView style={styles.modalScroll}>
+              {categories.map((category) => {
+                const active = activeSlugs.includes(category.slug);
+                return (
+                  <Pressable
+                    key={category.slug}
+                    style={styles.modalRow}
+                    onPress={() =>
+                      setActiveSlugs((current) =>
+                        active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
+                      )
+                    }>
+                    <ThemedText type="default">{category.name}</ThemedText>
+                    <ThemedText type="default">{active ? '✓' : ''}</ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </ThemedView>
         </Pressable>
       </Modal>
@@ -226,12 +166,7 @@ export default function HomeScreen() {
             <ThemedText type="subtitle" style={styles.modalTitle}>
               Sort by
             </ThemedText>
-            {(
-              [
-                { key: 'distance', label: 'Distance' },
-                { key: 'rating', label: 'Highest rated' },
-              ] as const
-            ).map((option) => (
+            {SORT_OPTIONS.map((option) => (
               <Pressable
                 key={option.key}
                 style={styles.modalRow}
@@ -260,76 +195,10 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.six,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  logoPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: Spacing.two,
-    backgroundColor: '#14747A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPlaceholderText: {
-    color: '#ffffff',
-  },
-  brandText: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  headerRightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  bellButton: {
-    position: 'relative',
-  },
-  unreadBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 3,
-    backgroundColor: '#E05252',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadBadgeText: {
-    color: '#ffffff',
-    fontSize: 10,
-    lineHeight: 12,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  accountTextColumn: {
-    alignItems: 'flex-end',
-    maxWidth: 140,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
   filterRow: {
     flexGrow: 0,
     minHeight: 44,
+    marginTop: Spacing.three,
   },
   filterRowContent: {
     paddingHorizontal: Spacing.three,
@@ -359,6 +228,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
   },
   sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderRadius: Spacing.five,
@@ -381,6 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
+    maxHeight: '70%',
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,
     padding: Spacing.four,
@@ -390,6 +263,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 26,
     marginBottom: Spacing.two,
+  },
+  modalScroll: {
+    flexGrow: 0,
   },
   modalRow: {
     flexDirection: 'row',

@@ -7,7 +7,7 @@ import { CategoryColors, Spacing } from '@/constants/theme';
 import { openDirections } from '@/lib/directions';
 import type { CardLocation } from '@/types/location';
 
-const CARD_HEIGHT = 168;
+const IMAGE_HEIGHT = 160;
 
 export function LocationCard({
   location,
@@ -29,25 +29,12 @@ export function LocationCard({
   return (
     <Pressable style={[styles.card, { backgroundColor: cardColor }]} onPress={onPress}>
       <View style={styles.mainRow}>
-        <View style={styles.leftColumn}>
+        <View style={styles.imageWrapper}>
           <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
-          <View style={styles.captionRow}>
-            {location.distanceKm !== null ? (
-              <ThemedText type="small" style={styles.whiteTextSecondary} numberOfLines={1}>
-                ~{location.distanceKm} km from city
-              </ThemedText>
-            ) : location.address ? (
-              <ThemedText type="small" style={[styles.whiteTextSecondary, styles.addressText]} numberOfLines={1}>
-                {location.address}
-              </ThemedText>
-            ) : (
-              <View />
-            )}
-            <Pressable onPress={() => openDirections(location.address ?? location.name)}>
-              <ThemedText type="smallBold" style={styles.whiteText}>
-                Directions
-              </ThemedText>
-            </Pressable>
+          <View style={[styles.categoryBadge, { backgroundColor: cardColor }]}>
+            <ThemedText type="small" style={styles.whiteText} numberOfLines={1}>
+              {location.categoryLabel}
+            </ThemedText>
           </View>
         </View>
 
@@ -72,7 +59,7 @@ export function LocationCard({
           <View style={styles.ratingRow}>
             <StarRating rating={location.rating} />
             <ThemedText type="small" style={styles.whiteText}>
-              {location.rating.toFixed(2)} · {location.reviewCount} reviews
+              {location.rating.toFixed(1)} ({location.reviewCount})
             </ThemedText>
           </View>
           <ThemedText type="small" style={[styles.whiteText, styles.description]} numberOfLines={3}>
@@ -80,42 +67,60 @@ export function LocationCard({
           </ThemedText>
         </View>
       </View>
+
+      <View style={styles.footerRow}>
+        {location.address ? (
+          <ThemedText type="small" style={[styles.whiteText, styles.addressText]} numberOfLines={1}>
+            {location.address}
+          </ThemedText>
+        ) : location.distanceKm !== null ? (
+          <ThemedText type="small" style={[styles.whiteTextSecondary, styles.addressText]} numberOfLines={1}>
+            ~{location.distanceKm} km from city
+          </ThemedText>
+        ) : (
+          <View />
+        )}
+        <Pressable onPress={() => openDirections(location.address ?? location.name)}>
+          <ThemedText type="smallBold" style={[styles.whiteText, styles.directionsText]}>
+            Directions
+          </ThemedText>
+        </Pressable>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    height: CARD_HEIGHT,
     borderRadius: Spacing.three,
-    padding: Spacing.three,
     overflow: 'hidden',
   },
   mainRow: {
-    flex: 1,
     flexDirection: 'row',
     gap: Spacing.three,
   },
-  leftColumn: {
-    width: '42%',
+  imageWrapper: {
+    width: '48%',
+    height: IMAGE_HEIGHT,
+    position: 'relative',
   },
   image: {
     width: '100%',
-    flex: 1,
-    borderRadius: Spacing.two,
+    height: '100%',
+    borderRadius: Spacing.three,
   },
-  captionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.one,
-  },
-  addressText: {
-    flex: 1,
-    marginRight: Spacing.one,
+  categoryBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    left: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: Spacing.five,
   },
   content: {
     flex: 1,
+    paddingTop: Spacing.one,
+    paddingRight: Spacing.three,
   },
   titleRow: {
     flexDirection: 'row',
@@ -159,5 +164,20 @@ const styles = StyleSheet.create({
   description: {
     color: 'rgba(255,255,255,0.85)',
     marginTop: Spacing.three,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.two,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
+  },
+  addressText: {
+    flex: 1,
+    marginRight: Spacing.two,
+  },
+  directionsText: {
+    textDecorationLine: 'underline',
   },
 });

@@ -5,10 +5,12 @@ import { Spacing } from '@/constants/theme';
 
 export function SectionBadge({
   label,
+  count,
   backgroundColor,
   textColor = '#ffffff',
 }: {
   label: string;
+  count?: number;
   backgroundColor: string;
   textColor?: string;
 }) {
@@ -17,14 +19,22 @@ export function SectionBadge({
       <ThemedText type="smallBold" style={{ color: textColor }}>
         {label}
       </ThemedText>
+      {count !== undefined && (
+        <ThemedText type="smallBold" style={{ color: textColor }}>
+          {count}
+        </ThemedText>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
     borderRadius: Spacing.five,
   },

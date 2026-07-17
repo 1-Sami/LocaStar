@@ -78,7 +78,20 @@ export function AddToListModal({
     try {
       const listId = await createList(supabase, userId, newListName.trim(), null);
       await addLocationToList(supabase, listId, locationId);
-      setLists((current) => [{ id: listId, name: newListName.trim(), description: null, itemCount: 1, createdAt: new Date().toISOString() }, ...current]);
+      setLists((current) => [
+        {
+          id: listId,
+          name: newListName.trim(),
+          description: null,
+          itemCount: 1,
+          createdAt: new Date().toISOString(),
+          isPublic: false,
+          likeCount: 0,
+          likedByMe: false,
+          previewLocationIds: [locationId],
+        },
+        ...current,
+      ]);
       setMemberListIds((current) => new Set(current).add(listId));
       setNewListName('');
     } finally {

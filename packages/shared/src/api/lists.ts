@@ -6,6 +6,10 @@ export type LocationList = {
   description: string | null;
   itemCount: number;
   createdAt: string;
+  isPublic: boolean;
+  likeCount: number;
+  likedByMe: boolean;
+  previewLocationIds: string[];
 };
 
 type ListRow = {
@@ -13,35 +17,90 @@ type ListRow = {
   name: string;
   description: string | null;
   created_at: string;
+  is_public: boolean;
   list_items: { count: number }[];
 };
 
 export async function fetchLists(client: SupabaseClient, userId: string): Promise<LocationList[]> {
   const { data, error } = await client
     .from("lists")
-    .select("id, name, description, created_at, list_items(count)")
+    .select("id, name, description, created_at, is_public, list_items(count)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  return ((data ?? []) as unknown as ListRow[]).map((row) => ({
+  const rows = (data ?? []) as unknown as ListRow[];
+  const listIds = rows.map((row) => row.id);
+  if (listIds.length === 0) return [];
+
+  const [previewByList, likesByList] = await Promise.all([
+    fetchPreviewLocationIds(client, listIds),
+    fetchLikeInfo(client, listIds, userId),
+  ]);
+
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description,
     itemCount: row.list_items?.[0]?.count ?? 0,
     createdAt: row.created_at,
+    isPublic: row.is_public,
+    likeCount: likesByList.get(row.id)?.count ?? 0,
+    likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
+    previewLocationIds: previewByList.get(row.id) ?? [],
   }));
+}
+
+async function fetchPreviewLocationIds(
+  client: SupabaseClient,
+  listIds: string[]
+): Promise<Map<string, string[]>> {
+  const { data, error } = await client
+    .from("list_items")
+    .select("list_id, location_id")
+    .in("list_id", listIds)
+    .order("added_at", { ascending: false });
+  if (error) throw error;
+
+  const byList = new Map<string, string[]>();
+  for (const row of (data ?? []) as { list_id: string; location_id: string }[]) {
+    const existing = byList.get(row.list_id) ?? [];
+    if (existing.length < 3) {
+      existing.push(row.location_id);
+      byList.set(row.list_id, existing);
+    }
+  }
+  return byList;
+}
+
+async function fetchLikeInfo(
+  client: SupabaseClient,
+  listIds: string[],
+  userId: string
+): Promise<Map<string, { count: number; likedByMe: boolean }>> {
+  const { data, error } = await client.from("list_likes").select("list_id, user_id").in("list_id", listIds);
+  if (error) throw error;
+
+  const byList = new Map<string, { count: number; likedByMe: boolean }>();
+  for (const row of (data ?? []) as { list_id: string; user_id: string }[]) {
+    const existing = byList.get(row.list_id) ?? { count: 0, likedByMe: false };
+    existing.count += 1;
+    if (row.user_id === userId) existing.likedByMe = true;
+    byList.set(row.list_id, existing);
+  }
+  return byList;
 }
 
 export async function createList(
   client: SupabaseClient,
   userId: string,
   name: string,
-  description: string | null
+  description: string | null,
+  isPublic = false
 ): Promise<string> {
   const { data, error } = await client
     .from("lists")
-    .insert({ user_id: userId, name, description })
+    .insert({ user_id: userId, name, description, is_public: isPublic })
     .select("id")
     .single();
   if (error) throw error;
@@ -51,6 +110,30 @@ export async function createList(
 export async function deleteList(client: SupabaseClient, listId: string): Promise<void> {
   const { error } = await client.from("lists").delete().eq("id", listId);
   if (error) throw error;
+}
+
+export async function setListVisibility(
+  client: SupabaseClient,
+  listId: string,
+  isPublic: boolean
+): Promise<void> {
+  const { error } = await client.from("lists").update({ is_public: isPublic }).eq("id", listId);
+  if (error) throw error;
+}
+
+export async function setListLiked(
+  client: SupabaseClient,
+  listId: string,
+  userId: string,
+  liked: boolean
+): Promise<void> {
+  if (liked) {
+    const { error } = await client.from("list_likes").insert({ list_id: listId, user_id: userId });
+    if (error) throw error;
+  } else {
+    const { error } = await client.from("list_likes").delete().match({ list_id: listId, user_id: userId });
+    if (error) throw error;
+  }
 }
 
 export type ListItemLocation = {

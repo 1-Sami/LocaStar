@@ -6,13 +6,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { useNotificationsBadge } from '@/lib/notifications-context';
 import { supabase } from '@/lib/supabase';
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { refreshUnreadCount } = useNotificationsBadge();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +30,8 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload])
+      refreshUnreadCount();
+    }, [reload, refreshUnreadCount])
   );
 
   const handleOpen = async (notification: Notification) => {
@@ -37,6 +40,7 @@ export default function NotificationsScreen() {
       setNotifications((current) =>
         current.map((n) => (n.id === notification.id ? { ...n, readAt: new Date().toISOString() } : n))
       );
+      refreshUnreadCount();
     }
     router.push({ pathname: '/location/[id]', params: { id: notification.payload.location_id } });
   };
@@ -45,13 +49,18 @@ export default function NotificationsScreen() {
     if (!session) return;
     setNotifications((current) => current.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
     await markAllNotificationsRead(supabase, session.user.id).catch(() => {});
+    refreshUnreadCount();
   };
 
   const hasUnread = notifications.some((n) => !n.readAt);
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ThemedText type="subtitle" style={styles.header}>
+          Notifications
+        </ThemedText>
+
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : notifications.length === 0 ? (
@@ -99,6 +108,15 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
+  },
+  header: {
+    fontSize: 24,
+    lineHeight: 31,
+    paddingVertical: Spacing.two,
   },
   loadingIndicator: {
     marginTop: Spacing.six,
@@ -106,10 +124,9 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     marginTop: Spacing.six,
-    paddingHorizontal: Spacing.four,
   },
   content: {
-    padding: Spacing.three,
+    paddingBottom: Spacing.four,
     gap: Spacing.two,
   },
   markAllRow: {

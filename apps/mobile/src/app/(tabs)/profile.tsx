@@ -10,13 +10,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
 const EMPTY_STATS: ProfileStats = { favorites: 0, bucketList: 0, shared: 0, reviews: 0, added: 0 };
 
 const STAT_TILE_WIDTH = 91;
 const STAT_TILE_GAP = 10;
-const MENU_ROW_WIDTH = STAT_TILE_WIDTH * 3 + STAT_TILE_GAP * 2;
+const MENU_ROW_WIDTH = (STAT_TILE_WIDTH * 3 + STAT_TILE_GAP * 2) * 0.8;
 
 function statTiles(stats: ProfileStats) {
   return [
@@ -64,6 +65,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useFocusEffect(
@@ -81,6 +83,7 @@ export default function ProfileScreen() {
         .then((profile) => {
           if (!cancelled) {
             setAvatarUrl(profile.avatar_url);
+            setUsername(profile.username ?? profile.display_name);
             setIsAdmin(profile.role === 'admin');
           }
         })
@@ -90,6 +93,11 @@ export default function ProfileScreen() {
       };
     }, [session])
   );
+
+  const handleSignOut = async () => {
+    const confirmed = await confirmAsync('Log out?', 'You’ll need to log in again to access your account.', 'Log out');
+    if (confirmed) signOut();
+  };
 
   const menuItems = isAdmin ? [...baseMenuItems, 'Reports (admin)'] : baseMenuItems;
 
@@ -143,10 +151,6 @@ export default function ProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText type="subtitle" style={styles.header}>
-          Profile
-        </ThemedText>
-
         <View style={styles.profileRow}>
           <Pressable onPress={() => router.push('/settings/profile-picture' as never)}>
             <Image
@@ -155,13 +159,13 @@ export default function ProfileScreen() {
             />
           </Pressable>
           <View>
-            <Pressable onPress={signOut}>
+            <Pressable onPress={handleSignOut}>
               <ThemedText type="link" style={styles.logOutText}>
                 Log out
               </ThemedText>
             </Pressable>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
-              {session.user.email}
+              {username ?? session.user.email}
             </ThemedText>
           </View>
         </View>
@@ -241,12 +245,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 19,
     alignItems: 'center',
-    paddingVertical: Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
   },
   avatar: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
   },
   logOutText: {
     fontSize: 17,

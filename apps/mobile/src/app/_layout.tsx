@@ -3,6 +3,8 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider } from '@/lib/auth-context';
+import { NotificationsProvider } from '@/lib/notifications-context';
+import { ProfileProvider } from '@/lib/profile-context';
 import { ThemeModeProvider, useThemeMode } from '@/lib/theme-mode-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -30,7 +32,6 @@ function ThemedNavigation() {
         <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="about" options={{ title: 'About' }} />
         <Stack.Screen name="admin-reports" options={{ title: 'Reports' }} />
-        <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="lists/index" options={{ title: 'My lists' }} />
         <Stack.Screen name="lists/[id]" options={{ title: 'List' }} />
       </Stack>
@@ -41,9 +42,13 @@ function ThemedNavigation() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <ThemeModeProvider>
-        <ThemedNavigation />
-      </ThemeModeProvider>
+      <ProfileProvider>
+        <NotificationsProvider>
+          <ThemeModeProvider>
+            <ThemedNavigation />
+          </ThemeModeProvider>
+        </NotificationsProvider>
+      </ProfileProvider>
     </AuthProvider>
   );
 }

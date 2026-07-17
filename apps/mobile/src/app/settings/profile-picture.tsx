@@ -10,10 +10,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { pickImage, uploadImageToMedia } from '@/lib/media-upload';
+import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfilePictureScreen() {
   const { session } = useAuth();
+  const { refreshProfile } = useSharedProfile();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -50,6 +52,7 @@ export default function ProfilePictureScreen() {
       const publicUrl = await uploadImageToMedia(path, uri);
       await updateProfile(supabase, session.user.id, { avatar_url: publicUrl });
       setAvatarUrl(publicUrl);
+      refreshProfile();
     } catch {
       setError('Something went wrong uploading your photo. Try again.');
     } finally {

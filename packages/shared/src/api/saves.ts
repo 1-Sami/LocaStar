@@ -111,6 +111,45 @@ export async function fetchSharedLocations(
     .filter((location): location is SavedLocation => location !== null);
 }
 
+export type SentShare = SavedLocation & {
+  shareId: string;
+  recipientUsername: string | null;
+  recipientDisplayName: string | null;
+};
+
+type SentShareRow = JoinedLocationRow & {
+  id: string;
+  recipient: { username: string | null; display_name: string | null } | null;
+};
+
+export async function fetchSentShares(
+  client: SupabaseClient,
+  senderId: string
+): Promise<SentShare[]> {
+  const { data, error } = await client
+    .from("location_shares")
+    .select(
+      `id, location_id, ${JOINED_LOCATION_SELECT}, recipient:profiles!location_shares_recipient_id_fkey(username, display_name)`
+    )
+    .eq("sender_id", senderId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? [])
+    .map((row) => {
+      const base = mapJoinedLocation(row as unknown as JoinedLocationRow);
+      if (!base) return null;
+      const typedRow = row as unknown as SentShareRow;
+      return {
+        ...base,
+        shareId: typedRow.id,
+        recipientUsername: typedRow.recipient?.username ?? null,
+        recipientDisplayName: typedRow.recipient?.display_name ?? null,
+      };
+    })
+    .filter((share): share is SentShare => share !== null);
+}
+
 export type ShareCandidate = {
   id: string;
   username: string;
