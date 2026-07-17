@@ -1,4 +1,5 @@
-import { fetchSavedLocations, fetchSentShares, type SentShare } from '@locastar/shared';
+import { deleteShare, fetchMyShares, fetchSavedLocations, type LocationShare } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +20,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useAuth } from '@/lib/auth-context';
+import { confirmAsync } from '@/lib/confirm';
 import { savedLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 import type { CardLocation } from '@/types/location';
@@ -34,6 +36,7 @@ function FullSection({
   onOpen,
   onLayout,
   noteForItem,
+  onDeleteItem,
   emptyMessage,
 }: {
   title: string;
@@ -46,6 +49,7 @@ function FullSection({
   onOpen: (id: string) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
   noteForItem?: (item: CardLocation, index: number) => string | null;
+  onDeleteItem?: (item: CardLocation, index: number) => void;
   emptyMessage: string;
 }) {
   return (
@@ -61,10 +65,17 @@ function FullSection({
             const note = noteForItem?.(item, index);
             return (
               <View key={`${item.id}-${index}`} style={styles.cardWithNote}>
-                {note && (
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
-                    {note}
-                  </ThemedText>
+                {(note || onDeleteItem) && (
+                  <View style={styles.noteRow}>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
+                      {note}
+                    </ThemedText>
+                    {onDeleteItem && (
+                      <Pressable onPress={() => onDeleteItem(item, index)} hitSlop={8}>
+                        <Ionicons name="close-circle" size={18} color="#E05252" />
+                      </Pressable>
+                    )}
+                  </View>
                 )}
                 <LocationCard
                   location={item}
@@ -134,7 +145,7 @@ export default function FavoritesScreen() {
 
   const [favorites, setFavorites] = useState<CardLocation[]>([]);
   const [bucketList, setBucketList] = useState<CardLocation[]>([]);
-  const [sentShares, setSentShares] = useState<SentShare[]>([]);
+  const [shares, setShares] = useState<LocationShare[]>([]);
   const [loading, setLoading] = useState(true);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -162,14 +173,14 @@ export default function FavoritesScreen() {
     if (!session) return;
     setLoading(true);
     try {
-      const [favoriteRows, bucketListRows, sentShareRows] = await Promise.all([
+      const [favoriteRows, bucketListRows, shareRows] = await Promise.all([
         fetchSavedLocations(supabase, session.user.id, 'favorite'),
         fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
-        fetchSentShares(supabase, session.user.id),
+        fetchMyShares(supabase, session.user.id),
       ]);
       setFavorites(favoriteRows.map(savedLocationToCard));
       setBucketList(bucketListRows.map(savedLocationToCard));
-      setSentShares(sentShareRows);
+      setShares(shareRows);
     } finally {
       setLoading(false);
     }
@@ -188,6 +199,19 @@ export default function FavoritesScreen() {
     reload().catch(() => {});
   };
   const handleOpen = (id: string) => router.push({ pathname: '/location/[id]', params: { id } });
+
+  const handleDeleteShare = async (index: number) => {
+    const share = shares[index];
+    if (!share) return;
+    const confirmed = await confirmAsync(
+      'Remove this shared location?',
+      'This removes it from the shared list for both you and the other person.',
+      'Remove'
+    );
+    if (!confirmed) return;
+    setShares((current) => current.filter((_item, i) => i !== index));
+    deleteShare(supabase, share.shareId).catch(() => reload());
+  };
 
   if (!session) {
     return (
@@ -208,11 +232,13 @@ export default function FavoritesScreen() {
     );
   }
 
-  const sharedCards = sentShares.map(savedLocationToCard);
+  const sharedCards = shares.map(savedLocationToCard);
   const sharedNote = (_item: CardLocation, index: number) => {
-    const share = sentShares[index];
-    const name = share?.recipientUsername ?? share?.recipientDisplayName;
-    return name ? `Shared with ${name}` : null;
+    const share = shares[index];
+    if (!share) return null;
+    const name = share.otherPartyUsername ?? share.otherPartyDisplayName;
+    if (!name) return null;
+    return share.direction === 'sent' ? `Shared with ${name}` : `Shared by ${name}`;
   };
 
   return (
@@ -254,6 +280,7 @@ export default function FavoritesScreen() {
               onOpen={handleOpen}
               onLayout={handleSectionLayout('shared')}
               noteForItem={sharedNote}
+              onDeleteItem={(_item, index) => handleDeleteShare(index)}
               emptyMessage="Nothing shared yet — share a location to see it here."
             />
           </ScrollView>
@@ -287,7 +314,14 @@ const styles = StyleSheet.create({
   cardWithNote: {
     gap: Spacing.one,
   },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+  },
   shareNote: {
+    flexShrink: 1,
     textAlign: 'right',
     fontStyle: 'italic',
   },

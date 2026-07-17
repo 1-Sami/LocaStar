@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -44,14 +45,17 @@ export default function SignInScreen() {
           keyboardType="email-address"
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
-        <TextInput
+        <PasswordInput
           value={password}
           onChangeText={setPassword}
           placeholder="Password"
           placeholderTextColor={theme.textSecondary}
-          secureTextEntry
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
+
+        <Link href="/forgot-password" style={styles.forgotPasswordLink}>
+          <ThemedText type="linkPrimary">Forgot password?</ThemedText>
+        </Link>
 
         {error && (
           <ThemedText type="small" style={styles.error}>
@@ -96,6 +100,10 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginTop: -Spacing.two,
   },
   error: {
     color: '#E85C4C',

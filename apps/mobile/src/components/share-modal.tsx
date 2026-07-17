@@ -1,4 +1,4 @@
-import { searchProfilesByUsername, type ShareCandidate } from '@locastar/shared';
+import { searchShareCandidates, type ShareCandidate } from '@locastar/shared';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -15,10 +15,16 @@ export function ShareModal({
   visible,
   onClose,
   onShare,
+  title = 'Share this location',
+  successNoun = 'in their Favorites',
+  showNote = true,
 }: {
   visible: boolean;
   onClose: () => void;
   onShare: (recipientId: string, note: string | null) => Promise<void>;
+  title?: string;
+  successNoun?: string;
+  showNote?: boolean;
 }) {
   const theme = useTheme();
   const { session } = useAuth();
@@ -37,7 +43,7 @@ export function ShareModal({
     }
     let cancelled = false;
     const timeout = setTimeout(() => {
-      searchProfilesByUsername(supabase, query.trim(), session.user.id)
+      searchShareCandidates(supabase, query.trim(), session.user.id)
         .then((rows) => {
           if (!cancelled) setResults(rows);
         })
@@ -87,7 +93,7 @@ export function ShareModal({
                 Shared!
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary">
-                {selected?.displayName ?? selected?.username} will see it in their Favorites.
+                {selected?.displayName ?? selected?.username ?? 'They'} will see it {successNoun}.
               </ThemedText>
               <Pressable style={styles.submitButton} onPress={handleClose}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
@@ -98,7 +104,7 @@ export function ShareModal({
           ) : (
             <>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                Share this location
+                {title}
               </ThemedText>
 
               {selected ? (
@@ -108,7 +114,7 @@ export function ShareModal({
                     style={styles.avatar}
                   />
                   <ThemedText type="default" style={styles.selectedName}>
-                    {selected.displayName ?? selected.username}
+                    {selected.displayName ?? selected.username ?? 'Unnamed user'}
                   </ThemedText>
                   <Pressable onPress={() => setSelected(null)} hitSlop={8}>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -121,7 +127,7 @@ export function ShareModal({
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
-                    placeholder="Search by username"
+                    placeholder="Search by username or email"
                     placeholderTextColor={theme.textSecondary}
                     autoCapitalize="none"
                     style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -133,10 +139,14 @@ export function ShareModal({
                         style={styles.avatar}
                       />
                       <View>
-                        <ThemedText type="default">{candidate.displayName ?? candidate.username}</ThemedText>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          @{candidate.username}
+                        <ThemedText type="default">
+                          {candidate.displayName ?? candidate.username ?? 'Unnamed user'}
                         </ThemedText>
+                        {candidate.username && (
+                          <ThemedText type="small" themeColor="textSecondary">
+                            @{candidate.username}
+                          </ThemedText>
+                        )}
                       </View>
                     </Pressable>
                   ))}
@@ -148,14 +158,16 @@ export function ShareModal({
                 </>
               )}
 
-              <TextInput
-                value={note}
-                onChangeText={setNote}
-                placeholder="Add a note (optional)"
-                placeholderTextColor={theme.textSecondary}
-                style={[styles.input, styles.noteInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                multiline
-              />
+              {showNote && (
+                <TextInput
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Add a note (optional)"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.input, styles.noteInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                  multiline
+                />
+              )}
 
               {error && (
                 <ThemedText type="small" style={styles.errorText}>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -42,7 +43,7 @@ export default function ChangePasswordScreen() {
             Choose a new password (at least 6 characters).
           </ThemedText>
 
-          <TextInput
+          <PasswordInput
             value={password}
             onChangeText={(text) => {
               setPassword(text);
@@ -50,10 +51,9 @@ export default function ChangePasswordScreen() {
             }}
             placeholder="New password"
             placeholderTextColor={theme.textSecondary}
-            secureTextEntry
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
-          <TextInput
+          <PasswordInput
             value={confirmPassword}
             onChangeText={(text) => {
               setConfirmPassword(text);
@@ -61,7 +61,6 @@ export default function ChangePasswordScreen() {
             }}
             placeholder="Confirm new password"
             placeholderTextColor={theme.textSecondary}
-            secureTextEntry
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
 

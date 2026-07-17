@@ -316,6 +316,12 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
+            {location.creator_visible && location.creator_username && (
+              <ThemedText type="small" themeColor="textSecondary">
+                Added by @{location.creator_username}
+              </ThemedText>
+            )}
+
             {location.is_verified ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.claimText}>
                 ✓ Verified business

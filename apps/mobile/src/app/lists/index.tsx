@@ -1,4 +1,13 @@
-import { createList, fetchLists, fetchProfile, setListLiked, setListVisibility, type LocationList } from '@locastar/shared';
+import {
+  createList,
+  fetchLists,
+  fetchListsSharedWithMe,
+  fetchProfile,
+  setListLiked,
+  setListVisibility,
+  type LocationList,
+  type SharedList,
+} from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -43,29 +52,31 @@ function ListCard({
           Created {formatCreatedLabel(list.createdAt)} by {ownerUsername}
         </ThemedText>
 
-        {main && (
-          <View style={styles.collage}>
+        <View style={styles.collage}>
+          {main ? (
             <Image source={{ uri: placeholderImage(main) }} style={styles.mainPhoto} contentFit="cover" />
-            {rest.length > 0 && (
-              <View style={styles.subPhotoRow}>
-                {rest.map((locationId) => (
-                  <Image
-                    key={locationId}
-                    source={{ uri: placeholderImage(locationId) }}
-                    style={styles.subPhoto}
-                    contentFit="cover"
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        )}
+          ) : (
+            <View style={[styles.mainPhoto, styles.photoPlaceholder]} />
+          )}
+          {rest.length > 0 && (
+            <View style={styles.subPhotoColumn}>
+              {rest.map((locationId) => (
+                <Image
+                  key={locationId}
+                  source={{ uri: placeholderImage(locationId) }}
+                  style={styles.subPhoto}
+                  contentFit="cover"
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={styles.footerRow}>
           <Pressable style={styles.likeButton} onPress={onToggleLike} hitSlop={8}>
             <Ionicons
               name={list.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
-              size={18}
+              size={14}
               color={list.likedByMe ? '#4CD37A' : '#ffffff'}
             />
             <ThemedText type="smallBold" style={styles.whiteText}>
@@ -73,7 +84,7 @@ function ListCard({
             </ThemedText>
           </Pressable>
           <Pressable style={styles.visibilityBadge} onPress={onToggleVisibility} hitSlop={8}>
-            <Ionicons name={list.isPublic ? 'globe-outline' : 'lock-closed-outline'} size={14} color="#ffffff" />
+            <Ionicons name={list.isPublic ? 'globe-outline' : 'lock-closed-outline'} size={11} color="#ffffff" />
             <ThemedText type="small" style={styles.whiteText}>
               {list.isPublic ? 'Public' : 'Private'}
             </ThemedText>
@@ -90,6 +101,7 @@ export default function MyListsScreen() {
   const theme = useTheme();
 
   const [lists, setLists] = useState<LocationList[]>([]);
+  const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
   const [username, setUsername] = useState('you');
   const [loading, setLoading] = useState(true);
   const [createVisible, setCreateVisible] = useState(false);
@@ -104,10 +116,12 @@ export default function MyListsScreen() {
     setLoading(true);
     Promise.all([
       fetchLists(supabase, session.user.id),
+      fetchListsSharedWithMe(supabase, session.user.id).catch(() => []),
       fetchProfile(supabase, session.user.id).catch(() => null),
     ])
-      .then(([listRows, profile]) => {
+      .then(([listRows, sharedRows, profile]) => {
         setLists(listRows);
+        setSharedLists(sharedRows);
         setUsername(profile?.username ?? profile?.display_name ?? 'you');
       })
       .catch(() => setLists([]))
@@ -185,6 +199,29 @@ export default function MyListsScreen() {
                   onToggleVisibility={() => handleToggleVisibility(list)}
                 />
               ))
+            )}
+
+            {sharedLists.length > 0 && (
+              <View style={styles.sharedSection}>
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sharedSectionTitle}>
+                  Shared with you
+                </ThemedText>
+                {sharedLists.map((list) => (
+                  <Pressable
+                    key={list.id}
+                    onPress={() =>
+                      router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name, shared: '1' } })
+                    }>
+                    <ThemedView type="backgroundElement" style={styles.sharedCard}>
+                      <ThemedText type="smallBold">{list.name}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        Shared by {list.senderUsername ?? list.senderDisplayName ?? 'someone'} ·{' '}
+                        {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
+                      </ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                ))}
+              </View>
             )}
           </ScrollView>
         )}
@@ -270,31 +307,47 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
     paddingHorizontal: Spacing.four,
   },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
+  sharedSection: {
     gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  sharedSectionTitle: {
+    textTransform: 'uppercase',
+  },
+  sharedCard: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.half,
+  },
+  card: {
+    borderRadius: Spacing.three * 0.8,
+    padding: Spacing.three * 0.8,
+    gap: Spacing.two * 0.8,
     backgroundColor: '#1B2A4A',
   },
   cardTitle: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 19,
   },
   collage: {
-    gap: Spacing.two,
+    flexDirection: 'row',
+    gap: Spacing.two * 0.8,
+    height: 120,
   },
   mainPhoto: {
-    width: '100%',
-    height: 150,
+    flex: 1,
+    height: 120,
     borderRadius: Spacing.two,
   },
-  subPhotoRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
+  photoPlaceholder: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  subPhotoColumn: {
+    width: 56,
+    gap: Spacing.two * 0.8,
   },
   subPhoto: {
     flex: 1,
-    height: 90,
     borderRadius: Spacing.two,
   },
   footerRow: {

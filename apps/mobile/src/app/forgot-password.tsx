@@ -1,53 +1,49 @@
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { supabase } from '@/lib/supabase';
 
-export default function SignUpScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [confirmationSent, setConfirmationSent] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const { signUpWithPassword } = useAuth();
-  const router = useRouter();
+export default function ForgotPasswordScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   const onSubmit = async () => {
     setSubmitting(true);
     setError(null);
-    const { error: signUpError, needsEmailConfirmation } = await signUpWithPassword(
-      email.trim(),
-      password
-    );
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'locastar://reset-password',
+    });
     setSubmitting(false);
-    if (signUpError) {
-      setError(signUpError);
+    if (resetError) {
+      setError(resetError.message);
       return;
     }
-    if (needsEmailConfirmation) {
-      setConfirmationSent(true);
-      return;
-    }
-    router.back();
+    setSent(true);
   };
 
-  if (confirmationSent) {
+  if (sent) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle">Check your email</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            We sent a confirmation link to {email}. Follow it to finish creating your account,
-            then come back and log in.
+            If an account exists for {email}, we've sent a link to reset your password.
           </ThemedText>
+          <Pressable style={[styles.submitButton, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
+            <ThemedText type="smallBold" style={styles.submitButtonText}>
+              Back to log in
+            </ThemedText>
+          </Pressable>
         </SafeAreaView>
       </ThemedView>
     );
@@ -56,7 +52,10 @@ export default function SignUpScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle">Sign up</ThemedText>
+        <ThemedText type="subtitle">Reset password</ThemedText>
+        <ThemedText type="default" themeColor="textSecondary">
+          Enter your email and we'll send you a link to reset your password.
+        </ThemedText>
 
         <TextInput
           value={email}
@@ -65,13 +64,6 @@ export default function SignUpScreen() {
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-        />
-        <PasswordInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Password (min. 6 characters)"
-          placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
 
@@ -83,21 +75,16 @@ export default function SignUpScreen() {
 
         <Pressable
           onPress={onSubmit}
-          disabled={submitting || !email || password.length < 6}
-          style={[styles.submitButton, { backgroundColor: theme.primary }]}>
+          disabled={submitting || !email.trim()}
+          style={[
+            styles.submitButton,
+            { backgroundColor: theme.primary },
+            (submitting || !email.trim()) && styles.submitButtonDisabled,
+          ]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
-            {submitting ? 'Signing up...' : 'Sign up'}
+            {submitting ? 'Sending…' : 'Send reset link'}
           </ThemedText>
         </Pressable>
-
-        <View style={styles.switchRow}>
-          <ThemedText type="small" themeColor="textSecondary">
-            Already have an account?
-          </ThemedText>
-          <Link href="/sign-in" replace>
-            <ThemedText type="linkPrimary">Log in</ThemedText>
-          </Link>
-        </View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -128,13 +115,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
   submitButtonText: {
     color: '#ffffff',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: Spacing.one,
-    marginTop: Spacing.two,
   },
 });

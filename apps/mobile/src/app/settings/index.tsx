@@ -7,7 +7,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
 const rows: { label: string; href: string }[] = [
-  { label: 'Profile picture', href: '/settings/profile-picture' },
   { label: 'Change password', href: '/settings/password' },
   { label: 'Account info', href: '/settings/account' },
   { label: 'Address', href: '/settings/address' },
@@ -30,6 +29,14 @@ export default function SettingsMenuScreen() {
               </ThemedView>
             </Pressable>
           ))}
+
+          <Pressable
+            style={styles.deleteAccountButton}
+            onPress={() => router.push('/settings/delete-account' as never)}>
+            <ThemedText type="smallBold" style={styles.deleteAccountText}>
+              Delete account
+            </ThemedText>
+          </Pressable>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -51,8 +58,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    width: '62%',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
+  },
+  deleteAccountButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    borderRadius: 999,
+    backgroundColor: '#8B1E1E',
+    marginTop: Spacing.four,
+  },
+  deleteAccountText: {
+    color: '#ffffff',
   },
 });

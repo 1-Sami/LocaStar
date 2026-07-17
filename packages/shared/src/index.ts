@@ -28,15 +28,15 @@ export {
   fetchSavedLocationIds,
   setSaved,
   fetchSavedLocations,
-  fetchSharedLocations,
-  fetchSentShares,
-  searchProfilesByUsername,
+  fetchMyShares,
+  deleteShare,
+  searchShareCandidates,
   shareLocation,
 } from "./api/saves";
 export type {
   SaveKind,
   SavedLocation,
-  SentShare,
+  LocationShare,
   ShareCandidate,
   ShareLocationInput,
 } from "./api/saves";
@@ -80,6 +80,7 @@ export {
   fetchUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
 } from "./api/notifications";
 export type { Notification, ShareNotificationPayload } from "./api/notifications";
 
@@ -87,14 +88,17 @@ export {
   fetchLists,
   createList,
   deleteList,
+  renameList,
   setListVisibility,
   setListLiked,
   fetchListItems,
   addLocationToList,
   removeLocationFromList,
   fetchListMembershipForLocation,
+  shareList,
+  fetchListsSharedWithMe,
 } from "./api/lists";
-export type { LocationList, ListItemLocation } from "./api/lists";
+export type { LocationList, ListItemLocation, SharedList } from "./api/lists";
 
 export {
   submitBusinessClaim,

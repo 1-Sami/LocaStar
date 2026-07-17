@@ -96,42 +96,32 @@ export async function fetchSavedLocations(
     .filter((location): location is SavedLocation => location !== null);
 }
 
-export async function fetchSharedLocations(
-  client: SupabaseClient,
-  recipientId: string
-): Promise<SavedLocation[]> {
-  const { data, error } = await client
-    .from("location_shares")
-    .select(`location_id, note, ${JOINED_LOCATION_SELECT}`)
-    .eq("recipient_id", recipientId);
-  if (error) throw error;
-
-  return (data ?? [])
-    .map((row) => mapJoinedLocation(row as unknown as JoinedLocationRow))
-    .filter((location): location is SavedLocation => location !== null);
-}
-
-export type SentShare = SavedLocation & {
+export type LocationShare = SavedLocation & {
   shareId: string;
-  recipientUsername: string | null;
-  recipientDisplayName: string | null;
+  createdAt: string;
+  direction: "sent" | "received";
+  otherPartyUsername: string | null;
+  otherPartyDisplayName: string | null;
 };
 
-type SentShareRow = JoinedLocationRow & {
+type LocationShareRow = JoinedLocationRow & {
   id: string;
+  created_at: string;
+  sender_id: string;
+  recipient_id: string;
+  sender: { username: string | null; display_name: string | null } | null;
   recipient: { username: string | null; display_name: string | null } | null;
 };
 
-export async function fetchSentShares(
-  client: SupabaseClient,
-  senderId: string
-): Promise<SentShare[]> {
+export async function fetchMyShares(client: SupabaseClient, userId: string): Promise<LocationShare[]> {
   const { data, error } = await client
     .from("location_shares")
     .select(
-      `id, location_id, ${JOINED_LOCATION_SELECT}, recipient:profiles!location_shares_recipient_id_fkey(username, display_name)`
+      `id, created_at, sender_id, recipient_id, ${JOINED_LOCATION_SELECT},
+       sender:profiles!location_shares_sender_id_fkey(username, display_name),
+       recipient:profiles!location_shares_recipient_id_fkey(username, display_name)`
     )
-    .eq("sender_id", senderId)
+    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
     .order("created_at", { ascending: false });
   if (error) throw error;
 
@@ -139,43 +129,51 @@ export async function fetchSentShares(
     .map((row) => {
       const base = mapJoinedLocation(row as unknown as JoinedLocationRow);
       if (!base) return null;
-      const typedRow = row as unknown as SentShareRow;
+      const typedRow = row as unknown as LocationShareRow;
+      const direction: "sent" | "received" = typedRow.sender_id === userId ? "sent" : "received";
+      const otherParty = direction === "sent" ? typedRow.recipient : typedRow.sender;
       return {
         ...base,
         shareId: typedRow.id,
-        recipientUsername: typedRow.recipient?.username ?? null,
-        recipientDisplayName: typedRow.recipient?.display_name ?? null,
+        createdAt: typedRow.created_at,
+        direction,
+        otherPartyUsername: otherParty?.username ?? null,
+        otherPartyDisplayName: otherParty?.display_name ?? null,
       };
     })
-    .filter((share): share is SentShare => share !== null);
+    .filter((share): share is LocationShare => share !== null);
+}
+
+export async function deleteShare(client: SupabaseClient, shareId: string): Promise<void> {
+  const { error } = await client.from("location_shares").delete().eq("id", shareId);
+  if (error) throw error;
 }
 
 export type ShareCandidate = {
   id: string;
-  username: string;
+  username: string | null;
   displayName: string | null;
   avatarUrl: string | null;
 };
 
-export async function searchProfilesByUsername(
+export async function searchShareCandidates(
   client: SupabaseClient,
   query: string,
   excludeUserId: string
 ): Promise<ShareCandidate[]> {
-  const { data, error } = await client
-    .from("profiles")
-    .select("id, username, display_name, avatar_url")
-    .not("username", "is", null)
-    .ilike("username", `%${query}%`)
-    .neq("id", excludeUserId)
-    .limit(10);
+  const { data, error } = await client.rpc("search_share_candidates", {
+    search_query: query,
+    exclude_user_id: excludeUserId,
+  });
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
-    id: row.id as string,
-    username: row.username as string,
-    displayName: row.display_name as string | null,
-    avatarUrl: row.avatar_url as string | null,
+  type CandidateRow = { id: string; username: string | null; display_name: string | null; avatar_url: string | null };
+
+  return ((data ?? []) as CandidateRow[]).map((row) => ({
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
   }));
 }
 

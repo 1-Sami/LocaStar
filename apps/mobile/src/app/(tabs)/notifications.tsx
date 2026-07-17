@@ -1,13 +1,21 @@
-import { fetchNotifications, markAllNotificationsRead, markNotificationRead, type Notification } from '@locastar/shared';
+import {
+  deleteNotification,
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type Notification,
+} from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirmAsync } from '@/lib/confirm';
 import { useNotificationsBadge } from '@/lib/notifications-context';
 import { supabase } from '@/lib/supabase';
 
@@ -42,7 +50,11 @@ export default function NotificationsScreen() {
       );
       refreshUnreadCount();
     }
-    router.push({ pathname: '/location/[id]', params: { id: notification.payload.location_id } });
+    if (notification.type === 'list_share') {
+      router.push({ pathname: '/lists/[id]', params: { id: notification.payload.list_id, shared: '1' } });
+    } else {
+      router.push({ pathname: '/location/[id]', params: { id: notification.payload.location_id } });
+    }
   };
 
   const handleMarkAllRead = async () => {
@@ -50,6 +62,18 @@ export default function NotificationsScreen() {
     setNotifications((current) => current.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
     await markAllNotificationsRead(supabase, session.user.id).catch(() => {});
     refreshUnreadCount();
+  };
+
+  const handleDelete = async (notification: Notification) => {
+    const confirmed = await confirmAsync(
+      'Delete this notification?',
+      "This can't be undone.",
+      'Delete'
+    );
+    if (!confirmed) return;
+    setNotifications((current) => current.filter((n) => n.id !== notification.id));
+    deleteNotification(supabase, notification.id).catch(() => reload());
+    if (!notification.readAt) refreshUnreadCount();
   };
 
   const hasUnread = notifications.some((n) => !n.readAt);
@@ -75,25 +99,33 @@ export default function NotificationsScreen() {
               </Pressable>
             )}
             {notifications.map((notification) => (
-              <Pressable key={notification.id} onPress={() => handleOpen(notification)}>
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.card, !notification.readAt && styles.cardUnread]}>
-                  <ThemedText type="default">
-                    <ThemedText type="smallBold">{notification.payload.sender_name}</ThemedText> shared{' '}
-                    <ThemedText type="smallBold">{notification.payload.location_name ?? 'a location'}</ThemedText>{' '}
-                    with you
-                  </ThemedText>
-                  {notification.payload.note && (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      "{notification.payload.note}"
+              <View key={notification.id} style={styles.cardWrapper}>
+                <Pressable onPress={() => handleOpen(notification)}>
+                  <ThemedView
+                    type="backgroundElement"
+                    style={[styles.card, !notification.readAt && styles.cardUnread]}>
+                    <ThemedText type="default" style={styles.noteText}>
+                      {notification.type === 'list_share'
+                        ? `Shared the list "${notification.payload.list_name ?? 'Untitled'}" with you`
+                        : notification.payload.note
+                          ? `"${notification.payload.note}"`
+                          : `Shared ${notification.payload.location_name ?? 'a location'} with you`}
                     </ThemedText>
-                  )}
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {new Date(notification.createdAt).toLocaleString()}
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Shared by {notification.payload.sender_name}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </ThemedText>
+                  </ThemedView>
+                </Pressable>
+                <Pressable
+                  style={styles.deleteButton}
+                  onPress={() => handleDelete(notification)}
+                  hitSlop={8}>
+                  <Ionicons name="close-circle" size={20} color="#E05252" />
+                </Pressable>
+              </View>
             ))}
           </ScrollView>
         )}
@@ -133,13 +165,29 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: Spacing.one,
   },
+  cardWrapper: {
+    position: 'relative',
+  },
   card: {
     borderRadius: Spacing.two,
     padding: Spacing.three,
+    paddingRight: Spacing.five,
     gap: Spacing.half,
   },
   cardUnread: {
     borderWidth: 1,
     borderColor: '#14747A',
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
+  },
+  noteText: {
+    fontWeight: '700',
+  },
+  dateText: {
+    fontSize: 10,
+    lineHeight: 14,
   },
 });

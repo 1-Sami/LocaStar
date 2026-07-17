@@ -18,6 +18,8 @@ function ThemedNavigation() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="sign-in" options={{ presentation: 'modal', title: 'Log in' }} />
         <Stack.Screen name="sign-up" options={{ presentation: 'modal', title: 'Sign up' }} />
+        <Stack.Screen name="forgot-password" options={{ presentation: 'modal', title: 'Reset password' }} />
+        <Stack.Screen name="reset-password" options={{ presentation: 'modal', title: 'Reset password' }} />
         <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
         <Stack.Screen name="my-reviews" options={{ title: 'My reviews' }} />
@@ -30,6 +32,7 @@ function ThemedNavigation() {
         <Stack.Screen name="settings/address" options={{ title: 'Address' }} />
         <Stack.Screen name="settings/theme" options={{ title: 'Theme' }} />
         <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="settings/delete-account" options={{ title: 'Delete account' }} />
         <Stack.Screen name="about" options={{ title: 'About' }} />
         <Stack.Screen name="admin-reports" options={{ title: 'Reports' }} />
         <Stack.Screen name="lists/index" options={{ title: 'My lists' }} />

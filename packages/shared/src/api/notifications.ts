@@ -7,13 +7,27 @@ export type ShareNotificationPayload = {
   note: string | null;
 };
 
-export type Notification = {
-  id: string;
-  type: "share";
-  payload: ShareNotificationPayload;
-  readAt: string | null;
-  createdAt: string;
+export type ListShareNotificationPayload = {
+  list_id: string;
+  list_name: string | null;
+  sender_name: string;
 };
+
+export type Notification =
+  | {
+      id: string;
+      type: "share";
+      payload: ShareNotificationPayload;
+      readAt: string | null;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      type: "list_share";
+      payload: ListShareNotificationPayload;
+      readAt: string | null;
+      createdAt: string;
+    };
 
 type NotificationRow = {
   id: string;
@@ -33,11 +47,11 @@ export async function fetchNotifications(client: SupabaseClient, userId: string)
 
   return ((data ?? []) as NotificationRow[]).map((row) => ({
     id: row.id,
-    type: row.type as "share",
-    payload: row.payload as ShareNotificationPayload,
+    type: row.type,
+    payload: row.payload,
     readAt: row.read_at,
     createdAt: row.created_at,
-  }));
+  })) as Notification[];
 }
 
 export async function fetchUnreadNotificationCount(client: SupabaseClient, userId: string): Promise<number> {
@@ -64,5 +78,10 @@ export async function markAllNotificationsRead(client: SupabaseClient, userId: s
     .update({ read_at: new Date().toISOString() })
     .eq("user_id", userId)
     .is("read_at", null);
+  if (error) throw error;
+}
+
+export async function deleteNotification(client: SupabaseClient, notificationId: string): Promise<void> {
+  const { error } = await client.from("notifications").delete().eq("id", notificationId);
   if (error) throw error;
 }

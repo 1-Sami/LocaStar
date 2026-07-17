@@ -73,16 +73,19 @@ export default function AddressScreen() {
             Used as a default starting point for nearby searches.
           </ThemedText>
 
-          <TextInput
-            value={address}
-            onChangeText={(text) => {
-              setAddress(text);
-              setSaved(false);
-            }}
-            placeholder="Home address"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-          />
+          <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedText type="smallBold">Home address</ThemedText>
+            <TextInput
+              value={address}
+              onChangeText={(text) => {
+                setAddress(text);
+                setSaved(false);
+              }}
+              placeholder="Home address"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+            />
+          </ThemedView>
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -120,8 +123,12 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.three,
   },
+  card: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,

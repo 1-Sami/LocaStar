@@ -16,7 +16,6 @@ export default function AccountInfoScreen() {
   const theme = useTheme();
 
   const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [email, setEmail] = useState('');
@@ -34,7 +33,6 @@ export default function AccountInfoScreen() {
       fetchProfile(supabase, session.user.id)
         .then((profile) => {
           if (cancelled) return;
-          setDisplayName(profile.display_name ?? '');
           setUsername(profile.username ?? '');
           setBio(profile.bio ?? '');
         })
@@ -56,7 +54,6 @@ export default function AccountInfoScreen() {
     setEmailChangePending(false);
     try {
       await updateProfile(supabase, session.user.id, {
-        display_name: displayName.trim() || null,
         username: username.trim() || null,
         bio: bio.trim() || null,
       });
@@ -90,65 +87,53 @@ export default function AccountInfoScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.field}>
-            <ThemedText type="smallBold">Display name</ThemedText>
-            <TextInput
-              value={displayName}
-              onChangeText={(text) => {
-                setDisplayName(text);
-                setSaved(false);
-              }}
-              placeholder="Your name"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-            />
-          </View>
+          <ThemedView type="backgroundElement" style={styles.card}>
+            <View style={styles.field}>
+              <ThemedText type="smallBold">Username</ThemedText>
+              <TextInput
+                value={username}
+                onChangeText={(text) => {
+                  setUsername(text);
+                  setSaved(false);
+                }}
+                placeholder="username"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="none"
+                style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+              />
+            </View>
 
-          <View style={styles.field}>
-            <ThemedText type="smallBold">Username</ThemedText>
-            <TextInput
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
-                setSaved(false);
-              }}
-              placeholder="username"
-              placeholderTextColor={theme.textSecondary}
-              autoCapitalize="none"
-              style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-            />
-          </View>
+            <View style={styles.field}>
+              <ThemedText type="smallBold">Email</ThemedText>
+              <TextInput
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setSaved(false);
+                }}
+                placeholder="you@example.com"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+              />
+            </View>
 
-          <View style={styles.field}>
-            <ThemedText type="smallBold">Email</ThemedText>
-            <TextInput
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setSaved(false);
-              }}
-              placeholder="you@example.com"
-              placeholderTextColor={theme.textSecondary}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <ThemedText type="smallBold">Bio</ThemedText>
-            <TextInput
-              value={bio}
-              onChangeText={(text) => {
-                setBio(text);
-                setSaved(false);
-              }}
-              placeholder="Tell people a little about yourself"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, styles.bioInput, { color: theme.text, borderColor: theme.backgroundElement }]}
-              multiline
-            />
-          </View>
+            <View style={styles.field}>
+              <ThemedText type="smallBold">Bio</ThemedText>
+              <TextInput
+                value={bio}
+                onChangeText={(text) => {
+                  setBio(text);
+                  setSaved(false);
+                }}
+                placeholder="Tell people a little about yourself"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.input, styles.bioInput, { color: theme.text, backgroundColor: theme.background }]}
+                multiline
+              />
+            </View>
+          </ThemedView>
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -186,11 +171,15 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.four,
   },
+  card: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
   field: {
     gap: Spacing.one,
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,

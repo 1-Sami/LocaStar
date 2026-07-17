@@ -35,7 +35,8 @@ const STAT_SECTIONS: Record<string, string> = {
   Shared: 'shared',
 };
 
-const baseMenuItems = ['My reviews', 'My lists', 'Add location', 'Add activity', 'Settings', 'About'];
+const PRIMARY_MENU_ITEMS = ['My reviews', 'My lists', 'Add location', 'Add activity'];
+const SECONDARY_MENU_ITEMS = ['Settings', 'About'];
 
 const MENU_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   'My reviews': { icon: 'create-outline', color: '#4CD37A' },
@@ -83,7 +84,7 @@ export default function ProfileScreen() {
         .then((profile) => {
           if (!cancelled) {
             setAvatarUrl(profile.avatar_url);
-            setUsername(profile.username ?? profile.display_name);
+            setUsername(profile.username);
             setIsAdmin(profile.role === 'admin');
           }
         })
@@ -99,7 +100,7 @@ export default function ProfileScreen() {
     if (confirmed) signOut();
   };
 
-  const menuItems = isAdmin ? [...baseMenuItems, 'Reports (admin)'] : baseMenuItems;
+  const secondaryMenuItems = isAdmin ? [...SECONDARY_MENU_ITEMS, 'Reports (admin)'] : SECONDARY_MENU_ITEMS;
 
   const handleMenuPress = (item: string) => {
     if (item === 'My reviews') router.push('/my-reviews');
@@ -158,14 +159,19 @@ export default function ProfileScreen() {
               style={styles.avatar}
             />
           </Pressable>
-          <View>
+          <View style={styles.infoColumn}>
             <Pressable onPress={handleSignOut}>
               <ThemedText type="link" style={styles.logOutText}>
                 Log out
               </ThemedText>
             </Pressable>
+            {username && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
+                Username: {username}
+              </ThemedText>
+            )}
             <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
-              {username ?? session.user.email}
+              Email: {session.user.email}
             </ThemedText>
           </View>
         </View>
@@ -195,7 +201,32 @@ export default function ProfileScreen() {
         </ScrollView>
 
         <View style={styles.menu}>
-          {menuItems.map((item) => {
+          {PRIMARY_MENU_ITEMS.map((item) => {
+            const iconConfig = MENU_ICONS[item];
+            return (
+              <Pressable key={item} onPress={() => handleMenuPress(item)}>
+                <ThemedView type="backgroundElement" style={styles.menuItem}>
+                  <View style={styles.menuItemLeft}>
+                    {iconConfig && (
+                      <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
+                        <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                      </View>
+                    )}
+                    <ThemedText type="default" style={styles.menuItemText}>
+                      {item}
+                    </ThemedText>
+                  </View>
+                  <ThemedText themeColor="textSecondary" style={styles.menuChevron}>
+                    ›
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={[styles.menu, styles.menuGroupGap]}>
+          {secondaryMenuItems.map((item) => {
             const iconConfig = MENU_ICONS[item];
             return (
               <Pressable key={item} onPress={() => handleMenuPress(item)}>
@@ -243,9 +274,9 @@ const styles = StyleSheet.create({
   },
   profileRow: {
     flexDirection: 'row',
-    gap: 19,
+    gap: 10,
     alignItems: 'center',
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.three,
   },
   avatar: {
@@ -253,12 +284,17 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
   },
+  infoColumn: {
+    marginTop: -10,
+    gap: 2,
+  },
   logOutText: {
-    fontSize: 17,
+    fontSize: 18,
+    textDecorationLine: 'underline',
   },
   emailText: {
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 12,
+    lineHeight: 16,
   },
   loggedOutPrompt: {
     gap: Spacing.three,
@@ -311,6 +347,9 @@ const styles = StyleSheet.create({
   menu: {
     width: MENU_ROW_WIDTH,
     gap: Spacing.one,
+  },
+  menuGroupGap: {
+    marginTop: Spacing.three * 2,
   },
   menuItem: {
     flexDirection: 'row',

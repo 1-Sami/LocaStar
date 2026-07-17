@@ -112,6 +112,11 @@ export async function deleteList(client: SupabaseClient, listId: string): Promis
   if (error) throw error;
 }
 
+export async function renameList(client: SupabaseClient, listId: string, name: string): Promise<void> {
+  const { error } = await client.from("lists").update({ name }).eq("id", listId);
+  if (error) throw error;
+}
+
 export async function setListVisibility(
   client: SupabaseClient,
   listId: string,
@@ -208,6 +213,65 @@ export async function removeLocationFromList(
     .delete()
     .match({ list_id: listId, location_id: locationId });
   if (error) throw error;
+}
+
+export async function shareList(
+  client: SupabaseClient,
+  listId: string,
+  senderId: string,
+  recipientId: string
+): Promise<void> {
+  const { error } = await client
+    .from("list_shares")
+    .insert({ list_id: listId, sender_id: senderId, recipient_id: recipientId });
+  if (error) throw error;
+}
+
+export type SharedList = {
+  id: string;
+  name: string;
+  description: string | null;
+  itemCount: number;
+  sharedAt: string;
+  senderUsername: string | null;
+  senderDisplayName: string | null;
+};
+
+type SharedListRow = {
+  id: string;
+  created_at: string;
+  sender: { username: string | null; display_name: string | null } | null;
+  list: {
+    id: string;
+    name: string;
+    description: string | null;
+    list_items: { count: number }[];
+  } | null;
+};
+
+export async function fetchListsSharedWithMe(client: SupabaseClient, userId: string): Promise<SharedList[]> {
+  const { data, error } = await client
+    .from("list_shares")
+    .select(
+      `id, created_at,
+       sender:profiles!list_shares_sender_id_fkey(username, display_name),
+       list:lists(id, name, description, list_items(count))`
+    )
+    .eq("recipient_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as SharedListRow[])
+    .filter((row) => row.list !== null)
+    .map((row) => ({
+      id: row.list!.id,
+      name: row.list!.name,
+      description: row.list!.description,
+      itemCount: row.list!.list_items?.[0]?.count ?? 0,
+      sharedAt: row.created_at,
+      senderUsername: row.sender?.username ?? null,
+      senderDisplayName: row.sender?.display_name ?? null,
+    }));
 }
 
 export async function fetchListMembershipForLocation(

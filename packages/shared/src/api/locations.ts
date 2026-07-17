@@ -65,11 +65,14 @@ export type LocationDetail = {
   phone: string | null;
   email: string | null;
   website: string | null;
+  hours: string | null;
   avg_rating: number;
   review_count: number;
   category_slug: string | null;
   category_label: string | null;
   created_by: string | null;
+  creator_username: string | null;
+  creator_visible: boolean;
   is_verified: boolean;
   claimed_by: string | null;
 };
@@ -83,9 +86,12 @@ type LocationDetailRow = {
   phone: string | null;
   email: string | null;
   website: string | null;
+  hours: string | null;
   avg_rating: number;
   review_count: number;
   created_by: string | null;
+  creator: { username: string | null } | null;
+  creator_visible: boolean;
   is_verified: boolean;
   claimed_by: string | null;
   location_categories: { categories: { slug: string; name: string } | null }[];
@@ -100,6 +106,11 @@ export type LocationSubmission = {
   lng: number;
   categoryIds: string[];
   userId: string;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  hours?: string | null;
+  creatorVisible?: boolean;
 };
 
 export async function submitLocation(client: SupabaseClient, input: LocationSubmission): Promise<string> {
@@ -112,6 +123,11 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       address: input.address,
       geom: `POINT(${input.lng} ${input.lat})`,
       created_by: input.userId,
+      phone: input.phone ?? null,
+      email: input.email ?? null,
+      website: input.website ?? null,
+      hours: input.hours ?? null,
+      creator_visible: input.creatorVisible ?? true,
     })
     .select("id")
     .single();
@@ -175,7 +191,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, avg_rating, review_count, created_by, is_verified, claimed_by, location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, avg_rating, review_count, created_by, creator_visible, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -193,11 +209,14 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     phone: row.phone,
     email: row.email,
     website: row.website,
+    hours: row.hours,
     avg_rating: row.avg_rating,
     review_count: row.review_count,
     is_verified: row.is_verified,
     claimed_by: row.claimed_by,
     created_by: row.created_by,
+    creator_username: row.creator_visible ? (row.creator?.username ?? null) : null,
+    creator_visible: row.creator_visible,
     category_slug: primaryCategory?.slug ?? null,
     category_label: primaryCategory?.name ?? null,
   };
