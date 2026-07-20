@@ -65,14 +65,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   deleteAccountButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 16,
     borderRadius: 999,
     backgroundColor: '#8B1E1E',
-    marginTop: Spacing.four,
+    marginTop: Spacing.five,
   },
   deleteAccountText: {
     color: '#ffffff',
+    fontSize: 9,
   },
 });

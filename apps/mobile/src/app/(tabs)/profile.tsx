@@ -289,12 +289,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   logOutText: {
-    fontSize: 18,
+    fontSize: 21,
     textDecorationLine: 'underline',
   },
   emailText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 18,
   },
   loggedOutPrompt: {
     gap: Spacing.three,

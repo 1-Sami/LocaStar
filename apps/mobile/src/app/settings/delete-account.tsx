@@ -94,7 +94,9 @@ const styles = StyleSheet.create({
     color: '#E05252',
   },
   deleteButton: {
-    height: 48,
+    height: 36,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.four,
     borderRadius: Spacing.five,
     alignItems: 'center',
     justifyContent: 'center',
