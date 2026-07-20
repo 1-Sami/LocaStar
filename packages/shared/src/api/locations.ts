@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type LocationKind = "place" | "activity";
+export type LocationVisibility = "public" | "private";
+
+export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type OpeningHours = Partial<Record<DayKey, { open: string; close: string }>>;
 
 export type NearbyLocation = {
   id: string;
@@ -65,7 +69,7 @@ export type LocationDetail = {
   phone: string | null;
   email: string | null;
   website: string | null;
-  hours: string | null;
+  hours: OpeningHours | null;
   avg_rating: number;
   review_count: number;
   category_slug: string | null;
@@ -73,6 +77,9 @@ export type LocationDetail = {
   created_by: string | null;
   creator_username: string | null;
   creator_visible: boolean;
+  visibility: LocationVisibility;
+  expires_at: string | null;
+  is_boosted: boolean;
   is_verified: boolean;
   claimed_by: string | null;
 };
@@ -86,12 +93,15 @@ type LocationDetailRow = {
   phone: string | null;
   email: string | null;
   website: string | null;
-  hours: string | null;
+  hours: OpeningHours | null;
   avg_rating: number;
   review_count: number;
   created_by: string | null;
   creator: { username: string | null } | null;
   creator_visible: boolean;
+  visibility: LocationVisibility;
+  expires_at: string | null;
+  is_boosted: boolean;
   is_verified: boolean;
   claimed_by: string | null;
   location_categories: { categories: { slug: string; name: string } | null }[];
@@ -109,8 +119,10 @@ export type LocationSubmission = {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
-  hours?: string | null;
+  hours?: OpeningHours | null;
   creatorVisible?: boolean;
+  visibility?: LocationVisibility;
+  expiresAt?: string | null;
 };
 
 export async function submitLocation(client: SupabaseClient, input: LocationSubmission): Promise<string> {
@@ -128,6 +140,8 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       website: input.website ?? null,
       hours: input.hours ?? null,
       creator_visible: input.creatorVisible ?? true,
+      visibility: input.visibility ?? "public",
+      expires_at: input.expiresAt ?? null,
     })
     .select("id")
     .single();
@@ -191,7 +205,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, avg_rating, review_count, created_by, creator_visible, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, avg_rating, review_count, created_by, creator_visible, visibility, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -217,9 +231,26 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     created_by: row.created_by,
     creator_username: row.creator_visible ? (row.creator?.username ?? null) : null,
     creator_visible: row.creator_visible,
+    visibility: row.visibility,
+    expires_at: row.expires_at,
+    is_boosted: row.is_boosted,
     category_slug: primaryCategory?.slug ?? null,
     category_label: primaryCategory?.name ?? null,
   };
+}
+
+export async function setLocationCreatorVisible(
+  client: SupabaseClient,
+  locationId: string,
+  visible: boolean
+): Promise<void> {
+  const { error } = await client.from("locations").update({ creator_visible: visible }).eq("id", locationId);
+  if (error) throw error;
+}
+
+export async function deleteLocation(client: SupabaseClient, locationId: string): Promise<void> {
+  const { error } = await client.from("locations").delete().eq("id", locationId);
+  if (error) throw error;
 }
 
 export type LocationUpdate = {

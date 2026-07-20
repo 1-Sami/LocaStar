@@ -3,17 +3,18 @@ import {
   fetchLocationById,
   fetchLocationCategoryIds,
   setLocationCategories,
+  setLocationCreatorVisible,
   updateLocation,
   type Category,
 } from '@locastar/shared';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -32,6 +33,8 @@ export default function EditLocationScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [creatorVisible, setCreatorVisible] = useState(true);
+  const [creatorVisibleSaving, setCreatorVisibleSaving] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,6 +49,7 @@ export default function EditLocationScreen() {
             setName(location.name);
             setDescription(location.description ?? '');
             setAddress(location.address ?? '');
+            setCreatorVisible(location.creator_visible);
           }
           setCategoryIds(existingCategoryIds);
         })
@@ -58,6 +62,18 @@ export default function EditLocationScreen() {
       };
     }, [id])
   );
+
+  const handleToggleCreatorVisible = async (value: boolean) => {
+    setCreatorVisible(value);
+    setCreatorVisibleSaving(true);
+    try {
+      await setLocationCreatorVisible(supabase, id, value);
+    } catch {
+      setCreatorVisible(!value);
+    } finally {
+      setCreatorVisibleSaving(false);
+    }
+  };
 
   const selectedCategoryLabel = categories
     .filter((c) => categoryIds.includes(c.id))
@@ -146,6 +162,23 @@ export default function EditLocationScreen() {
             multiline
           />
 
+          <View style={styles.visibilityRow}>
+            <View style={styles.visibilityRowText}>
+              <ThemedText type="default">Show me as the creator</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {creatorVisible
+                  ? 'Your username shows as "Added by" on this listing.'
+                  : 'Your name is hidden from this listing.'}
+              </ThemedText>
+            </View>
+            <Switch
+              value={creatorVisible}
+              onValueChange={handleToggleCreatorVisible}
+              disabled={creatorVisibleSaving}
+              trackColor={{ true: Colors.light.primary }}
+            />
+          </View>
+
           {error && (
             <ThemedText type="small" style={styles.errorText}>
               {error}
@@ -208,6 +241,16 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     gap: Spacing.three,
+  },
+  visibilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  visibilityRowText: {
+    flex: 1,
+    gap: Spacing.half,
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,

@@ -12,12 +12,17 @@ export {
   updateLocation,
   fetchLocationCategoryIds,
   setLocationCategories,
+  setLocationCreatorVisible,
+  deleteLocation,
 } from "./api/locations";
 export type {
   NearbyLocation,
   NearbyLocationsParams,
   Category,
   LocationKind,
+  LocationVisibility,
+  DayKey,
+  OpeningHours,
   LocationDetail,
   LocationSubmission,
   LocationReportInput,
@@ -97,8 +102,10 @@ export {
   fetchListMembershipForLocation,
   shareList,
   fetchListsSharedWithMe,
+  fetchListShareRecipients,
+  deleteListShare,
 } from "./api/lists";
-export type { LocationList, ListItemLocation, SharedList } from "./api/lists";
+export type { LocationList, ListItemLocation, SharedList, ListShareRecipient } from "./api/lists";
 
 export {
   submitBusinessClaim,

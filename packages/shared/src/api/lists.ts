@@ -227,8 +227,38 @@ export async function shareList(
   if (error) throw error;
 }
 
+export type ListShareRecipient = {
+  shareId: string;
+  recipientUsername: string | null;
+  recipientDisplayName: string | null;
+};
+
+type ListShareRecipientRow = {
+  id: string;
+  recipient: { username: string | null; display_name: string | null } | null;
+};
+
+export async function fetchListShareRecipients(
+  client: SupabaseClient,
+  listId: string
+): Promise<ListShareRecipient[]> {
+  const { data, error } = await client
+    .from("list_shares")
+    .select("id, recipient:profiles!list_shares_recipient_id_fkey(username, display_name)")
+    .eq("list_id", listId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as ListShareRecipientRow[]).map((row) => ({
+    shareId: row.id,
+    recipientUsername: row.recipient?.username ?? null,
+    recipientDisplayName: row.recipient?.display_name ?? null,
+  }));
+}
+
 export type SharedList = {
   id: string;
+  shareId: string;
   name: string;
   description: string | null;
   itemCount: number;
@@ -265,6 +295,7 @@ export async function fetchListsSharedWithMe(client: SupabaseClient, userId: str
     .filter((row) => row.list !== null)
     .map((row) => ({
       id: row.list!.id,
+      shareId: row.id,
       name: row.list!.name,
       description: row.list!.description,
       itemCount: row.list!.list_items?.[0]?.count ?? 0,
@@ -272,6 +303,11 @@ export async function fetchListsSharedWithMe(client: SupabaseClient, userId: str
       senderUsername: row.sender?.username ?? null,
       senderDisplayName: row.sender?.display_name ?? null,
     }));
+}
+
+export async function deleteListShare(client: SupabaseClient, shareId: string): Promise<void> {
+  const { error } = await client.from("list_shares").delete().eq("id", shareId);
+  if (error) throw error;
 }
 
 export async function fetchListMembershipForLocation(

@@ -1,28 +1,37 @@
 import {
   deleteList,
   fetchListItems,
+  fetchListShareRecipients,
   removeLocationFromList,
   renameList,
+  setListVisibility,
   shareList,
   type ListItemLocation,
+  type ListShareRecipient,
 } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ShareModal } from '@/components/share-modal';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
 export default function ListDetailScreen() {
-  const { id, name, shared } = useLocalSearchParams<{ id: string; name?: string; shared?: string }>();
+  const { id, name, shared, isPublic: isPublicParam } = useLocalSearchParams<{
+    id: string;
+    name?: string;
+    shared?: string;
+    isPublic?: string;
+  }>();
   const router = useRouter();
   const theme = useTheme();
   const { session } = useAuth();
@@ -37,6 +46,9 @@ export default function ListDetailScreen() {
   const [renameInput, setRenameInput] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(isPublicParam === '1');
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
+  const [shareRecipients, setShareRecipients] = useState<ListShareRecipient[]>([]);
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -47,10 +59,18 @@ export default function ListDetailScreen() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const reloadShareRecipients = useCallback(() => {
+    if (!id || isSharedView) return;
+    fetchListShareRecipients(supabase, id)
+      .then(setShareRecipients)
+      .catch(() => setShareRecipients([]));
+  }, [id, isSharedView]);
+
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload])
+      reloadShareRecipients();
+    }, [reload, reloadShareRecipients])
   );
 
   const handleRemove = async (locationId: string) => {
@@ -78,6 +98,19 @@ export default function ListDetailScreen() {
   const handleShareList = async (recipientId: string) => {
     if (!session) return;
     await shareList(supabase, id, session.user.id, recipientId);
+    reloadShareRecipients();
+  };
+
+  const handleToggleVisibility = async (value: boolean) => {
+    setIsPublic(value);
+    setVisibilitySaving(true);
+    try {
+      await setListVisibility(supabase, id, value);
+    } catch {
+      setIsPublic(!value);
+    } finally {
+      setVisibilitySaving(false);
+    }
   };
 
   const handleOpenRename = () => {
@@ -104,7 +137,30 @@ export default function ListDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: listName }} />
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <View style={styles.headerTitleRow}>
+              <ThemedText type="default" style={styles.headerTitleText} numberOfLines={1}>
+                {listName}
+              </ThemedText>
+              {!isSharedView && (
+                <Pressable style={styles.headerPencilButton} onPress={handleOpenRename} hitSlop={8}>
+                  <Ionicons name="pencil" size={14} color="#000000" />
+                </Pressable>
+              )}
+            </View>
+          ),
+          headerRight: () =>
+            isSharedView ? null : (
+              <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList}>
+                <ThemedText type="small" style={styles.headerDeleteButtonText}>
+                  Delete this list
+                </ThemedText>
+              </Pressable>
+            ),
+        }}
+      />
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
@@ -147,21 +203,36 @@ export default function ListDetailScreen() {
 
             {!isSharedView && (
               <>
-                <Pressable style={styles.renameListButton} onPress={handleOpenRename}>
-                  <ThemedText type="smallBold">Rename this list</ThemedText>
-                </Pressable>
+                <View style={styles.actionsRow}>
+                  <Pressable style={styles.shareListButton} onPress={() => setShareVisible(true)}>
+                    <ThemedText type="small" style={styles.shareListButtonText}>
+                      Share this list
+                    </ThemedText>
+                  </Pressable>
 
-                <Pressable style={styles.shareListButton} onPress={() => setShareVisible(true)}>
-                  <ThemedText type="smallBold" style={styles.shareListButtonText}>
-                    Share this list
-                  </ThemedText>
-                </Pressable>
+                  <View style={styles.visibilityInline}>
+                    <ThemedText type="default">{isPublic ? 'Public' : 'Private'} list</ThemedText>
+                    <Switch
+                      value={isPublic}
+                      onValueChange={handleToggleVisibility}
+                      disabled={visibilitySaving}
+                      trackColor={{ true: Colors.light.primary }}
+                    />
+                  </View>
+                </View>
 
-                <Pressable style={styles.deleteListButton} onPress={handleDeleteList}>
-                  <ThemedText type="smallBold" style={styles.deleteListButtonText}>
-                    Delete this list
-                  </ThemedText>
-                </Pressable>
+                {shareRecipients.length > 0 && (
+                  <View style={styles.sharedWithSection}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Shared with:
+                    </ThemedText>
+                    {shareRecipients.map((recipient) => (
+                      <ThemedText key={recipient.shareId} type="small" themeColor="textSecondary">
+                        @{recipient.recipientUsername ?? recipient.recipientDisplayName ?? 'someone'}
+                      </ThemedText>
+                    ))}
+                  </View>
+                )}
               </>
             )}
           </ScrollView>
@@ -248,35 +319,58 @@ const styles = StyleSheet.create({
   removeButtonText: {
     color: '#E05252',
   },
-  renameListButton: {
-    height: 48,
-    borderRadius: Spacing.five,
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  headerTitleText: {
+    maxWidth: 140,
+  },
+  headerPencilButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(128,128,128,0.15)',
+  },
+  headerDeleteButton: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: 999,
+    backgroundColor: '#C1272D',
+    marginRight: Spacing.three,
+  },
+  headerDeleteButtonText: {
+    color: '#ffffff',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.three,
     marginTop: Spacing.three,
   },
   shareListButton: {
-    height: 48,
-    borderRadius: Spacing.five,
+    height: 36,
+    paddingHorizontal: Spacing.four,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#14747A',
-    marginTop: Spacing.two,
   },
   shareListButtonText: {
     color: '#ffffff',
   },
-  deleteListButton: {
-    height: 48,
-    borderRadius: Spacing.five,
+  visibilityInline: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(224,82,82,0.15)',
-    marginTop: Spacing.two,
+    gap: Spacing.two,
   },
-  deleteListButtonText: {
-    color: '#E05252',
+  sharedWithSection: {
+    marginTop: Spacing.two,
+    gap: Spacing.half,
   },
   modalRoot: {
     flex: 1,

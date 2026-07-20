@@ -1,4 +1,12 @@
-import { deleteShare, fetchMyShares, fetchSavedLocations, type LocationShare } from '@locastar/shared';
+import {
+  deleteListShare,
+  deleteShare,
+  fetchListsSharedWithMe,
+  fetchMyShares,
+  fetchSavedLocations,
+  type LocationShare,
+  type SharedList,
+} from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -146,6 +154,7 @@ export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<CardLocation[]>([]);
   const [bucketList, setBucketList] = useState<CardLocation[]>([]);
   const [shares, setShares] = useState<LocationShare[]>([]);
+  const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
   const [loading, setLoading] = useState(true);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -173,14 +182,16 @@ export default function FavoritesScreen() {
     if (!session) return;
     setLoading(true);
     try {
-      const [favoriteRows, bucketListRows, shareRows] = await Promise.all([
+      const [favoriteRows, bucketListRows, shareRows, sharedListRows] = await Promise.all([
         fetchSavedLocations(supabase, session.user.id, 'favorite'),
         fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
         fetchMyShares(supabase, session.user.id),
+        fetchListsSharedWithMe(supabase, session.user.id),
       ]);
       setFavorites(favoriteRows.map(savedLocationToCard));
       setBucketList(bucketListRows.map(savedLocationToCard));
       setShares(shareRows);
+      setSharedLists(sharedListRows);
     } finally {
       setLoading(false);
     }
@@ -211,6 +222,20 @@ export default function FavoritesScreen() {
     if (!confirmed) return;
     setShares((current) => current.filter((_item, i) => i !== index));
     deleteShare(supabase, share.shareId).catch(() => reload());
+  };
+
+  const handleOpenSharedList = (list: SharedList) =>
+    router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name, shared: '1' } });
+
+  const handleDeleteSharedList = async (list: SharedList) => {
+    const confirmed = await confirmAsync(
+      'Remove this shared list?',
+      'This removes it from your Shared list. The list itself is not affected for its owner.',
+      'Remove'
+    );
+    if (!confirmed) return;
+    setSharedLists((current) => current.filter((l) => l.shareId !== list.shareId));
+    deleteListShare(supabase, list.shareId).catch(() => reload());
   };
 
   if (!session) {
@@ -269,20 +294,60 @@ export default function FavoritesScreen() {
               onLayout={handleSectionLayout('bucketList')}
               emptyMessage="Nothing saved yet — tap the star on a location to start saving your planned trips."
             />
-            <FullSection
-              title="Shared"
-              badgeColor="#B0B4BA"
-              items={sharedCards}
-              favoriteIds={favoriteIds}
-              bucketListIds={bucketListIds}
-              onToggleFavorite={handleToggleFavorite}
-              onToggleBucketList={handleToggleBucketList}
-              onOpen={handleOpen}
-              onLayout={handleSectionLayout('shared')}
-              noteForItem={sharedNote}
-              onDeleteItem={(_item, index) => handleDeleteShare(index)}
-              emptyMessage="Nothing shared yet — share a location to see it here."
-            />
+            <View style={styles.section} onLayout={handleSectionLayout('shared')}>
+              <SectionBadge label="Shared" count={sharedCards.length + sharedLists.length} backgroundColor="#B0B4BA" />
+              {sharedCards.length === 0 && sharedLists.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.sectionEmptyText}>
+                  Nothing shared yet — share a location or list to see it here.
+                </ThemedText>
+              ) : (
+                <View style={styles.sectionList}>
+                  {sharedCards.map((item, index) => {
+                    const note = sharedNote(item, index);
+                    return (
+                      <View key={`${item.id}-${index}`} style={styles.cardWithNote}>
+                        <View style={styles.noteRow}>
+                          <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
+                            {note}
+                          </ThemedText>
+                          <Pressable onPress={() => handleDeleteShare(index)} hitSlop={8}>
+                            <Ionicons name="close-circle" size={18} color="#E05252" />
+                          </Pressable>
+                        </View>
+                        <LocationCard
+                          location={item}
+                          isFavorite={favoriteIds.has(item.id)}
+                          isBucketListed={bucketListIds.has(item.id)}
+                          onToggleFavorite={() => handleToggleFavorite(item.id)}
+                          onToggleBucketList={() => handleToggleBucketList(item.id)}
+                          onPress={() => handleOpen(item.id)}
+                        />
+                      </View>
+                    );
+                  })}
+                  {sharedLists.map((list) => (
+                    <View key={list.shareId} style={styles.cardWithNote}>
+                      <View style={styles.noteRow}>
+                        <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
+                          Shared by {list.senderUsername ?? list.senderDisplayName ?? 'someone'}
+                        </ThemedText>
+                        <Pressable onPress={() => handleDeleteSharedList(list)} hitSlop={8}>
+                          <Ionicons name="close-circle" size={18} color="#E05252" />
+                        </Pressable>
+                      </View>
+                      <Pressable onPress={() => handleOpenSharedList(list)}>
+                        <ThemedView type="backgroundElement" style={styles.sharedListCard}>
+                          <ThemedText type="smallBold">{list.name}</ThemedText>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
+                          </ThemedText>
+                        </ThemedView>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
           </ScrollView>
         )}
       </SafeAreaView>
@@ -324,6 +389,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'right',
     fontStyle: 'italic',
+  },
+  sharedListCard: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.half,
   },
   favoritesGrid: {
     flexDirection: 'row',

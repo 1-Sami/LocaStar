@@ -1,13 +1,4 @@
-import {
-  createList,
-  fetchLists,
-  fetchListsSharedWithMe,
-  fetchProfile,
-  setListLiked,
-  setListVisibility,
-  type LocationList,
-  type SharedList,
-} from '@locastar/shared';
+import { createList, fetchLists, fetchProfile, setListLiked, type LocationList } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -32,13 +23,11 @@ function ListCard({
   ownerUsername,
   onPress,
   onToggleLike,
-  onToggleVisibility,
 }: {
   list: LocationList;
   ownerUsername: string;
   onPress: () => void;
   onToggleLike: () => void;
-  onToggleVisibility: () => void;
 }) {
   const [main, ...rest] = list.previewLocationIds;
 
@@ -73,22 +62,30 @@ function ListCard({
         </View>
 
         <View style={styles.footerRow}>
-          <Pressable style={styles.likeButton} onPress={onToggleLike} hitSlop={8}>
-            <Ionicons
-              name={list.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
-              size={14}
-              color={list.likedByMe ? '#4CD37A' : '#ffffff'}
-            />
-            <ThemedText type="smallBold" style={styles.whiteText}>
-              {list.likeCount}
-            </ThemedText>
-          </Pressable>
-          <Pressable style={styles.visibilityBadge} onPress={onToggleVisibility} hitSlop={8}>
+          <View style={styles.footerLeft}>
+            <Pressable style={styles.likeButton} onPress={onToggleLike} hitSlop={8}>
+              <Ionicons
+                name={list.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
+                size={14}
+                color={list.likedByMe ? '#4CD37A' : '#ffffff'}
+              />
+              <ThemedText type="smallBold" style={styles.whiteText}>
+                {list.likeCount}
+              </ThemedText>
+            </Pressable>
+            <View style={styles.itemCountBadge}>
+              <Ionicons name="location-outline" size={12} color="#ffffff" />
+              <ThemedText type="small" style={styles.whiteText}>
+                {list.itemCount}
+              </ThemedText>
+            </View>
+          </View>
+          <View style={styles.visibilityBadge}>
             <Ionicons name={list.isPublic ? 'globe-outline' : 'lock-closed-outline'} size={11} color="#ffffff" />
             <ThemedText type="small" style={styles.whiteText}>
               {list.isPublic ? 'Public' : 'Private'}
             </ThemedText>
-          </Pressable>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -101,7 +98,6 @@ export default function MyListsScreen() {
   const theme = useTheme();
 
   const [lists, setLists] = useState<LocationList[]>([]);
-  const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
   const [username, setUsername] = useState('you');
   const [loading, setLoading] = useState(true);
   const [createVisible, setCreateVisible] = useState(false);
@@ -114,14 +110,9 @@ export default function MyListsScreen() {
   const reload = useCallback(() => {
     if (!session) return;
     setLoading(true);
-    Promise.all([
-      fetchLists(supabase, session.user.id),
-      fetchListsSharedWithMe(supabase, session.user.id).catch(() => []),
-      fetchProfile(supabase, session.user.id).catch(() => null),
-    ])
-      .then(([listRows, sharedRows, profile]) => {
+    Promise.all([fetchLists(supabase, session.user.id), fetchProfile(supabase, session.user.id).catch(() => null)])
+      .then(([listRows, profile]) => {
         setLists(listRows);
-        setSharedLists(sharedRows);
         setUsername(profile?.username ?? profile?.display_name ?? 'you');
       })
       .catch(() => setLists([]))
@@ -165,12 +156,6 @@ export default function MyListsScreen() {
     setListLiked(supabase, list.id, session.user.id, nextLiked).catch(() => reload());
   };
 
-  const handleToggleVisibility = async (list: LocationList) => {
-    const nextPublic = !list.isPublic;
-    setLists((current) => current.map((item) => (item.id === list.id ? { ...item, isPublic: nextPublic } : item)));
-    setListVisibility(supabase, list.id, nextPublic).catch(() => reload());
-  };
-
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -194,34 +179,15 @@ export default function MyListsScreen() {
                   key={list.id}
                   list={list}
                   ownerUsername={username}
-                  onPress={() => router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name } })}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/lists/[id]',
+                      params: { id: list.id, name: list.name, isPublic: list.isPublic ? '1' : '0' },
+                    })
+                  }
                   onToggleLike={() => handleToggleLike(list)}
-                  onToggleVisibility={() => handleToggleVisibility(list)}
                 />
               ))
-            )}
-
-            {sharedLists.length > 0 && (
-              <View style={styles.sharedSection}>
-                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sharedSectionTitle}>
-                  Shared with you
-                </ThemedText>
-                {sharedLists.map((list) => (
-                  <Pressable
-                    key={list.id}
-                    onPress={() =>
-                      router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name, shared: '1' } })
-                    }>
-                    <ThemedView type="backgroundElement" style={styles.sharedCard}>
-                      <ThemedText type="smallBold">{list.name}</ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        Shared by {list.senderUsername ?? list.senderDisplayName ?? 'someone'} ·{' '}
-                        {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
-                      </ThemedText>
-                    </ThemedView>
-                  </Pressable>
-                ))}
-              </View>
             )}
           </ScrollView>
         )}
@@ -307,18 +273,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
     paddingHorizontal: Spacing.four,
   },
-  sharedSection: {
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-  },
-  sharedSectionTitle: {
-    textTransform: 'uppercase',
-  },
-  sharedCard: {
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    gap: Spacing.half,
-  },
   card: {
     borderRadius: Spacing.three * 0.8,
     padding: Spacing.three * 0.8,
@@ -356,7 +310,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.one,
   },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
   likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  itemCountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,

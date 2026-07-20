@@ -1,7 +1,9 @@
 import {
+  deleteLocation,
   fetchLocationById,
   fetchLocationPhotos,
   fetchMyClaimForLocation,
+  fetchProfile,
   fetchReviews,
   reportLocation,
   reportReview,
@@ -9,6 +11,7 @@ import {
   shareLocation,
   submitBusinessClaim,
   type BusinessClaim,
+  type DayKey,
   type LocationDetail,
   type Review,
 } from '@locastar/shared';
@@ -16,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToListModal } from '@/components/add-to-list-modal';
@@ -30,9 +33,21 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirmAsync } from '@/lib/confirm';
 import { openDirections } from '@/lib/directions';
 import { placeholderImage } from '@/lib/location-adapters';
+import { buildLocationShareLink } from '@/lib/public-link';
 import { supabase } from '@/lib/supabase';
+
+const HOURS_DAYS: { key: DayKey; label: string }[] = [
+  { key: 'mon', label: 'Monday' },
+  { key: 'tue', label: 'Tuesday' },
+  { key: 'wed', label: 'Wednesday' },
+  { key: 'thu', label: 'Thursday' },
+  { key: 'fri', label: 'Friday' },
+  { key: 'sat', label: 'Saturday' },
+  { key: 'sun', label: 'Sunday' },
+];
 
 export default function LocationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,6 +67,7 @@ export default function LocationDetailScreen() {
   const [addToListVisible, setAddToListVisible] = useState(false);
   const [claimVisible, setClaimVisible] = useState(false);
   const [myClaim, setMyClaim] = useState<BusinessClaim | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [heroWidth, setHeroWidth] = useState(() => Math.min(Dimensions.get('window').width, MaxContentWidth));
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -107,6 +123,26 @@ export default function LocationDetailScreen() {
         cancelled = true;
       };
     }, [id, session])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) {
+        setIsAdmin(false);
+        return;
+      }
+      let cancelled = false;
+      fetchProfile(supabase, session.user.id)
+        .then((profile) => {
+          if (!cancelled) setIsAdmin(profile.role === 'admin');
+        })
+        .catch(() => {
+          if (!cancelled) setIsAdmin(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [session])
   );
 
   if (loading) {
@@ -187,12 +223,32 @@ export default function LocationDetailScreen() {
     setShareVisible(true);
   };
 
+  const handleSendLink = async () => {
+    const link = buildLocationShareLink(location.id);
+    try {
+      await Share.share({ message: `Check out ${location.name} on LocaStar: ${link}`, url: link });
+    } catch {
+      // user dismissed the share sheet — nothing to do
+    }
+  };
+
   const handleOpenAddToList = () => {
     if (!session) {
       router.push('/sign-in');
       return;
     }
     setAddToListVisible(true);
+  };
+
+  const handleDeleteLocation = async () => {
+    const confirmed = await confirmAsync(
+      'Delete this location?',
+      `This permanently deletes "${location.name}" and everything tied to it — reviews, photos, saves, and shares. This can't be undone.`,
+      'Delete'
+    );
+    if (!confirmed) return;
+    await deleteLocation(supabase, location.id);
+    router.back();
   };
 
   const handleOpenClaim = () => {
@@ -253,13 +309,24 @@ export default function LocationDetailScreen() {
                   {isBucketListed ? '★' : '☆'}
                 </ThemedText>
               </Pressable>
-              <Pressable
-                style={styles.heroIconButton}
-                onPress={handleOpenShare}
-                hitSlop={8}
-                accessibilityLabel="Share this location">
-                <Ionicons name="share-outline" size={20} color="#ffffff" />
-              </Pressable>
+              {(location.visibility !== 'private' || session?.user.id === location.created_by) && (
+                <Pressable
+                  style={styles.heroIconButton}
+                  onPress={handleOpenShare}
+                  hitSlop={8}
+                  accessibilityLabel="Share this location">
+                  <Ionicons name="share-outline" size={20} color="#ffffff" />
+                </Pressable>
+              )}
+              {location.visibility !== 'private' && (
+                <Pressable
+                  style={styles.heroIconButton}
+                  onPress={handleSendLink}
+                  hitSlop={8}
+                  accessibilityLabel="Send a link to a friend">
+                  <Ionicons name="link-outline" size={20} color="#ffffff" />
+                </Pressable>
+              )}
               <Pressable
                 style={styles.heroIconButton}
                 onPress={handleOpenLocationReport}
@@ -282,11 +349,21 @@ export default function LocationDetailScreen() {
 
           <View style={styles.body}>
             <View style={styles.titleRow}>
-              {location.category_label && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {location.category_label.toUpperCase()}
-                </ThemedText>
-              )}
+              <View style={styles.titleRowLeft}>
+                {location.category_label && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {location.category_label.toUpperCase()}
+                  </ThemedText>
+                )}
+                {location.visibility === 'private' && (
+                  <View style={styles.privateBadge}>
+                    <Ionicons name="lock-closed" size={11} color="#1A1400" />
+                    <ThemedText type="small" style={styles.privateBadgeText}>
+                      Private
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
               {session?.user.id === location.created_by && (
                 <Pressable onPress={() => router.push({ pathname: '/edit-location', params: { id: location.id } })}>
                   <ThemedText type="linkPrimary">Edit</ThemedText>
@@ -357,6 +434,25 @@ export default function LocationDetailScreen() {
               <ThemedText type="default" style={styles.description}>
                 {location.description}
               </ThemedText>
+            )}
+
+            {location.hours && Object.keys(location.hours).length > 0 && (
+              <View style={styles.hoursSection}>
+                <ThemedText type="smallBold">Opening hours</ThemedText>
+                {HOURS_DAYS.map((day) => {
+                  const entry = location.hours?.[day.key];
+                  return (
+                    <View key={day.key} style={styles.hoursDisplayRow}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {day.label}
+                      </ThemedText>
+                      <ThemedText type="small" themeColor={entry ? undefined : 'textSecondary'}>
+                        {entry ? `${entry.open} – ${entry.close}` : 'Closed'}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+              </View>
             )}
 
             <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
@@ -440,6 +536,14 @@ export default function LocationDetailScreen() {
                   </View>
                 ))}
               </View>
+            )}
+
+            {isAdmin && (
+              <Pressable style={styles.adminDeleteButton} onPress={handleDeleteLocation}>
+                <ThemedText type="smallBold" style={styles.adminDeleteButtonText}>
+                  Delete this {location.kind} (admin)
+                </ThemedText>
+              </Pressable>
             )}
           </View>
         </ScrollView>
@@ -621,6 +725,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  titleRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  privateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    backgroundColor: '#E8A93B',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Spacing.five,
+  },
+  privateBadgeText: {
+    color: '#1A1400',
+  },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -680,6 +801,25 @@ const styles = StyleSheet.create({
   },
   description: {
     marginTop: Spacing.four,
+  },
+  hoursSection: {
+    marginTop: Spacing.four,
+    gap: Spacing.one,
+  },
+  hoursDisplayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  adminDeleteButton: {
+    height: 44,
+    borderRadius: Spacing.five,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(224,82,82,0.15)',
+    marginTop: Spacing.five,
+  },
+  adminDeleteButtonText: {
+    color: '#E05252',
   },
   divider: {
     height: 1,
