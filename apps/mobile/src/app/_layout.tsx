@@ -37,6 +37,7 @@ function ThemedNavigation() {
         <Stack.Screen name="admin-reports" options={{ title: 'Reports' }} />
         <Stack.Screen name="lists/index" options={{ title: 'My lists' }} />
         <Stack.Screen name="lists/[id]" options={{ title: 'List' }} />
+        <Stack.Screen name="friends" options={{ title: 'Friends' }} />
       </Stack>
     </ThemeProvider>
   );

@@ -35,12 +35,13 @@ const STAT_SECTIONS: Record<string, string> = {
   Shared: 'shared',
 };
 
-const PRIMARY_MENU_ITEMS = ['My reviews', 'My lists', 'Add location', 'Add activity'];
+const PRIMARY_MENU_ITEMS = ['My reviews', 'My lists', 'Friends', 'Add location', 'Add activity'];
 const SECONDARY_MENU_ITEMS = ['Settings', 'About'];
 
 const MENU_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   'My reviews': { icon: 'create-outline', color: '#4CD37A' },
   'My lists': { icon: 'bookmark-outline', color: '#4C8FE8' },
+  Friends: { icon: 'people-outline', color: '#F5738A' },
   'Add location': { icon: 'add-circle-outline', color: '#C34CE8' },
   'Add activity': { icon: 'time-outline', color: '#E8A93B' },
   Settings: { icon: 'settings-outline', color: '#B0B4BA' },
@@ -105,6 +106,7 @@ export default function ProfileScreen() {
   const handleMenuPress = (item: string) => {
     if (item === 'My reviews') router.push('/my-reviews');
     if (item === 'My lists') router.push('/lists' as never);
+    if (item === 'Friends') router.push('/friends' as never);
     if (item === 'Add location') router.push({ pathname: '/add-location', params: { kind: 'place' } });
     if (item === 'Add activity') router.push({ pathname: '/add-location', params: { kind: 'activity' } });
     if (item === 'Settings') router.push('/settings' as never);

@@ -82,6 +82,7 @@ export type LocationDetail = {
   is_boosted: boolean;
   is_verified: boolean;
   claimed_by: string | null;
+  owner_username: string | null;
 };
 
 type LocationDetailRow = {
@@ -104,6 +105,7 @@ type LocationDetailRow = {
   is_boosted: boolean;
   is_verified: boolean;
   claimed_by: string | null;
+  owner: { username: string | null } | null;
   location_categories: { categories: { slug: string; name: string } | null }[];
 };
 
@@ -205,7 +207,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, avg_rating, review_count, created_by, creator_visible, visibility, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, avg_rating, review_count, created_by, creator_visible, visibility, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -234,6 +236,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     visibility: row.visibility,
     expires_at: row.expires_at,
     is_boosted: row.is_boosted,
+    owner_username: row.is_verified ? (row.owner?.username ?? null) : null,
     category_slug: primaryCategory?.slug ?? null,
     category_label: primaryCategory?.name ?? null,
   };

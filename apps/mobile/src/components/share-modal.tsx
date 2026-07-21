@@ -17,6 +17,8 @@ export function ShareModal({
   onShare,
   title = 'Share this location',
   successNoun = 'in their Favorites',
+  successMessage,
+  errorMessage = 'Something went wrong sharing this location. Try again.',
   showNote = true,
 }: {
   visible: boolean;
@@ -24,6 +26,8 @@ export function ShareModal({
   onShare: (recipientId: string, note: string | null) => Promise<void>;
   title?: string;
   successNoun?: string;
+  successMessage?: (name: string) => string;
+  errorMessage?: string;
   showNote?: boolean;
 }) {
   const theme = useTheme();
@@ -76,7 +80,7 @@ export function ShareModal({
       await onShare(selected.id, note.trim() || null);
       setSubmitted(true);
     } catch {
-      setError('Something went wrong sharing this location. Try again.');
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -93,7 +97,9 @@ export function ShareModal({
                 Shared!
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary">
-                {selected?.displayName ?? selected?.username ?? 'They'} will see it {successNoun}.
+                {successMessage
+                  ? successMessage(selected?.displayName ?? selected?.username ?? 'They')
+                  : `${selected?.displayName ?? selected?.username ?? 'They'} will see it ${successNoun}.`}
               </ThemedText>
               <Pressable style={styles.submitButton} onPress={handleClose}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>

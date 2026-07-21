@@ -6,6 +6,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+const MIN_REASON_WORDS = 10;
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export function ClaimBusinessModal({
   visible,
   onClose,
@@ -13,13 +19,16 @@ export function ClaimBusinessModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (verificationNotes: string | null) => Promise<void>;
+  onSubmit: (verificationNotes: string) => Promise<void>;
 }) {
   const theme = useTheme();
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const notesWordCount = wordCount(notes);
+  const isValid = notesWordCount >= MIN_REASON_WORDS;
 
   const handleClose = () => {
     onClose();
@@ -30,10 +39,11 @@ export function ClaimBusinessModal({
   };
 
   const handleSubmit = async () => {
+    if (!isValid) return;
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(notes.trim() || null);
+      await onSubmit(notes.trim());
       setSubmitted(true);
     } catch {
       setError('Something went wrong submitting your claim. Try again.');
@@ -68,24 +78,30 @@ export function ClaimBusinessModal({
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Tell us how you're connected to this business (e.g. your role, phone number, or
-                website) so we can verify your claim.
+                website) so we can verify your claim. At least {MIN_REASON_WORDS} words required.
               </ThemedText>
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Verification details (optional)"
+                placeholder="Verification details (required)"
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
                 multiline
               />
+              <ThemedText
+                type="small"
+                themeColor="textSecondary"
+                style={isValid ? undefined : styles.wordCountWarning}>
+                {notesWordCount} / {MIN_REASON_WORDS} words
+              </ThemedText>
               {error && (
                 <ThemedText type="small" style={styles.errorText}>
                   {error}
                 </ThemedText>
               )}
               <Pressable
-                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-                disabled={submitting}
+                style={[styles.submitButton, (!isValid || submitting) && styles.submitButtonDisabled]}
+                disabled={!isValid || submitting}
                 onPress={handleSubmit}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
                   {submitting ? 'Submitting…' : 'Submit claim'}
@@ -128,6 +144,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#E05252',
+  },
+  wordCountWarning: {
+    color: '#E8A93B',
   },
   submitButton: {
     height: 48,

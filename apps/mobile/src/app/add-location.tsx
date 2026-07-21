@@ -11,10 +11,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -23,6 +25,12 @@ import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { pickImage, uploadImageToMedia } from '@/lib/media-upload';
 import { supabase } from '@/lib/supabase';
+
+function formatReverseGeocodeResult(result: Location.LocationGeocodedAddress): string {
+  const line1 = [result.name, result.street].filter(Boolean).join(' ');
+  const line2 = [result.postalCode, result.city].filter(Boolean).join(' ');
+  return [line1, line2, result.country].filter((part) => part && part.trim()).join(', ');
+}
 
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 const MAX_ACTIVITY_DAYS = 120;
@@ -135,7 +143,7 @@ export default function AddLocationScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { session } = useAuth();
-  const { coords, loading: locationLoading } = useUserLocation();
+  const { coords } = useUserLocation();
 
   const isActivity = kind === 'activity';
   const noun = isActivity ? 'activity' : 'location';
@@ -152,6 +160,8 @@ export default function AddLocationScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [photoUris, setPhotoUris] = useState<(string | null)[]>([null, null, null]);
+  const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
   const [visibleAsCreator, setVisibleAsCreator] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -165,6 +175,23 @@ export default function AddLocationScreen() {
       .then(setCategories)
       .catch(() => setCategories([]));
   }, []);
+
+  useEffect(() => {
+    if (coords && !pinCoords) setPinCoords(coords);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords]);
+
+  const handlePinChange = (next: MapCoords) => {
+    setPinCoords(next);
+    setGeocoding(true);
+    Location.reverseGeocodeAsync(next)
+      .then((results) => {
+        const formatted = results[0] ? formatReverseGeocodeResult(results[0]) : '';
+        if (formatted) setAddress(formatted);
+      })
+      .catch(() => {})
+      .finally(() => setGeocoding(false));
+  };
 
   const selectedCategoryLabel = categories
     .filter((c) => categoryIds.includes(c.id))
@@ -190,7 +217,7 @@ export default function AddLocationScreen() {
   const hasPhoto = photoUris.some(Boolean);
   const emailValid = !isActivity || EMAIL_PATTERN.test(email.trim());
   const canSubmit =
-    Boolean(name.trim() && address.trim() && categoryIds.length > 0 && hasPhoto && coords && emailValid) &&
+    Boolean(name.trim() && address.trim() && categoryIds.length > 0 && hasPhoto && pinCoords && emailValid) &&
     !submitting;
 
   let endDateWarning: string | null = null;
@@ -214,7 +241,7 @@ export default function AddLocationScreen() {
   }
 
   const handleSubmit = async () => {
-    if (!session || !coords || !canSubmit) return;
+    if (!session || !pinCoords || !canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -223,8 +250,8 @@ export default function AddLocationScreen() {
         name: name.trim(),
         description: description.trim() || null,
         address: address.trim(),
-        lat: coords.latitude,
-        lng: coords.longitude,
+        lat: pinCoords.latitude,
+        lng: pinCoords.longitude,
         categoryIds,
         userId: session.user.id,
         phone: isActivity ? null : phone.trim() || null,
@@ -316,10 +343,30 @@ export default function AddLocationScreen() {
             style={[styles.input, styles.lightInput]}
           />
 
+          <ThemedText type="smallBold" style={styles.mapLabel}>
+            *Pin the exact location
+          </ThemedText>
+          {pinCoords ? (
+            <MapPinPicker
+              initialLatitude={pinCoords.latitude}
+              initialLongitude={pinCoords.longitude}
+              onChange={handlePinChange}
+            />
+          ) : (
+            <View style={styles.mapLoading}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Finding your location…
+              </ThemedText>
+            </View>
+          )}
+          <ThemedText type="small" themeColor="textSecondary">
+            Tap or drag the pin to set exactly where this {noun} is.
+          </ThemedText>
+
           <TextInput
             value={address}
             onChangeText={setAddress}
-            placeholder="*Address"
+            placeholder={geocoding ? 'Looking up address…' : '*Address'}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
           />
@@ -403,12 +450,6 @@ export default function AddLocationScreen() {
           />
 
           <YesNoRow label={`Are you the owner of the ${noun}?`} value={isOwner} onChange={setIsOwner} />
-
-          <ThemedText type="small" themeColor="textSecondary">
-            {locationLoading
-              ? 'Finding your location…'
-              : "We'll pin this at your current location — you can refine it later."}
-          </ThemedText>
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -504,6 +545,16 @@ const styles = StyleSheet.create({
   photoSlotImage: {
     flex: 1,
     borderRadius: Spacing.two,
+  },
+  mapLabel: {
+    marginTop: -Spacing.one,
+  },
+  mapLoading: {
+    height: 220,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,

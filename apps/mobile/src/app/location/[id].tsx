@@ -399,6 +399,12 @@ export default function LocationDetailScreen() {
               </ThemedText>
             )}
 
+            {location.is_verified && location.owner_username && (
+              <ThemedText type="small" themeColor="textSecondary">
+                Owned by @{location.owner_username}
+              </ThemedText>
+            )}
+
             {location.is_verified ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.claimText}>
                 ✓ Verified business

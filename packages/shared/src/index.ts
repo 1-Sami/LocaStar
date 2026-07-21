@@ -117,3 +117,6 @@ export {
   verifyLocationOwner,
 } from "./api/business-claims";
 export type { ClaimStatus, BusinessClaim } from "./api/business-claims";
+
+export { fetchFriendships, sendFriendRequest, acceptFriendRequest, removeFriendship } from "./api/friends";
+export type { Friend, FriendStatus, FriendDirection } from "./api/friends";
