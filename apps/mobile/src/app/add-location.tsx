@@ -4,7 +4,6 @@ import {
   submitBusinessClaim,
   submitLocation,
   type Category,
-  type DayKey,
   type LocationKind,
   type OpeningHours,
 } from '@locastar/shared';
@@ -17,6 +16,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
+import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -47,16 +47,6 @@ const DISCLAIMER = {
     'Any activity that is unlawful or not created by its rightful owner will result in a block on creating future activities. All activities must follow the rules — violations may result in a ban and could lead to legal action from the rightful owner.',
 };
 
-const DAYS: { key: DayKey; label: string }[] = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-];
-
 function YesNoRow({
   label,
   value,
@@ -83,61 +73,6 @@ function YesNoRow({
   );
 }
 
-function OpeningHoursEditor({ hours, onChange }: { hours: OpeningHours; onChange: (next: OpeningHours) => void }) {
-  const toggleDay = (day: DayKey) => {
-    const next = { ...hours };
-    if (next[day]) {
-      delete next[day];
-    } else {
-      next[day] = { open: '09:00', close: '17:00' };
-    }
-    onChange(next);
-  };
-
-  return (
-    <View style={styles.hoursCard}>
-      <ThemedText type="smallBold" style={styles.hoursCardTitle}>
-        Open hours (optional)
-      </ThemedText>
-      {DAYS.map((day) => {
-        const entry = hours[day.key];
-        const isOpen = Boolean(entry);
-        return (
-          <View key={day.key} style={styles.hoursRow}>
-            <Pressable style={styles.hoursDayToggle} onPress={() => toggleDay(day.key)}>
-              <View style={[styles.lightCheckbox, isOpen && styles.checkboxChecked]} />
-              <ThemedText type="small" style={styles.hoursDayLabel}>
-                {day.label}
-              </ThemedText>
-            </Pressable>
-            {isOpen && (
-              <View style={styles.hoursTimeRow}>
-                <TextInput
-                  value={entry?.open}
-                  onChangeText={(text) => onChange({ ...hours, [day.key]: { open: text, close: entry?.close ?? '17:00' } })}
-                  placeholder="09:00"
-                  placeholderTextColor={LIGHT_PLACEHOLDER}
-                  style={[styles.input, styles.hoursTimeInput]}
-                />
-                <ThemedText type="small" style={styles.hoursDash}>
-                  –
-                </ThemedText>
-                <TextInput
-                  value={entry?.close}
-                  onChangeText={(text) => onChange({ ...hours, [day.key]: { open: entry?.open ?? '09:00', close: text } })}
-                  placeholder="17:00"
-                  placeholderTextColor={LIGHT_PLACEHOLDER}
-                  style={[styles.input, styles.hoursTimeInput]}
-                />
-              </View>
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
 export default function AddLocationScreen() {
   const { kind } = useLocalSearchParams<{ kind: LocationKind }>();
   const router = useRouter();
@@ -156,6 +91,8 @@ export default function AddLocationScreen() {
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [hours, setHours] = useState<OpeningHours>({});
+  const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
+  const [otherCategoryDetail, setOtherCategoryDetail] = useState('');
   const [website, setWebsite] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -197,6 +134,7 @@ export default function AddLocationScreen() {
     .filter((c) => categoryIds.includes(c.id))
     .map((c) => c.name)
     .join(', ');
+  const hasOtherCategory = categories.some((c) => categoryIds.includes(c.id) && c.slug === 'other');
 
   const toggleCategory = (categoryId: string) => {
     setCategoryIds((current) =>
@@ -216,9 +154,17 @@ export default function AddLocationScreen() {
 
   const hasPhoto = photoUris.some(Boolean);
   const emailValid = !isActivity || EMAIL_PATTERN.test(email.trim());
+  const otherCategoryValid = !hasOtherCategory || otherCategoryDetail.trim().length > 0;
   const canSubmit =
-    Boolean(name.trim() && address.trim() && categoryIds.length > 0 && hasPhoto && pinCoords && emailValid) &&
-    !submitting;
+    Boolean(
+      name.trim() &&
+        address.trim() &&
+        categoryIds.length > 0 &&
+        hasPhoto &&
+        pinCoords &&
+        emailValid &&
+        otherCategoryValid
+    ) && !submitting;
 
   let endDateWarning: string | null = null;
   let expiresAtIso: string | null = null;
@@ -257,10 +203,12 @@ export default function AddLocationScreen() {
         phone: isActivity ? null : phone.trim() || null,
         website: isActivity ? null : website.trim() || null,
         email: isActivity ? email.trim() : null,
-        hours: Object.keys(hours).length > 0 ? hours : null,
+        hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
+        hoursNotApplicable,
         creatorVisible: visibleAsCreator,
         visibility: isActivity && isPrivate ? 'private' : 'public',
         expiresAt: isActivity ? expiresAtIso : null,
+        otherCategoryDetail: hasOtherCategory ? otherCategoryDetail.trim() : null,
       });
 
       for (const uri of photoUris) {
@@ -378,6 +326,16 @@ export default function AddLocationScreen() {
             <Ionicons name="chevron-down" size={16} color="#000000" />
           </Pressable>
 
+          {hasOtherCategory && (
+            <TextInput
+              value={otherCategoryDetail}
+              onChangeText={setOtherCategoryDetail}
+              placeholder={`*What kind of ${noun} is this?`}
+              placeholderTextColor={LIGHT_PLACEHOLDER}
+              style={[styles.input, styles.lightInput]}
+            />
+          )}
+
           <TextInput
             value={description}
             onChangeText={setDescription}
@@ -387,7 +345,14 @@ export default function AddLocationScreen() {
             multiline
           />
 
-          <OpeningHoursEditor hours={hours} onChange={setHours} />
+          <Pressable style={styles.hoursNaRow} onPress={() => setHoursNotApplicable((v) => !v)}>
+            <View style={[styles.checkbox, hoursNotApplicable && styles.checkboxChecked]} />
+            <ThemedText type="small" style={styles.hoursNaLabel}>
+              This {noun} has no set opening hours (e.g. always open, a public property)
+            </ThemedText>
+          </Pressable>
+
+          {!hoursNotApplicable && <OpeningHoursEditor hours={hours} onChange={setHours} />}
 
           {isActivity ? (
             <TextInput
@@ -584,50 +549,13 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#000000',
   },
-  hoursCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0,0,0,0.15)',
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  hoursCardTitle: {
-    color: '#000000',
-  },
-  hoursRow: {
-    gap: Spacing.one,
-  },
-  hoursDayToggle: {
+  hoursNaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
-  hoursDayLabel: {
-    color: '#000000',
-  },
-  lightCheckbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.3)',
-    borderRadius: Spacing.half,
-  },
-  hoursTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    marginLeft: Spacing.five,
-  },
-  hoursTimeInput: {
+  hoursNaLabel: {
     flex: 1,
-    backgroundColor: '#F0F0F3',
-    borderColor: 'rgba(0,0,0,0.1)',
-    color: '#000000',
-    paddingVertical: Spacing.one,
-  },
-  hoursDash: {
-    color: '#000000',
   },
   yesNoRow: {
     gap: Spacing.two,

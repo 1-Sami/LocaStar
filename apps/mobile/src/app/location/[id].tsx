@@ -7,6 +7,7 @@ import {
   fetchReviews,
   reportLocation,
   reportReview,
+  setLocationCreatorVisible,
   setReviewLiked,
   shareLocation,
   submitBusinessClaim,
@@ -251,6 +252,17 @@ export default function LocationDetailScreen() {
     router.back();
   };
 
+  const handleRemoveCreatorCredit = async () => {
+    const confirmed = await confirmAsync(
+      'Remove your name as creator?',
+      'Your username will no longer show as "Added by" on this listing. This can\'t be undone.',
+      'Remove'
+    );
+    if (!confirmed) return;
+    await setLocationCreatorVisible(supabase, location.id, false);
+    setLocation((current) => (current ? { ...current, creator_visible: false, creator_username: null } : current));
+  };
+
   const handleOpenClaim = () => {
     if (!session) {
       router.push('/sign-in');
@@ -364,7 +376,7 @@ export default function LocationDetailScreen() {
                   </View>
                 )}
               </View>
-              {session?.user.id === location.created_by && (
+              {(isAdmin || (location.is_verified && session?.user.id === location.claimed_by)) && (
                 <Pressable onPress={() => router.push({ pathname: '/edit-location', params: { id: location.id } })}>
                   <ThemedText type="linkPrimary">Edit</ThemedText>
                 </Pressable>
@@ -394,9 +406,18 @@ export default function LocationDetailScreen() {
             )}
 
             {location.creator_visible && location.creator_username && (
-              <ThemedText type="small" themeColor="textSecondary">
-                Added by @{location.creator_username}
-              </ThemedText>
+              <View style={styles.addedByRow}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Added by @{location.creator_username}
+                </ThemedText>
+                {session?.user.id === location.created_by && (
+                  <Pressable onPress={handleRemoveCreatorCredit} hitSlop={8}>
+                    <ThemedText type="small" style={styles.removeCreditText}>
+                      Delete
+                    </ThemedText>
+                  </Pressable>
+                )}
+              </View>
             )}
 
             {location.is_verified && location.owner_username && (
@@ -442,23 +463,30 @@ export default function LocationDetailScreen() {
               </ThemedText>
             )}
 
-            {location.hours && Object.keys(location.hours).length > 0 && (
-              <View style={styles.hoursSection}>
-                <ThemedText type="smallBold">Opening hours</ThemedText>
-                {HOURS_DAYS.map((day) => {
-                  const entry = location.hours?.[day.key];
-                  return (
-                    <View key={day.key} style={styles.hoursDisplayRow}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {day.label}
-                      </ThemedText>
-                      <ThemedText type="small" themeColor={entry ? undefined : 'textSecondary'}>
-                        {entry ? `${entry.open} – ${entry.close}` : 'Closed'}
-                      </ThemedText>
-                    </View>
-                  );
-                })}
-              </View>
+            {location.hours_not_applicable ? (
+              <ThemedText type="smallBold" style={styles.hoursNa}>
+                Opening hours: N/A
+              </ThemedText>
+            ) : (
+              location.hours &&
+              Object.keys(location.hours).length > 0 && (
+                <View style={styles.hoursSection}>
+                  <ThemedText type="smallBold">Opening hours</ThemedText>
+                  {HOURS_DAYS.map((day) => {
+                    const entry = location.hours?.[day.key];
+                    return (
+                      <View key={day.key} style={styles.hoursDisplayRow}>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {day.label}
+                        </ThemedText>
+                        <ThemedText type="small" themeColor={entry ? undefined : 'textSecondary'}>
+                          {entry ? `${entry.open} – ${entry.close}` : 'Closed'}
+                        </ThemedText>
+                      </View>
+                    );
+                  })}
+                </View>
+              )
             )}
 
             <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
@@ -762,6 +790,14 @@ const styles = StyleSheet.create({
   claimText: {
     marginTop: Spacing.one,
   },
+  addedByRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  removeCreditText: {
+    color: '#E05252',
+  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -811,6 +847,9 @@ const styles = StyleSheet.create({
   hoursSection: {
     marginTop: Spacing.four,
     gap: Spacing.one,
+  },
+  hoursNa: {
+    marginTop: Spacing.four,
   },
   hoursDisplayRow: {
     flexDirection: 'row',

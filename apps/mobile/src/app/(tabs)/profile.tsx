@@ -119,6 +119,10 @@ export default function ProfileScreen() {
       router.push('/my-reviews');
       return;
     }
+    if (label === 'Added') {
+      router.push('/my-locations' as never);
+      return;
+    }
     const section = STAT_SECTIONS[label];
     if (section) {
       router.push({ pathname: '/favorites', params: { section } });
@@ -185,7 +189,8 @@ export default function ProfileScreen() {
           contentContainerStyle={styles.statsRow}
         >
           {statTiles(stats).map((stat) => {
-            const clickable = stat.label === 'Reviews' || Boolean(STAT_SECTIONS[stat.label]);
+            const clickable =
+              stat.label === 'Reviews' || stat.label === 'Added' || Boolean(STAT_SECTIONS[stat.label]);
             return (
               <Pressable
                 key={stat.label}

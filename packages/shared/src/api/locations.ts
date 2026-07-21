@@ -70,6 +70,7 @@ export type LocationDetail = {
   email: string | null;
   website: string | null;
   hours: OpeningHours | null;
+  hours_not_applicable: boolean;
   avg_rating: number;
   review_count: number;
   category_slug: string | null;
@@ -95,6 +96,7 @@ type LocationDetailRow = {
   email: string | null;
   website: string | null;
   hours: OpeningHours | null;
+  hours_not_applicable: boolean;
   avg_rating: number;
   review_count: number;
   created_by: string | null;
@@ -122,9 +124,11 @@ export type LocationSubmission = {
   email?: string | null;
   website?: string | null;
   hours?: OpeningHours | null;
+  hoursNotApplicable?: boolean;
   creatorVisible?: boolean;
   visibility?: LocationVisibility;
   expiresAt?: string | null;
+  otherCategoryDetail?: string | null;
 };
 
 export async function submitLocation(client: SupabaseClient, input: LocationSubmission): Promise<string> {
@@ -141,9 +145,11 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       email: input.email ?? null,
       website: input.website ?? null,
       hours: input.hours ?? null,
+      hours_not_applicable: input.hoursNotApplicable ?? false,
       creator_visible: input.creatorVisible ?? true,
       visibility: input.visibility ?? "public",
       expires_at: input.expiresAt ?? null,
+      other_category_detail: input.otherCategoryDetail ?? null,
     })
     .select("id")
     .single();
@@ -207,7 +213,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, avg_rating, review_count, created_by, creator_visible, visibility, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -226,6 +232,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     email: row.email,
     website: row.website,
     hours: row.hours,
+    hours_not_applicable: row.hours_not_applicable,
     avg_rating: row.avg_rating,
     review_count: row.review_count,
     is_verified: row.is_verified,
@@ -240,6 +247,53 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     category_slug: primaryCategory?.slug ?? null,
     category_label: primaryCategory?.name ?? null,
   };
+}
+
+export type MyAddedLocation = {
+  id: string;
+  kind: LocationKind;
+  name: string;
+  category_label: string | null;
+  avg_rating: number;
+  review_count: number;
+  is_verified: boolean;
+  visibility: LocationVisibility;
+  created_at: string;
+};
+
+type MyAddedLocationRow = {
+  id: string;
+  kind: LocationKind;
+  name: string;
+  avg_rating: number;
+  review_count: number;
+  is_verified: boolean;
+  visibility: LocationVisibility;
+  created_at: string;
+  location_categories: { categories: { name: string } | null }[];
+};
+
+export async function fetchMyAddedLocations(client: SupabaseClient, userId: string): Promise<MyAddedLocation[]> {
+  const { data, error } = await client
+    .from("locations")
+    .select(
+      "id, kind, name, avg_rating, review_count, is_verified, visibility, created_at, location_categories(categories(name))"
+    )
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as MyAddedLocationRow[]).map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    name: row.name,
+    category_label: row.location_categories?.[0]?.categories?.name ?? null,
+    avg_rating: row.avg_rating,
+    review_count: row.review_count,
+    is_verified: row.is_verified,
+    visibility: row.visibility,
+    created_at: row.created_at,
+  }));
 }
 
 export async function setLocationCreatorVisible(
@@ -260,6 +314,8 @@ export type LocationUpdate = {
   name: string;
   description: string | null;
   address: string | null;
+  hours: OpeningHours | null;
+  hoursNotApplicable: boolean;
 };
 
 export async function updateLocation(
@@ -269,7 +325,13 @@ export async function updateLocation(
 ): Promise<void> {
   const { error } = await client
     .from("locations")
-    .update({ name: input.name, description: input.description, address: input.address })
+    .update({
+      name: input.name,
+      description: input.description,
+      address: input.address,
+      hours: input.hoursNotApplicable ? null : input.hours,
+      hours_not_applicable: input.hoursNotApplicable,
+    })
     .eq("id", locationId);
   if (error) throw error;
 }

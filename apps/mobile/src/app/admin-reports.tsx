@@ -173,6 +173,12 @@ export default function AdminReportsScreen() {
   };
 
   const handleApproveClaim = async (claim: BusinessClaim) => {
+    const confirmed = await confirmAsync(
+      'Approve this claim?',
+      `"${claim.locationName}" will be marked as verified and owned by ${claim.claimantName}.`,
+      'Approve'
+    );
+    if (!confirmed) return;
     setBusyId(claim.id);
     try {
       await verifyLocationOwner(supabase, claim.locationId, claim.claimantId);
@@ -184,6 +190,12 @@ export default function AdminReportsScreen() {
   };
 
   const handleRejectClaim = async (claim: BusinessClaim) => {
+    const confirmed = await confirmAsync(
+      'Reject this claim?',
+      `The claim on "${claim.locationName}" by ${claim.claimantName} will be rejected.`,
+      'Reject'
+    );
+    if (!confirmed) return;
     setBusyId(claim.id);
     try {
       await resolveBusinessClaim(supabase, claim.id, 'rejected');
@@ -407,18 +419,18 @@ export default function AdminReportsScreen() {
 
                     <View style={styles.actionsRow}>
                       <Pressable
-                        style={[styles.actionButton, styles.removeButton]}
+                        style={[styles.actionButton, styles.claimActionButton, styles.removeButton]}
                         disabled={busy}
                         onPress={() => handleRejectClaim(claim)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
+                        <ThemedText type="small" style={styles.removeButtonText}>
                           Reject
                         </ThemedText>
                       </Pressable>
                       <Pressable
-                        style={[styles.actionButton, styles.flagButton]}
+                        style={[styles.actionButton, styles.claimActionButton, styles.flagButton]}
                         disabled={busy}
                         onPress={() => handleApproveClaim(claim)}>
-                        <ThemedText type="smallBold" style={styles.flagButtonText}>
+                        <ThemedText type="small" style={styles.flagButtonText}>
                           Approve
                         </ThemedText>
                       </Pressable>
@@ -599,6 +611,11 @@ const styles = StyleSheet.create({
   },
   dismissButton: {
     backgroundColor: 'rgba(128,128,128,0.25)',
+  },
+  claimActionButton: {
+    flex: 0,
+    height: 20,
+    paddingHorizontal: Spacing.two,
   },
   flagButton: {
     backgroundColor: '#E8A93B',

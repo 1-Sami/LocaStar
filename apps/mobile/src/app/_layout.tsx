@@ -23,6 +23,7 @@ function ThemedNavigation() {
         <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
         <Stack.Screen name="my-reviews" options={{ title: 'My reviews' }} />
+        <Stack.Screen name="my-locations" options={{ title: 'My added locations' }} />
         <Stack.Screen name="add-location" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-location" options={{ presentation: 'modal', title: 'Edit location' }} />
         <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />

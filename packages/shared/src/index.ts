@@ -14,6 +14,7 @@ export {
   setLocationCategories,
   setLocationCreatorVisible,
   deleteLocation,
+  fetchMyAddedLocations,
 } from "./api/locations";
 export type {
   NearbyLocation,
@@ -27,6 +28,7 @@ export type {
   LocationSubmission,
   LocationReportInput,
   LocationUpdate,
+  MyAddedLocation,
 } from "./api/locations";
 
 export {

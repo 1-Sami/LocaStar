@@ -3,18 +3,19 @@ import {
   fetchLocationById,
   fetchLocationCategoryIds,
   setLocationCategories,
-  setLocationCreatorVisible,
   updateLocation,
   type Category,
+  type OpeningHours,
 } from '@locastar/shared';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -30,11 +31,11 @@ export default function EditLocationScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [hours, setHours] = useState<OpeningHours>({});
+  const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [creatorVisible, setCreatorVisible] = useState(true);
-  const [creatorVisibleSaving, setCreatorVisibleSaving] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,7 +50,8 @@ export default function EditLocationScreen() {
             setName(location.name);
             setDescription(location.description ?? '');
             setAddress(location.address ?? '');
-            setCreatorVisible(location.creator_visible);
+            setHours(location.hours ?? {});
+            setHoursNotApplicable(location.hours_not_applicable);
           }
           setCategoryIds(existingCategoryIds);
         })
@@ -62,18 +64,6 @@ export default function EditLocationScreen() {
       };
     }, [id])
   );
-
-  const handleToggleCreatorVisible = async (value: boolean) => {
-    setCreatorVisible(value);
-    setCreatorVisibleSaving(true);
-    try {
-      await setLocationCreatorVisible(supabase, id, value);
-    } catch {
-      setCreatorVisible(!value);
-    } finally {
-      setCreatorVisibleSaving(false);
-    }
-  };
 
   const selectedCategoryLabel = categories
     .filter((c) => categoryIds.includes(c.id))
@@ -96,6 +86,8 @@ export default function EditLocationScreen() {
         name: name.trim(),
         description: description.trim() || null,
         address: address.trim() || null,
+        hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
+        hoursNotApplicable,
       });
       await setLocationCategories(supabase, id, categoryIds);
       setSaved(true);
@@ -162,22 +154,14 @@ export default function EditLocationScreen() {
             multiline
           />
 
-          <View style={styles.visibilityRow}>
-            <View style={styles.visibilityRowText}>
-              <ThemedText type="default">Show me as the creator</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {creatorVisible
-                  ? 'Your username shows as "Added by" on this listing.'
-                  : 'Your name is hidden from this listing.'}
-              </ThemedText>
-            </View>
-            <Switch
-              value={creatorVisible}
-              onValueChange={handleToggleCreatorVisible}
-              disabled={creatorVisibleSaving}
-              trackColor={{ true: Colors.light.primary }}
-            />
-          </View>
+          <Pressable style={styles.hoursNaRow} onPress={() => setHoursNotApplicable((v) => !v)}>
+            <View style={[styles.checkbox, hoursNotApplicable && styles.checkboxChecked]} />
+            <ThemedText type="small" style={styles.hoursNaLabel}>
+              This place has no set opening hours (e.g. always open, a public property)
+            </ThemedText>
+          </Pressable>
+
+          {!hoursNotApplicable && <OpeningHoursEditor hours={hours} onChange={setHours} />}
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -242,15 +226,24 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.three,
   },
-  visibilityRow: {
+  hoursNaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
-  visibilityRowText: {
+  hoursNaLabel: {
     flex: 1,
-    gap: Spacing.half,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(128,128,128,0.5)',
+    borderRadius: Spacing.half,
+  },
+  checkboxChecked: {
+    backgroundColor: '#14747A',
+    borderColor: '#14747A',
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
