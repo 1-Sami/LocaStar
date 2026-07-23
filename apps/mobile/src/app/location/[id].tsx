@@ -19,8 +19,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Dimensions, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToListModal } from '@/components/add-to-list-modal';
@@ -50,6 +59,10 @@ const HOURS_DAYS: { key: DayKey; label: string }[] = [
   { key: 'sun', label: 'Sunday' },
 ];
 
+function formatActivityDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 export default function LocationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -72,6 +85,8 @@ export default function LocationDetailScreen() {
 
   const [heroWidth, setHeroWidth] = useState(() => Math.min(Dimensions.get('window').width, MaxContentWidth));
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const heroScrollRef = useRef<ScrollView>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -271,6 +286,24 @@ export default function LocationDetailScreen() {
     setClaimVisible(true);
   };
 
+  const goToPhoto = (index: number) => {
+    setActivePhotoIndex(index);
+    heroScrollRef.current?.scrollTo({ x: index * heroWidth, animated: true });
+  };
+
+  const handlePrevPhoto = () => {
+    goToPhoto((activePhotoIndex - 1 + heroImages.length) % heroImages.length);
+  };
+
+  const handleNextPhoto = () => {
+    goToPhoto((activePhotoIndex + 1) % heroImages.length);
+  };
+
+  const handleOpenGalleryAt = (index: number) => {
+    goToPhoto(index);
+    setGalleryVisible(false);
+  };
+
   const handleWriteReview = () => {
     if (!session) {
       router.push('/sign-in');
@@ -294,6 +327,7 @@ export default function LocationDetailScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.heroWrapper} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
             <ScrollView
+              ref={heroScrollRef}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
@@ -310,6 +344,32 @@ export default function LocationDetailScreen() {
             <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="arrow-back" size={22} color="#ffffff" />
             </Pressable>
+            {heroImages.length > 1 && (
+              <>
+                <Pressable
+                  style={[styles.heroArrowButton, styles.heroArrowLeft]}
+                  onPress={handlePrevPhoto}
+                  hitSlop={8}
+                  accessibilityLabel="Previous photo">
+                  <Ionicons name="chevron-back" size={22} color="#ffffff" />
+                </Pressable>
+                <Pressable
+                  style={[styles.heroArrowButton, styles.heroArrowRight]}
+                  onPress={handleNextPhoto}
+                  hitSlop={8}
+                  accessibilityLabel="Next photo">
+                  <Ionicons name="chevron-forward" size={22} color="#ffffff" />
+                </Pressable>
+              </>
+            )}
+            {photos.length > 0 && (
+              <Pressable style={styles.photoCountButton} onPress={() => setGalleryVisible(true)}>
+                <Ionicons name="images-outline" size={15} color="#ffffff" />
+                <ThemedText type="small" style={styles.photoCountText}>
+                  {photos.length}
+                </ThemedText>
+              </Pressable>
+            )}
             <View style={styles.heroIconRow}>
               <Pressable style={styles.heroIconButton} onPress={() => toggleFavorite(location.id)} hitSlop={8}>
                 <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.iconInactive}>
@@ -401,6 +461,16 @@ export default function LocationDetailScreen() {
                 <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
                 <ThemedText type="default" themeColor="textSecondary" style={styles.infoText}>
                   {location.address}
+                </ThemedText>
+              </View>
+            )}
+
+            {location.kind === 'activity' && location.starts_at && (
+              <View style={styles.infoRow}>
+                <Ionicons name="calendar-outline" size={18} color={theme.text} />
+                <ThemedText type="smallBold" style={styles.infoText}>
+                  Starts {formatActivityDate(location.starts_at)}
+                  {location.expires_at ? ` · Ends ${formatActivityDate(location.expires_at)}` : ''}
                 </ThemedText>
               </View>
             )}
@@ -556,7 +626,25 @@ export default function LocationDetailScreen() {
                         {review.title}
                       </ThemedText>
                     )}
-                    {review.body && <ThemedText type="default">{review.body}</ThemedText>}
+                    {review.body && (
+                      <ThemedText type="default" style={styles.reviewBody}>
+                        {review.body}
+                      </ThemedText>
+                    )}
+                    {review.photos.length > 0 && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewPhotoRow}>
+                        {review.photos.map((uri, index) => (
+                          <Pressable
+                            key={index}
+                            onPress={() => {
+                              const galleryIndex = photos.indexOf(uri);
+                              goToPhoto(galleryIndex >= 0 ? galleryIndex : 0);
+                            }}>
+                            <Image source={{ uri }} style={styles.reviewPhotoThumb} contentFit="cover" />
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    )}
                     <Pressable style={styles.likeRow} onPress={() => handleToggleLike(review)} hitSlop={8}>
                       <Ionicons
                         name={review.likedByMe ? 'heart' : 'heart-outline'}
@@ -656,6 +744,26 @@ export default function LocationDetailScreen() {
           });
         }}
       />
+
+      <Modal visible={galleryVisible} animationType="slide" onRequestClose={() => setGalleryVisible(false)}>
+        <ThemedView style={styles.container}>
+          <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+            <View style={styles.galleryHeader}>
+              <ThemedText type="subtitle">Photos ({photos.length})</ThemedText>
+              <Pressable onPress={() => setGalleryVisible(false)} hitSlop={8}>
+                <Ionicons name="close" size={26} color={theme.text} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.galleryGrid}>
+              {photos.map((uri, index) => (
+                <Pressable key={index} style={styles.galleryThumbWrapper} onPress={() => handleOpenGalleryAt(index)}>
+                  <Image source={{ uri }} style={styles.galleryThumb} contentFit="cover" />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </ThemedView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -738,6 +846,59 @@ const styles = StyleSheet.create({
   },
   photoDotActive: {
     backgroundColor: '#ffffff',
+  },
+  heroArrowButton: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroArrowLeft: {
+    left: Spacing.three,
+  },
+  heroArrowRight: {
+    right: Spacing.three,
+  },
+  photoCountButton: {
+    position: 'absolute',
+    bottom: Spacing.two,
+    right: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+    borderRadius: Spacing.five,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  photoCountText: {
+    color: '#ffffff',
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
+    padding: Spacing.three,
+  },
+  galleryThumbWrapper: {
+    width: '32%',
+    aspectRatio: 1,
+  },
+  galleryThumb: {
+    flex: 1,
+    borderRadius: Spacing.one,
   },
   iconInactive: {
     color: '#ffffff',
@@ -935,6 +1096,18 @@ const styles = StyleSheet.create({
   },
   reviewTitle: {
     marginTop: Spacing.half,
+  },
+  reviewBody: {
+    fontWeight: '400',
+  },
+  reviewPhotoRow: {
+    marginTop: Spacing.two,
+  },
+  reviewPhotoThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: Spacing.one,
+    marginRight: Spacing.two,
   },
   likeRow: {
     flexDirection: 'row',

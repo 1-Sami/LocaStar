@@ -48,7 +48,7 @@ export type {
   ShareLocationInput,
 } from "./api/saves";
 
-export { fetchReviews, submitReview, reportReview, setReviewLiked } from "./api/reviews";
+export { fetchReviews, submitReview, addReviewPhoto, reportReview, setReviewLiked } from "./api/reviews";
 export type { Review, ReviewInput, ReviewReportInput } from "./api/reviews";
 
 export { fetchProfileStats, fetchMyReviews, fetchProfile, updateProfile } from "./api/profile";
@@ -66,13 +66,12 @@ export {
   fetchOpenLocationReports,
   fetchHandledLocationReports,
   resolveLocationReport,
-  deleteLocationReport,
   updateLocationStatus,
   fetchOpenReviewReports,
   fetchHandledReviewReports,
   resolveReviewReport,
-  deleteReviewReport,
   updateReviewStatus,
+  fetchOpenReportsCount,
 } from "./api/moderation";
 export type {
   LocationReport,
@@ -115,7 +114,6 @@ export {
   fetchOpenBusinessClaims,
   fetchHandledBusinessClaims,
   resolveBusinessClaim,
-  deleteBusinessClaim,
   verifyLocationOwner,
 } from "./api/business-claims";
 export type { ClaimStatus, BusinessClaim } from "./api/business-claims";

@@ -8,22 +8,23 @@ import {
   type OpeningHours,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/date-field';
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
+import { PhotoPicker } from '@/components/photo-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
-import { pickImage, uploadImageToMedia } from '@/lib/media-upload';
+import { uploadImageToMedia } from '@/lib/media-upload';
 import { supabase } from '@/lib/supabase';
 
 function formatReverseGeocodeResult(result: Location.LocationGeocodedAddress): string {
@@ -96,13 +97,15 @@ export default function AddLocationScreen() {
   const [website, setWebsite] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [photoUris, setPhotoUris] = useState<(string | null)[]>([null, null, null]);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [visibleAsCreator, setVisibleAsCreator] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [publishDate, setPublishDate] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -142,19 +145,39 @@ export default function AddLocationScreen() {
     );
   };
 
-  const handlePickPhoto = async (index: number) => {
-    const uri = await pickImage();
-    if (!uri) return;
-    setPhotoUris((current) => {
-      const next = [...current];
-      next[index] = uri;
-      return next;
-    });
-  };
-
-  const hasPhoto = photoUris.some(Boolean);
+  const hasPhoto = photoUris.length > 0;
   const emailValid = !isActivity || EMAIL_PATTERN.test(email.trim());
   const otherCategoryValid = !hasOtherCategory || otherCategoryDetail.trim().length > 0;
+  let dateError: string | null = null;
+  let expiresAtIso: string | null = null;
+  let startsAtIso: string | null = null;
+  let publishAtIso: string | null = null;
+
+  if (isActivity) {
+    startsAtIso = startDate ? startDate.toISOString() : null;
+
+    if (endDate && startDate) {
+      if (endDate.getTime() < startDate.getTime()) {
+        dateError = 'The end date must be after the start date.';
+      } else {
+        const daysOut = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysOut > MAX_ACTIVITY_DAYS) {
+          dateError = `Activities can only run for up to ${MAX_ACTIVITY_DAYS} days — choose an earlier end date.`;
+        } else {
+          expiresAtIso = endDate.toISOString();
+        }
+      }
+    }
+
+    if (!dateError && publishDate) {
+      if (endDate && publishDate.getTime() > endDate.getTime()) {
+        dateError = "The publish date can't be after the end date.";
+      } else {
+        publishAtIso = publishDate.toISOString();
+      }
+    }
+  }
+
   const canSubmit =
     Boolean(
       name.trim() &&
@@ -163,28 +186,9 @@ export default function AddLocationScreen() {
         hasPhoto &&
         pinCoords &&
         emailValid &&
-        otherCategoryValid
+        otherCategoryValid &&
+        (!isActivity || (startDate && endDate && !dateError))
     ) && !submitting;
-
-  let endDateWarning: string | null = null;
-  let expiresAtIso: string | null = null;
-  if (isActivity) {
-    const trimmed = endDate.trim();
-    if (!trimmed) {
-      endDateWarning = `No end date chosen — this activity will automatically be removed after ${MAX_ACTIVITY_DAYS} days.`;
-    } else {
-      const parsed = new Date(trimmed);
-      if (Number.isNaN(parsed.getTime())) {
-        endDateWarning = 'Enter the end date as YYYY-MM-DD.';
-      } else {
-        expiresAtIso = parsed.toISOString();
-        const daysOut = (parsed.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-        if (daysOut > MAX_ACTIVITY_DAYS) {
-          endDateWarning = `Activities can only stay active for up to ${MAX_ACTIVITY_DAYS} days — this will be capped automatically.`;
-        }
-      }
-    }
-  }
 
   const handleSubmit = async () => {
     if (!session || !pinCoords || !canSubmit) return;
@@ -207,12 +211,13 @@ export default function AddLocationScreen() {
         hoursNotApplicable,
         creatorVisible: visibleAsCreator,
         visibility: isActivity && isPrivate ? 'private' : 'public',
+        startsAt: isActivity ? startsAtIso : null,
+        publishAt: isActivity ? publishAtIso : null,
         expiresAt: isActivity ? expiresAtIso : null,
         otherCategoryDetail: hasOtherCategory ? otherCategoryDetail.trim() : null,
       });
 
       for (const uri of photoUris) {
-        if (!uri) continue;
         const path = `locations/${locationId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
         await uploadImageToMedia(path, uri);
         await addLocationPhoto(supabase, locationId, session.user.id, path);
@@ -223,7 +228,8 @@ export default function AddLocationScreen() {
       }
 
       setSubmitted(true);
-    } catch {
+    } catch (err) {
+      console.error(`Failed to submit ${noun}`, err);
       setError('Something went wrong submitting your ' + noun + '. Try again.');
     } finally {
       setSubmitting(false);
@@ -266,22 +272,10 @@ export default function AddLocationScreen() {
           </View>
 
           <ThemedText type="smallBold" style={styles.photoLabel}>
-            {isActivity ? 'Add 1-3 pictures' : '*Add a minimum of 1 picture'}
+            *Mandatory: at least 1 picture
           </ThemedText>
 
-          <View style={styles.photoRow}>
-            {photoUris.map((uri, index) => (
-              <Pressable key={index} style={styles.photoSlot} onPress={() => handlePickPhoto(index)}>
-                {uri ? (
-                  <Image source={{ uri }} style={styles.photoSlotImage} contentFit="cover" />
-                ) : (
-                  <View style={styles.photoSlotEmpty}>
-                    <Ionicons name="add" size={28} color={theme.text} />
-                  </View>
-                )}
-              </Pressable>
-            ))}
-          </View>
+          <PhotoPicker uris={photoUris} onChange={setPhotoUris} />
 
           <TextInput
             value={name}
@@ -393,16 +387,27 @@ export default function AddLocationScreen() {
                 onChange={setIsPrivate}
               />
 
-              <TextInput
+              <DateField label="*Start date" value={startDate} onChange={setStartDate} placeholder="When does it start?" />
+              <DateField
+                label="*End date"
                 value={endDate}
-                onChangeText={setEndDate}
-                placeholder="End date (YYYY-MM-DD, optional)"
-                placeholderTextColor={LIGHT_PLACEHOLDER}
-                style={[styles.input, styles.lightInput]}
+                onChange={setEndDate}
+                minimumDate={startDate ?? undefined}
+                placeholder="When does it end?"
               />
-              {endDateWarning && (
-                <ThemedText type="small" style={styles.warningText}>
-                  {endDateWarning}
+              <DateField
+                label="Publish date (optional)"
+                value={publishDate}
+                onChange={setPublishDate}
+                placeholder="Publish immediately once approved"
+              />
+              <ThemedText type="small" themeColor="textSecondary" style={styles.publishHint}>
+                Leave the publish date blank to make this activity visible as soon as it's approved — or pick a
+                later date to schedule when it should go live.
+              </ThemedText>
+              {dateError && (
+                <ThemedText type="small" style={styles.errorText}>
+                  {dateError}
                 </ThemedText>
               )}
             </>
@@ -491,26 +496,6 @@ const styles = StyleSheet.create({
   photoLabel: {
     marginTop: -Spacing.one,
   },
-  photoRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  photoSlot: {
-    flex: 1,
-    aspectRatio: 1,
-  },
-  photoSlotEmpty: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.6)',
-    borderRadius: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoSlotImage: {
-    flex: 1,
-    borderRadius: Spacing.two,
-  },
   mapLabel: {
     marginTop: -Spacing.one,
   },
@@ -581,6 +566,9 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: '#E8A93B',
+    marginTop: -Spacing.one,
+  },
+  publishHint: {
     marginTop: -Spacing.one,
   },
   errorText: {

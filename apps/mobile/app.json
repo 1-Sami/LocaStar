@@ -38,7 +38,8 @@
         {
           "locationWhenInUsePermission": "LocaStar uses your location to show nearby places and activities."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

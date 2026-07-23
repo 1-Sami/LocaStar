@@ -79,11 +79,6 @@ export async function resolveLocationReport(
   if (error) throw error;
 }
 
-export async function deleteLocationReport(client: SupabaseClient, reportId: string): Promise<void> {
-  const { error } = await client.from("location_reports").delete().eq("id", reportId);
-  if (error) throw error;
-}
-
 export async function updateLocationStatus(
   client: SupabaseClient,
   locationId: string,
@@ -189,9 +184,16 @@ export async function resolveReviewReport(
   if (error) throw error;
 }
 
-export async function deleteReviewReport(client: SupabaseClient, reportId: string): Promise<void> {
-  const { error } = await client.from("review_reports").delete().eq("id", reportId);
-  if (error) throw error;
+export async function fetchOpenReportsCount(client: SupabaseClient): Promise<number> {
+  const [locationReports, reviewReports, businessClaims] = await Promise.all([
+    client.from("location_reports").select("*", { count: "exact", head: true }).eq("status", "open"),
+    client.from("review_reports").select("*", { count: "exact", head: true }).eq("status", "open"),
+    client.from("business_claims").select("*", { count: "exact", head: true }).eq("status", "pending"),
+  ]);
+  if (locationReports.error) throw locationReports.error;
+  if (reviewReports.error) throw reviewReports.error;
+  if (businessClaims.error) throw businessClaims.error;
+  return (locationReports.count ?? 0) + (reviewReports.count ?? 0) + (businessClaims.count ?? 0);
 }
 
 export async function updateReviewStatus(

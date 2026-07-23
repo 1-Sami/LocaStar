@@ -116,6 +116,15 @@ export default function SearchScreen() {
           )}
         />
 
+        {activeSlugs.length > 0 && (
+          <Pressable style={styles.resetFiltersButton} onPress={() => setActiveSlugs([])}>
+            <Ionicons name="close-circle-outline" size={14} color={theme.textSecondary} />
+            <ThemedText type="small" themeColor="textSecondary">
+              Reset filters
+            </ThemedText>
+          </Pressable>
+        )}
+
         <View style={styles.metaRow}>
           <ThemedText type="small" themeColor="textSecondary">
             {loading ? 'Searching…' : `Total ${cards.length}`}
@@ -250,6 +259,13 @@ const styles = StyleSheet.create({
   },
   activitiesButtonText: {
     color: '#ffffff',
+  },
+  resetFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.three,
   },
   metaRow: {
     flexDirection: 'row',

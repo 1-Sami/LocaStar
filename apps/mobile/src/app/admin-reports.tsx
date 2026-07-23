@@ -1,7 +1,4 @@
 import {
-  deleteBusinessClaim,
-  deleteLocationReport,
-  deleteReviewReport,
   fetchHandledBusinessClaims,
   fetchHandledLocationReports,
   fetchHandledReviewReports,
@@ -200,51 +197,6 @@ export default function AdminReportsScreen() {
     try {
       await resolveBusinessClaim(supabase, claim.id, 'rejected');
       reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleDeleteClaim = async (claim: BusinessClaim) => {
-    const confirmed = await confirmAsync(
-      'Delete this claim?',
-      `This permanently deletes the claim on "${claim.locationName}". This can't be undone.`
-    );
-    if (!confirmed) return;
-    setBusyId(claim.id);
-    try {
-      await deleteBusinessClaim(supabase, claim.id);
-      setHandledClaims((current) => current.filter((c) => c.id !== claim.id));
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleDeleteLocationReport = async (report: LocationReport) => {
-    const confirmed = await confirmAsync(
-      'Delete this report?',
-      `This permanently deletes the report on "${report.locationName}". This can't be undone.`
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await deleteLocationReport(supabase, report.id);
-      setHandledLocationReports((current) => current.filter((r) => r.id !== report.id));
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleDeleteReviewReport = async (report: ReviewReport) => {
-    const confirmed = await confirmAsync(
-      'Delete this report?',
-      `This permanently deletes the report on "${report.locationName}"'s review. This can't be undone.`
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await deleteReviewReport(supabase, report.id);
-      setHandledReviewReports((current) => current.filter((r) => r.id !== report.id));
     } finally {
       setBusyId(null);
     }
@@ -451,98 +403,65 @@ export default function AdminReportsScreen() {
                   Nothing handled yet.
                 </ThemedText>
               ) : tab === 'reviews' ? (
-                handledReviewReports.map((report) => {
-                  const busy = busyId === report.id;
-                  return (
-                    <ThemedView key={report.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
-                      <Pressable
-                        onPress={() => router.push({ pathname: '/location/[id]', params: { id: report.locationId } })}>
-                        <ThemedText type="smallBold">{report.locationName}</ThemedText>
-                      </Pressable>
+                handledReviewReports.map((report) => (
+                  <ThemedView key={report.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
+                    <Pressable
+                      onPress={() => router.push({ pathname: '/location/[id]', params: { id: report.locationId } })}>
+                      <ThemedText type="smallBold">{report.locationName}</ThemedText>
+                    </Pressable>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {reviewActionLabel(report)} · By {report.reviewAuthorName}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Reported by {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
+                    </ThemedText>
+                    <ThemedText type="default">{report.reason}</ThemedText>
+                    {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
-                        {reviewActionLabel(report)} · By {report.reviewAuthorName}
+                        {report.details}
                       </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        Reported by {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
-                      </ThemedText>
-                      <ThemedText type="default">{report.reason}</ThemedText>
-                      {report.details && (
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {report.details}
-                        </ThemedText>
-                      )}
-                      <Pressable
-                        style={[styles.actionButton, styles.deleteButton, styles.deleteButtonStandalone]}
-                        disabled={busy}
-                        onPress={() => handleDeleteReviewReport(report)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
-                          Delete permanently
-                        </ThemedText>
-                      </Pressable>
-                    </ThemedView>
-                  );
-                })
+                    )}
+                  </ThemedView>
+                ))
               ) : tab === 'locations' ? (
-                handledLocationReports.map((report) => {
-                  const busy = busyId === report.id;
-                  return (
-                    <ThemedView key={report.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
-                      <Pressable
-                        onPress={() => router.push({ pathname: '/location/[id]', params: { id: report.locationId } })}>
-                        <ThemedText type="smallBold">{report.locationName}</ThemedText>
-                      </Pressable>
+                handledLocationReports.map((report) => (
+                  <ThemedView key={report.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
+                    <Pressable
+                      onPress={() => router.push({ pathname: '/location/[id]', params: { id: report.locationId } })}>
+                      <ThemedText type="smallBold">{report.locationName}</ThemedText>
+                    </Pressable>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {locationActionLabel(report)} · Reported by {report.reporterName} ·{' '}
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </ThemedText>
+                    <ThemedText type="default" style={styles.reason}>
+                      {report.reason}
+                    </ThemedText>
+                    {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
-                        {locationActionLabel(report)} · Reported by {report.reporterName} ·{' '}
-                        {new Date(report.createdAt).toLocaleDateString()}
+                        {report.details}
                       </ThemedText>
-                      <ThemedText type="default" style={styles.reason}>
-                        {report.reason}
-                      </ThemedText>
-                      {report.details && (
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {report.details}
-                        </ThemedText>
-                      )}
-                      <Pressable
-                        style={[styles.actionButton, styles.deleteButton, styles.deleteButtonStandalone]}
-                        disabled={busy}
-                        onPress={() => handleDeleteLocationReport(report)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
-                          Delete permanently
-                        </ThemedText>
-                      </Pressable>
-                    </ThemedView>
-                  );
-                })
+                    )}
+                  </ThemedView>
+                ))
               ) : (
-                handledClaims.map((claim) => {
-                  const busy = busyId === claim.id;
-                  return (
-                    <ThemedView key={claim.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
-                      <Pressable
-                        onPress={() => router.push({ pathname: '/location/[id]', params: { id: claim.locationId } })}>
-                        <ThemedText type="smallBold">{claim.locationName}</ThemedText>
-                      </Pressable>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {claimActionLabel(claim)} · Claimed by {claim.claimantName} ·{' '}
-                        {new Date(claim.createdAt).toLocaleDateString()}
+                handledClaims.map((claim) => (
+                  <ThemedView key={claim.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
+                    <Pressable
+                      onPress={() => router.push({ pathname: '/location/[id]', params: { id: claim.locationId } })}>
+                      <ThemedText type="smallBold">{claim.locationName}</ThemedText>
+                    </Pressable>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {claimActionLabel(claim)} · Claimed by {claim.claimantName} ·{' '}
+                      {new Date(claim.createdAt).toLocaleDateString()}
+                    </ThemedText>
+                    {claim.verificationNotes && (
+                      <ThemedText type="default" style={styles.reason}>
+                        {claim.verificationNotes}
                       </ThemedText>
-                      {claim.verificationNotes && (
-                        <ThemedText type="default" style={styles.reason}>
-                          {claim.verificationNotes}
-                        </ThemedText>
-                      )}
-                      <Pressable
-                        style={[styles.actionButton, styles.deleteButton, styles.deleteButtonStandalone]}
-                        disabled={busy}
-                        onPress={() => handleDeleteClaim(claim)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
-                          Delete permanently
-                        </ThemedText>
-                      </Pressable>
-                    </ThemedView>
-                  );
-                })
+                    )}
+                  </ThemedView>
+                ))
               ))}
           </ScrollView>
         )}
@@ -628,13 +547,6 @@ const styles = StyleSheet.create({
   },
   removeButtonText: {
     color: '#ffffff',
-  },
-  deleteButton: {
-    backgroundColor: '#8A1F1F',
-    marginTop: Spacing.two,
-  },
-  deleteButtonStandalone: {
-    flex: 0,
   },
   handledHeader: {
     flexDirection: 'row',

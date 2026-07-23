@@ -17,6 +17,7 @@ export type NearbyLocation = {
   review_count: number;
   category_slug: string | null;
   category_label: string | null;
+  starts_at: string | null;
 };
 
 export type NearbyLocationsParams = {
@@ -57,7 +58,9 @@ export async function fetchCategories(client: SupabaseClient): Promise<Category[
     .select("id,name,slug,icon")
     .order("name");
   if (error) throw error;
-  return (data ?? []) as Category[];
+  const rows = (data ?? []) as Category[];
+  // Alphabetical, except "Others" always sorts last regardless of its name.
+  return [...rows.filter((c) => c.slug !== "other"), ...rows.filter((c) => c.slug === "other")];
 }
 
 export type LocationDetail = {
@@ -79,6 +82,8 @@ export type LocationDetail = {
   creator_username: string | null;
   creator_visible: boolean;
   visibility: LocationVisibility;
+  starts_at: string | null;
+  publish_at: string;
   expires_at: string | null;
   is_boosted: boolean;
   is_verified: boolean;
@@ -103,6 +108,8 @@ type LocationDetailRow = {
   creator: { username: string | null } | null;
   creator_visible: boolean;
   visibility: LocationVisibility;
+  starts_at: string | null;
+  publish_at: string;
   expires_at: string | null;
   is_boosted: boolean;
   is_verified: boolean;
@@ -127,6 +134,8 @@ export type LocationSubmission = {
   hoursNotApplicable?: boolean;
   creatorVisible?: boolean;
   visibility?: LocationVisibility;
+  startsAt?: string | null;
+  publishAt?: string | null;
   expiresAt?: string | null;
   otherCategoryDetail?: string | null;
 };
@@ -148,6 +157,8 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       hours_not_applicable: input.hoursNotApplicable ?? false,
       creator_visible: input.creatorVisible ?? true,
       visibility: input.visibility ?? "public",
+      starts_at: input.startsAt ?? null,
+      publish_at: input.publishAt ?? new Date().toISOString(),
       expires_at: input.expiresAt ?? null,
       other_category_detail: input.otherCategoryDetail ?? null,
     })
@@ -180,16 +191,30 @@ export async function addLocationPhoto(
 }
 
 export async function fetchLocationPhotos(client: SupabaseClient, locationId: string): Promise<string[]> {
-  const { data, error } = await client
-    .from("location_photos")
-    .select("storage_path")
-    .eq("location_id", locationId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
+  const [locationPhotos, reviewPhotos] = await Promise.all([
+    client
+      .from("location_photos")
+      .select("storage_path")
+      .eq("location_id", locationId)
+      .order("created_at", { ascending: false }),
+    client
+      .from("reviews")
+      .select("review_photos(storage_path)")
+      .eq("location_id", locationId)
+      .eq("status", "visible")
+      .order("created_at", { ascending: false }),
+  ]);
+  if (locationPhotos.error) throw locationPhotos.error;
+  if (reviewPhotos.error) throw reviewPhotos.error;
 
-  return ((data ?? []) as { storage_path: string }[]).map(
-    (row) => client.storage.from("media").getPublicUrl(row.storage_path).data.publicUrl
+  const publicUrl = (storagePath: string) => client.storage.from("media").getPublicUrl(storagePath).data.publicUrl;
+
+  const fromLocation = (locationPhotos.data as { storage_path: string }[]).map((row) => publicUrl(row.storage_path));
+  const fromReviews = (reviewPhotos.data as { review_photos: { storage_path: string }[] }[]).flatMap((row) =>
+    row.review_photos.map((photo) => publicUrl(photo.storage_path))
   );
+
+  return [...fromLocation, ...fromReviews];
 }
 
 export type LocationReportInput = {
@@ -213,7 +238,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -241,6 +266,8 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     creator_username: row.creator_visible ? (row.creator?.username ?? null) : null,
     creator_visible: row.creator_visible,
     visibility: row.visibility,
+    starts_at: row.starts_at,
+    publish_at: row.publish_at,
     expires_at: row.expires_at,
     is_boosted: row.is_boosted,
     owner_username: row.is_verified ? (row.owner?.username ?? null) : null,

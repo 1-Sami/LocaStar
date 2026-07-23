@@ -42,12 +42,14 @@ export function ReportModal({
     setError(null);
   };
 
+  const isValid = Boolean(reason) && details.trim().length > 0;
+
   const handleSubmit = async () => {
-    if (!reason) return;
+    if (!isValid) return;
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(reason, details.trim() || null);
+      await onSubmit(reason as string, details.trim());
       setSubmitted(true);
     } catch {
       setError('Something went wrong submitting your report. Try again.');
@@ -89,7 +91,7 @@ export function ReportModal({
               <TextInput
                 value={details}
                 onChangeText={setDetails}
-                placeholder="Additional details (optional)"
+                placeholder="*Explain why you're reporting this"
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
                 multiline
@@ -100,8 +102,8 @@ export function ReportModal({
                 </ThemedText>
               )}
               <Pressable
-                style={[styles.submitButton, (!reason || submitting) && styles.submitButtonDisabled]}
-                disabled={!reason || submitting}
+                style={[styles.submitButton, (!isValid || submitting) && styles.submitButtonDisabled]}
+                disabled={!isValid || submitting}
                 onPress={handleSubmit}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
                   {submitting ? 'Submitting…' : 'Submit report'}

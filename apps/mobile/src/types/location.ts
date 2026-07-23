@@ -12,4 +12,5 @@ export type CardLocation = {
   address: string | null;
   distanceKm: number | null;
   imageUrl: string;
+  startsAt: string | null;
 };

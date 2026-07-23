@@ -19,6 +19,7 @@ export function nearbyLocationToCard(location: NearbyLocation): CardLocation {
     address: location.address,
     distanceKm: Math.round(location.distance_m / 100) / 10,
     imageUrl: placeholderImage(location.id),
+    startsAt: location.starts_at,
   };
 }
 
@@ -35,6 +36,7 @@ export function savedLocationToCard(location: SavedLocation): CardLocation {
     address: location.address,
     distanceKm: null,
     imageUrl: placeholderImage(location.location_id),
+    startsAt: null,
   };
 }
 
@@ -51,5 +53,6 @@ export function listItemToCard(item: ListItemLocation): CardLocation {
     address: item.address,
     distanceKm: null,
     imageUrl: placeholderImage(item.locationId),
+    startsAt: null,
   };
 }

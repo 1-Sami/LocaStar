@@ -1,4 +1,4 @@
-import { fetchProfile, fetchProfileStats, type ProfileStats } from '@locastar/shared';
+import { fetchOpenReportsCount, fetchProfile, fetchProfileStats, type ProfileStats } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -15,9 +15,9 @@ import { supabase } from '@/lib/supabase';
 
 const EMPTY_STATS: ProfileStats = { favorites: 0, bucketList: 0, shared: 0, reviews: 0, added: 0 };
 
-const STAT_TILE_WIDTH = 91;
+const STAT_TILE_WIDTH = 59;
 const STAT_TILE_GAP = 10;
-const MENU_ROW_WIDTH = (STAT_TILE_WIDTH * 3 + STAT_TILE_GAP * 2) * 0.8;
+const MENU_ROW_WIDTH = (91 * 3 + STAT_TILE_GAP * 2) * 0.8;
 
 function statTiles(stats: ProfileStats) {
   return [
@@ -69,6 +69,7 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [openReportsCount, setOpenReportsCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,10 +84,19 @@ export default function ProfileScreen() {
         });
       fetchProfile(supabase, session.user.id)
         .then((profile) => {
-          if (!cancelled) {
-            setAvatarUrl(profile.avatar_url);
-            setUsername(profile.username);
-            setIsAdmin(profile.role === 'admin');
+          if (cancelled) return;
+          setAvatarUrl(profile.avatar_url);
+          setUsername(profile.username);
+          const admin = profile.role === 'admin';
+          setIsAdmin(admin);
+          if (admin) {
+            fetchOpenReportsCount(supabase)
+              .then((count) => {
+                if (!cancelled) setOpenReportsCount(count);
+              })
+              .catch(() => {
+                if (!cancelled) setOpenReportsCount(0);
+              });
           }
         })
         .catch(() => {});
@@ -247,6 +257,13 @@ export default function ProfileScreen() {
                     <ThemedText type="default" style={styles.menuItemText}>
                       {item}
                     </ThemedText>
+                    {item === 'Reports (admin)' && openReportsCount > 0 && (
+                      <View style={styles.reportsBadge}>
+                        <ThemedText type="small" style={styles.reportsBadgeText}>
+                          {openReportsCount}
+                        </ThemedText>
+                      </View>
+                    )}
                   </View>
                   <ThemedText themeColor="textSecondary" style={styles.menuChevron}>
                     ›
@@ -256,8 +273,6 @@ export default function ProfileScreen() {
             );
           })}
         </View>
-
-        <BrandFooter />
       </SafeAreaView>
     </ThemedView>
   );
@@ -335,21 +350,21 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(128,128,128,0.4)',
     borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
+    paddingVertical: 5,
     paddingHorizontal: Spacing.half,
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: Spacing.half,
   },
   statValue: {
-    fontSize: 23,
-    lineHeight: 26,
+    fontSize: 15,
+    lineHeight: 17,
     fontWeight: '700',
   },
   statLabel: {
     textAlign: 'center',
-    fontSize: 15,
-    lineHeight: 18,
+    fontSize: 10,
+    lineHeight: 12,
   },
   menu: {
     width: MENU_ROW_WIDTH,
@@ -374,6 +389,21 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 19,
     lineHeight: 26,
+  },
+  reportsBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: '#E05252',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportsBadgeText: {
+    color: '#ffffff',
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '700',
   },
   menuChevron: {
     fontSize: 19,

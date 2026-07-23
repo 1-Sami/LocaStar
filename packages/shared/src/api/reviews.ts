@@ -11,6 +11,7 @@ export type Review = {
   author_avatar_url: string | null;
   likeCount: number;
   likedByMe: boolean;
+  photos: string[];
 };
 
 type ReviewRow = {
@@ -22,6 +23,7 @@ type ReviewRow = {
   created_at: string;
   profiles: { display_name: string | null; avatar_url: string | null } | null;
   review_likes: { count: number }[];
+  review_photos: { storage_path: string }[];
 };
 
 export async function fetchReviews(
@@ -32,7 +34,7 @@ export async function fetchReviews(
   const { data, error } = await client
     .from("reviews")
     .select(
-      "id, user_id, rating, title, body, created_at, profiles(display_name, avatar_url), review_likes(count)"
+      "id, user_id, rating, title, body, created_at, profiles(display_name, avatar_url), review_likes(count), review_photos(storage_path)"
     )
     .eq("location_id", locationId)
     .eq("status", "visible")
@@ -66,6 +68,9 @@ export async function fetchReviews(
     author_avatar_url: row.profiles?.avatar_url ?? null,
     likeCount: row.review_likes?.[0]?.count ?? 0,
     likedByMe: likedReviewIds.has(row.id),
+    photos: (row.review_photos ?? []).map(
+      (photo) => client.storage.from("media").getPublicUrl(photo.storage_path).data.publicUrl
+    ),
   }));
 }
 
@@ -95,17 +100,27 @@ export type ReviewInput = {
   body: string | null;
 };
 
-export async function submitReview(client: SupabaseClient, input: ReviewInput): Promise<void> {
-  const { error } = await client.from("reviews").upsert(
-    {
-      location_id: input.locationId,
-      user_id: input.userId,
-      rating: input.rating,
-      title: input.title,
-      body: input.body,
-    },
-    { onConflict: "location_id,user_id" }
-  );
+export async function submitReview(client: SupabaseClient, input: ReviewInput): Promise<string> {
+  const { data, error } = await client
+    .from("reviews")
+    .upsert(
+      {
+        location_id: input.locationId,
+        user_id: input.userId,
+        rating: input.rating,
+        title: input.title,
+        body: input.body,
+      },
+      { onConflict: "location_id,user_id" }
+    )
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function addReviewPhoto(client: SupabaseClient, reviewId: string, storagePath: string): Promise<void> {
+  const { error } = await client.from("review_photos").insert({ review_id: reviewId, storage_path: storagePath });
   if (error) throw error;
 }
 

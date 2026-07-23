@@ -9,6 +9,10 @@ import type { CardLocation } from '@/types/location';
 
 const IMAGE_HEIGHT = 160;
 
+function formatCardDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export function LocationCard({
   location,
   isFavorite,
@@ -62,6 +66,11 @@ export function LocationCard({
               {location.rating.toFixed(1)} ({location.reviewCount})
             </ThemedText>
           </View>
+          {location.kind === 'activity' && location.startsAt && (
+            <ThemedText type="smallBold" style={[styles.whiteText, styles.startsAtText]}>
+              📅 {formatCardDate(location.startsAt)}
+            </ThemedText>
+          )}
           <ThemedText type="small" style={[styles.whiteText, styles.description]} numberOfLines={3}>
             {location.description}
           </ThemedText>
@@ -160,6 +169,9 @@ const styles = StyleSheet.create({
   },
   whiteTextSecondary: {
     color: 'rgba(255,255,255,0.75)',
+  },
+  startsAtText: {
+    marginTop: Spacing.half,
   },
   description: {
     color: 'rgba(255,255,255,0.85)',

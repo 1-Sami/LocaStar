@@ -151,6 +151,7 @@ export type ListItemLocation = {
   kind: "place" | "activity";
   categorySlug: string | null;
   note: string | null;
+  imageUrl: string | null;
 };
 
 type ListItemRow = {
@@ -164,6 +165,7 @@ type ListItemRow = {
     review_count: number;
     kind: "place" | "activity";
     location_categories: { categories: { slug: string } | null }[];
+    location_photos: { storage_path: string }[];
   } | null;
 };
 
@@ -171,7 +173,7 @@ export async function fetchListItems(client: SupabaseClient, listId: string): Pr
   const { data, error } = await client
     .from("list_items")
     .select(
-      "note, location:locations(id, name, description, address, avg_rating, review_count, kind, location_categories(categories(slug)))"
+      "note, location:locations(id, name, description, address, avg_rating, review_count, kind, location_categories(categories(slug)), location_photos(storage_path))"
     )
     .eq("list_id", listId)
     .order("added_at", { ascending: false });
@@ -179,17 +181,21 @@ export async function fetchListItems(client: SupabaseClient, listId: string): Pr
 
   return ((data ?? []) as unknown as ListItemRow[])
     .filter((row) => row.location !== null)
-    .map((row) => ({
-      locationId: row.location!.id,
-      name: row.location!.name,
-      description: row.location!.description,
-      address: row.location!.address,
-      avgRating: row.location!.avg_rating,
-      reviewCount: row.location!.review_count,
-      kind: row.location!.kind,
-      categorySlug: row.location!.location_categories?.[0]?.categories?.slug ?? null,
-      note: row.note,
-    }));
+    .map((row) => {
+      const firstPhotoPath = row.location!.location_photos?.[0]?.storage_path ?? null;
+      return {
+        locationId: row.location!.id,
+        name: row.location!.name,
+        description: row.location!.description,
+        address: row.location!.address,
+        avgRating: row.location!.avg_rating,
+        reviewCount: row.location!.review_count,
+        kind: row.location!.kind,
+        categorySlug: row.location!.location_categories?.[0]?.categories?.slug ?? null,
+        note: row.note,
+        imageUrl: firstPhotoPath ? client.storage.from("media").getPublicUrl(firstPhotoPath).data.publicUrl : null,
+      };
+    });
 }
 
 export async function addLocationToList(

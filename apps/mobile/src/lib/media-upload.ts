@@ -1,4 +1,3 @@
-import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
 import { supabase } from '@/lib/supabase';
@@ -17,9 +16,23 @@ export async function pickImage(): Promise<string | null> {
   return result.assets[0].uri;
 }
 
+export async function pickImages(): Promise<string[]> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) return [];
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    quality: 0.7,
+    allowsMultipleSelection: true,
+    selectionLimit: 0,
+  });
+  if (result.canceled || result.assets.length === 0) return [];
+  return result.assets.map((asset) => asset.uri);
+}
+
 export async function uploadImageToMedia(path: string, uri: string): Promise<string> {
-  const file = new File(uri);
-  const arrayBuffer = await file.arrayBuffer();
+  const response = await fetch(uri);
+  const arrayBuffer = await response.arrayBuffer();
 
   const { error } = await supabase.storage
     .from('media')

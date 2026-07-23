@@ -98,11 +98,6 @@ export async function resolveBusinessClaim(
   if (error) throw error;
 }
 
-export async function deleteBusinessClaim(client: SupabaseClient, claimId: string): Promise<void> {
-  const { error } = await client.from("business_claims").delete().eq("id", claimId);
-  if (error) throw error;
-}
-
 export async function verifyLocationOwner(
   client: SupabaseClient,
   locationId: string,

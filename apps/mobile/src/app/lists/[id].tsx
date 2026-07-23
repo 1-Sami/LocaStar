@@ -10,6 +10,7 @@ import {
   type ListShareRecipient,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -23,6 +24,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
+import { placeholderImage } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 
 export default function ListDetailScreen() {
@@ -173,30 +175,40 @@ export default function ListDetailScreen() {
             ) : (
               items.map((item) => (
                 <ThemedView key={item.locationId} type="backgroundElement" style={styles.card}>
-                  <Pressable onPress={() => router.push({ pathname: '/location/[id]', params: { id: item.locationId } })}>
-                    <ThemedText type="smallBold">{item.name}</ThemedText>
-                  </Pressable>
-                  <View style={styles.ratingRow}>
-                    <StarRating rating={item.avgRating} size={14} />
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {item.avgRating.toFixed(1)} · {item.reviewCount} reviews
-                    </ThemedText>
+                  <View style={styles.cardRow}>
+                    <View style={styles.cardContent}>
+                      <Pressable
+                        onPress={() => router.push({ pathname: '/location/[id]', params: { id: item.locationId } })}>
+                        <ThemedText type="smallBold">{item.name}</ThemedText>
+                      </Pressable>
+                      <View style={styles.ratingRow}>
+                        <StarRating rating={item.avgRating} size={14} />
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {item.avgRating.toFixed(1)} · {item.reviewCount} reviews
+                        </ThemedText>
+                      </View>
+                      {item.note && (
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {item.note}
+                        </ThemedText>
+                      )}
+                      {!isSharedView && (
+                        <Pressable
+                          onPress={() => handleRemove(item.locationId)}
+                          disabled={busyLocationId === item.locationId}
+                          style={styles.removeButton}>
+                          <ThemedText type="small" style={styles.removeButtonText}>
+                            Remove from list
+                          </ThemedText>
+                        </Pressable>
+                      )}
+                    </View>
+                    <Image
+                      source={{ uri: item.imageUrl ?? placeholderImage(item.locationId) }}
+                      style={styles.cardImage}
+                      contentFit="cover"
+                    />
                   </View>
-                  {item.note && (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {item.note}
-                    </ThemedText>
-                  )}
-                  {!isSharedView && (
-                    <Pressable
-                      onPress={() => handleRemove(item.locationId)}
-                      disabled={busyLocationId === item.locationId}
-                      style={styles.removeButton}>
-                      <ThemedText type="small" style={styles.removeButtonText}>
-                        Remove from list
-                      </ThemedText>
-                    </Pressable>
-                  )}
                 </ThemedView>
               ))
             )}
@@ -305,7 +317,20 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: Spacing.two,
     padding: Spacing.three,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  cardContent: {
+    flex: 1,
     gap: Spacing.half,
+  },
+  cardImage: {
+    width: 100,
+    height: 76,
+    borderRadius: Spacing.two,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -353,8 +378,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   shareListButton: {
-    height: 36,
-    paddingHorizontal: Spacing.four,
+    height: 29,
+    paddingHorizontal: 19,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
