@@ -13,7 +13,15 @@ import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
-const EMPTY_STATS: ProfileStats = { favorites: 0, bucketList: 0, shared: 0, reviews: 0, added: 0 };
+const EMPTY_STATS: ProfileStats = {
+  favorites: 0,
+  bucketList: 0,
+  shared: 0,
+  reviews: 0,
+  added: 0,
+  lists: 0,
+  activities: 0,
+};
 
 const STAT_TILE_WIDTH = 59;
 const STAT_TILE_GAP = 10;

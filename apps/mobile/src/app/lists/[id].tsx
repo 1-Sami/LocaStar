@@ -155,10 +155,8 @@ export default function ListDetailScreen() {
           ),
           headerRight: () =>
             isSharedView ? null : (
-              <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList}>
-                <ThemedText type="small" style={styles.headerDeleteButtonText}>
-                  Delete this list
-                </ThemedText>
+              <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList} hitSlop={8}>
+                <Ionicons name="trash-outline" size={16} color="#ffffff" />
               </Pressable>
             ),
         }}
@@ -361,14 +359,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerDeleteButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: 999,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#C1272D',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: Spacing.three,
-  },
-  headerDeleteButtonText: {
-    color: '#ffffff',
   },
   actionsRow: {
     flexDirection: 'row',

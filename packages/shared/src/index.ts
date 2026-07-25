@@ -105,8 +105,9 @@ export {
   fetchListsSharedWithMe,
   fetchListShareRecipients,
   deleteListShare,
+  fetchPublicLists,
 } from "./api/lists";
-export type { LocationList, ListItemLocation, SharedList, ListShareRecipient } from "./api/lists";
+export type { LocationList, ListItemLocation, SharedList, ListShareRecipient, PublicList } from "./api/lists";
 
 export {
   submitBusinessClaim,

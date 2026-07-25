@@ -1,6 +1,6 @@
 import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ const SORT_OPTIONS = [
 ] as const;
 
 export default function SearchScreen() {
+  const { season: initialSeason, sort: initialSort } = useLocalSearchParams<{ season?: string; sort?: string }>();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NearbyLocation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,8 +37,11 @@ export default function SearchScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [sortBy, setSortBy] = useState<'distance' | 'rating'>('distance');
+  const [sortBy, setSortBy] = useState<'distance' | 'rating'>(initialSort === 'rating' ? 'rating' : 'distance');
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
+  const [activeSeason, setActiveSeason] = useState<'summer' | 'winter' | null>(
+    initialSeason === 'summer' || initialSeason === 'winter' ? initialSeason : null
+  );
 
   useEffect(() => {
     fetchCategories(supabase)
@@ -59,6 +63,7 @@ export default function SearchScreen() {
         categorySlugs: activeSlugs,
         searchQuery: trimmed.length > 0 ? trimmed : null,
         sort: sortBy,
+        season: activeSeason,
       })
         .then((result) => {
           if (!cancelled) setResults(result);
@@ -75,7 +80,7 @@ export default function SearchScreen() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [coords, query, activeSlugs, sortBy]);
+  }, [coords, query, activeSlugs, sortBy, activeSeason]);
 
   const cards = results.map(nearbyLocationToCard);
 
@@ -116,8 +121,30 @@ export default function SearchScreen() {
           )}
         />
 
-        {activeSlugs.length > 0 && (
-          <Pressable style={styles.resetFiltersButton} onPress={() => setActiveSlugs([])}>
+        <View style={styles.seasonFilterRow}>
+          <Pressable
+            style={[styles.seasonChip, { borderColor: theme.backgroundSelected }, activeSeason === 'summer' && styles.seasonChipActive]}
+            onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
+            <ThemedText type="small" style={activeSeason === 'summer' ? styles.seasonChipTextActive : undefined}>
+              ☀ Summer
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.seasonChip, { borderColor: theme.backgroundSelected }, activeSeason === 'winter' && styles.seasonChipActive]}
+            onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
+            <ThemedText type="small" style={activeSeason === 'winter' ? styles.seasonChipTextActive : undefined}>
+              ❄ Winter
+            </ThemedText>
+          </Pressable>
+        </View>
+
+        {(activeSlugs.length > 0 || activeSeason !== null) && (
+          <Pressable
+            style={styles.resetFiltersButton}
+            onPress={() => {
+              setActiveSlugs([]);
+              setActiveSeason(null);
+            }}>
             <Ionicons name="close-circle-outline" size={14} color={theme.textSecondary} />
             <ThemedText type="small" themeColor="textSecondary">
               Reset filters
@@ -260,12 +287,32 @@ const styles = StyleSheet.create({
   activitiesButtonText: {
     color: '#ffffff',
   },
+  seasonFilterRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    marginTop: Spacing.one,
+  },
+  seasonChip: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  seasonChipActive: {
+    backgroundColor: '#14747A',
+    borderColor: '#14747A',
+  },
+  seasonChipTextActive: {
+    color: '#ffffff',
+  },
   resetFiltersButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.half,
     alignSelf: 'flex-start',
     paddingHorizontal: Spacing.three,
+    marginTop: Spacing.one,
   },
   metaRow: {
     flexDirection: 'row',

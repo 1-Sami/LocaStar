@@ -6,6 +6,8 @@ export type ProfileStats = {
   shared: number;
   reviews: number;
   added: number;
+  lists: number;
+  activities: number;
 };
 
 async function countRows(
@@ -26,15 +28,17 @@ export async function fetchProfileStats(
   client: SupabaseClient,
   userId: string
 ): Promise<ProfileStats> {
-  const [favorites, bucketList, shared, reviews, added] = await Promise.all([
+  const [favorites, bucketList, shared, reviews, added, lists, activities] = await Promise.all([
     countRows(client, "saves", { user_id: userId, kind: "favorite" }),
     countRows(client, "saves", { user_id: userId, kind: "bucket_list" }),
     countRows(client, "location_shares", { recipient_id: userId }),
     countRows(client, "reviews", { user_id: userId }),
     countRows(client, "locations", { created_by: userId }),
+    countRows(client, "lists", { user_id: userId }),
+    countRows(client, "locations", { created_by: userId, kind: "activity" }),
   ]);
 
-  return { favorites, bucketList, shared, reviews, added };
+  return { favorites, bucketList, shared, reviews, added, lists, activities };
 }
 
 export type MyReview = {

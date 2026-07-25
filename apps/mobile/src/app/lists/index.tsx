@@ -1,96 +1,16 @@
 import { createList, fetchLists, fetchProfile, setListLiked, type LocationList } from '@locastar/shared';
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ListCard } from '@/components/list-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { placeholderImage } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
-
-function formatCreatedLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-}
-
-function ListCard({
-  list,
-  ownerUsername,
-  onPress,
-  onToggleLike,
-}: {
-  list: LocationList;
-  ownerUsername: string;
-  onPress: () => void;
-  onToggleLike: () => void;
-}) {
-  const [main, ...rest] = list.previewLocationIds;
-
-  return (
-    <Pressable onPress={onPress}>
-      <View style={styles.card}>
-        <ThemedText type="smallBold" style={[styles.whiteText, styles.cardTitle]}>
-          {list.name}
-        </ThemedText>
-        <ThemedText type="small" style={styles.whiteTextSecondary}>
-          Created {formatCreatedLabel(list.createdAt)} by {ownerUsername}
-        </ThemedText>
-
-        <View style={styles.collage}>
-          {main ? (
-            <Image source={{ uri: placeholderImage(main) }} style={styles.mainPhoto} contentFit="cover" />
-          ) : (
-            <View style={[styles.mainPhoto, styles.photoPlaceholder]} />
-          )}
-          {rest.length > 0 && (
-            <View style={styles.subPhotoColumn}>
-              {rest.map((locationId) => (
-                <Image
-                  key={locationId}
-                  source={{ uri: placeholderImage(locationId) }}
-                  style={styles.subPhoto}
-                  contentFit="cover"
-                />
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View style={styles.footerRow}>
-          <View style={styles.footerLeft}>
-            <Pressable style={styles.likeButton} onPress={onToggleLike} hitSlop={8}>
-              <Ionicons
-                name={list.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
-                size={14}
-                color={list.likedByMe ? '#4CD37A' : '#ffffff'}
-              />
-              <ThemedText type="smallBold" style={styles.whiteText}>
-                {list.likeCount}
-              </ThemedText>
-            </Pressable>
-            <View style={styles.itemCountBadge}>
-              <Ionicons name="location-outline" size={12} color="#ffffff" />
-              <ThemedText type="small" style={styles.whiteText}>
-                {list.itemCount}
-              </ThemedText>
-            </View>
-          </View>
-          <View style={styles.visibilityBadge}>
-            <Ionicons name={list.isPublic ? 'globe-outline' : 'lock-closed-outline'} size={11} color="#ffffff" />
-            <ThemedText type="small" style={styles.whiteText}>
-              {list.isPublic ? 'Public' : 'Private'}
-            </ThemedText>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
 
 export default function MyListsScreen() {
   const { session } = useAuth();
@@ -272,69 +192,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.four,
     paddingHorizontal: Spacing.four,
-  },
-  card: {
-    borderRadius: Spacing.three * 0.8,
-    padding: Spacing.three * 0.8,
-    gap: Spacing.two * 0.8,
-    backgroundColor: '#1B2A4A',
-  },
-  cardTitle: {
-    fontSize: 14,
-    lineHeight: 19,
-  },
-  collage: {
-    flexDirection: 'row',
-    gap: Spacing.two * 0.8,
-    height: 120,
-  },
-  mainPhoto: {
-    flex: 1,
-    height: 120,
-    borderRadius: Spacing.two,
-  },
-  photoPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  subPhotoColumn: {
-    width: 56,
-    gap: Spacing.two * 0.8,
-  },
-  subPhoto: {
-    flex: 1,
-    borderRadius: Spacing.two,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.one,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  likeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  itemCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  visibilityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  whiteText: {
-    color: '#ffffff',
-  },
-  whiteTextSecondary: {
-    color: 'rgba(255,255,255,0.75)',
   },
   modalRoot: {
     flex: 1,

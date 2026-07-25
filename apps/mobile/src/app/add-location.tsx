@@ -103,6 +103,8 @@ export default function AddLocationScreen() {
   const [visibleAsCreator, setVisibleAsCreator] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [availableSummer, setAvailableSummer] = useState(false);
+  const [availableWinter, setAvailableWinter] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [publishDate, setPublishDate] = useState<Date | null>(null);
@@ -215,6 +217,8 @@ export default function AddLocationScreen() {
         publishAt: isActivity ? publishAtIso : null,
         expiresAt: isActivity ? expiresAtIso : null,
         otherCategoryDetail: hasOtherCategory ? otherCategoryDetail.trim() : null,
+        availableSummer,
+        availableWinter,
       });
 
       for (const uri of photoUris) {
@@ -329,6 +333,20 @@ export default function AddLocationScreen() {
               style={[styles.input, styles.lightInput]}
             />
           )}
+
+          <View style={styles.seasonRow}>
+            <ThemedText type="default">When is this {noun} available? (optional)</ThemedText>
+            <View style={styles.seasonOptions}>
+              <Pressable style={styles.seasonOption} onPress={() => setAvailableSummer((v) => !v)}>
+                <View style={[styles.checkbox, availableSummer && styles.checkboxChecked]} />
+                <ThemedText type="small">☀ Summer</ThemedText>
+              </Pressable>
+              <Pressable style={styles.seasonOption} onPress={() => setAvailableWinter((v) => !v)}>
+                <View style={[styles.checkbox, availableWinter && styles.checkboxChecked]} />
+                <ThemedText type="small">❄ Winter</ThemedText>
+              </Pressable>
+            </View>
+          </View>
 
           <TextInput
             value={description}
@@ -552,6 +570,18 @@ const styles = StyleSheet.create({
   yesNoOption: {
     alignItems: 'center',
     gap: Spacing.one,
+  },
+  seasonRow: {
+    gap: Spacing.two,
+  },
+  seasonOptions: {
+    flexDirection: 'row',
+    gap: Spacing.five,
+  },
+  seasonOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   checkbox: {
     width: 22,

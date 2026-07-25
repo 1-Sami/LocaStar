@@ -18,6 +18,9 @@ export type NearbyLocation = {
   category_slug: string | null;
   category_label: string | null;
   starts_at: string | null;
+  is_boosted: boolean;
+  available_summer: boolean;
+  available_winter: boolean;
 };
 
 export type NearbyLocationsParams = {
@@ -27,6 +30,7 @@ export type NearbyLocationsParams = {
   categorySlugs?: string[] | null;
   searchQuery?: string | null;
   sort?: "distance" | "rating";
+  season?: "summer" | "winter" | null;
 };
 
 export async function fetchNearbyLocations(
@@ -40,6 +44,7 @@ export async function fetchNearbyLocations(
     category_slugs: params.categorySlugs && params.categorySlugs.length > 0 ? params.categorySlugs : null,
     search_query: params.searchQuery ?? null,
     sort: params.sort ?? "distance",
+    season_filter: params.season ?? null,
   });
   if (error) throw error;
   return (data ?? []) as NearbyLocation[];
@@ -89,6 +94,8 @@ export type LocationDetail = {
   is_verified: boolean;
   claimed_by: string | null;
   owner_username: string | null;
+  available_summer: boolean;
+  available_winter: boolean;
 };
 
 type LocationDetailRow = {
@@ -116,6 +123,8 @@ type LocationDetailRow = {
   claimed_by: string | null;
   owner: { username: string | null } | null;
   location_categories: { categories: { slug: string; name: string } | null }[];
+  available_summer: boolean;
+  available_winter: boolean;
 };
 
 export type LocationSubmission = {
@@ -138,6 +147,8 @@ export type LocationSubmission = {
   publishAt?: string | null;
   expiresAt?: string | null;
   otherCategoryDetail?: string | null;
+  availableSummer?: boolean;
+  availableWinter?: boolean;
 };
 
 export async function submitLocation(client: SupabaseClient, input: LocationSubmission): Promise<string> {
@@ -161,6 +172,8 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       publish_at: input.publishAt ?? new Date().toISOString(),
       expires_at: input.expiresAt ?? null,
       other_category_detail: input.otherCategoryDetail ?? null,
+      available_summer: input.availableSummer ?? false,
+      available_winter: input.availableWinter ?? false,
     })
     .select("id")
     .single();
@@ -238,7 +251,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -273,6 +286,8 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     owner_username: row.is_verified ? (row.owner?.username ?? null) : null,
     category_slug: primaryCategory?.slug ?? null,
     category_label: primaryCategory?.name ?? null,
+    available_summer: row.available_summer,
+    available_winter: row.available_winter,
   };
 }
 
@@ -343,6 +358,8 @@ export type LocationUpdate = {
   address: string | null;
   hours: OpeningHours | null;
   hoursNotApplicable: boolean;
+  availableSummer: boolean;
+  availableWinter: boolean;
 };
 
 export async function updateLocation(
@@ -358,6 +375,8 @@ export async function updateLocation(
       address: input.address,
       hours: input.hoursNotApplicable ? null : input.hours,
       hours_not_applicable: input.hoursNotApplicable,
+      available_summer: input.availableSummer,
+      available_winter: input.availableWinter,
     })
     .eq("id", locationId);
   if (error) throw error;

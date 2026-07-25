@@ -329,3 +329,55 @@ export async function fetchListMembershipForLocation(
   if (error) throw error;
   return new Set((data ?? []).map((row) => row.list_id as string));
 }
+
+export type PublicList = LocationList & {
+  ownerUsername: string | null;
+  ownerDisplayName: string | null;
+};
+
+type PublicListRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  is_public: boolean;
+  list_items: { count: number }[];
+  owner: { username: string | null; display_name: string | null } | null;
+};
+
+export async function fetchPublicLists(
+  client: SupabaseClient,
+  viewerUserId?: string | null
+): Promise<PublicList[]> {
+  const { data, error } = await client
+    .from("lists")
+    .select(
+      "id, name, description, created_at, is_public, list_items(count), owner:profiles!lists_user_id_fkey(username, display_name)"
+    )
+    .eq("is_public", true)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as PublicListRow[];
+  const listIds = rows.map((row) => row.id);
+  if (listIds.length === 0) return [];
+
+  const [previewByList, likesByList] = await Promise.all([
+    fetchPreviewLocationIds(client, listIds),
+    fetchLikeInfo(client, listIds, viewerUserId ?? ""),
+  ]);
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    itemCount: row.list_items?.[0]?.count ?? 0,
+    createdAt: row.created_at,
+    isPublic: row.is_public,
+    likeCount: likesByList.get(row.id)?.count ?? 0,
+    likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
+    previewLocationIds: previewByList.get(row.id) ?? [],
+    ownerUsername: row.owner?.username ?? null,
+    ownerDisplayName: row.owner?.display_name ?? null,
+  }));
+}

@@ -33,6 +33,8 @@ export default function EditLocationScreen() {
   const [address, setAddress] = useState('');
   const [hours, setHours] = useState<OpeningHours>({});
   const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
+  const [availableSummer, setAvailableSummer] = useState(false);
+  const [availableWinter, setAvailableWinter] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -52,6 +54,8 @@ export default function EditLocationScreen() {
             setAddress(location.address ?? '');
             setHours(location.hours ?? {});
             setHoursNotApplicable(location.hours_not_applicable);
+            setAvailableSummer(location.available_summer);
+            setAvailableWinter(location.available_winter);
           }
           setCategoryIds(existingCategoryIds);
         })
@@ -88,6 +92,8 @@ export default function EditLocationScreen() {
         address: address.trim() || null,
         hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
         hoursNotApplicable,
+        availableSummer,
+        availableWinter,
       });
       await setLocationCategories(supabase, id, categoryIds);
       setSaved(true);
@@ -162,6 +168,30 @@ export default function EditLocationScreen() {
           </Pressable>
 
           {!hoursNotApplicable && <OpeningHoursEditor hours={hours} onChange={setHours} />}
+
+          <View style={styles.seasonRow}>
+            <ThemedText type="default">When is this available? (optional)</ThemedText>
+            <View style={styles.seasonOptions}>
+              <Pressable
+                style={styles.seasonOption}
+                onPress={() => {
+                  setAvailableSummer((v) => !v);
+                  setSaved(false);
+                }}>
+                <View style={[styles.checkbox, availableSummer && styles.checkboxChecked]} />
+                <ThemedText type="small">☀ Summer</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.seasonOption}
+                onPress={() => {
+                  setAvailableWinter((v) => !v);
+                  setSaved(false);
+                }}>
+                <View style={[styles.checkbox, availableWinter && styles.checkboxChecked]} />
+                <ThemedText type="small">❄ Winter</ThemedText>
+              </Pressable>
+            </View>
+          </View>
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -244,6 +274,18 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: '#14747A',
     borderColor: '#14747A',
+  },
+  seasonRow: {
+    gap: Spacing.two,
+  },
+  seasonOptions: {
+    flexDirection: 'row',
+    gap: Spacing.five,
+  },
+  seasonOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
