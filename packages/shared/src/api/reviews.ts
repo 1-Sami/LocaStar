@@ -124,6 +124,31 @@ export async function addReviewPhoto(client: SupabaseClient, reviewId: string, s
   if (error) throw error;
 }
 
+export type ReviewPhoto = {
+  id: string;
+  storagePath: string;
+  url: string;
+};
+
+export async function fetchReviewPhotos(client: SupabaseClient, reviewId: string): Promise<ReviewPhoto[]> {
+  const { data, error } = await client.from("review_photos").select("id, storage_path").eq("review_id", reviewId);
+  if (error) throw error;
+
+  return ((data ?? []) as { id: string; storage_path: string }[]).map((row) => ({
+    id: row.id,
+    storagePath: row.storage_path,
+    url: client.storage.from("media").getPublicUrl(row.storage_path).data.publicUrl,
+  }));
+}
+
+export async function deleteReviewPhoto(client: SupabaseClient, photo: ReviewPhoto): Promise<void> {
+  const { error } = await client.from("review_photos").delete().eq("id", photo.id);
+  if (error) throw error;
+  // Best-effort storage cleanup — the row is what controls display, so an
+  // orphaned object here shouldn't fail the user's save.
+  await client.storage.from("media").remove([photo.storagePath]);
+}
+
 export type ReviewReportInput = {
   reviewId: string;
   reporterId: string;

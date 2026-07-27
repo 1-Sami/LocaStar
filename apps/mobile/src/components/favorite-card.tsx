@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -32,9 +33,11 @@ export function FavoriteCard({
             </ThemedText>
           </Pressable>
           <Pressable style={styles.iconButton} onPress={onToggleBucketList} hitSlop={8}>
-            <ThemedText style={isBucketListed ? styles.iconActiveBucket : styles.iconInactive}>
-              {isBucketListed ? '★' : '☆'}
-            </ThemedText>
+            <Ionicons
+              name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
+              size={15}
+              color={isBucketListed ? '#F5C242' : '#ffffff'}
+            />
           </Pressable>
         </View>
       </View>
@@ -86,10 +89,6 @@ const styles = StyleSheet.create({
   },
   iconActiveFavorite: {
     color: '#4CD37A',
-    fontSize: 15,
-  },
-  iconActiveBucket: {
-    color: '#F5C242',
     fontSize: 15,
   },
   nameRow: {

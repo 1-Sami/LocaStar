@@ -100,6 +100,8 @@ export default function AddLocationScreen() {
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
   const [geocoding, setGeocoding] = useState(false);
+  const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
+  const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
   const [visibleAsCreator, setVisibleAsCreator] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -128,8 +130,11 @@ export default function AddLocationScreen() {
     setGeocoding(true);
     Location.reverseGeocodeAsync(next)
       .then((results) => {
-        const formatted = results[0] ? formatReverseGeocodeResult(results[0]) : '';
+        const result = results[0];
+        const formatted = result ? formatReverseGeocodeResult(result) : '';
         if (formatted) setAddress(formatted);
+        setGeocodedCity(result?.city ?? null);
+        setGeocodedCountry(result?.country ?? null);
       })
       .catch(() => {})
       .finally(() => setGeocoding(false));
@@ -202,6 +207,8 @@ export default function AddLocationScreen() {
         name: name.trim(),
         description: description.trim() || null,
         address: address.trim(),
+        city: geocodedCity,
+        country: geocodedCountry,
         lat: pinCoords.latitude,
         lng: pinCoords.longitude,
         categoryIds,

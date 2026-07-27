@@ -14,6 +14,7 @@ import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useNotificationsBadge } from '@/lib/notifications-context';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -25,9 +26,9 @@ const TABS: { name: string; href: string; label: string; icon: IconName; iconAct
   {
     name: 'favorites',
     href: '/favorites',
-    label: 'Favorites',
-    icon: 'heart-outline',
-    iconActive: 'heart',
+    label: 'Saved',
+    icon: 'bookmark-outline',
+    iconActive: 'bookmark',
   },
   {
     name: 'profile',
@@ -39,6 +40,7 @@ const TABS: { name: string; href: string; label: string; icon: IconName; iconAct
 ];
 
 export default function AppTabs() {
+  const { unreadCount } = useNotificationsBadge();
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
@@ -46,7 +48,7 @@ export default function AppTabs() {
         <CustomTabList>
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href as never} asChild>
-              <TabButton icon={tab.icon} iconActive={tab.iconActive}>
+              <TabButton icon={tab.icon} iconActive={tab.iconActive} showBadge={tab.name === 'profile' && unreadCount > 0}>
                 {tab.label}
               </TabButton>
             </TabTrigger>
@@ -62,17 +64,21 @@ export function TabButton({
   isFocused,
   icon,
   iconActive,
+  showBadge,
   ...props
-}: TabTriggerSlotProps & { icon: IconName; iconActive: IconName }) {
+}: TabTriggerSlotProps & { icon: IconName; iconActive: IconName; showBadge?: boolean }) {
   const theme = useTheme();
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <View style={styles.tabButtonView}>
-        <Ionicons
-          name={isFocused ? iconActive : icon}
-          size={22}
-          color={isFocused ? theme.primary : theme.textSecondary}
-        />
+        <View>
+          <Ionicons
+            name={isFocused ? iconActive : icon}
+            size={22}
+            color={isFocused ? theme.primary : theme.textSecondary}
+          />
+          {showBadge && <View style={styles.badgeDot} />}
+        </View>
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
@@ -121,5 +127,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E05252',
   },
 });

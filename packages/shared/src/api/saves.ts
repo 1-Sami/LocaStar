@@ -42,6 +42,8 @@ export type SavedLocation = {
   name: string;
   description: string | null;
   address: string | null;
+  city: string | null;
+  country: string | null;
   avg_rating: number;
   review_count: number;
   kind: "place" | "activity";
@@ -49,7 +51,7 @@ export type SavedLocation = {
 };
 
 const JOINED_LOCATION_SELECT =
-  "location:locations(id, name, description, address, avg_rating, review_count, kind, location_categories(categories(slug)))";
+  "location:locations(id, name, description, address, city, country, avg_rating, review_count, kind, location_categories(categories(slug)))";
 
 type JoinedLocationRow = {
   location: {
@@ -57,6 +59,8 @@ type JoinedLocationRow = {
     name: string;
     description: string | null;
     address: string | null;
+    city: string | null;
+    country: string | null;
     avg_rating: number;
     review_count: number;
     kind: "place" | "activity";
@@ -72,6 +76,8 @@ function mapJoinedLocation(row: JoinedLocationRow): SavedLocation | null {
     name: location.name,
     description: location.description,
     address: location.address,
+    city: location.city,
+    country: location.country,
     avg_rating: location.avg_rating,
     review_count: location.review_count,
     kind: location.kind,

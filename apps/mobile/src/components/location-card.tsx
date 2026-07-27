@@ -1,16 +1,24 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
-import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
-import { CategoryColors, Spacing } from '@/constants/theme';
+import { CategoryColors, SearchPalette, Spacing } from '@/constants/theme';
 import { openDirections } from '@/lib/directions';
 import type { CardLocation } from '@/types/location';
 
-const IMAGE_HEIGHT = 160;
+const IMAGE_WIDTH = 100;
+// Used only for the very first paint, before onLayout reports the content column's real height.
+const FALLBACK_IMAGE_HEIGHT = 96;
 
 function formatCardDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function cityCountryLabel(location: CardLocation): string | null {
+  const parts = [location.city, location.country].filter((part): part is string => Boolean(part && part.trim()));
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 export function LocationCard({
@@ -28,72 +36,93 @@ export function LocationCard({
   onToggleBucketList: () => void;
   onPress?: () => void;
 }) {
-  const cardColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
+  const categoryColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
+  const cityCountry = cityCountryLabel(location);
+  const [contentHeight, setContentHeight] = useState<number | null>(null);
+  const handleContentLayout = (event: LayoutChangeEvent) => {
+    setContentHeight(event.nativeEvent.layout.height);
+  };
 
   return (
-    <Pressable style={[styles.card, { backgroundColor: cardColor }]} onPress={onPress}>
+    <Pressable style={[styles.card, { borderColor: categoryColor }]} onPress={onPress}>
       <View style={styles.mainRow}>
-        <View style={styles.imageWrapper}>
+        <View style={[styles.imageWrapper, { height: contentHeight ?? FALLBACK_IMAGE_HEIGHT }]}>
           <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
-          <View style={[styles.categoryBadge, { backgroundColor: cardColor }]}>
-            <ThemedText type="small" style={styles.whiteText} numberOfLines={1}>
-              {location.categoryLabel}
+          <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
+            <ThemedText type="small" style={styles.categoryBadgeText} numberOfLines={1}>
+              {location.categoryLabel.toUpperCase()}
             </ThemedText>
           </View>
         </View>
 
-        <View style={styles.content}>
+        <View style={styles.content} onLayout={handleContentLayout}>
           <View style={styles.titleRow}>
-            <ThemedText type="smallBold" style={[styles.whiteText, styles.titleText]} numberOfLines={1}>
+            <ThemedText type="smallBold" style={styles.titleText} numberOfLines={1}>
               {location.name}
             </ThemedText>
             <View style={styles.iconRow}>
               <Pressable onPress={onToggleFavorite} hitSlop={8}>
-                <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.iconInactive}>
-                  {isFavorite ? '♥' : '♡'}
-                </ThemedText>
+                <Ionicons
+                  name={isFavorite ? 'heart' : 'heart-outline'}
+                  size={19}
+                  color={isFavorite ? '#4CD37A' : SearchPalette.text}
+                />
               </Pressable>
               <Pressable onPress={onToggleBucketList} hitSlop={8}>
-                <ThemedText style={isBucketListed ? styles.iconActiveBucket : styles.iconInactive}>
-                  {isBucketListed ? '★' : '☆'}
-                </ThemedText>
+                <Ionicons
+                  name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
+                  size={19}
+                  color={isBucketListed ? SearchPalette.accent : SearchPalette.text}
+                />
               </Pressable>
             </View>
           </View>
+
           <View style={styles.ratingRow}>
-            <StarRating rating={location.rating} />
-            <ThemedText type="small" style={styles.whiteText}>
-              {location.rating.toFixed(1)} ({location.reviewCount})
+            <Ionicons name="star" size={14} color={SearchPalette.accent} />
+            <ThemedText type="smallBold" style={styles.ratingText}>
+              {location.rating.toFixed(1)}
+            </ThemedText>
+            <ThemedText type="small" style={styles.mutedText}>
+              ({location.reviewCount})
             </ThemedText>
           </View>
+
           {location.kind === 'activity' && location.startsAt && (
-            <ThemedText type="smallBold" style={[styles.whiteText, styles.startsAtText]}>
+            <ThemedText type="small" style={[styles.mutedText, styles.startsAtText]}>
               📅 {formatCardDate(location.startsAt)}
             </ThemedText>
           )}
-          <ThemedText type="small" style={[styles.whiteText, styles.description]} numberOfLines={3}>
-            {location.description}
-          </ThemedText>
-        </View>
-      </View>
 
-      <View style={styles.footerRow}>
-        {location.address ? (
-          <ThemedText type="small" style={[styles.whiteText, styles.addressText]} numberOfLines={1}>
-            {location.address}
-          </ThemedText>
-        ) : location.distanceKm !== null ? (
-          <ThemedText type="small" style={[styles.whiteTextSecondary, styles.addressText]} numberOfLines={1}>
-            ~{location.distanceKm} km from city
-          </ThemedText>
-        ) : (
-          <View />
-        )}
-        <Pressable onPress={() => openDirections(location.address ?? location.name)}>
-          <ThemedText type="smallBold" style={[styles.whiteText, styles.directionsText]}>
-            Directions
-          </ThemedText>
-        </Pressable>
+          {location.address ? (
+            <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
+              {location.address}
+            </ThemedText>
+          ) : location.distanceKm !== null ? (
+            <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
+              ~{location.distanceKm} km from city
+            </ThemedText>
+          ) : null}
+
+          <View style={styles.bottomRow}>
+            {cityCountry ? (
+              <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.bottomRowFill]}>
+                {cityCountry}
+              </ThemedText>
+            ) : (
+              <View style={styles.bottomRowFill} />
+            )}
+            <Pressable
+              style={styles.directionsButton}
+              onPress={() => openDirections(location.address ?? location.name)}
+              hitSlop={8}>
+              <ThemedText type="smallBold" style={styles.directionsText}>
+                Direction
+              </ThemedText>
+              <Ionicons name="arrow-forward" size={14} color={SearchPalette.text} />
+            </Pressable>
+          </View>
+        </View>
       </View>
     </Pressable>
   );
@@ -101,22 +130,22 @@ export function LocationCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Spacing.three,
+    backgroundColor: SearchPalette.card,
+    borderRadius: 14,
+    borderWidth: 1.5,
     overflow: 'hidden',
   },
   mainRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    alignItems: 'flex-start',
   },
   imageWrapper: {
-    width: '48%',
-    height: IMAGE_HEIGHT,
+    width: IMAGE_WIDTH,
     position: 'relative',
   },
   image: {
     width: '100%',
     height: '100%',
-    borderRadius: Spacing.three,
   },
   categoryBadge: {
     position: 'absolute',
@@ -124,12 +153,18 @@ const styles = StyleSheet.create({
     left: Spacing.two,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
-    borderRadius: Spacing.five,
+    borderRadius: 4,
+  },
+  categoryBadgeText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
-    paddingTop: Spacing.one,
-    paddingRight: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.half,
   },
   titleRow: {
     flexDirection: 'row',
@@ -139,57 +174,47 @@ const styles = StyleSheet.create({
   },
   titleText: {
     flex: 1,
-    fontSize: 17,
-    lineHeight: 22,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginTop: Spacing.half,
+    fontSize: 15.5,
+    lineHeight: 20,
+    color: SearchPalette.text,
   },
   iconRow: {
     flexDirection: 'row',
     gap: Spacing.two,
   },
-  iconInactive: {
-    color: '#ffffff',
-    fontSize: 26,
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
   },
-  iconActiveFavorite: {
-    color: '#4CD37A',
-    fontSize: 26,
+  ratingText: {
+    color: SearchPalette.text,
   },
-  iconActiveBucket: {
-    color: '#F5C242',
-    fontSize: 26,
-  },
-  whiteText: {
-    color: '#ffffff',
-  },
-  whiteTextSecondary: {
-    color: 'rgba(255,255,255,0.75)',
+  mutedText: {
+    color: SearchPalette.textMuted,
   },
   startsAtText: {
     marginTop: Spacing.half,
   },
-  description: {
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: Spacing.three,
+  addressLine: {
+    marginTop: Spacing.half,
   },
-  footerRow: {
+  bottomRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.two,
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    marginTop: Spacing.half,
   },
-  addressText: {
+  bottomRowFill: {
     flex: 1,
-    marginRight: Spacing.two,
+  },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
   },
   directionsText: {
-    textDecorationLine: 'underline',
+    color: SearchPalette.text,
   },
 });

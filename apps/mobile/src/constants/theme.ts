@@ -50,6 +50,20 @@ export const CategoryColors: Record<string, string> = {
   default: '#33363B',
 };
 
+/**
+ * Fixed near-black palette for the redesigned Search screen. Deliberately not
+ * theme-adaptive (light/dark) — this is a dedicated dark UI treatment per spec.
+ */
+export const SearchPalette = {
+  background: '#0A0A0A',
+  card: '#141414',
+  hairline: '#202020',
+  inputBorder: '#2A2A2A',
+  text: '#F2F2F2',
+  textMuted: '#8A8A8A',
+  accent: '#E8A93B',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

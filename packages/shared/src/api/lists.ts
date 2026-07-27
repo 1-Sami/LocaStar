@@ -146,6 +146,8 @@ export type ListItemLocation = {
   name: string;
   description: string | null;
   address: string | null;
+  city: string | null;
+  country: string | null;
   avgRating: number;
   reviewCount: number;
   kind: "place" | "activity";
@@ -161,6 +163,8 @@ type ListItemRow = {
     name: string;
     description: string | null;
     address: string | null;
+    city: string | null;
+    country: string | null;
     avg_rating: number;
     review_count: number;
     kind: "place" | "activity";
@@ -173,7 +177,7 @@ export async function fetchListItems(client: SupabaseClient, listId: string): Pr
   const { data, error } = await client
     .from("list_items")
     .select(
-      "note, location:locations(id, name, description, address, avg_rating, review_count, kind, location_categories(categories(slug)), location_photos(storage_path))"
+      "note, location:locations(id, name, description, address, city, country, avg_rating, review_count, kind, location_categories(categories(slug)), location_photos(storage_path))"
     )
     .eq("list_id", listId)
     .order("added_at", { ascending: false });
@@ -188,6 +192,8 @@ export async function fetchListItems(client: SupabaseClient, listId: string): Pr
         name: row.location!.name,
         description: row.location!.description,
         address: row.location!.address,
+        city: row.location!.city,
+        country: row.location!.country,
         avgRating: row.location!.avg_rating,
         reviewCount: row.location!.review_count,
         kind: row.location!.kind,

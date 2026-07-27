@@ -1,17 +1,15 @@
 import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
 import { LocationCard } from '@/components/location-card';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, SearchPalette, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
-import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
@@ -24,12 +22,14 @@ const SORT_OPTIONS = [
   { key: 'rating', label: 'Highest rated' },
 ] as const;
 
+// Pink → silver → green sheen for the "Filter" chip's border.
+const FILTER_BORDER_GRADIENT = ['#E84CA9', '#C9CDD3', '#4CD37A'] as const;
+
 export default function SearchScreen() {
   const { season: initialSeason, sort: initialSort } = useLocalSearchParams<{ season?: string; sort?: string }>();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NearbyLocation[]>([]);
   const [loading, setLoading] = useState(false);
-  const theme = useTheme();
   const router = useRouter();
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
@@ -83,19 +83,25 @@ export default function SearchScreen() {
   }, [coords, query, activeSlugs, sortBy, activeSeason]);
 
   const cards = results.map(nearbyLocationToCard);
+  const sortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort';
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedView type="backgroundElement" style={styles.searchBar}>
+        <View style={styles.exploreBadge}>
+          <Text style={styles.exploreTitle}>Explore</Text>
+        </View>
+
+        <View style={styles.searchBar}>
+          <Ionicons name="search-sharp" size={16} color={SearchPalette.textMuted} style={styles.searchIcon} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="SEARCH PLACES"
+            placeholderTextColor={SearchPalette.textMuted}
+            style={styles.searchInput}
           />
-        </ThemedView>
+        </View>
 
         <FlatList
           horizontal
@@ -105,11 +111,17 @@ export default function SearchScreen() {
           data={categories.filter((c) => activeSlugs.includes(c.slug))}
           keyExtractor={(item) => item.slug}
           ListHeaderComponent={
-            <Pressable style={styles.activitiesButton} onPress={() => setPickerVisible(true)}>
-              <Ionicons name="filter" size={16} color="#ffffff" />
-              <ThemedText type="smallBold" style={styles.activitiesButtonText}>
-                Activities ▾
-              </ThemedText>
+            <Pressable onPress={() => setPickerVisible(true)}>
+              <LinearGradient
+                colors={FILTER_BORDER_GRADIENT}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.filterButtonGradient}>
+                <View style={styles.filterButton}>
+                  <Ionicons name="options-sharp" size={15} color={SearchPalette.text} />
+                  <Text style={styles.filterButtonText}>FILTER</Text>
+                </View>
+              </LinearGradient>
             </Pressable>
           }
           renderItem={({ item }) => (
@@ -121,23 +133,6 @@ export default function SearchScreen() {
           )}
         />
 
-        <View style={styles.seasonFilterRow}>
-          <Pressable
-            style={[styles.seasonChip, { borderColor: theme.backgroundSelected }, activeSeason === 'summer' && styles.seasonChipActive]}
-            onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
-            <ThemedText type="small" style={activeSeason === 'summer' ? styles.seasonChipTextActive : undefined}>
-              ☀ Summer
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            style={[styles.seasonChip, { borderColor: theme.backgroundSelected }, activeSeason === 'winter' && styles.seasonChipActive]}
-            onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
-            <ThemedText type="small" style={activeSeason === 'winter' ? styles.seasonChipTextActive : undefined}>
-              ❄ Winter
-            </ThemedText>
-          </Pressable>
-        </View>
-
         {(activeSlugs.length > 0 || activeSeason !== null) && (
           <Pressable
             style={styles.resetFiltersButton}
@@ -145,37 +140,26 @@ export default function SearchScreen() {
               setActiveSlugs([]);
               setActiveSeason(null);
             }}>
-            <Ionicons name="close-circle-outline" size={14} color={theme.textSecondary} />
-            <ThemedText type="small" themeColor="textSecondary">
-              Reset filters
-            </ThemedText>
+            <Text style={styles.resetFiltersText}>Reset filter</Text>
           </Pressable>
         )}
 
         <View style={styles.metaRow}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {loading ? 'Searching…' : `Total ${cards.length}`}
-          </ThemedText>
-          <Pressable
-            style={[styles.sortButton, { backgroundColor: theme.backgroundSelected }]}
-            onPress={() => setSortMenuVisible(true)}>
-            <ThemedText type="small">{SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort'}</ThemedText>
-            <Ionicons name="chevron-down" size={14} color={theme.text} />
+          <Text style={styles.resultsCountText}>{loading ? 'SEARCHING…' : `${cards.length} RESULTS`}</Text>
+          <Pressable style={styles.sortButton} onPress={() => setSortMenuVisible(true)}>
+            <Text style={styles.sortButtonText}>{sortLabel.toUpperCase()}</Text>
+            <Ionicons name="swap-vertical-sharp" size={14} color={SearchPalette.text} />
           </Pressable>
         </View>
 
         {loading ? (
-          <ActivityIndicator style={styles.loadingIndicator} />
+          <ActivityIndicator style={styles.loadingIndicator} color={SearchPalette.accent} />
         ) : (
           <FlatList
             data={cards}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                No matches.
-              </ThemedText>
-            }
+            ListEmptyComponent={<Text style={styles.emptyText}>No matches.</Text>}
             renderItem={({ item }) => (
               <LocationCard
                 location={item}
@@ -192,10 +176,30 @@ export default function SearchScreen() {
 
       <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={() => setPickerVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setPickerVisible(false)}>
-          <ThemedView type="backgroundElement" style={styles.modalContent}>
-            <ThemedText type="subtitle" style={styles.modalTitle}>
-              Activities
-            </ThemedText>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Filter</Text>
+
+            <Text style={styles.modalSectionLabel}>SEASON</Text>
+            <View style={styles.modalSeasonRow}>
+              <Pressable
+                style={[styles.modalSeasonChip, activeSeason === 'summer' && styles.modalSeasonChipActive]}
+                onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
+                <Text
+                  style={[styles.modalSeasonChipText, activeSeason === 'summer' && styles.modalSeasonChipTextActive]}>
+                  ☀ Summer
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalSeasonChip, activeSeason === 'winter' && styles.modalSeasonChipActive]}
+                onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
+                <Text
+                  style={[styles.modalSeasonChipText, activeSeason === 'winter' && styles.modalSeasonChipTextActive]}>
+                  ❄ Winter
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSectionLabel}>ACTIVITIES</Text>
             <ScrollView style={styles.modalScroll}>
               {categories.map((category) => {
                 const active = activeSlugs.includes(category.slug);
@@ -208,22 +212,20 @@ export default function SearchScreen() {
                         active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
                       )
                     }>
-                    <ThemedText type="default">{category.name}</ThemedText>
-                    <ThemedText type="default">{active ? '✓' : ''}</ThemedText>
+                    <Text style={styles.modalRowText}>{category.name}</Text>
+                    {active && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
                   </Pressable>
                 );
               })}
             </ScrollView>
-          </ThemedView>
+          </View>
         </Pressable>
       </Modal>
 
       <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
-          <ThemedView type="backgroundElement" style={styles.modalContent}>
-            <ThemedText type="subtitle" style={styles.modalTitle}>
-              Sort by
-            </ThemedText>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Sort by</Text>
             {SORT_OPTIONS.map((option) => (
               <Pressable
                 key={option.key}
@@ -232,20 +234,24 @@ export default function SearchScreen() {
                   setSortBy(option.key);
                   setSortMenuVisible(false);
                 }}>
-                <ThemedText type="default">{option.label}</ThemedText>
-                <ThemedText type="default">{sortBy === option.key ? '✓' : ''}</ThemedText>
+                <Text style={styles.modalRowText}>{option.label}</Text>
+                {sortBy === option.key && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
               </Pressable>
             ))}
-          </ThemedView>
+          </View>
         </Pressable>
       </Modal>
-    </ThemedView>
+    </View>
   );
 }
+
+const MONO_FONT = Fonts.mono;
+const SERIF_FONT = Fonts.serif;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: SearchPalette.background,
   },
   safeArea: {
     flex: 1,
@@ -253,66 +259,81 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
+  exploreBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: SearchPalette.card,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    marginHorizontal: Spacing.three,
+  },
+  exploreTitle: {
+    fontFamily: SERIF_FONT,
+    fontSize: 24,
+    fontWeight: '700',
+    color: SearchPalette.text,
+  },
   searchBar: {
     marginHorizontal: Spacing.three,
     marginTop: Spacing.two,
-    borderRadius: Spacing.five,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: SearchPalette.inputBorder,
+    backgroundColor: SearchPalette.card,
     paddingHorizontal: Spacing.three,
   },
+  searchIcon: {
+    marginRight: Spacing.two,
+  },
   searchInput: {
-    height: 44,
-    fontSize: 16,
+    flex: 1,
+    fontFamily: MONO_FONT,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    color: SearchPalette.text,
   },
   filterRow: {
     flexGrow: 0,
-    minHeight: 44,
+    height: 44,
     marginTop: Spacing.three,
   },
   filterRowContent: {
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
     gap: Spacing.two,
     alignItems: 'center',
   },
-  activitiesButton: {
+  filterButtonGradient: {
+    borderRadius: 10,
+    padding: 1.5,
+  },
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    backgroundColor: '#B5432E',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    marginRight: Spacing.two,
+    borderRadius: 8.5,
+    backgroundColor: SearchPalette.card,
   },
-  activitiesButtonText: {
-    color: '#ffffff',
-  },
-  seasonFilterRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    marginTop: Spacing.one,
-  },
-  seasonChip: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.five,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  seasonChipActive: {
-    backgroundColor: '#14747A',
-    borderColor: '#14747A',
-  },
-  seasonChipTextActive: {
-    color: '#ffffff',
+  filterButtonText: {
+    fontFamily: MONO_FONT,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: SearchPalette.text,
   },
   resetFiltersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.half,
     alignSelf: 'flex-start',
     paddingHorizontal: Spacing.three,
     marginTop: Spacing.one,
+  },
+  resetFiltersText: {
+    fontFamily: MONO_FONT,
+    fontSize: 12,
+    color: SearchPalette.textMuted,
   },
   metaRow: {
     flexDirection: 'row',
@@ -322,16 +343,27 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     marginTop: Spacing.four,
   },
+  resultsCountText: {
+    fontFamily: MONO_FONT,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: SearchPalette.textMuted,
+  },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
+  },
+  sortButtonText: {
+    fontFamily: MONO_FONT,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: SearchPalette.text,
   },
   listContent: {
     paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.three,
   },
@@ -341,11 +373,12 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     marginTop: Spacing.six,
+    color: SearchPalette.textMuted,
   },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   modalContent: {
     maxHeight: '70%',
@@ -353,11 +386,44 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Spacing.four,
     padding: Spacing.four,
     gap: Spacing.two,
+    backgroundColor: SearchPalette.card,
   },
   modalTitle: {
+    fontFamily: MONO_FONT,
     fontSize: 20,
     lineHeight: 26,
+    fontWeight: '700',
+    color: SearchPalette.text,
     marginBottom: Spacing.two,
+  },
+  modalSectionLabel: {
+    fontFamily: MONO_FONT,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: SearchPalette.textMuted,
+  },
+  modalSeasonRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  modalSeasonChip: {
+    borderWidth: 1,
+    borderColor: SearchPalette.inputBorder,
+    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  modalSeasonChipActive: {
+    backgroundColor: SearchPalette.accent,
+    borderColor: SearchPalette.accent,
+  },
+  modalSeasonChipText: {
+    color: SearchPalette.text,
+  },
+  modalSeasonChipTextActive: {
+    color: '#0A0A0A',
+    fontWeight: '700',
   },
   modalScroll: {
     flexGrow: 0,
@@ -365,6 +431,13 @@ const styles = StyleSheet.create({
   modalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: Spacing.two,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: SearchPalette.hairline,
+  },
+  modalRowText: {
+    color: SearchPalette.text,
+    fontSize: 16,
   },
 });

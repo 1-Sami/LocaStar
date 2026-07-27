@@ -1,5 +1,5 @@
 import { fetchOpenReportsCount, fetchProfile, fetchProfileStats, type ProfileStats } from '@locastar/shared';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -9,8 +9,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
+import { useNotificationsBadge } from '@/lib/notifications-context';
 import { supabase } from '@/lib/supabase';
 
 const EMPTY_STATS: ProfileStats = {
@@ -46,9 +48,16 @@ const STAT_SECTIONS: Record<string, string> = {
 const PRIMARY_MENU_ITEMS = ['My reviews', 'My lists', 'Friends', 'Add location', 'Add activity'];
 const SECONDARY_MENU_ITEMS = ['Settings', 'About'];
 
-const MENU_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+const MENU_ICONS: Record<
+  string,
+  { icon: keyof typeof Ionicons.glyphMap; family?: 'ionicons'; color: string } | {
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    family: 'material';
+    color: string;
+  }
+> = {
   'My reviews': { icon: 'create-outline', color: '#4CD37A' },
-  'My lists': { icon: 'bookmark-outline', color: '#4C8FE8' },
+  'My lists': { icon: 'folder-marker-outline', family: 'material', color: '#4C8FE8' },
   Friends: { icon: 'people-outline', color: '#F5738A' },
   'Add location': { icon: 'add-circle-outline', color: '#C34CE8' },
   'Add activity': { icon: 'time-outline', color: '#E8A93B' },
@@ -73,6 +82,8 @@ function BrandFooter() {
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
+  const { unreadCount } = useNotificationsBadge();
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -198,6 +209,10 @@ export default function ProfileScreen() {
               Email: {session.user.email}
             </ThemedText>
           </View>
+          <Pressable style={styles.notificationBellButton} onPress={() => router.push('/notifications')} hitSlop={8}>
+            <Ionicons name="notifications-outline" size={24} color={theme.text} />
+            {unreadCount > 0 && <View style={styles.notificationDot} />}
+          </Pressable>
         </View>
 
         <ScrollView
@@ -234,7 +249,11 @@ export default function ProfileScreen() {
                   <View style={styles.menuItemLeft}>
                     {iconConfig && (
                       <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
-                        <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                        {iconConfig.family === 'material' ? (
+                          <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                        ) : (
+                          <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                        )}
                       </View>
                     )}
                     <ThemedText type="default" style={styles.menuItemText}>
@@ -259,7 +278,11 @@ export default function ProfileScreen() {
                   <View style={styles.menuItemLeft}>
                     {iconConfig && (
                       <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
-                        <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                        {iconConfig.family === 'material' ? (
+                          <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                        ) : (
+                          <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+                        )}
                       </View>
                     )}
                     <ThemedText type="default" style={styles.menuItemText}>
@@ -308,6 +331,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: Spacing.two,
     paddingBottom: Spacing.three,
+  },
+  notificationBellButton: {
+    marginLeft: 'auto',
+    padding: Spacing.one,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: Spacing.one,
+    right: Spacing.one,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#E05252',
   },
   avatar: {
     width: 96,

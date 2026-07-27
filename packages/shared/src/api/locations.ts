@@ -12,6 +12,8 @@ export type NearbyLocation = {
   name: string;
   description: string | null;
   address: string | null;
+  city: string | null;
+  country: string | null;
   distance_m: number;
   avg_rating: number;
   review_count: number;
@@ -132,6 +134,8 @@ export type LocationSubmission = {
   name: string;
   description: string | null;
   address: string | null;
+  city?: string | null;
+  country?: string | null;
   lat: number;
   lng: number;
   categoryIds: string[];
@@ -159,6 +163,8 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       name: input.name,
       description: input.description,
       address: input.address,
+      city: input.city ?? null,
+      country: input.country ?? null,
       geom: `POINT(${input.lng} ${input.lat})`,
       created_by: input.userId,
       phone: input.phone ?? null,

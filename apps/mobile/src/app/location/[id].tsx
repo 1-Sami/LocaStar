@@ -14,22 +14,15 @@ import {
   type BusinessClaim,
   type DayKey,
   type LocationDetail,
+  type OpeningHours,
   type Review,
 } from '@locastar/shared';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToListModal } from '@/components/add-to-list-modal';
@@ -49,6 +42,10 @@ import { placeholderImage } from '@/lib/location-adapters';
 import { buildLocationShareLink } from '@/lib/public-link';
 import { supabase } from '@/lib/supabase';
 
+const TEAL = '#2BA3A3';
+const TEAL_TINT = 'rgba(43,163,163,0.15)';
+const DIRECTIONS_TEXT = '#0B3D2E';
+
 const HOURS_DAYS: { key: DayKey; label: string }[] = [
   { key: 'mon', label: 'Monday' },
   { key: 'tue', label: 'Tuesday' },
@@ -59,9 +56,61 @@ const HOURS_DAYS: { key: DayKey; label: string }[] = [
   { key: 'sun', label: 'Sunday' },
 ];
 
+// Sunday-first to match Date#getDay()'s 0-6 range.
+const DAY_ORDER: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+function getTodayKey(): DayKey {
+  return DAY_ORDER[new Date().getDay()];
+}
+
+function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabel: string; secondaryLabel: string } {
+  const now = new Date();
+  const todayIndex = now.getDay();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayEntry = hours[DAY_ORDER[todayIndex]];
+
+  if (todayEntry) {
+    const [oh, om] = todayEntry.open.split(':').map(Number);
+    const [ch, cm] = todayEntry.close.split(':').map(Number);
+    if (nowMinutes >= oh * 60 + om && nowMinutes < ch * 60 + cm) {
+      return { isOpen: true, primaryLabel: 'Open now', secondaryLabel: `Closes ${todayEntry.close}` };
+    }
+  }
+
+  for (let i = 0; i < 7; i++) {
+    const idx = (todayIndex + i) % 7;
+    const key = DAY_ORDER[idx];
+    const entry = hours[key];
+    if (!entry) continue;
+    const [oh, om] = entry.open.split(':').map(Number);
+    if (i === 0 && nowMinutes < oh * 60 + om) {
+      return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: `Opens ${entry.open}` };
+    }
+    if (i > 0) {
+      const dayLabel = HOURS_DAYS.find((d) => d.key === key)?.label ?? key;
+      return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: `Opens ${dayLabel} ${entry.open}` };
+    }
+  }
+  return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: 'Hours unavailable' };
+}
+
 function formatActivityDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+const AVATAR_COLORS = ['#4C8FE8', '#4CD37A', '#E8A93B', '#C34CE8', '#F5738A', '#2BA3A3', '#E2791F'];
+function avatarColorFor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+const REVIEW_SORT_OPTIONS = [
+  { key: 'newest', label: 'Newest' },
+  { key: 'highest', label: 'Highest rated' },
+  { key: 'lowest', label: 'Lowest rated' },
+] as const;
+type ReviewSort = (typeof REVIEW_SORT_OPTIONS)[number]['key'];
 
 export default function LocationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -87,6 +136,12 @@ export default function LocationDetailScreen() {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [galleryVisible, setGalleryVisible] = useState(false);
   const heroScrollRef = useRef<ScrollView>(null);
+
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [reviewSort, setReviewSort] = useState<ReviewSort>('newest');
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -192,8 +247,21 @@ export default function LocationDetailScreen() {
   const ratingCounts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
   const maxCount = Math.max(1, ...ratingCounts);
   const myReview = session ? reviews.find((r) => r.user_id === session.user.id) : undefined;
+  const canClaim = !location.is_verified && myClaim?.status !== 'pending';
+  const canShare = location.visibility !== 'private' || session?.user.id === location.created_by;
+  const canCopyLink = location.visibility !== 'private';
+  const hasHours = !location.hours_not_applicable && location.hours && Object.keys(location.hours).length > 0;
+  const hoursStatus = hasHours ? computeHoursStatus(location.hours!) : null;
+  const todayKey = getTodayKey();
+
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (reviewSort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (reviewSort === 'highest') return b.rating - a.rating;
+    return a.rating - b.rating;
+  });
 
   const handleOpenLocationReport = () => {
+    setMenuVisible(false);
     if (!session) {
       router.push('/sign-in');
       return;
@@ -232,6 +300,7 @@ export default function LocationDetailScreen() {
   };
 
   const handleOpenShare = () => {
+    setMenuVisible(false);
     if (!session) {
       router.push('/sign-in');
       return;
@@ -239,16 +308,18 @@ export default function LocationDetailScreen() {
     setShareVisible(true);
   };
 
-  const handleSendLink = async () => {
+  const handleCopyLink = async () => {
     const link = buildLocationShareLink(location.id);
-    try {
-      await Share.share({ message: `Check out ${location.name} on LocaStar: ${link}`, url: link });
-    } catch {
-      // user dismissed the share sheet — nothing to do
-    }
+    await Clipboard.setStringAsync(link);
+    setLinkCopied(true);
+    setTimeout(() => {
+      setLinkCopied(false);
+      setMenuVisible(false);
+    }, 900);
   };
 
   const handleOpenAddToList = () => {
+    setMenuVisible(false);
     if (!session) {
       router.push('/sign-in');
       return;
@@ -279,6 +350,7 @@ export default function LocationDetailScreen() {
   };
 
   const handleOpenClaim = () => {
+    setMenuVisible(false);
     if (!session) {
       router.push('/sign-in');
       return;
@@ -289,14 +361,6 @@ export default function LocationDetailScreen() {
   const goToPhoto = (index: number) => {
     setActivePhotoIndex(index);
     heroScrollRef.current?.scrollTo({ x: index * heroWidth, animated: true });
-  };
-
-  const handlePrevPhoto = () => {
-    goToPhoto((activePhotoIndex - 1 + heroImages.length) % heroImages.length);
-  };
-
-  const handleNextPhoto = () => {
-    goToPhoto((activePhotoIndex + 1) % heroImages.length);
   };
 
   const handleOpenGalleryAt = (index: number) => {
@@ -315,7 +379,12 @@ export default function LocationDetailScreen() {
         locationId: location.id,
         locationName: location.name,
         ...(myReview
-          ? { rating: String(myReview.rating), title: myReview.title ?? '', body: myReview.body ?? '' }
+          ? {
+              reviewId: myReview.id,
+              rating: String(myReview.rating),
+              title: myReview.title ?? '',
+              body: myReview.body ?? '',
+            }
           : {}),
       },
     });
@@ -342,71 +411,19 @@ export default function LocationDetailScreen() {
               ))}
             </ScrollView>
             <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back" size={22} color="#ffffff" />
+              <Ionicons name="arrow-back" size={18} color="#ffffff" />
             </Pressable>
-            {heroImages.length > 1 && (
-              <>
-                <Pressable
-                  style={[styles.heroArrowButton, styles.heroArrowLeft]}
-                  onPress={handlePrevPhoto}
-                  hitSlop={8}
-                  accessibilityLabel="Previous photo">
-                  <Ionicons name="chevron-back" size={22} color="#ffffff" />
-                </Pressable>
-                <Pressable
-                  style={[styles.heroArrowButton, styles.heroArrowRight]}
-                  onPress={handleNextPhoto}
-                  hitSlop={8}
-                  accessibilityLabel="Next photo">
-                  <Ionicons name="chevron-forward" size={22} color="#ffffff" />
-                </Pressable>
-              </>
-            )}
+            <Pressable style={styles.overflowButton} onPress={() => setMenuVisible(true)} hitSlop={8}>
+              <Ionicons name="ellipsis-horizontal" size={18} color="#ffffff" />
+            </Pressable>
             {photos.length > 0 && (
               <Pressable style={styles.photoCountButton} onPress={() => setGalleryVisible(true)}>
-                <Ionicons name="images-outline" size={15} color="#ffffff" />
+                <Ionicons name="images-outline" size={13} color="#ffffff" />
                 <ThemedText type="small" style={styles.photoCountText}>
-                  {photos.length}
+                  {activePhotoIndex + 1}/{photos.length}
                 </ThemedText>
               </Pressable>
             )}
-            <View style={styles.heroIconRow}>
-              <Pressable style={styles.heroIconButton} onPress={() => toggleFavorite(location.id)} hitSlop={8}>
-                <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.iconInactive}>
-                  {isFavorite ? '♥' : '♡'}
-                </ThemedText>
-              </Pressable>
-              <Pressable style={styles.heroIconButton} onPress={() => toggleBucketList(location.id)} hitSlop={8}>
-                <ThemedText style={isBucketListed ? styles.iconActiveBucket : styles.iconInactive}>
-                  {isBucketListed ? '★' : '☆'}
-                </ThemedText>
-              </Pressable>
-              {(location.visibility !== 'private' || session?.user.id === location.created_by) && (
-                <Pressable
-                  style={styles.heroIconButton}
-                  onPress={handleOpenShare}
-                  hitSlop={8}
-                  accessibilityLabel="Share this location">
-                  <Ionicons name="share-outline" size={20} color="#ffffff" />
-                </Pressable>
-              )}
-              {location.visibility !== 'private' && (
-                <Pressable
-                  style={styles.heroIconButton}
-                  onPress={handleSendLink}
-                  hitSlop={8}
-                  accessibilityLabel="Send a link to a friend">
-                  <Ionicons name="link-outline" size={20} color="#ffffff" />
-                </Pressable>
-              )}
-              <Pressable
-                style={styles.heroIconButton}
-                onPress={handleOpenLocationReport}
-                hitSlop={8}
-                accessibilityLabel="Report this location">
-                <Ionicons name="flag-outline" size={20} color="#ffffff" />
-              </Pressable>
-            </View>
             {heroImages.length > 1 && (
               <View style={styles.photoDotsRow} pointerEvents="none">
                 {heroImages.map((_, index) => (
@@ -423,9 +440,11 @@ export default function LocationDetailScreen() {
             <View style={styles.titleRow}>
               <View style={styles.titleRowLeft}>
                 {location.category_label && (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {location.category_label.toUpperCase()}
-                  </ThemedText>
+                  <View style={styles.categoryPill}>
+                    <ThemedText type="small" style={styles.categoryPillText}>
+                      {location.category_label}
+                    </ThemedText>
+                  </View>
                 )}
                 {location.visibility === 'private' && (
                   <View style={styles.privateBadge}>
@@ -438,28 +457,32 @@ export default function LocationDetailScreen() {
               </View>
               {(isAdmin || (location.is_verified && session?.user.id === location.claimed_by)) && (
                 <Pressable onPress={() => router.push({ pathname: '/edit-location', params: { id: location.id } })}>
-                  <ThemedText type="linkPrimary">Edit</ThemedText>
+                  <ThemedText type="linkPrimary" style={styles.editLink}>
+                    Edit
+                  </ThemedText>
                 </Pressable>
               )}
             </View>
+
             <View style={styles.nameRow}>
               <ThemedText type="default" style={styles.name}>
                 {location.name}
               </ThemedText>
-              {location.is_verified && <Ionicons name="checkmark-circle" size={20} color="#4CD37A" />}
+              {location.is_verified && <Ionicons name="checkmark-circle" size={18} color="#4CD37A" />}
             </View>
 
             <View style={styles.ratingRow}>
-              <StarRating rating={location.avg_rating} size={18} />
-              <ThemedText type="default">
-                {location.avg_rating.toFixed(1)} · {location.review_count} reviews
+              <StarRating rating={location.avg_rating} size={16} />
+              <ThemedText type="small" themeColor="textSecondary">
+                {location.avg_rating.toFixed(1)} · {location.review_count}{' '}
+                {location.review_count === 1 ? 'review' : 'reviews'}
               </ThemedText>
             </View>
 
             {location.address && (
               <View style={styles.infoRow}>
-                <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
-                <ThemedText type="default" themeColor="textSecondary" style={styles.infoText}>
+                <Ionicons name="location-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" themeColor="textSecondary" style={styles.addressText}>
                   {location.address}
                 </ThemedText>
               </View>
@@ -467,8 +490,8 @@ export default function LocationDetailScreen() {
 
             {location.kind === 'activity' && location.starts_at && (
               <View style={styles.infoRow}>
-                <Ionicons name="calendar-outline" size={18} color={theme.text} />
-                <ThemedText type="smallBold" style={styles.infoText}>
+                <Ionicons name="calendar-outline" size={16} color={theme.text} />
+                <ThemedText type="smallBold" style={styles.addressText}>
                   Starts {formatActivityDate(location.starts_at)}
                   {location.expires_at ? ` · Ends ${formatActivityDate(location.expires_at)}` : ''}
                 </ThemedText>
@@ -490,71 +513,100 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
-            {location.is_verified && location.owner_username && (
-              <ThemedText type="small" themeColor="textSecondary">
-                Owned by @{location.owner_username}
-              </ThemedText>
-            )}
-
             {location.is_verified ? (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.claimText}>
-                ✓ Verified business
-              </ThemedText>
-            ) : myClaim?.status === 'pending' ? (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.claimText}>
-                Claim pending review
+              <ThemedText type="small" themeColor="textSecondary" style={styles.statusLine}>
+                ✓ Verified{location.owner_username ? ` · Owned by @${location.owner_username}` : ''}
               </ThemedText>
             ) : (
-              <Pressable onPress={handleOpenClaim}>
-                <ThemedText type="linkPrimary" style={styles.claimText}>
-                  Claim this business
+              myClaim?.status === 'pending' && (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.statusLine}>
+                  Claim pending review
                 </ThemedText>
-              </Pressable>
+              )
             )}
 
             <View style={styles.actionButtonsRow}>
               <Pressable
                 style={styles.directionsButton}
                 onPress={() => openDirections(location.address ?? location.name)}>
-                <Ionicons name="navigate-outline" size={18} color="#ffffff" />
+                <Ionicons name="navigate-outline" size={18} color={DIRECTIONS_TEXT} />
                 <ThemedText type="smallBold" style={styles.directionsButtonText}>
                   Directions
                 </ThemedText>
               </Pressable>
-              <Pressable style={styles.addToListButton} onPress={handleOpenAddToList}>
-                <Ionicons name="bookmark-outline" size={18} color={theme.text} />
-                <ThemedText type="smallBold">Add to list</ThemedText>
+              <Pressable
+                style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                onPress={() => toggleBucketList(location.id)}
+                accessibilityLabel="Want to go">
+                <Ionicons
+                  name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
+                  size={22}
+                  color={isBucketListed ? '#F5C242' : '#ffffff'}
+                />
+              </Pressable>
+              <Pressable
+                style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                onPress={() => toggleFavorite(location.id)}
+                accessibilityLabel="Favorite">
+                <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.squareActionIcon}>
+                  {isFavorite ? '♥' : '♡'}
+                </ThemedText>
               </Pressable>
             </View>
 
             {location.description && (
-              <ThemedText type="default" style={styles.description}>
-                {location.description}
-              </ThemedText>
+              <View style={[styles.infoCard, { borderColor: theme.backgroundSelected }]}>
+                <ThemedText type="default" themeColor="textSecondary" style={styles.descriptionText}>
+                  {location.description}
+                </ThemedText>
+              </View>
             )}
 
             {location.hours_not_applicable ? (
-              <ThemedText type="smallBold" style={styles.hoursNa}>
-                Opening hours: N/A
-              </ThemedText>
+              <View style={[styles.infoCard, styles.hoursNaCard, { borderColor: theme.backgroundSelected }]}>
+                <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" themeColor="textSecondary">
+                  Hours not specified
+                </ThemedText>
+              </View>
             ) : (
-              location.hours &&
-              Object.keys(location.hours).length > 0 && (
-                <View style={styles.hoursSection}>
-                  <ThemedText type="smallBold">Opening hours</ThemedText>
-                  {HOURS_DAYS.map((day) => {
-                    const entry = location.hours?.[day.key];
-                    return (
-                      <View key={day.key} style={styles.hoursDisplayRow}>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {day.label}
-                        </ThemedText>
-                        <ThemedText type="small" themeColor={entry ? undefined : 'textSecondary'}>
-                          {entry ? `${entry.open} – ${entry.close}` : 'Closed'}
-                        </ThemedText>
-                      </View>
-                    );
-                  })}
+              hasHours &&
+              hoursStatus && (
+                <View style={[styles.infoCard, { borderColor: theme.backgroundSelected }]}>
+                  <Pressable style={styles.hoursRow} onPress={() => setHoursExpanded((v) => !v)}>
+                    <View style={styles.hoursRowLeft}>
+                      <Ionicons name="time-outline" size={16} color={theme.text} />
+                      <ThemedText type="smallBold">{hoursStatus.primaryLabel}</ThemedText>
+                    </View>
+                    <View style={styles.hoursRowRight}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {hoursStatus.secondaryLabel}
+                      </ThemedText>
+                      <Ionicons
+                        name={hoursExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color={theme.textSecondary}
+                      />
+                    </View>
+                  </Pressable>
+                  {hoursExpanded && (
+                    <View style={styles.hoursExpandedList}>
+                      {HOURS_DAYS.map((day) => {
+                        const entry = location.hours?.[day.key];
+                        const isToday = day.key === todayKey;
+                        return (
+                          <View key={day.key} style={styles.hoursDisplayRow}>
+                            <ThemedText type="small" themeColor={isToday ? undefined : 'textSecondary'}>
+                              {day.label}
+                            </ThemedText>
+                            <ThemedText type="small" themeColor={entry && isToday ? undefined : 'textSecondary'}>
+                              {entry ? `${entry.open} – ${entry.close}` : 'Closed'}
+                            </ThemedText>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               )
             )}
@@ -563,34 +615,56 @@ export default function LocationDetailScreen() {
 
             <View style={styles.reviewsHeaderRow}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Reviews <ThemedText themeColor="textSecondary">{reviews.length}</ThemedText>
+                Reviews
               </ThemedText>
-              <Pressable onPress={handleWriteReview}>
-                <ThemedText type="linkPrimary">{myReview ? 'Edit your review' : 'Write a review'}</ThemedText>
+              <Pressable style={styles.writeReviewButton} onPress={handleWriteReview}>
+                <ThemedText type="smallBold" style={styles.writeReviewButtonText}>
+                  {myReview ? 'Edit your review' : 'Write a review'}
+                </ThemedText>
               </Pressable>
             </View>
 
             {reviews.length > 0 && (
-              <View style={styles.breakdown}>
-                {[5, 4, 3, 2, 1].map((star, index) => (
-                  <View key={star} style={styles.breakdownRow}>
-                    <ThemedText type="small" style={styles.breakdownLabel}>
-                      {star} ★
-                    </ThemedText>
-                    <View style={[styles.breakdownTrack, { backgroundColor: theme.backgroundElement }]}>
-                      <View
-                        style={[
-                          styles.breakdownFill,
-                          { width: `${(ratingCounts[index] / maxCount) * 100}%` },
-                        ]}
-                      />
-                    </View>
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.breakdownCount}>
-                      {ratingCounts[index]}
+              <>
+                <View style={styles.ratingSummaryRow}>
+                  <View style={styles.ratingSummaryLeft}>
+                    <ThemedText style={styles.ratingSummaryNumber}>{location.avg_rating.toFixed(1)}</ThemedText>
+                    <StarRating rating={location.avg_rating} size={14} />
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
                     </ThemedText>
                   </View>
-                ))}
-              </View>
+                  <View style={styles.breakdown}>
+                    {[5, 4, 3, 2, 1].map((star, index) => (
+                      <View key={star} style={styles.breakdownRow}>
+                        <ThemedText type="small" style={styles.breakdownLabel}>
+                          {star}★
+                        </ThemedText>
+                        <View style={[styles.breakdownTrack, { backgroundColor: theme.backgroundElement }]}>
+                          <View
+                            style={[
+                              styles.breakdownFill,
+                              { width: `${(ratingCounts[index] / maxCount) * 100}%` },
+                            ]}
+                          />
+                        </View>
+                        <ThemedText type="small" themeColor="textSecondary" style={styles.breakdownCount}>
+                          {ratingCounts[index]}
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <Pressable
+                  style={[styles.sortButton, { backgroundColor: theme.backgroundElement }]}
+                  onPress={() => setSortMenuVisible(true)}>
+                  <Ionicons name="swap-vertical-outline" size={13} color={theme.textSecondary} />
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {REVIEW_SORT_OPTIONS.find((o) => o.key === reviewSort)?.label}
+                  </ThemedText>
+                </Pressable>
+              </>
             )}
 
             {reviews.length === 0 ? (
@@ -599,26 +673,37 @@ export default function LocationDetailScreen() {
               </ThemedText>
             ) : (
               <View style={styles.reviewList}>
-                {reviews.map((review) => (
+                {sortedReviews.map((review) => (
                   <View
                     key={review.id}
-                    style={[styles.reviewCard, { borderBottomColor: theme.backgroundElement }]}>
+                    style={[styles.reviewCard, { borderColor: theme.backgroundSelected }]}>
+                    <Pressable
+                      style={styles.reviewFlagButton}
+                      onPress={() => handleOpenReviewReport(review.id)}
+                      hitSlop={8}>
+                      <Ionicons name="flag-outline" size={14} color={theme.textSecondary} />
+                    </Pressable>
                     <View style={styles.reviewHeader}>
-                      <Image
-                        source={{ uri: review.author_avatar_url ?? placeholderImage(`avatar-${review.id}`) }}
-                        style={styles.reviewAvatar}
-                      />
+                      {review.author_avatar_url ? (
+                        <Image source={{ uri: review.author_avatar_url }} style={styles.reviewAvatar} />
+                      ) : (
+                        <View
+                          style={[
+                            styles.reviewAvatar,
+                            styles.reviewAvatarFallback,
+                            { backgroundColor: avatarColorFor(review.user_id) },
+                          ]}>
+                          <ThemedText type="smallBold" style={styles.reviewAvatarInitial}>
+                            {(review.author_name?.[0] ?? '?').toUpperCase()}
+                          </ThemedText>
+                        </View>
+                      )}
                       <View style={styles.reviewAuthorColumn}>
                         <ThemedText type="smallBold">{review.author_name}</ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
                           {new Date(review.created_at).toLocaleDateString()}
                         </ThemedText>
                       </View>
-                      <Pressable onPress={() => handleOpenReviewReport(review.id)} hitSlop={8}>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          Report
-                        </ThemedText>
-                      </Pressable>
                     </View>
                     <StarRating rating={review.rating} size={14} />
                     {review.title && (
@@ -670,6 +755,63 @@ export default function LocationDetailScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <Modal visible={menuVisible} animationType="slide" transparent onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setMenuVisible(false)}>
+          <ThemedView type="backgroundElement" style={styles.modalContent}>
+            <Pressable style={styles.menuRow} onPress={handleOpenAddToList}>
+              <MaterialCommunityIcons name="folder-marker-outline" size={20} color={theme.text} />
+              <ThemedText type="default">Add to list</ThemedText>
+            </Pressable>
+            {canShare && (
+              <Pressable style={styles.menuRow} onPress={handleOpenShare}>
+                <Ionicons name="share-outline" size={18} color={theme.text} />
+                <ThemedText type="default">Share</ThemedText>
+              </Pressable>
+            )}
+            {canCopyLink && (
+              <Pressable style={styles.menuRow} onPress={handleCopyLink}>
+                <Ionicons name={linkCopied ? 'checkmark' : 'link-outline'} size={18} color={theme.text} />
+                <ThemedText type="default">{linkCopied ? 'Link copied!' : 'Copy link'}</ThemedText>
+              </Pressable>
+            )}
+            {canClaim && (
+              <Pressable style={styles.menuRow} onPress={handleOpenClaim}>
+                <Ionicons name="storefront-outline" size={18} color={theme.text} />
+                <ThemedText type="default">Claim this business</ThemedText>
+              </Pressable>
+            )}
+            <Pressable style={styles.menuRow} onPress={handleOpenLocationReport}>
+              <Ionicons name="flag-outline" size={18} color="#E05252" />
+              <ThemedText type="default" style={styles.menuReportText}>
+                Report
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
+          <ThemedView type="backgroundElement" style={styles.modalContent}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              Sort reviews
+            </ThemedText>
+            {REVIEW_SORT_OPTIONS.map((option) => (
+              <Pressable
+                key={option.key}
+                style={styles.sortOptionRow}
+                onPress={() => {
+                  setReviewSort(option.key);
+                  setSortMenuVisible(false);
+                }}>
+                <ThemedText type="default">{option.label}</ThemedText>
+                <ThemedText type="default">{reviewSort === option.key ? '✓' : ''}</ThemedText>
+              </Pressable>
+            ))}
+          </ThemedView>
+        </Pressable>
+      </Modal>
 
       <ReportModal
         visible={locationReportVisible}
@@ -798,33 +940,33 @@ const styles = StyleSheet.create({
   },
   heroWrapper: {
     position: 'relative',
+    marginHorizontal: Spacing.three,
+    marginTop: Spacing.three,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   hero: {
     width: '100%',
-    height: 260,
+    height: 210,
   },
   backButton: {
     position: 'absolute',
-    top: Spacing.three,
-    left: Spacing.three,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: Spacing.two,
+    left: Spacing.two,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroIconRow: {
+  overflowButton: {
     position: 'absolute',
-    top: Spacing.three,
-    right: Spacing.three,
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  heroIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: Spacing.two,
+    right: Spacing.two,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -842,32 +984,15 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.4)',
   },
   photoDotActive: {
     backgroundColor: '#ffffff',
   },
-  heroArrowButton: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -18,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroArrowLeft: {
-    left: Spacing.three,
-  },
-  heroArrowRight: {
-    right: Spacing.three,
-  },
   photoCountButton: {
     position: 'absolute',
     bottom: Spacing.two,
-    right: Spacing.three,
+    right: Spacing.two,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.half,
@@ -900,17 +1025,13 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: Spacing.one,
   },
-  iconInactive: {
-    color: '#ffffff',
-    fontSize: 20,
-  },
   iconActiveFavorite: {
     color: '#4CD37A',
-    fontSize: 20,
+    fontSize: 22,
   },
-  iconActiveBucket: {
-    color: '#F5C242',
-    fontSize: 20,
+  squareActionIcon: {
+    color: '#ffffff',
+    fontSize: 22,
   },
   body: {
     padding: Spacing.four,
@@ -924,6 +1045,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  categoryPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: TEAL_TINT,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Spacing.five,
+  },
+  categoryPillText: {
+    color: TEAL,
+  },
+  editLink: {
+    color: TEAL,
   },
   privateBadge: {
     flexDirection: 'row',
@@ -941,20 +1075,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    marginTop: Spacing.half,
+    marginTop: Spacing.two,
   },
   name: {
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 19,
+    lineHeight: 24,
     fontWeight: '700',
   },
-  claimText: {
+  statusLine: {
     marginTop: Spacing.one,
   },
   addedByRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    marginTop: Spacing.one,
   },
   removeCreditText: {
     color: '#E05252',
@@ -971,46 +1106,69 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     marginTop: Spacing.two,
   },
-  infoText: {
+  addressText: {
     flex: 1,
+    fontSize: 14,
   },
   actionButtonsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.two,
     marginTop: Spacing.three,
   },
   directionsButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
     backgroundColor: '#14747A',
-    paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two,
     borderRadius: Spacing.five,
   },
   directionsButtonText: {
-    color: '#ffffff',
+    color: DIRECTIONS_TEXT,
   },
-  addToListButton: {
-    flexDirection: 'row',
+  squareActionButton: {
+    width: 46,
+    height: 46,
+    borderRadius: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  infoCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    marginTop: Spacing.four,
+  },
+  descriptionText: {
+    lineHeight: 22,
+  },
+  hoursNaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  hoursRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hoursRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  hoursRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.one,
-    backgroundColor: 'rgba(128,128,128,0.2)',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
   },
-  description: {
-    marginTop: Spacing.four,
-  },
-  hoursSection: {
-    marginTop: Spacing.four,
+  hoursExpandedList: {
+    marginTop: Spacing.three,
     gap: Spacing.one,
-  },
-  hoursNa: {
-    marginTop: Spacing.four,
   },
   hoursDisplayRow: {
     flexDirection: 'row',
@@ -1042,9 +1200,37 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 26,
   },
+  writeReviewButton: {
+    borderWidth: 1,
+    borderColor: TEAL,
+    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  writeReviewButtonText: {
+    color: TEAL,
+  },
+  ratingSummaryRow: {
+    flexDirection: 'row',
+    gap: Spacing.four,
+    marginBottom: Spacing.two,
+  },
+  ratingSummaryLeft: {
+    width: 84,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.half,
+  },
+  ratingSummaryNumber: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
   breakdown: {
+    flex: 1,
     gap: Spacing.one,
-    marginBottom: Spacing.four,
+    justifyContent: 'center',
   },
   breakdownRow: {
     flexDirection: 'row',
@@ -1052,7 +1238,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   breakdownLabel: {
-    width: 32,
+    width: 20,
   },
   breakdownTrack: {
     flex: 1,
@@ -1069,27 +1255,53 @@ const styles = StyleSheet.create({
     width: 20,
     textAlign: 'right',
   },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    alignSelf: 'flex-end',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.five,
+    marginBottom: Spacing.three,
+  },
   emptyReviews: {
     marginTop: Spacing.one,
   },
   reviewList: {
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
   reviewCard: {
     gap: Spacing.one,
-    paddingBottom: Spacing.three,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: StyleSheet.hairlineWidth,
+    position: 'relative',
+  },
+  reviewFlagButton: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
+    padding: Spacing.one,
   },
   reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
     marginBottom: Spacing.half,
+    paddingRight: Spacing.four,
   },
   reviewAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
+  },
+  reviewAvatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewAvatarInitial: {
+    color: '#ffffff',
   },
   reviewAuthorColumn: {
     flex: 1,
@@ -1115,5 +1327,36 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
     marginTop: Spacing.one,
     alignSelf: 'flex-start',
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
+    padding: Spacing.four,
+    gap: Spacing.one,
+  },
+  modalTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    marginBottom: Spacing.two,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  menuReportText: {
+    color: '#E05252',
+  },
+  sortOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
   },
 });

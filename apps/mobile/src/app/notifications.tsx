@@ -80,11 +80,7 @@ export default function NotificationsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText type="subtitle" style={styles.header}>
-          Notifications
-        </ThemedText>
-
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : notifications.length === 0 ? (
@@ -145,11 +141,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
   },
-  header: {
-    fontSize: 24,
-    lineHeight: 31,
-    paddingVertical: Spacing.two,
-  },
   loadingIndicator: {
     marginTop: Spacing.six,
   },
@@ -158,6 +149,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.six,
   },
   content: {
+    paddingTop: Spacing.three,
     paddingBottom: Spacing.four,
     gap: Spacing.two,
   },

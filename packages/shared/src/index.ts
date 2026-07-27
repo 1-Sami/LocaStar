@@ -48,8 +48,16 @@ export type {
   ShareLocationInput,
 } from "./api/saves";
 
-export { fetchReviews, submitReview, addReviewPhoto, reportReview, setReviewLiked } from "./api/reviews";
-export type { Review, ReviewInput, ReviewReportInput } from "./api/reviews";
+export {
+  fetchReviews,
+  submitReview,
+  addReviewPhoto,
+  fetchReviewPhotos,
+  deleteReviewPhoto,
+  reportReview,
+  setReviewLiked,
+} from "./api/reviews";
+export type { Review, ReviewInput, ReviewPhoto, ReviewReportInput } from "./api/reviews";
 
 export { fetchProfileStats, fetchMyReviews, fetchProfile, updateProfile } from "./api/profile";
 export type {

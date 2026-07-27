@@ -10,6 +10,8 @@ export type CardLocation = {
   reviewCount: number;
   description: string;
   address: string | null;
+  city: string | null;
+  country: string | null;
   distanceKm: number | null;
   imageUrl: string;
   startsAt: string | null;

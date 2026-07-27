@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -40,9 +41,11 @@ export function CompactLocationCard({
           </View>
         )}
         <Pressable style={styles.bucketButton} onPress={onToggleBucketList} hitSlop={8}>
-          <ThemedText style={isBucketListed ? styles.iconActiveBucket : styles.iconInactive}>
-            {isBucketListed ? '★' : '☆'}
-          </ThemedText>
+          <Ionicons
+            name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
+            size={14}
+            color={isBucketListed ? '#F5C242' : '#ffffff'}
+          />
         </Pressable>
       </View>
 
@@ -112,14 +115,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconInactive: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
-  iconActiveBucket: {
-    color: '#F5C242',
-    fontSize: 14,
   },
   content: {
     paddingTop: Spacing.one,

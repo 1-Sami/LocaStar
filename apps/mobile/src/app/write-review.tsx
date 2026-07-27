@@ -1,7 +1,13 @@
-import { addReviewPhoto, submitReview } from '@locastar/shared';
+import {
+  addReviewPhoto,
+  deleteReviewPhoto,
+  fetchReviewPhotos,
+  submitReview,
+  type ReviewPhoto,
+} from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,9 +34,10 @@ function StarPicker({ value, onChange }: { value: number; onChange: (rating: num
 }
 
 export default function WriteReviewScreen() {
-  const { locationId, locationName, rating, title, body } = useLocalSearchParams<{
+  const { locationId, locationName, reviewId, rating, title, body } = useLocalSearchParams<{
     locationId: string;
     locationName?: string;
+    reviewId?: string;
     rating?: string;
     title?: string;
     body?: string;
@@ -43,15 +50,44 @@ export default function WriteReviewScreen() {
   const [titleValue, setTitleValue] = useState(title ?? '');
   const [bodyValue, setBodyValue] = useState(body ?? '');
   const [photoUris, setPhotoUris] = useState<string[]>([]);
+  const [existingPhotos, setExistingPhotos] = useState<ReviewPhoto[]>([]);
+  const [removedPhotos, setRemovedPhotos] = useState<ReviewPhoto[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // When editing, show the photos already attached to the review so they can be
+  // kept or removed rather than being invisible and silently retained.
+  useEffect(() => {
+    if (!reviewId) return;
+    let cancelled = false;
+    fetchReviewPhotos(supabase, reviewId)
+      .then((photos) => {
+        if (!cancelled) setExistingPhotos(photos);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewId]);
+
+  // PhotoPicker works on a flat list of URIs, so combine saved photos (remote
+  // URLs) with newly picked ones (local URIs) and split them back apart on edit.
+  const displayUris = [...existingPhotos.map((photo) => photo.url), ...photoUris];
+
+  const handlePhotosChange = (next: string[]) => {
+    const kept = existingPhotos.filter((photo) => next.includes(photo.url));
+    const dropped = existingPhotos.filter((photo) => !next.includes(photo.url));
+    setExistingPhotos(kept);
+    if (dropped.length > 0) setRemovedPhotos((current) => [...current, ...dropped]);
+    setPhotoUris(next.filter((uri) => !kept.some((photo) => photo.url === uri)));
+  };
 
   const handleSubmit = async () => {
     if (!session || ratingValue === 0) return;
     setSubmitting(true);
     setError(null);
     try {
-      const reviewId = await submitReview(supabase, {
+      const savedReviewId = await submitReview(supabase, {
         locationId,
         userId: session.user.id,
         rating: ratingValue,
@@ -59,10 +95,14 @@ export default function WriteReviewScreen() {
         body: bodyValue.trim() || null,
       });
 
+      for (const photo of removedPhotos) {
+        await deleteReviewPhoto(supabase, photo);
+      }
+
       for (const uri of photoUris) {
-        const path = `reviews/${reviewId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+        const path = `reviews/${savedReviewId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
         await uploadImageToMedia(path, uri);
-        await addReviewPhoto(supabase, reviewId, path);
+        await addReviewPhoto(supabase, savedReviewId, path);
       }
 
       router.back();
@@ -104,7 +144,7 @@ export default function WriteReviewScreen() {
           <ThemedText type="smallBold" style={styles.photoLabel}>
             Add photos (optional)
           </ThemedText>
-          <PhotoPicker uris={photoUris} onChange={setPhotoUris} />
+          <PhotoPicker uris={displayUris} onChange={handlePhotosChange} />
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>

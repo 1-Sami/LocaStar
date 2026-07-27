@@ -15,12 +15,12 @@ export function CategoryChip({
   const color = CategoryColors[categorySlug] ?? CategoryColors.default;
 
   return (
-    <Pressable onPress={onRemove} style={[styles.chip, { backgroundColor: color }]}>
-      <ThemedText type="small" style={styles.label}>
-        {label}
-      </ThemedText>
+    <Pressable onPress={onRemove} style={[styles.chip, { borderColor: color }]}>
       <ThemedText type="smallBold" style={styles.label}>
         ×
+      </ThemedText>
+      <ThemedText type="small" style={styles.label} numberOfLines={1}>
+        {label.toUpperCase()}
       </ThemedText>
     </Pressable>
   );
@@ -32,10 +32,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
+    paddingVertical: Spacing.two,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   label: {
     color: '#ffffff',
+    letterSpacing: 0.3,
   },
 });

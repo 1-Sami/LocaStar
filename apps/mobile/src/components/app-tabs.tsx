@@ -30,16 +30,8 @@ export default function AppTabs() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="favorites">
-        <NativeTabs.Trigger.Label>Favorites</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'heart', selected: 'heart.fill' }} md="favorite" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="notifications">
-        <NativeTabs.Trigger.Label>Alerts</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'bell', selected: 'bell.fill' }} md="notifications" />
-        {unreadCount > 0 && (
-          <NativeTabs.Trigger.Badge>{unreadCount > 9 ? '9+' : String(unreadCount)}</NativeTabs.Trigger.Badge>
-        )}
+        <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} md="bookmark" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
@@ -48,6 +40,9 @@ export default function AppTabs() {
           sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }}
           md="person"
         />
+        {unreadCount > 0 && (
+          <NativeTabs.Trigger.Badge>{unreadCount > 9 ? '9+' : String(unreadCount)}</NativeTabs.Trigger.Badge>
+        )}
       </NativeTabs.Trigger>
     </NativeTabs>
   );
