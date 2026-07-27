@@ -135,7 +135,10 @@ export default function LocationDetailScreen() {
   const [heroWidth, setHeroWidth] = useState(() => Math.min(Dimensions.get('window').width, MaxContentWidth));
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [galleryVisible, setGalleryVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerWidth, setViewerWidth] = useState(() => Dimensions.get('window').width);
   const heroScrollRef = useRef<ScrollView>(null);
+  const viewerScrollRef = useRef<ScrollView>(null);
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -358,14 +361,10 @@ export default function LocationDetailScreen() {
     setClaimVisible(true);
   };
 
-  const goToPhoto = (index: number) => {
-    setActivePhotoIndex(index);
-    heroScrollRef.current?.scrollTo({ x: index * heroWidth, animated: true });
-  };
-
-  const handleOpenGalleryAt = (index: number) => {
-    goToPhoto(index);
-    setGalleryVisible(false);
+  // Full-screen viewer: opens on the tapped photo and can swipe through them all.
+  const openViewerAt = (index: number) => {
+    if (photos.length === 0) return;
+    setViewerIndex(Math.max(0, Math.min(index, photos.length - 1)));
   };
 
   const handleWriteReview = () => {
@@ -407,7 +406,9 @@ export default function LocationDetailScreen() {
               }}
               scrollEventThrottle={32}>
               {heroImages.map((uri, index) => (
-                <Image key={index} source={{ uri }} style={[styles.hero, { width: heroWidth }]} contentFit="cover" />
+                <Pressable key={index} onPress={() => openViewerAt(index)}>
+                  <Image source={{ uri }} style={[styles.hero, { width: heroWidth }]} contentFit="cover" />
+                </Pressable>
               ))}
             </ScrollView>
             <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
@@ -445,6 +446,15 @@ export default function LocationDetailScreen() {
                       {location.category_label}
                     </ThemedText>
                   </View>
+                )}
+                {location.other_category_detail && (
+                  <ThemedText
+                    type="small"
+                    themeColor="textSecondary"
+                    style={styles.otherCategoryDetail}
+                    numberOfLines={1}>
+                    {location.other_category_detail}
+                  </ThemedText>
                 )}
                 {location.visibility === 'private' && (
                   <View style={styles.privateBadge}>
@@ -723,7 +733,7 @@ export default function LocationDetailScreen() {
                             key={index}
                             onPress={() => {
                               const galleryIndex = photos.indexOf(uri);
-                              goToPhoto(galleryIndex >= 0 ? galleryIndex : 0);
+                              openViewerAt(galleryIndex >= 0 ? galleryIndex : 0);
                             }}>
                             <Image source={{ uri }} style={styles.reviewPhotoThumb} contentFit="cover" />
                           </Pressable>
@@ -898,13 +908,49 @@ export default function LocationDetailScreen() {
             </View>
             <ScrollView contentContainerStyle={styles.galleryGrid}>
               {photos.map((uri, index) => (
-                <Pressable key={index} style={styles.galleryThumbWrapper} onPress={() => handleOpenGalleryAt(index)}>
+                <Pressable key={index} style={styles.galleryThumbWrapper} onPress={() => openViewerAt(index)}>
                   <Image source={{ uri }} style={styles.galleryThumb} contentFit="cover" />
                 </Pressable>
               ))}
             </ScrollView>
           </SafeAreaView>
         </ThemedView>
+      </Modal>
+
+      <Modal
+        visible={viewerIndex !== null}
+        animationType="fade"
+        onRequestClose={() => setViewerIndex(null)}
+        supportedOrientations={['portrait', 'landscape']}>
+        <View style={styles.viewerRoot} onLayout={(e) => setViewerWidth(e.nativeEvent.layout.width)}>
+          <ScrollView
+            ref={viewerScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: (viewerIndex ?? 0) * viewerWidth, y: 0 }}
+            onScroll={(e) => {
+              if (viewerWidth > 0) {
+                setViewerIndex(Math.round(e.nativeEvent.contentOffset.x / viewerWidth));
+              }
+            }}
+            scrollEventThrottle={32}>
+            {photos.map((uri, index) => (
+              <View key={index} style={[styles.viewerPage, { width: viewerWidth }]}>
+                <Image source={{ uri }} style={styles.viewerImage} contentFit="contain" />
+              </View>
+            ))}
+          </ScrollView>
+
+          <SafeAreaView style={styles.viewerHeader} edges={['top']} pointerEvents="box-none">
+            <ThemedText type="smallBold" style={styles.viewerCount}>
+              {(viewerIndex ?? 0) + 1} / {photos.length}
+            </ThemedText>
+            <Pressable style={styles.viewerCloseButton} onPress={() => setViewerIndex(null)} hitSlop={8}>
+              <Ionicons name="close" size={24} color="#ffffff" />
+            </Pressable>
+          </SafeAreaView>
+        </View>
       </Modal>
     </ThemedView>
   );
@@ -1025,6 +1071,41 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: Spacing.one,
   },
+  viewerRoot: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  viewerPage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  viewerHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  viewerCount: {
+    color: '#ffffff',
+  },
+  viewerCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconActiveFavorite: {
     color: '#4CD37A',
     fontSize: 22,
@@ -1045,6 +1126,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    flexShrink: 1,
   },
   categoryPill: {
     alignSelf: 'flex-start',
@@ -1055,6 +1137,9 @@ const styles = StyleSheet.create({
   },
   categoryPillText: {
     color: TEAL,
+  },
+  otherCategoryDetail: {
+    flexShrink: 1,
   },
   editLink: {
     color: TEAL,

@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LocaStarLogo } from '@/components/locastar-logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -14,9 +15,7 @@ export default function AboutScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
           <View style={styles.logo}>
-            <ThemedText type="smallBold" style={styles.logoText}>
-              LS
-            </ThemedText>
+            <LocaStarLogo size={72} />
           </View>
           <ThemedText type="subtitle" style={styles.brand}>
             LocaStar
@@ -52,17 +51,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
   },
   logo: {
-    width: 56,
-    height: 56,
-    borderRadius: Spacing.three,
-    backgroundColor: '#14747A',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: Spacing.two,
-  },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 20,
   },
   brand: {
     fontSize: 24,

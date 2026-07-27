@@ -28,6 +28,10 @@ import { supabase } from '@/lib/supabase';
 // Home sections empty.
 const HOME_RADIUS_M = 20_000_000;
 
+// Boosted/paid placement is built but stays hidden until there are enough users
+// to sell placement to. Flip to true to bring the section back.
+const SHOW_BOOSTED_SECTION = false;
+
 const EMPTY_STATS: ProfileStats = {
   favorites: 0,
   bucketList: 0,
@@ -257,15 +261,17 @@ export default function HomeScreen() {
             emptyText="No activities nearby yet."
           />
 
-          <HomeSection
-            title="Boosted / Paid placement"
-            onShowMore={() => router.push('/search')}
-            items={boosted}
-            keyExtractor={(item) => item.id}
-            cardWidth={108}
-            renderItem={renderBoostedCard}
-            emptyText="Nothing boosted yet."
-          />
+          {SHOW_BOOSTED_SECTION && (
+            <HomeSection
+              title="Boosted / Paid placement"
+              onShowMore={() => router.push('/search')}
+              items={boosted}
+              keyExtractor={(item) => item.id}
+              cardWidth={108}
+              renderItem={renderBoostedCard}
+              emptyText="Nothing boosted yet."
+            />
+          )}
 
           <HomeSection
             title="Community shared lists"

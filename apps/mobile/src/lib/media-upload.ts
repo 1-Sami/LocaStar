@@ -18,6 +18,18 @@ export async function pickImage(): Promise<string | null> {
   return result.assets[0].uri;
 }
 
+export async function takePhoto(): Promise<string | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) return null;
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ['images'],
+    quality: 0.7,
+  });
+  if (result.canceled || result.assets.length === 0) return null;
+  return result.assets[0].uri;
+}
+
 export async function pickImages(): Promise<string[]> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return [];
@@ -41,25 +53,30 @@ export async function pickImages(): Promise<string[]> {
  * bytes off disk directly instead. Web still needs fetch, since the picker
  * hands back `blob:` URIs there.
  */
-async function readLocalImageBytes(uri: string): Promise<ArrayBuffer> {
+async function readLocalImageBytes(uri: string): Promise<Uint8Array> {
   if (Platform.OS === 'web') {
     const response = await fetch(uri);
     if (!response.ok) throw new Error(`Could not read the selected image (${response.status}).`);
-    return response.arrayBuffer();
+    return new Uint8Array(await response.arrayBuffer());
   }
-  return new File(uri).arrayBuffer();
+  return new File(uri).bytes();
 }
 
+// No real photo is this small. The old fetch-based read produced a 14-byte
+// "File not found" body, so anything tiny means the read failed rather than
+// that the user picked a very small image.
+const MIN_PLAUSIBLE_IMAGE_BYTES = 256;
+
 export async function uploadImageToMedia(path: string, uri: string): Promise<string> {
-  const arrayBuffer = await readLocalImageBytes(uri);
+  const bytes = await readLocalImageBytes(uri);
   // Guard so a failed read can never silently become a corrupt upload again.
-  if (arrayBuffer.byteLength === 0) {
-    throw new Error('The selected image could not be read (empty file).');
+  if (bytes.byteLength < MIN_PLAUSIBLE_IMAGE_BYTES) {
+    throw new Error(`The selected image could not be read (got ${bytes.byteLength} bytes).`);
   }
 
   const { error } = await supabase.storage
     .from('media')
-    .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
+    .upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
   if (error) throw error;
 
   const { data } = supabase.storage.from('media').getPublicUrl(path);

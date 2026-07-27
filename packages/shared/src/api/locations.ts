@@ -98,6 +98,7 @@ export type LocationDetail = {
   owner_username: string | null;
   available_summer: boolean;
   available_winter: boolean;
+  other_category_detail: string | null;
 };
 
 type LocationDetailRow = {
@@ -127,6 +128,7 @@ type LocationDetailRow = {
   location_categories: { categories: { slug: string; name: string } | null }[];
   available_summer: boolean;
   available_winter: boolean;
+  other_category_detail: string | null;
 };
 
 export type LocationSubmission = {
@@ -257,7 +259,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -294,6 +296,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     category_label: primaryCategory?.name ?? null,
     available_summer: row.available_summer,
     available_winter: row.available_winter,
+    other_category_detail: row.other_category_detail,
   };
 }
 

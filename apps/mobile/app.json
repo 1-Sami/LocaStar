@@ -39,6 +39,13 @@
           "locationWhenInUsePermission": "LocaStar uses your location to show nearby places and activities."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LocaStar uses your photo library so you can add pictures to locations and reviews.",
+          "cameraPermission": "LocaStar uses your camera so you can take pictures for locations and reviews."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

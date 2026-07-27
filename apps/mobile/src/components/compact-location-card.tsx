@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { StarRating } from '@/components/star-rating';
+import { STAR_COLOR } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, Spacing } from '@/constants/theme';
 import type { CardLocation } from '@/types/location';
@@ -54,9 +54,12 @@ export function CompactLocationCard({
           {location.name}
         </ThemedText>
         <View style={styles.ratingRow}>
-          <StarRating rating={location.rating} size={10} />
-          <ThemedText type="small" style={styles.whiteText} numberOfLines={1}>
-            {location.rating.toFixed(1)} ({location.reviewCount})
+          <Ionicons name="star" size={11} color={STAR_COLOR} />
+          <ThemedText type="smallBold" style={[styles.whiteText, styles.ratingValue]} numberOfLines={1}>
+            {location.rating.toFixed(1)}
+          </ThemedText>
+          <ThemedText type="small" style={[styles.whiteTextSecondary, styles.ratingCount]} numberOfLines={1}>
+            ({location.reviewCount})
           </ThemedText>
         </View>
         <ThemedText type="small" style={styles.whiteTextSecondary} numberOfLines={1}>
@@ -128,7 +131,13 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: 3,
+  },
+  ratingValue: {
+    fontSize: 12,
+  },
+  ratingCount: {
+    fontSize: 11,
   },
   whiteText: {
     color: '#ffffff',
