@@ -7,10 +7,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
+import { verifyCurrentPassword } from '@/lib/reauth';
 import { supabase } from '@/lib/supabase';
 
 export default function ChangePasswordScreen() {
   const theme = useTheme();
+  const { session } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -18,12 +22,22 @@ export default function ChangePasswordScreen() {
   const [saved, setSaved] = useState(false);
 
   const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const canSave = password.length >= 6 && !mismatch && !saving;
+  const canSave = currentPassword.length > 0 && password.length >= 6 && !mismatch && !saving;
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     setSaved(false);
+
+    // Anyone holding an unlocked phone could otherwise take over the account
+    // outright, so prove they know the existing password first.
+    const confirmed = await verifyCurrentPassword(session?.user.email ?? '', currentPassword);
+    if (!confirmed) {
+      setError('That password is incorrect.');
+      setSaving(false);
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setSaving(false);
     if (updateError) {
@@ -31,6 +45,7 @@ export default function ChangePasswordScreen() {
       return;
     }
     setSaved(true);
+    setCurrentPassword('');
     setPassword('');
     setConfirmPassword('');
   };
@@ -40,8 +55,20 @@ export default function ChangePasswordScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
           <ThemedText type="small" themeColor="textSecondary">
-            Choose a new password (at least 6 characters).
+            Confirm your current password, then choose a new one (at least 6 characters).
           </ThemedText>
+
+          <PasswordInput
+            value={currentPassword}
+            onChangeText={(text) => {
+              setCurrentPassword(text);
+              setSaved(false);
+              setError(null);
+            }}
+            placeholder="Current password"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+          />
 
           <PasswordInput
             value={password}

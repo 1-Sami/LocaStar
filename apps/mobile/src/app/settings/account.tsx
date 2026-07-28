@@ -4,11 +4,13 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { verifyCurrentPassword } from '@/lib/reauth';
 import { supabase } from '@/lib/supabase';
 
 export default function AccountInfoScreen() {
@@ -17,8 +19,9 @@ export default function AccountInfoScreen() {
 
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
-  const [bio, setBio] = useState('');
+  const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -34,7 +37,7 @@ export default function AccountInfoScreen() {
         .then((profile) => {
           if (cancelled) return;
           setUsername(profile.username ?? '');
-          setBio(profile.bio ?? '');
+          setAddress(profile.home_address ?? '');
         })
         .catch(() => {})
         .finally(() => {
@@ -46,23 +49,44 @@ export default function AccountInfoScreen() {
     }, [session])
   );
 
+  const trimmedEmail = email.trim();
+  const emailChanged = Boolean(trimmedEmail) && trimmedEmail !== (session?.user.email ?? '');
+
   const handleSave = async () => {
     if (!session) return;
-    setSaving(true);
     setError(null);
     setSaved(false);
     setEmailChangePending(false);
+
+    // Changing the account email is a takeover vector, so make sure whoever is
+    // holding the phone actually knows the password before allowing it.
+    if (emailChanged && !currentPassword) {
+      setError('Enter your current password to change your email.');
+      return;
+    }
+
+    setSaving(true);
+
+    if (emailChanged) {
+      const confirmed = await verifyCurrentPassword(session.user.email ?? '', currentPassword);
+      if (!confirmed) {
+        setError('That password is incorrect.');
+        setSaving(false);
+        return;
+      }
+    }
+
     try {
       await updateProfile(supabase, session.user.id, {
         username: username.trim() || null,
-        bio: bio.trim() || null,
+        home_address: address.trim() || null,
       });
 
-      const trimmedEmail = email.trim();
-      if (trimmedEmail && trimmedEmail !== session.user.email) {
+      if (emailChanged) {
         const { error: emailError } = await supabase.auth.updateUser({ email: trimmedEmail });
         if (emailError) throw emailError;
         setEmailChangePending(true);
+        setCurrentPassword('');
       }
 
       setSaved(true);
@@ -119,19 +143,40 @@ export default function AccountInfoScreen() {
               />
             </View>
 
+            {emailChanged && (
+              <View style={styles.field}>
+                <ThemedText type="smallBold">Current password</ThemedText>
+                <PasswordInput
+                  value={currentPassword}
+                  onChangeText={(text) => {
+                    setCurrentPassword(text);
+                    setSaved(false);
+                  }}
+                  placeholder="Current password"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+                />
+                <ThemedText type="small" themeColor="textSecondary">
+                  Required to change the email on your account.
+                </ThemedText>
+              </View>
+            )}
+
             <View style={styles.field}>
-              <ThemedText type="smallBold">Bio</ThemedText>
+              <ThemedText type="smallBold">Home address</ThemedText>
               <TextInput
-                value={bio}
+                value={address}
                 onChangeText={(text) => {
-                  setBio(text);
+                  setAddress(text);
                   setSaved(false);
                 }}
-                placeholder="Tell people a little about yourself"
+                placeholder="Home address"
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.input, styles.bioInput, { color: theme.text, backgroundColor: theme.background }]}
-                multiline
+                style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
               />
+              <ThemedText type="small" themeColor="textSecondary">
+                Used as a default starting point for nearby searches.
+              </ThemedText>
             </View>
           </ThemedView>
 
@@ -184,10 +229,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
-  },
-  bioInput: {
-    height: 100,
-    textAlignVertical: 'top',
   },
   errorText: {
     color: '#E05252',

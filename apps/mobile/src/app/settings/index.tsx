@@ -9,7 +9,6 @@ import { Spacing } from '@/constants/theme';
 const rows: { label: string; href: string }[] = [
   { label: 'Change password', href: '/settings/password' },
   { label: 'Account info', href: '/settings/account' },
-  { label: 'Address', href: '/settings/address' },
   { label: 'Theme', href: '/settings/theme' },
   { label: 'Notifications', href: '/settings/notifications' },
 ];

@@ -37,6 +37,7 @@ export default function SearchScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState('');
   const [sortBy, setSortBy] = useState<'distance' | 'rating'>(initialSort === 'rating' ? 'rating' : 'distance');
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [activeSeason, setActiveSeason] = useState<'summer' | 'winter' | null>(
@@ -84,6 +85,17 @@ export default function SearchScreen() {
 
   const cards = results.map(nearbyLocationToCard);
   const sortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort';
+
+  const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
+  const visibleCategories = trimmedCategoryQuery
+    ? categories.filter((c) => c.name.toLowerCase().includes(trimmedCategoryQuery))
+    : categories;
+
+  // Reset the search each time the picker closes so it reopens showing everything.
+  const closePicker = () => {
+    setPickerVisible(false);
+    setCategoryQuery('');
+  };
 
   return (
     <View style={styles.container}>
@@ -174,9 +186,10 @@ export default function SearchScreen() {
         )}
       </SafeAreaView>
 
-      <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={() => setPickerVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setPickerVisible(false)}>
-          <View style={styles.modalContent}>
+      <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={closePicker}>
+        <Pressable style={styles.modalBackdrop} onPress={closePicker}>
+          {/* Swallow taps so interacting with the sheet doesn't dismiss it. */}
+          <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>Filter</Text>
 
             <Text style={styles.modalSectionLabel}>SEASON</Text>
@@ -200,25 +213,46 @@ export default function SearchScreen() {
             </View>
 
             <Text style={styles.modalSectionLabel}>ACTIVITIES</Text>
-            <ScrollView style={styles.modalScroll}>
-              {categories.map((category) => {
-                const active = activeSlugs.includes(category.slug);
-                return (
-                  <Pressable
-                    key={category.slug}
-                    style={styles.modalRow}
-                    onPress={() =>
-                      setActiveSlugs((current) =>
-                        active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
-                      )
-                    }>
-                    <Text style={styles.modalRowText}>{category.name}</Text>
-                    {active && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
-                  </Pressable>
-                );
-              })}
+            <View style={styles.categorySearchBar}>
+              <Ionicons name="search-sharp" size={15} color={SearchPalette.textMuted} />
+              <TextInput
+                value={categoryQuery}
+                onChangeText={setCategoryQuery}
+                placeholder="Search activities"
+                placeholderTextColor={SearchPalette.textMuted}
+                style={styles.categorySearchInput}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {categoryQuery.length > 0 && (
+                <Pressable onPress={() => setCategoryQuery('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={SearchPalette.textMuted} />
+                </Pressable>
+              )}
+            </View>
+            <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+              {visibleCategories.length === 0 ? (
+                <Text style={styles.modalEmptyText}>No activities match that search.</Text>
+              ) : (
+                visibleCategories.map((category) => {
+                  const active = activeSlugs.includes(category.slug);
+                  return (
+                    <Pressable
+                      key={category.slug}
+                      style={styles.modalRow}
+                      onPress={() =>
+                        setActiveSlugs((current) =>
+                          active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
+                        )
+                      }>
+                      <Text style={styles.modalRowText}>{category.name}</Text>
+                      {active && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
+                    </Pressable>
+                  );
+                })
+              )}
             </ScrollView>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -425,8 +459,29 @@ const styles = StyleSheet.create({
     color: '#0A0A0A',
     fontWeight: '700',
   },
+  categorySearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: SearchPalette.inputBorder,
+    backgroundColor: SearchPalette.background,
+    paddingHorizontal: Spacing.three,
+    marginBottom: Spacing.one,
+  },
+  categorySearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: SearchPalette.text,
+  },
   modalScroll: {
     flexGrow: 0,
+  },
+  modalEmptyText: {
+    color: SearchPalette.textMuted,
+    paddingVertical: Spacing.three,
   },
   modalRow: {
     flexDirection: 'row',

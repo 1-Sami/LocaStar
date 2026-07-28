@@ -59,7 +59,13 @@ export {
 } from "./api/reviews";
 export type { Review, ReviewInput, ReviewPhoto, ReviewReportInput } from "./api/reviews";
 
-export { fetchProfileStats, fetchMyReviews, fetchProfile, updateProfile } from "./api/profile";
+export {
+  fetchProfileStats,
+  fetchMyReviews,
+  fetchProfile,
+  updateProfile,
+  isModeratorRole,
+} from "./api/profile";
 export type {
   ProfileStats,
   MyReview,
@@ -80,6 +86,13 @@ export {
   resolveReviewReport,
   updateReviewStatus,
   fetchOpenReportsCount,
+  issueBan,
+  fetchBansByStatus,
+  reviewBan,
+  fetchMyActiveBan,
+  searchUsers,
+  setUserRole,
+  fetchModerationActions,
 } from "./api/moderation";
 export type {
   LocationReport,
@@ -87,6 +100,10 @@ export type {
   LocationStatus,
   ReviewReport,
   ReviewStatus,
+  BanStatus,
+  UserBan,
+  ManagedUser,
+  ModerationAction,
 } from "./api/moderation";
 
 export {

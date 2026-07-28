@@ -93,7 +93,17 @@ export type NotificationPreferences = {
   marketing: boolean;
 };
 
-export type UserRole = "user" | "admin";
+/**
+ * "superuser" is the moderation tier (handles reports, can flag/hide/remove
+ * content). "admin" is the company tier and keeps every superuser power plus
+ * role management, hard deletes and claim decisions.
+ */
+export type UserRole = "user" | "superuser" | "admin";
+
+/** Roles allowed to handle reports and moderate content. */
+export function isModeratorRole(role: UserRole): boolean {
+  return role === "superuser" || role === "admin";
+}
 
 export type Profile = {
   id: string;

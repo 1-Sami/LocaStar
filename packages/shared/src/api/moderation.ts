@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { UserRole } from "./profile";
+
 export type LocationReportStatus = "open" | "reviewed" | "actioned" | "dismissed";
 export type LocationStatus = "pending" | "active" | "flagged" | "removed";
 
@@ -203,4 +205,225 @@ export async function updateReviewStatus(
 ): Promise<void> {
   const { error } = await client.from("reviews").update({ status }).eq("id", reviewId);
   if (error) throw error;
+}
+
+/* ---------------------------------------------------------------- bans --- */
+
+export type BanStatus = "pending" | "active" | "reversed" | "lifted";
+
+export type UserBan = {
+  id: string;
+  userId: string;
+  userName: string;
+  issuedById: string | null;
+  issuedByName: string;
+  reason: string;
+  /** null means a lifetime ban */
+  expiresAt: string | null;
+  status: BanStatus;
+  reviewNote: string | null;
+  createdAt: string;
+};
+
+type UserBanRow = {
+  id: string;
+  user_id: string;
+  issued_by: string | null;
+  reason: string;
+  expires_at: string | null;
+  status: BanStatus;
+  review_note: string | null;
+  created_at: string;
+  banned: { display_name: string | null; username: string | null } | null;
+  issuer: { display_name: string | null; username: string | null } | null;
+};
+
+const BAN_SELECT =
+  "id, user_id, issued_by, reason, expires_at, status, review_note, created_at, " +
+  "banned:profiles!user_bans_user_id_fkey(display_name, username), " +
+  "issuer:profiles!user_bans_issued_by_fkey(display_name, username)";
+
+function personName(p: { display_name: string | null; username: string | null } | null): string {
+  return p?.display_name ?? p?.username ?? "Unknown";
+}
+
+function mapBan(row: UserBanRow): UserBan {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    userName: personName(row.banned),
+    issuedById: row.issued_by,
+    issuedByName: personName(row.issuer),
+    reason: row.reason,
+    expiresAt: row.expires_at,
+    status: row.status,
+    reviewNote: row.review_note,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Issues a ban. A superuser's ban lands as "pending" and takes effect straight
+ * away; an admin still has to validate it. Admins issue "active" directly.
+ */
+export async function issueBan(
+  client: SupabaseClient,
+  input: {
+    userId: string;
+    issuedBy: string;
+    reason: string;
+    /** null = lifetime */
+    expiresAt: string | null;
+    asAdmin: boolean;
+  }
+): Promise<void> {
+  const { error } = await client.from("user_bans").insert({
+    user_id: input.userId,
+    issued_by: input.issuedBy,
+    reason: input.reason,
+    expires_at: input.expiresAt,
+    status: input.asAdmin ? "active" : "pending",
+  });
+  if (error) throw error;
+}
+
+export async function fetchBansByStatus(
+  client: SupabaseClient,
+  statuses: BanStatus[]
+): Promise<UserBan[]> {
+  const { data, error } = await client
+    .from("user_bans")
+    .select(BAN_SELECT)
+    .in("status", statuses)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as UserBanRow[]).map(mapBan);
+}
+
+/** Admin-only: confirm, reverse or lift a ban. */
+export async function reviewBan(
+  client: SupabaseClient,
+  banId: string,
+  status: Exclude<BanStatus, "pending">,
+  reviewedBy: string,
+  note: string | null
+): Promise<void> {
+  const { error } = await client
+    .from("user_bans")
+    .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString(), review_note: note })
+    .eq("id", banId);
+  if (error) throw error;
+}
+
+/** The signed-in user's restriction, if any — drives the banned notice. */
+export async function fetchMyActiveBan(client: SupabaseClient, userId: string): Promise<UserBan | null> {
+  const { data, error } = await client
+    .from("user_bans")
+    .select(BAN_SELECT)
+    .eq("user_id", userId)
+    .in("status", ["pending", "active"])
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as UserBanRow[];
+  const live = rows.find((row) => !row.expires_at || new Date(row.expires_at) > new Date());
+  return live ? mapBan(live) : null;
+}
+
+/* --------------------------------------------------------------- roles --- */
+
+export type ManagedUser = {
+  id: string;
+  name: string;
+  username: string | null;
+  role: UserRole;
+  isBanned: boolean;
+};
+
+export async function searchUsers(client: SupabaseClient, query: string): Promise<ManagedUser[]> {
+  const trimmed = query.trim();
+  let request = client.from("profiles").select("id, display_name, username, role").limit(25);
+  if (trimmed) {
+    request = request.or(`username.ilike.%${trimmed}%,display_name.ilike.%${trimmed}%`);
+  }
+  const { data, error } = await request;
+  if (error) throw error;
+
+  const rows = (data ?? []) as { id: string; display_name: string | null; username: string | null; role: UserRole }[];
+  if (rows.length === 0) return [];
+
+  const { data: banRows, error: banError } = await client
+    .from("user_bans")
+    .select("user_id, expires_at")
+    .in("status", ["pending", "active"])
+    .in("user_id", rows.map((r) => r.id));
+  if (banError) throw banError;
+
+  const now = new Date();
+  const banned = new Set(
+    ((banRows ?? []) as { user_id: string; expires_at: string | null }[])
+      .filter((b) => !b.expires_at || new Date(b.expires_at) > now)
+      .map((b) => b.user_id)
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.display_name ?? row.username ?? "Unknown",
+    username: row.username,
+    role: row.role,
+    isBanned: banned.has(row.id),
+  }));
+}
+
+/** Admin-only: grant or revoke the superuser (moderator) badge. */
+export async function setUserRole(client: SupabaseClient, userId: string, role: UserRole): Promise<void> {
+  const { error } = await client.from("profiles").update({ role }).eq("id", userId);
+  if (error) throw error;
+}
+
+/* ----------------------------------------------------------- audit log --- */
+
+export type ModerationAction = {
+  id: string;
+  actorName: string;
+  actorRole: UserRole | null;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  detail: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export async function fetchModerationActions(
+  client: SupabaseClient,
+  limit = 100
+): Promise<ModerationAction[]> {
+  const { data, error } = await client
+    .from("moderation_actions")
+    .select("id, actor_role, action, target_type, target_id, detail, created_at, actor:profiles(display_name, username)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return (
+    (data ?? []) as unknown as {
+      id: string;
+      actor_role: UserRole | null;
+      action: string;
+      target_type: string;
+      target_id: string | null;
+      detail: Record<string, unknown> | null;
+      created_at: string;
+      actor: { display_name: string | null; username: string | null } | null;
+    }[]
+  ).map((row) => ({
+    id: row.id,
+    actorName: personName(row.actor),
+    actorRole: row.actor_role,
+    action: row.action,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    detail: row.detail,
+    createdAt: row.created_at,
+  }));
 }

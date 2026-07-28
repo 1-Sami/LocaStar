@@ -30,12 +30,12 @@ function ThemedNavigation() {
         <Stack.Screen name="settings/profile-picture" options={{ title: 'Profile picture' }} />
         <Stack.Screen name="settings/password" options={{ title: 'Change password' }} />
         <Stack.Screen name="settings/account" options={{ title: 'Account info' }} />
-        <Stack.Screen name="settings/address" options={{ title: 'Address' }} />
         <Stack.Screen name="settings/theme" options={{ title: 'Theme' }} />
         <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="settings/delete-account" options={{ title: 'Delete account' }} />
         <Stack.Screen name="about" options={{ title: 'About' }} />
         <Stack.Screen name="admin-reports" options={{ title: 'Reports' }} />
+        <Stack.Screen name="admin-users" options={{ title: 'People & bans' }} />
         <Stack.Screen name="lists/index" options={{ title: 'My lists' }} />
         <Stack.Screen name="lists/[id]" options={{ title: 'List' }} />
         <Stack.Screen name="friends" options={{ title: 'Friends' }} />

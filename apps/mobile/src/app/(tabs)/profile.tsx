@@ -1,4 +1,12 @@
-import { fetchOpenReportsCount, fetchProfile, fetchProfileStats, type ProfileStats } from '@locastar/shared';
+import {
+  fetchMyActiveBan,
+  fetchOpenReportsCount,
+  fetchProfile,
+  fetchProfileStats,
+  isModeratorRole,
+  type ProfileStats,
+  type UserBan,
+} from '@locastar/shared';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -63,19 +71,49 @@ const MENU_ICONS: Record<
   'Add activity': { icon: 'time-outline', color: '#E8A93B' },
   Settings: { icon: 'settings-outline', color: '#B0B4BA' },
   About: { icon: 'information-circle-outline', color: '#14747A' },
-  'Reports (admin)': { icon: 'flag-outline', color: '#E05252' },
+  'Reports': { icon: 'flag-outline', color: '#E05252' },
+  'People & bans': { icon: 'shield-checkmark-outline', color: '#E8A93B' },
 };
 
-function BrandFooter() {
+function MenuRow({
+  item,
+  badgeCount,
+  onPress,
+}: {
+  item: string;
+  badgeCount?: number;
+  onPress: () => void;
+}) {
+  const iconConfig = MENU_ICONS[item];
   return (
-    <View style={styles.footer}>
-      <ThemedText type="subtitle" themeColor="textSecondary" style={styles.brand}>
-        LOCASTAR
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        EXPLORE. MAP. SHARE.
-      </ThemedText>
-    </View>
+    <Pressable onPress={onPress}>
+      <ThemedView type="backgroundElement" style={styles.menuItem}>
+        <View style={styles.menuItemLeft}>
+          {iconConfig && (
+            <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
+              {iconConfig.family === 'material' ? (
+                <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
+              ) : (
+                <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+              )}
+            </View>
+          )}
+          <ThemedText type="default" style={styles.menuItemText}>
+            {item}
+          </ThemedText>
+          {badgeCount !== undefined && badgeCount > 0 && (
+            <View style={styles.reportsBadge}>
+              <ThemedText type="small" style={styles.reportsBadgeText}>
+                {badgeCount}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+        <ThemedText themeColor="textSecondary" style={styles.menuChevron}>
+          ›
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -87,8 +125,9 @@ export default function ProfileScreen() {
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const [openReportsCount, setOpenReportsCount] = useState(0);
+  const [myBan, setMyBan] = useState<UserBan | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,14 +140,20 @@ export default function ProfileScreen() {
         .catch(() => {
           if (!cancelled) setStats(EMPTY_STATS);
         });
+      fetchMyActiveBan(supabase, session.user.id)
+        .then((ban) => {
+          if (!cancelled) setMyBan(ban);
+        })
+        .catch(() => {});
       fetchProfile(supabase, session.user.id)
         .then((profile) => {
           if (cancelled) return;
           setAvatarUrl(profile.avatar_url);
           setUsername(profile.username);
-          const admin = profile.role === 'admin';
-          setIsAdmin(admin);
-          if (admin) {
+          // Superusers moderate too, so the reports queue isn't admin-only.
+          const moderator = isModeratorRole(profile.role);
+          setIsModerator(moderator);
+          if (moderator) {
             fetchOpenReportsCount(supabase)
               .then((count) => {
                 if (!cancelled) setOpenReportsCount(count);
@@ -130,7 +175,9 @@ export default function ProfileScreen() {
     if (confirmed) signOut();
   };
 
-  const secondaryMenuItems = isAdmin ? [...SECONDARY_MENU_ITEMS, 'Reports (admin)'] : SECONDARY_MENU_ITEMS;
+  const secondaryMenuItems = isModerator
+    ? [...SECONDARY_MENU_ITEMS, 'Reports', 'People & bans']
+    : SECONDARY_MENU_ITEMS;
 
   const handleMenuPress = (item: string) => {
     if (item === 'My reviews') router.push('/my-reviews');
@@ -140,7 +187,8 @@ export default function ProfileScreen() {
     if (item === 'Add activity') router.push({ pathname: '/add-location', params: { kind: 'activity' } });
     if (item === 'Settings') router.push('/settings' as never);
     if (item === 'About') router.push('/about');
-    if (item === 'Reports (admin)') router.push('/admin-reports');
+    if (item === 'Reports') router.push('/admin-reports');
+    if (item === 'People & bans') router.push('/admin-users' as never);
   };
 
   const handleStatPress = (label: string) => {
@@ -178,7 +226,10 @@ export default function ProfileScreen() {
               <ThemedText type="linkPrimary">Create an account</ThemedText>
             </Pressable>
           </View>
-          <BrandFooter />
+          {/* Available logged out too — it explains what the app is for. */}
+          <View style={[styles.menu, styles.loggedOutMenu]}>
+            <MenuRow item="About" onPress={() => router.push('/about')} />
+          </View>
         </SafeAreaView>
       </ThemedView>
     );
@@ -187,6 +238,16 @@ export default function ProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.bellRow}>
+          <Pressable
+            style={[styles.notificationBellButton, { borderColor: theme.text }]}
+            onPress={() => router.push('/notifications')}
+            hitSlop={8}>
+            <Ionicons name="notifications-outline" size={24} color={theme.text} />
+            {unreadCount > 0 && <View style={styles.notificationDot} />}
+          </Pressable>
+        </View>
+
         <View style={styles.profileRow}>
           <Pressable onPress={() => router.push('/settings/profile-picture' as never)}>
             <Image
@@ -195,25 +256,34 @@ export default function ProfileScreen() {
             />
           </Pressable>
           <View style={styles.infoColumn}>
-            <Pressable onPress={handleSignOut}>
-              <ThemedText type="link" style={styles.logOutText}>
-                Log out
-              </ThemedText>
-            </Pressable>
-            {username && (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
-                Username: {username}
-              </ThemedText>
-            )}
+            {username && <ThemedText style={styles.usernameText}>{username}</ThemedText>}
             <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
-              Email: {session.user.email}
+              {session.user.email}
+            </ThemedText>
+            <Pressable onPress={handleSignOut}>
+              <ThemedText style={styles.logOutText}>LOG OUT</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+
+        {myBan && (
+          <View style={styles.banNotice}>
+            <View style={styles.banNoticeHeader}>
+              <Ionicons name="alert-circle" size={18} color="#ffffff" />
+              <ThemedText type="smallBold" style={styles.banNoticeTitle}>
+                Your account is restricted
+              </ThemedText>
+            </View>
+            <ThemedText type="small" style={styles.banNoticeText}>
+              {myBan.expiresAt
+                ? `Until ${new Date(myBan.expiresAt).toLocaleDateString()}, you can browse but not post reviews, add locations, or share.`
+                : 'You can browse but not post reviews, add locations, or share.'}
+            </ThemedText>
+            <ThemedText type="small" style={styles.banNoticeText}>
+              Reason: {myBan.reason}
             </ThemedText>
           </View>
-          <Pressable style={styles.notificationBellButton} onPress={() => router.push('/notifications')} hitSlop={8}>
-            <Ionicons name="notifications-outline" size={24} color={theme.text} />
-            {unreadCount > 0 && <View style={styles.notificationDot} />}
-          </Pressable>
-        </View>
+        )}
 
         <ScrollView
           horizontal
@@ -241,68 +311,20 @@ export default function ProfileScreen() {
         </ScrollView>
 
         <View style={styles.menu}>
-          {PRIMARY_MENU_ITEMS.map((item) => {
-            const iconConfig = MENU_ICONS[item];
-            return (
-              <Pressable key={item} onPress={() => handleMenuPress(item)}>
-                <ThemedView type="backgroundElement" style={styles.menuItem}>
-                  <View style={styles.menuItemLeft}>
-                    {iconConfig && (
-                      <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
-                        {iconConfig.family === 'material' ? (
-                          <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
-                        ) : (
-                          <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
-                        )}
-                      </View>
-                    )}
-                    <ThemedText type="default" style={styles.menuItemText}>
-                      {item}
-                    </ThemedText>
-                  </View>
-                  <ThemedText themeColor="textSecondary" style={styles.menuChevron}>
-                    ›
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
-            );
-          })}
+          {PRIMARY_MENU_ITEMS.map((item) => (
+            <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
+          ))}
         </View>
 
         <View style={[styles.menu, styles.menuGroupGap]}>
-          {secondaryMenuItems.map((item) => {
-            const iconConfig = MENU_ICONS[item];
-            return (
-              <Pressable key={item} onPress={() => handleMenuPress(item)}>
-                <ThemedView type="backgroundElement" style={styles.menuItem}>
-                  <View style={styles.menuItemLeft}>
-                    {iconConfig && (
-                      <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
-                        {iconConfig.family === 'material' ? (
-                          <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
-                        ) : (
-                          <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
-                        )}
-                      </View>
-                    )}
-                    <ThemedText type="default" style={styles.menuItemText}>
-                      {item}
-                    </ThemedText>
-                    {item === 'Reports (admin)' && openReportsCount > 0 && (
-                      <View style={styles.reportsBadge}>
-                        <ThemedText type="small" style={styles.reportsBadgeText}>
-                          {openReportsCount}
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                  <ThemedText themeColor="textSecondary" style={styles.menuChevron}>
-                    ›
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
-            );
-          })}
+          {secondaryMenuItems.map((item) => (
+            <MenuRow
+              key={item}
+              item={item}
+              badgeCount={item === 'Reports' ? openReportsCount : undefined}
+              onPress={() => handleMenuPress(item)}
+            />
+          ))}
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -325,16 +347,25 @@ const styles = StyleSheet.create({
     lineHeight: 31,
     paddingVertical: Spacing.two,
   },
+  // Sits above the profile row so the avatar/username stack under the bell.
+  bellRow: {
+    alignItems: 'flex-end',
+    paddingTop: Spacing.four,
+  },
   profileRow: {
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.three,
     paddingBottom: Spacing.three,
   },
   notificationBellButton: {
-    marginLeft: 'auto',
-    padding: Spacing.one,
+    width: 48,
+    height: 48,
+    borderRadius: Spacing.three,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   notificationDot: {
     position: 'absolute',
@@ -346,17 +377,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#E05252',
   },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
   },
   infoColumn: {
-    marginTop: -10,
+    flexShrink: 1,
     gap: 2,
   },
+  usernameText: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+  },
   logOutText: {
-    fontSize: 21,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '600',
     textDecorationLine: 'underline',
+    marginTop: Spacing.two,
   },
   emailText: {
     fontSize: 14,
@@ -417,6 +456,27 @@ const styles = StyleSheet.create({
   menuGroupGap: {
     marginTop: Spacing.three * 2,
   },
+  loggedOutMenu: {
+    alignSelf: 'center',
+  },
+  banNotice: {
+    backgroundColor: '#7A2020',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.half,
+    marginBottom: Spacing.three,
+  },
+  banNoticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  banNoticeTitle: {
+    color: '#ffffff',
+  },
+  banNoticeText: {
+    color: 'rgba(255,255,255,0.9)',
+  },
   menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -458,14 +518,5 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.one,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 'auto',
-    paddingVertical: Spacing.six,
-    opacity: 0.5,
-  },
-  brand: {
-    fontSize: 22,
   },
 });

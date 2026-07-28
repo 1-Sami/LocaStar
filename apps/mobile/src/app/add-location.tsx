@@ -43,7 +43,7 @@ const HEADER_CONFIG = {
 
 const DISCLAIMER = {
   place:
-    'Any location that is added will be checked and approved by a contributor. If you are a contributor, you will not be able to validate your own submissions. Validation can take up to 4 days before the location becomes visible. Locations added in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.',
+    'Locations go live as soon as you submit them, and are moderated afterwards. Anyone can report a location that is misleading, unlawful, or in the wrong place, and reported locations are reviewed and can be hidden or removed. Adding locations in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.',
   activity:
     'Any activity that is unlawful or not created by its rightful owner will result in a block on creating future activities. All activities must follow the rules — violations may result in a ban and could lead to legal action from the rightful owner.',
 };

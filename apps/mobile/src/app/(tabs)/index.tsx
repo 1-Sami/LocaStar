@@ -14,9 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CompactLocationCard } from '@/components/compact-location-card';
 import { ListCard } from '@/components/list-card';
+import { LocaStarLogo } from '@/components/locastar-logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
@@ -31,6 +32,9 @@ const HOME_RADIUS_M = 20_000_000;
 // Boosted/paid placement is built but stays hidden until there are enough users
 // to sell placement to. Flip to true to bring the section back.
 const SHOW_BOOSTED_SECTION = false;
+
+// The header text block is sized to match this exactly (33 + 15 line-heights).
+const HEADER_LOGO_SIZE = 48;
 
 const EMPTY_STATS: ProfileStats = {
   favorites: 0,
@@ -243,12 +247,13 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <ThemedText type="subtitle" style={styles.logo}>
-              LOCASTAR
-            </ThemedText>
-            <ThemedText type="small" themeColor="accent" style={styles.tagline}>
-              EXPLORE. MAP. SHARE.
-            </ThemedText>
+            <LocaStarLogo size={HEADER_LOGO_SIZE} />
+            <View style={styles.headerText}>
+              <ThemedText style={styles.logo}>LOCASTAR</ThemedText>
+              <ThemedText themeColor="accent" style={styles.tagline}>
+                EXPLORE. MAP. SHARE.
+              </ThemedText>
+            </View>
           </View>
 
           <HomeSection
@@ -390,20 +395,32 @@ const styles = StyleSheet.create({
     gap: Spacing.five,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(128,128,128,0.25)',
   },
+  // The two lines' line-heights add up to exactly the logo's height so the
+  // text block and the mark are the same height.
+  headerText: {
+    height: HEADER_LOGO_SIZE,
+    justifyContent: 'center',
+  },
   logo: {
-    fontSize: 20,
-    lineHeight: 24,
-    letterSpacing: 2,
+    fontFamily: Fonts.serif,
+    fontSize: 27,
+    lineHeight: 33,
+    letterSpacing: 1,
+    fontWeight: '600',
   },
   tagline: {
-    letterSpacing: 2,
-    fontSize: 10,
-    marginTop: Spacing.half,
+    fontFamily: Fonts.serif,
+    fontSize: 11,
+    lineHeight: 15,
+    letterSpacing: 1.5,
   },
   section: {
     gap: Spacing.two,
