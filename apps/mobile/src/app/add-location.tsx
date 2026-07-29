@@ -1,10 +1,12 @@
 import {
   addLocationPhoto,
   fetchCategories,
+  fetchNearbyLocations,
   submitBusinessClaim,
   submitLocation,
   type Category,
   type LocationKind,
+  type NearbyLocation,
   type OpeningHours,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +35,9 @@ function formatReverseGeocodeResult(result: Location.LocationGeocodedAddress): s
   return [line1, line2, result.country].filter((part) => part && part.trim()).join(', ');
 }
 
+// Roughly a city block. Wide enough to catch the same court pinned slightly
+// differently, tight enough not to list every place in the neighbourhood.
+const DUPLICATE_RADIUS_M = 200;
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 const MAX_ACTIVITY_DAYS = 120;
 
@@ -100,6 +105,7 @@ export default function AddLocationScreen() {
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
   const [geocoding, setGeocoding] = useState(false);
+  const [nearbyExisting, setNearbyExisting] = useState<NearbyLocation[]>([]);
   const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
   const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
   const [visibleAsCreator, setVisibleAsCreator] = useState(true);
@@ -121,12 +127,30 @@ export default function AddLocationScreen() {
   }, []);
 
   useEffect(() => {
-    if (coords && !pinCoords) setPinCoords(coords);
+    if (coords && !pinCoords) {
+      setPinCoords(coords);
+      checkForNearbyDuplicates(coords);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords]);
 
+  // Nothing in the schema stops two people adding the same court, which would
+  // split its reviews and rating across two listings. We can't reliably detect
+  // a duplicate automatically (names vary, one park can hold several courts),
+  // so show what's already nearby and let the person decide.
+  const checkForNearbyDuplicates = (coords: MapCoords) => {
+    fetchNearbyLocations(supabase, {
+      lat: coords.latitude,
+      lng: coords.longitude,
+      radiusM: DUPLICATE_RADIUS_M,
+    })
+      .then((rows) => setNearbyExisting(rows.slice(0, 5)))
+      .catch(() => setNearbyExisting([]));
+  };
+
   const handlePinChange = (next: MapCoords) => {
     setPinCoords(next);
+    checkForNearbyDuplicates(next);
     setGeocoding(true);
     Location.reverseGeocodeAsync(next)
       .then((results) => {
@@ -315,6 +339,37 @@ export default function AddLocationScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             Tap or drag the pin to set exactly where this {noun} is.
           </ThemedText>
+
+          {nearbyExisting.length > 0 && (
+            <ThemedView type="backgroundElement" style={styles.duplicateCard}>
+              <View style={styles.duplicateHeader}>
+                <Ionicons name="information-circle-outline" size={18} color="#E8A93B" />
+                <ThemedText type="smallBold" style={styles.duplicateTitle}>
+                  Already on the map here
+                </ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                If one of these is the same place, open it and add a review instead — that keeps all the
+                ratings and photos together.
+              </ThemedText>
+              {nearbyExisting.map((existing) => (
+                <Pressable
+                  key={existing.id}
+                  style={styles.duplicateRow}
+                  onPress={() => router.push({ pathname: '/location/[id]', params: { id: existing.id } })}>
+                  <View style={styles.duplicateRowText}>
+                    <ThemedText type="small" numberOfLines={1}>
+                      {existing.name}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                      {existing.category_label ?? 'Other'} · {Math.round(existing.distance_m)} m away
+                    </ThemedText>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </Pressable>
+              ))}
+            </ThemedView>
+          )}
 
           <TextInput
             value={address}
@@ -589,6 +644,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  duplicateCard: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#E8A93B',
+  },
+  duplicateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  duplicateTitle: {
+    color: '#E8A93B',
+  },
+  duplicateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(128,128,128,0.3)',
+  },
+  duplicateRowText: {
+    flex: 1,
   },
   checkbox: {
     width: 22,

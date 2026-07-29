@@ -84,7 +84,7 @@ export default function AdminReportsScreen() {
     if (!session || !authorId) return;
     const confirmed = await confirmAsync(
       `Warn ${authorName}?`,
-      'They will see the warning on their profile. It is recorded in the moderation log.',
+      `They posted the reported ${targetType}. They'll see the warning on their profile with the reason "${reason}". The ${targetType} stays visible — hide or remove it separately if it should come down.`,
       'Send warning'
     );
     if (!confirmed) return;
@@ -144,6 +144,12 @@ export default function AdminReportsScreen() {
 
   const handleDismissLocation = async (report: LocationReport) => {
     if (!session) return;
+    const confirmed = await confirmAsync(
+      'Dismiss this report?',
+      `The report is closed and "${report.locationName}" stays visible to everyone. ${report.locationCreatorName} is not told anything.`,
+      'Dismiss report'
+    );
+    if (!confirmed) return;
     setBusyId(report.id);
     try {
       await resolveLocationReport(supabase, report.id, 'dismissed', session.user.id);
@@ -155,6 +161,12 @@ export default function AdminReportsScreen() {
 
   const handleFlagLocation = async (report: LocationReport) => {
     if (!session) return;
+    const confirmed = await confirmAsync(
+      'Hide this location?',
+      `"${report.locationName}" disappears from search, the map and everyone's lists, but is not deleted — you can restore it later. Use this when you're not sure yet.`,
+      'Hide it'
+    );
+    if (!confirmed) return;
     setBusyId(report.id);
     try {
       await updateLocationStatus(supabase, report.locationId, 'flagged');
@@ -167,6 +179,12 @@ export default function AdminReportsScreen() {
 
   const handleRemoveLocation = async (report: LocationReport) => {
     if (!session) return;
+    const confirmed = await confirmAsync(
+      'Remove this location?',
+      `"${report.locationName}" is taken down for everyone, along with its reviews and photos. Use this when the place is fake, unlawful or clearly wrong.`,
+      'Remove'
+    );
+    if (!confirmed) return;
     setBusyId(report.id);
     try {
       await updateLocationStatus(supabase, report.locationId, 'removed');
@@ -179,6 +197,12 @@ export default function AdminReportsScreen() {
 
   const handleDismissReview = async (report: ReviewReport) => {
     if (!session) return;
+    const confirmed = await confirmAsync(
+      'Dismiss this report?',
+      `The report is closed and the review by ${report.reviewAuthorName} stays visible. They are not told anything.`,
+      'Dismiss report'
+    );
+    if (!confirmed) return;
     setBusyId(report.id);
     try {
       await resolveReviewReport(supabase, report.id, 'dismissed', session.user.id);
@@ -190,6 +214,12 @@ export default function AdminReportsScreen() {
 
   const handleHideReview = async (report: ReviewReport) => {
     if (!session) return;
+    const confirmed = await confirmAsync(
+      'Hide this review?',
+      `The review by ${report.reviewAuthorName} disappears from "${report.locationName}" and stops counting toward its rating. It is not deleted — you can restore it later.`,
+      'Hide it'
+    );
+    if (!confirmed) return;
     setBusyId(report.id);
     try {
       await updateReviewStatus(supabase, report.reviewId, 'hidden');
@@ -202,6 +232,12 @@ export default function AdminReportsScreen() {
 
   const handleRemoveReview = async (report: ReviewReport) => {
     if (!session) return;
+    const confirmed = await confirmAsync(
+      'Remove this review?',
+      `The review by ${report.reviewAuthorName} is taken down for good and stops counting toward the rating of "${report.locationName}".`,
+      'Remove'
+    );
+    if (!confirmed) return;
     setBusyId(report.id);
     try {
       await updateReviewStatus(supabase, report.reviewId, 'removed');
@@ -288,6 +324,22 @@ export default function AdminReportsScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
+            {activeTab !== 'claims' && (
+              <ThemedView type="backgroundElement" style={styles.legendCard}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  <ThemedText type="smallBold">Dismiss</ThemedText> — close the report, change nothing.{'\n'}
+                  <ThemedText type="smallBold">Warn</ThemedText> — message the person who posted it; the
+                  content stays up.{'\n'}
+                  <ThemedText type="smallBold">Hide</ThemedText> — take it out of the app but keep it, so
+                  you can restore it.{'\n'}
+                  <ThemedText type="smallBold">Remove</ThemedText> — take it down for good.
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  To restrict the person themselves, use People &amp; bans.
+                </ThemedText>
+              </ThemedView>
+            )}
+
             {openReports.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 No open reports. All caught up.
@@ -342,7 +394,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => handleFlagLocation(report)}>
                         <ThemedText type="smallBold" style={styles.flagButtonText}>
-                          Flag
+                          Hide
                         </ThemedText>
                       </Pressable>
                       <Pressable
@@ -588,6 +640,11 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.half,
+  },
+  legendCard: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.two,
   },
   handledCard: {
     opacity: 0.85,

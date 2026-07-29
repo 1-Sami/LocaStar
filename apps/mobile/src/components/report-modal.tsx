@@ -11,6 +11,7 @@ const REPORT_REASONS = [
   'Inappropriate content',
   "Doesn't exist / permanently closed",
   'Incorrect information',
+  'Duplicate of another listing',
   'Other',
 ];
 
