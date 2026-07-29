@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -115,8 +116,20 @@ export default function AboutScreen() {
             </ThemedText>
           </View>
 
+          <View style={styles.legalRow}>
+            <Link href={'/legal/privacy' as never}>
+              <ThemedText type="linkPrimary">Privacy Policy</ThemedText>
+            </Link>
+            <ThemedText type="small" themeColor="textSecondary">
+              ·
+            </ThemedText>
+            <Link href={'/legal/terms' as never}>
+              <ThemedText type="linkPrimary">Terms of Service</ThemedText>
+            </Link>
+          </View>
+
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-            Version {version}
+            Application AB · Version {version}
           </ThemedText>
         </ScrollView>
       </SafeAreaView>
@@ -166,6 +179,12 @@ const styles = StyleSheet.create({
   },
   featureLead: {
     fontWeight: '700',
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   version: {
     textAlign: 'center',

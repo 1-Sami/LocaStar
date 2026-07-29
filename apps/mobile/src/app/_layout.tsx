@@ -34,6 +34,8 @@ function ThemedNavigation() {
         <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="settings/delete-account" options={{ title: 'Delete account' }} />
         <Stack.Screen name="about" options={{ title: 'About' }} />
+        <Stack.Screen name="legal/privacy" options={{ title: 'Privacy Policy' }} />
+        <Stack.Screen name="legal/terms" options={{ title: 'Terms of Service' }} />
         <Stack.Screen name="admin-reports" options={{ title: 'Reports' }} />
         <Stack.Screen name="admin-users" options={{ title: 'People & bans' }} />
         <Stack.Screen name="admin-audit" options={{ title: 'Moderation log' }} />

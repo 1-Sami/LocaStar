@@ -15,11 +15,12 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SUPPORT_EMAIL } from '@/constants/support';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
@@ -307,6 +308,11 @@ export default function ProfileScreen() {
             <ThemedText type="small" style={styles.banNoticeText}>
               Reason: {myBan.reason}
             </ThemedText>
+            <Pressable onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Ban appeal`)}>
+              <ThemedText type="smallBold" style={styles.banAppealLink}>
+                Appeal this decision
+              </ThemedText>
+            </Pressable>
           </View>
         )}
 
@@ -547,6 +553,11 @@ const styles = StyleSheet.create({
   },
   banNoticeText: {
     color: 'rgba(255,255,255,0.9)',
+  },
+  banAppealLink: {
+    color: '#ffffff',
+    textDecorationLine: 'underline',
+    marginTop: Spacing.one,
   },
   warningNotice: {
     backgroundColor: '#E8A93B',

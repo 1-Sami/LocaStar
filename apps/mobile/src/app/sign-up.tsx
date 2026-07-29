@@ -6,9 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { MIN_PASSWORD_LENGTH } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+
+
+
+
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -70,7 +75,7 @@ export default function SignUpScreen() {
         <PasswordInput
           value={password}
           onChangeText={setPassword}
-          placeholder="Password (min. 6 characters)"
+          placeholder="Password (min. 8 characters, letters and digits)"
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
@@ -83,12 +88,24 @@ export default function SignUpScreen() {
 
         <Pressable
           onPress={onSubmit}
-          disabled={submitting || !email || password.length < 6}
+          disabled={submitting || !email || password.length < MIN_PASSWORD_LENGTH}
           style={[styles.submitButton, { backgroundColor: theme.primary }]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
             {submitting ? 'Signing up...' : 'Sign up'}
           </ThemedText>
         </Pressable>
+
+        <ThemedText type="small" themeColor="textSecondary" style={styles.consentText}>
+          By signing up you agree to our{' '}
+          <Link href={'/legal/terms' as never}>
+            <ThemedText type="linkPrimary">Terms of Service</ThemedText>
+          </Link>{' '}
+          and{' '}
+          <Link href={'/legal/privacy' as never}>
+            <ThemedText type="linkPrimary">Privacy Policy</ThemedText>
+          </Link>
+          .
+        </ThemedText>
 
         <View style={styles.switchRow}>
           <ThemedText type="small" themeColor="textSecondary">
@@ -130,6 +147,10 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#ffffff',
+  },
+  consentText: {
+    textAlign: 'center',
+    lineHeight: 20,
   },
   switchRow: {
     flexDirection: 'row',

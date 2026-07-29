@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { MIN_PASSWORD_LENGTH } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
@@ -36,7 +37,7 @@ export default function ResetPasswordScreen() {
   }, [code]);
 
   const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const canSave = password.length >= 6 && !mismatch && !saving;
+  const canSave = password.length >= MIN_PASSWORD_LENGTH && !mismatch && !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -107,7 +108,7 @@ export default function ResetPasswordScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="subtitle">Set a new password</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Choose a new password (at least 6 characters).
+          Choose a new password (at least 8 characters, with letters and digits).
         </ThemedText>
 
         <PasswordInput
