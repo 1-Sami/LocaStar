@@ -100,7 +100,7 @@ export default function SearchScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.exploreBadge}>
+        <View style={styles.exploreHeader}>
           <Text style={styles.exploreTitle}>Explore</Text>
         </View>
 
@@ -293,11 +293,9 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  exploreBadge: {
+  // Plain text on the page background — no pill or panel behind the title.
+  exploreHeader: {
     alignSelf: 'flex-start',
-    backgroundColor: SearchPalette.card,
-    borderRadius: 10,
-    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     marginHorizontal: Spacing.three,
   },
