@@ -3,8 +3,10 @@ import {
   fetchHandledLocationReports,
   fetchHandledReviewReports,
   fetchOpenBusinessClaims,
+  fetchProfile,
   fetchOpenLocationReports,
   fetchOpenReviewReports,
+  issueWarning,
   resolveBusinessClaim,
   resolveLocationReport,
   resolveReviewReport,
@@ -63,9 +65,50 @@ export default function AdminReportsScreen() {
   const [handledClaims, setHandledClaims] = useState<BusinessClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Business claims are admin-only in RLS, so superusers must not be offered
+  // that tab — they'd see an empty list and their actions would silently fail.
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  /**
+   * Warn the person behind a reported item. Bans deliberately stay on the
+   * People & bans screen, where duration and reason get proper input — a
+   * one-tap ban from a report card is too easy to fire by accident.
+   */
+  const handleWarnAuthor = async (
+    authorId: string | null,
+    authorName: string,
+    reason: string,
+    targetType: string,
+    targetId: string
+  ) => {
+    if (!session || !authorId) return;
+    const confirmed = await confirmAsync(
+      `Warn ${authorName}?`,
+      'They will see the warning on their profile. It is recorded in the moderation log.',
+      'Send warning'
+    );
+    if (!confirmed) return;
+    setBusyId(targetId);
+    try {
+      await issueWarning(supabase, {
+        userId: authorId,
+        issuedBy: session.user.id,
+        reason,
+        targetType,
+        targetId,
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const reload = useCallback(() => {
     setLoading(true);
+    if (session) {
+      fetchProfile(supabase, session.user.id)
+        .then((profile) => setIsAdmin(profile.role === 'admin'))
+        .catch(() => setIsAdmin(false));
+    }
     Promise.all([
       fetchOpenLocationReports(supabase),
       fetchHandledLocationReports(supabase),
@@ -91,7 +134,7 @@ export default function AdminReportsScreen() {
         setHandledClaims([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [session]);
 
   useFocusEffect(
     useCallback(() => {
@@ -202,10 +245,12 @@ export default function AdminReportsScreen() {
     }
   };
 
+  // If an admin's role is revoked while the claims tab is open, fall back.
+  const activeTab: Tab = tab === 'claims' && !isAdmin ? 'locations' : tab;
   const openReports =
-    tab === 'locations' ? openLocationReports : tab === 'reviews' ? openReviewReports : openClaims;
+    activeTab === 'locations' ? openLocationReports : activeTab === 'reviews' ? openReviewReports : openClaims;
   const handledReports =
-    tab === 'locations' ? handledLocationReports : tab === 'reviews' ? handledReviewReports : handledClaims;
+    activeTab === 'locations' ? handledLocationReports : activeTab === 'reviews' ? handledReviewReports : handledClaims;
 
   return (
     <ThemedView style={styles.container}>
@@ -227,14 +272,16 @@ export default function AdminReportsScreen() {
             }}>
             <ThemedText type="smallBold">Reviews ({openReviewReports.length})</ThemedText>
           </Pressable>
-          <Pressable
-            style={[styles.tab, tab === 'claims' && styles.tabActive]}
-            onPress={() => {
-              setTab('claims');
-              setHandledExpanded(false);
-            }}>
-            <ThemedText type="smallBold">Claims ({openClaims.length})</ThemedText>
-          </Pressable>
+          {isAdmin && (
+            <Pressable
+              style={[styles.tab, tab === 'claims' && styles.tabActive]}
+              onPress={() => {
+                setTab('claims');
+                setHandledExpanded(false);
+              }}>
+              <ThemedText type="smallBold">Claims ({openClaims.length})</ThemedText>
+            </Pressable>
+          )}
         </View>
 
         {loading ? (
@@ -245,7 +292,7 @@ export default function AdminReportsScreen() {
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 No open reports. All caught up.
               </ThemedText>
-            ) : tab === 'locations' ? (
+            ) : activeTab === 'locations' ? (
               openLocationReports.map((report) => {
                 const busy = busyId === report.id;
                 return (
@@ -255,8 +302,8 @@ export default function AdminReportsScreen() {
                       <ThemedText type="smallBold">{report.locationName}</ThemedText>
                     </Pressable>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Status: {report.locationStatus} · Reported by {report.reporterName} ·{' '}
-                      {new Date(report.createdAt).toLocaleDateString()}
+                      Status: {report.locationStatus} · Added by {report.locationCreatorName} · Reported by{' '}
+                      {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default" style={styles.reason}>
                       {report.reason}
@@ -274,6 +321,22 @@ export default function AdminReportsScreen() {
                         onPress={() => handleDismissLocation(report)}>
                         <ThemedText type="smallBold">Dismiss</ThemedText>
                       </Pressable>
+                      {report.locationCreatorId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.dismissButton]}
+                          disabled={busy}
+                          onPress={() =>
+                            handleWarnAuthor(
+                              report.locationCreatorId,
+                              report.locationCreatorName,
+                              report.reason,
+                              'location',
+                              report.locationId
+                            )
+                          }>
+                          <ThemedText type="smallBold">Warn</ThemedText>
+                        </Pressable>
+                      )}
                       <Pressable
                         style={[styles.actionButton, styles.flagButton]}
                         disabled={busy}
@@ -294,7 +357,7 @@ export default function AdminReportsScreen() {
                   </ThemedView>
                 );
               })
-            ) : tab === 'reviews' ? (
+            ) : activeTab === 'reviews' ? (
               openReviewReports.map((report) => {
                 const busy = busyId === report.id;
                 return (
@@ -331,6 +394,22 @@ export default function AdminReportsScreen() {
                         onPress={() => handleDismissReview(report)}>
                         <ThemedText type="smallBold">Dismiss</ThemedText>
                       </Pressable>
+                      {report.reviewAuthorId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.dismissButton]}
+                          disabled={busy}
+                          onPress={() =>
+                            handleWarnAuthor(
+                              report.reviewAuthorId,
+                              report.reviewAuthorName,
+                              report.reason,
+                              'review',
+                              report.reviewId
+                            )
+                          }>
+                          <ThemedText type="smallBold">Warn</ThemedText>
+                        </Pressable>
+                      )}
                       <Pressable
                         style={[styles.actionButton, styles.flagButton]}
                         disabled={busy}
@@ -402,7 +481,7 @@ export default function AdminReportsScreen() {
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                   Nothing handled yet.
                 </ThemedText>
-              ) : tab === 'reviews' ? (
+              ) : activeTab === 'reviews' ? (
                 handledReviewReports.map((report) => (
                   <ThemedView key={report.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
                     <Pressable
@@ -423,7 +502,7 @@ export default function AdminReportsScreen() {
                     )}
                   </ThemedView>
                 ))
-              ) : tab === 'locations' ? (
+              ) : activeTab === 'locations' ? (
                 handledLocationReports.map((report) => (
                   <ThemedView key={report.id} type="backgroundElement" style={[styles.card, styles.handledCard]}>
                     <Pressable

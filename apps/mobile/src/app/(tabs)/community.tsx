@@ -1,7 +1,13 @@
-import { fetchPublicLists, setListLiked, type PublicList } from '@locastar/shared';
+import {
+  fetchPublicLists,
+  setListLiked,
+  type PublicList,
+  type PublicListSort,
+} from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
@@ -9,19 +15,29 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
+
+const SORT_OPTIONS: { key: PublicListSort; label: string }[] = [
+  { key: 'newest', label: 'Latest added' },
+  { key: 'most_liked', label: 'Most liked' },
+  { key: 'least_liked', label: 'Least liked' },
+];
 
 export default function CommunityScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
 
   const [lists, setLists] = useState<PublicList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState<PublicListSort>('newest');
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    fetchPublicLists(supabase, session?.user.id ?? null)
+    fetchPublicLists(supabase, session?.user.id ?? null, sort)
       .then((rows) => {
         if (!cancelled) setLists(rows);
       })
@@ -34,7 +50,7 @@ export default function CommunityScreen() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user.id]);
+  }, [session?.user.id, sort]);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,6 +77,17 @@ export default function CommunityScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.sortRow}>
+          <Pressable
+            style={[styles.sortButton, { backgroundColor: theme.backgroundSelected }]}
+            onPress={() => setSortMenuVisible(true)}>
+            <Ionicons name="swap-vertical" size={14} color={theme.text} />
+            <ThemedText type="small">
+              {SORT_OPTIONS.find((option) => option.key === sort)?.label ?? 'Sort'}
+            </ThemedText>
+          </Pressable>
+        </View>
+
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
@@ -89,6 +116,32 @@ export default function CommunityScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+
+      <Modal
+        visible={sortMenuVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSortMenuVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
+          <ThemedView type="backgroundElement" style={styles.modalContent}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              Sort by
+            </ThemedText>
+            {SORT_OPTIONS.map((option) => (
+              <Pressable
+                key={option.key}
+                style={styles.modalRow}
+                onPress={() => {
+                  setSort(option.key);
+                  setSortMenuVisible(false);
+                }}>
+                <ThemedText type="default">{option.label}</ThemedText>
+                {sort === option.key && <Ionicons name="checkmark" size={18} color={theme.primary} />}
+              </Pressable>
+            ))}
+          </ThemedView>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -105,6 +158,43 @@ const styles = StyleSheet.create({
   },
   loadingIndicator: {
     marginTop: Spacing.six,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.five,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
+    padding: Spacing.four,
+    paddingBottom: Spacing.five,
+    gap: Spacing.two,
+  },
+  modalTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    marginBottom: Spacing.two,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
   },
   content: {
     flexDirection: 'row',

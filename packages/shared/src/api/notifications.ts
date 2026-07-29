@@ -13,6 +13,10 @@ export type ListShareNotificationPayload = {
   sender_name: string;
 };
 
+export type RoleGrantedNotificationPayload = {
+  role: string;
+};
+
 export type Notification =
   | {
       id: string;
@@ -25,6 +29,13 @@ export type Notification =
       id: string;
       type: "list_share";
       payload: ListShareNotificationPayload;
+      readAt: string | null;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      type: "role_granted";
+      payload: RoleGrantedNotificationPayload;
       readAt: string | null;
       createdAt: string;
     };

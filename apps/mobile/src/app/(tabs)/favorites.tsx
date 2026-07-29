@@ -3,8 +3,11 @@ import {
   deleteShare,
   fetchListsSharedWithMe,
   fetchMyShares,
+  fetchSavedLists,
   fetchSavedLocations,
+  setListLiked,
   type LocationShare,
+  type PublicList,
   type SharedList,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +24,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FavoriteCard } from '@/components/favorite-card';
+import { ListCard } from '@/components/list-card';
 import { LocationCard } from '@/components/location-card';
 import { SectionBadge } from '@/components/section-badge';
 import { ThemedText } from '@/components/themed-text';
@@ -155,6 +159,7 @@ export default function FavoritesScreen() {
   const [bucketList, setBucketList] = useState<CardLocation[]>([]);
   const [shares, setShares] = useState<LocationShare[]>([]);
   const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
+  const [savedLists, setSavedLists] = useState<PublicList[]>([]);
   const [loading, setLoading] = useState(true);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -170,6 +175,19 @@ export default function FavoritesScreen() {
     []
   );
 
+  const handleToggleSavedListLike = (list: PublicList) => {
+    if (!session) return;
+    const nextLiked = !list.likedByMe;
+    setSavedLists((current) =>
+      current.map((item) =>
+        item.id === list.id
+          ? { ...item, likedByMe: nextLiked, likeCount: item.likeCount + (nextLiked ? 1 : -1) }
+          : item
+      )
+    );
+    setListLiked(supabase, list.id, session.user.id, nextLiked).catch(() => reload());
+  };
+
   const handleSectionLayout = useCallback(
     (key: string) => (event: LayoutChangeEvent) => {
       sectionOffsets.current[key] = event.nativeEvent.layout.y;
@@ -182,16 +200,18 @@ export default function FavoritesScreen() {
     if (!session) return;
     setLoading(true);
     try {
-      const [favoriteRows, bucketListRows, shareRows, sharedListRows] = await Promise.all([
+      const [favoriteRows, bucketListRows, shareRows, sharedListRows, savedListRows] = await Promise.all([
         fetchSavedLocations(supabase, session.user.id, 'favorite'),
         fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
         fetchMyShares(supabase, session.user.id),
         fetchListsSharedWithMe(supabase, session.user.id),
+        fetchSavedLists(supabase, session.user.id),
       ]);
       setFavorites(favoriteRows.map(savedLocationToCard));
       setBucketList(bucketListRows.map(savedLocationToCard));
       setShares(shareRows);
       setSharedLists(sharedListRows);
+      setSavedLists(savedListRows);
     } finally {
       setLoading(false);
     }
@@ -283,7 +303,7 @@ export default function FavoritesScreen() {
               onLayout={handleSectionLayout('favorites')}
             />
             <FullSection
-              title="Bucket list"
+              title="Saved for later"
               badgeColor="#4C8FE8"
               items={bucketList}
               favoriteIds={favoriteIds}
@@ -292,8 +312,31 @@ export default function FavoritesScreen() {
               onToggleBucketList={handleToggleBucketList}
               onOpen={handleOpen}
               onLayout={handleSectionLayout('bucketList')}
-              emptyMessage="Nothing saved yet — tap the star on a location to start saving your planned trips."
+              emptyMessage="Nothing saved yet — tap the bookmark on a location to start saving your planned trips."
             />
+
+            {savedLists.length > 0 && (
+              <View style={styles.section} onLayout={handleSectionLayout('savedLists')}>
+                <SectionBadge label="Saved lists" count={savedLists.length} backgroundColor="#2BA3A3" />
+                <View style={styles.savedListsGrid}>
+                  {savedLists.map((list) => (
+                    <View key={list.id} style={styles.savedListSlot}>
+                      <ListCard
+                        list={list}
+                        ownerUsername={list.ownerUsername ?? list.ownerDisplayName ?? 'someone'}
+                        onToggleLike={() => handleToggleSavedListLike(list)}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/lists/[id]',
+                            params: { id: list.id, name: list.name, isPublic: '1', shared: '1' },
+                          })
+                        }
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
             <View style={styles.section} onLayout={handleSectionLayout('shared')}>
               <SectionBadge label="Shared" count={sharedCards.length + sharedLists.length} backgroundColor="#B0B4BA" />
               {sharedCards.length === 0 && sharedLists.length === 0 ? (
@@ -389,6 +432,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'right',
     fontStyle: 'italic',
+  },
+  savedListsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  savedListSlot: {
+    width: '48%',
+    marginBottom: Spacing.two,
   },
   sharedListCard: {
     borderRadius: Spacing.two,

@@ -50,6 +50,8 @@ export default function NotificationsScreen() {
       );
       refreshUnreadCount();
     }
+    // A role grant has nowhere to navigate — reading it is the whole point.
+    if (notification.type === 'role_granted') return;
     if (notification.type === 'list_share') {
       router.push({ pathname: '/lists/[id]', params: { id: notification.payload.list_id, shared: '1' } });
     } else {
@@ -100,16 +102,34 @@ export default function NotificationsScreen() {
                   <ThemedView
                     type="backgroundElement"
                     style={[styles.card, !notification.readAt && styles.cardUnread]}>
-                    <ThemedText type="default" style={styles.noteText}>
-                      {notification.type === 'list_share'
-                        ? `Shared the list "${notification.payload.list_name ?? 'Untitled'}" with you`
-                        : notification.payload.note
-                          ? `"${notification.payload.note}"`
-                          : `Shared ${notification.payload.location_name ?? 'a location'} with you`}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      Shared by {notification.payload.sender_name}
-                    </ThemedText>
+                    {notification.type === 'role_granted' ? (
+                      <>
+                        <ThemedText type="default" style={styles.noteText}>
+                          You&apos;re now a Superuser 🎉
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Thank you for everything you&apos;ve contributed to LocaStar. You can now handle
+                          reports, hide or remove content that breaks the rules, and propose bans.
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          With great power comes great responsibility — every action you take is recorded in
+                          the moderation log, so use it thoughtfully and fairly.
+                        </ThemedText>
+                      </>
+                    ) : (
+                      <>
+                        <ThemedText type="default" style={styles.noteText}>
+                          {notification.type === 'list_share'
+                            ? `Shared the list "${notification.payload.list_name ?? 'Untitled'}" with you`
+                            : notification.payload.note
+                              ? `"${notification.payload.note}"`
+                              : `Shared ${notification.payload.location_name ?? 'a location'} with you`}
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Shared by {notification.payload.sender_name}
+                        </ThemedText>
+                      </>
+                    )}
                     <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
                       {new Date(notification.createdAt).toLocaleString()}
                     </ThemedText>

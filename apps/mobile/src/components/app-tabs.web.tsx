@@ -24,6 +24,13 @@ const TABS: { name: string; href: string; label: string; icon: IconName; iconAct
   { name: 'home', href: '/' as never, label: 'Home', icon: 'home-outline', iconActive: 'home' },
   { name: 'search', href: '/search', label: 'Search', icon: 'search-outline', iconActive: 'search' },
   {
+    name: 'community',
+    href: '/community',
+    label: 'Community',
+    icon: 'people-outline',
+    iconActive: 'people',
+  },
+  {
     name: 'favorites',
     href: '/favorites',
     label: 'Saved',

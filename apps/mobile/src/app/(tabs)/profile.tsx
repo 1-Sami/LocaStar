@@ -1,11 +1,15 @@
 import {
+  acknowledgeWarning,
   fetchMyActiveBan,
   fetchOpenReportsCount,
   fetchProfile,
   fetchProfileStats,
+  fetchWarningsForUser,
   isModeratorRole,
   type ProfileStats,
   type UserBan,
+  type UserRole,
+  type UserWarning,
 } from '@locastar/shared';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -40,7 +44,7 @@ const MENU_ROW_WIDTH = (91 * 3 + STAT_TILE_GAP * 2) * 0.8;
 function statTiles(stats: ProfileStats) {
   return [
     { label: 'Favorites', value: stats.favorites, color: '#E8A93B' },
-    { label: 'Bucket list', value: stats.bucketList, color: '#4C8FE8' },
+    { label: 'Saved for later', value: stats.bucketList, color: '#4C8FE8' },
     { label: 'Shared', value: stats.shared, color: '#B0B4BA' },
     { label: 'Reviews', value: stats.reviews, color: '#4CD37A' },
     { label: 'Added', value: stats.added, color: '#C34CE8' },
@@ -49,7 +53,7 @@ function statTiles(stats: ProfileStats) {
 
 const STAT_SECTIONS: Record<string, string> = {
   Favorites: 'favorites',
-  'Bucket list': 'bucketList',
+  'Saved for later': 'bucketList',
   Shared: 'shared',
 };
 
@@ -73,6 +77,7 @@ const MENU_ICONS: Record<
   About: { icon: 'information-circle-outline', color: '#14747A' },
   'Reports': { icon: 'flag-outline', color: '#E05252' },
   'People & bans': { icon: 'shield-checkmark-outline', color: '#E8A93B' },
+  'Moderation log': { icon: 'document-text-outline', color: '#4C8FE8' },
 };
 
 function MenuRow({
@@ -126,8 +131,10 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [myRole, setMyRole] = useState<UserRole>('user');
   const [openReportsCount, setOpenReportsCount] = useState(0);
   const [myBan, setMyBan] = useState<UserBan | null>(null);
+  const [myWarnings, setMyWarnings] = useState<UserWarning[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -145,11 +152,18 @@ export default function ProfileScreen() {
           if (!cancelled) setMyBan(ban);
         })
         .catch(() => {});
+      fetchWarningsForUser(supabase, session.user.id)
+        .then((warnings) => {
+          // Only unacknowledged ones need the user's attention.
+          if (!cancelled) setMyWarnings(warnings.filter((w) => !w.acknowledgedAt));
+        })
+        .catch(() => {});
       fetchProfile(supabase, session.user.id)
         .then((profile) => {
           if (cancelled) return;
           setAvatarUrl(profile.avatar_url);
           setUsername(profile.username);
+          setMyRole(profile.role);
           // Superusers moderate too, so the reports queue isn't admin-only.
           const moderator = isModeratorRole(profile.role);
           setIsModerator(moderator);
@@ -176,7 +190,7 @@ export default function ProfileScreen() {
   };
 
   const secondaryMenuItems = isModerator
-    ? [...SECONDARY_MENU_ITEMS, 'Reports', 'People & bans']
+    ? [...SECONDARY_MENU_ITEMS, 'Reports', 'People & bans', 'Moderation log']
     : SECONDARY_MENU_ITEMS;
 
   const handleMenuPress = (item: string) => {
@@ -189,6 +203,7 @@ export default function ProfileScreen() {
     if (item === 'About') router.push('/about');
     if (item === 'Reports') router.push('/admin-reports');
     if (item === 'People & bans') router.push('/admin-users' as never);
+    if (item === 'Moderation log') router.push('/admin-audit' as never);
   };
 
   const handleStatPress = (label: string) => {
@@ -256,7 +271,17 @@ export default function ProfileScreen() {
             />
           </Pressable>
           <View style={styles.infoColumn}>
-            {username && <ThemedText style={styles.usernameText}>{username}</ThemedText>}
+            <View style={styles.usernameRow}>
+              {username && <ThemedText style={styles.usernameText}>{username}</ThemedText>}
+              {myRole !== 'user' && (
+                <View style={[styles.roleBadge, myRole === 'admin' && styles.adminBadge]}>
+                  <Ionicons name="shield-checkmark" size={11} color="#1A1400" />
+                  <ThemedText type="small" style={styles.roleBadgeText}>
+                    {myRole === 'admin' ? 'Admin' : 'Superuser'}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
               {session.user.email}
             </ThemedText>
@@ -284,6 +309,29 @@ export default function ProfileScreen() {
             </ThemedText>
           </View>
         )}
+
+        {myWarnings.map((warning) => (
+          <View key={warning.id} style={styles.warningNotice}>
+            <View style={styles.banNoticeHeader}>
+              <Ionicons name="warning" size={18} color="#1A1400" />
+              <ThemedText type="smallBold" style={styles.warningNoticeText}>
+                Warning from a moderator
+              </ThemedText>
+            </View>
+            <ThemedText type="small" style={styles.warningNoticeText}>
+              {warning.reason}
+            </ThemedText>
+            <Pressable
+              onPress={() => {
+                setMyWarnings((current) => current.filter((w) => w.id !== warning.id));
+                acknowledgeWarning(supabase, warning.id).catch(() => {});
+              }}>
+              <ThemedText type="smallBold" style={styles.warningDismiss}>
+                Got it
+              </ThemedText>
+            </Pressable>
+          </View>
+        ))}
 
         <ScrollView
           horizontal
@@ -385,10 +433,33 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     gap: 2,
   },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    flexWrap: 'wrap',
+  },
   usernameText: {
     fontSize: 20,
     lineHeight: 26,
     fontWeight: '700',
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#E8A93B',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Spacing.five,
+  },
+  adminBadge: {
+    backgroundColor: '#4CD37A',
+  },
+  roleBadgeText: {
+    color: '#1A1400',
+    fontWeight: '700',
+    fontSize: 11,
   },
   logOutText: {
     fontSize: 15,
@@ -476,6 +547,21 @@ const styles = StyleSheet.create({
   },
   banNoticeText: {
     color: 'rgba(255,255,255,0.9)',
+  },
+  warningNotice: {
+    backgroundColor: '#E8A93B',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.half,
+    marginBottom: Spacing.three,
+  },
+  warningNoticeText: {
+    color: '#1A1400',
+  },
+  warningDismiss: {
+    color: '#1A1400',
+    textDecorationLine: 'underline',
+    marginTop: Spacing.one,
   },
   menuItem: {
     flexDirection: 'row',

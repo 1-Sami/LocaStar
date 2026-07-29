@@ -1,9 +1,11 @@
 import {
   deleteList,
   fetchListItems,
+  fetchListSavedState,
   fetchListShareRecipients,
   removeLocationFromList,
   renameList,
+  setListSaved,
   setListVisibility,
   shareList,
   type ListItemLocation,
@@ -51,6 +53,25 @@ export default function ListDetailScreen() {
   const [isPublic, setIsPublic] = useState(isPublicParam === '1');
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const [shareRecipients, setShareRecipients] = useState<ListShareRecipient[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Only meaningful on someone else's list — you can't "save" your own.
+  const reloadSavedState = useCallback(() => {
+    if (!id || !isSharedView || !session) return;
+    fetchListSavedState(supabase, id, session.user.id)
+      .then(setIsSaved)
+      .catch(() => {});
+  }, [id, isSharedView, session]);
+
+  const handleToggleSaved = () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    const next = !isSaved;
+    setIsSaved(next);
+    setListSaved(supabase, id, session.user.id, next).catch(() => setIsSaved(!next));
+  };
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -72,7 +93,8 @@ export default function ListDetailScreen() {
     useCallback(() => {
       reload();
       reloadShareRecipients();
-    }, [reload, reloadShareRecipients])
+      reloadSavedState();
+    }, [reload, reloadShareRecipients, reloadSavedState])
   );
 
   const handleRemove = async (locationId: string) => {
@@ -154,7 +176,15 @@ export default function ListDetailScreen() {
             </View>
           ),
           headerRight: () =>
-            isSharedView ? null : (
+            isSharedView ? (
+              <Pressable style={styles.headerSaveButton} onPress={handleToggleSaved} hitSlop={8}>
+                <Ionicons
+                  name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                  size={18}
+                  color={isSaved ? '#F5C242' : theme.text}
+                />
+              </Pressable>
+            ) : (
               <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList} hitSlop={8}>
                 <Ionicons name="trash-outline" size={16} color="#ffffff" />
               </Pressable>
@@ -363,6 +393,13 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: '#C1272D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.three,
+  },
+  headerSaveButton: {
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.three,

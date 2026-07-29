@@ -10,6 +10,9 @@ export type LocationReport = {
   locationId: string;
   locationName: string;
   locationStatus: LocationStatus;
+  /** Who added the location — lets a moderator act on the person, not just the listing. */
+  locationCreatorId: string | null;
+  locationCreatorName: string;
   reason: string;
   details: string | null;
   reporterName: string;
@@ -26,12 +29,20 @@ type LocationReportRow = {
   status: LocationReportStatus;
   created_at: string;
   resolved_at: string | null;
-  locations: { name: string; status: LocationStatus } | null;
+  locations: {
+    name: string;
+    status: LocationStatus;
+    created_by: string | null;
+    profiles: { display_name: string | null } | null;
+  } | null;
   profiles: { display_name: string | null } | null;
 };
 
 const LOCATION_REPORT_SELECT =
-  "id, location_id, reason, details, status, created_at, resolved_at, locations(name, status), profiles!location_reports_reporter_id_fkey(display_name)";
+  // `locations` has two FKs to `profiles` (created_by and claimed_by), so the
+  // nested embed must name the constraint — an unqualified profiles(...) here
+  // is ambiguous and makes PostgREST reject the whole query.
+  "id, location_id, reason, details, status, created_at, resolved_at, locations(name, status, created_by, profiles!locations_created_by_fkey(display_name)), profiles!location_reports_reporter_id_fkey(display_name)";
 
 function mapLocationReport(row: LocationReportRow): LocationReport {
   return {
@@ -39,6 +50,8 @@ function mapLocationReport(row: LocationReportRow): LocationReport {
     locationId: row.location_id,
     locationName: row.locations?.name ?? "Unknown location",
     locationStatus: row.locations?.status ?? "active",
+    locationCreatorId: row.locations?.created_by ?? null,
+    locationCreatorName: row.locations?.profiles?.display_name ?? "Unknown",
     reason: row.reason,
     details: row.details,
     reporterName: row.profiles?.display_name ?? "Anonymous",
@@ -95,6 +108,7 @@ export type ReviewStatus = "visible" | "hidden" | "removed";
 export type ReviewReport = {
   id: string;
   reviewId: string;
+  reviewAuthorId: string | null;
   reviewAuthorName: string;
   reviewRating: number;
   reviewTitle: string | null;
@@ -124,6 +138,7 @@ type ReviewReportRow = {
     body: string | null;
     status: ReviewStatus;
     location_id: string;
+    user_id: string;
     profiles: { display_name: string | null } | null;
     locations: { name: string } | null;
   } | null;
@@ -131,12 +146,13 @@ type ReviewReportRow = {
 };
 
 const REVIEW_REPORT_SELECT =
-  "id, review_id, reason, details, status, created_at, resolved_at, reviews(rating, title, body, status, location_id, profiles(display_name), locations(name)), profiles!review_reports_reporter_id_fkey(display_name)";
+  "id, review_id, reason, details, status, created_at, resolved_at, reviews(rating, title, body, status, location_id, user_id, profiles(display_name), locations(name)), profiles!review_reports_reporter_id_fkey(display_name)";
 
 function mapReviewReport(row: ReviewReportRow): ReviewReport {
   return {
     id: row.id,
     reviewId: row.review_id,
+    reviewAuthorId: row.reviews?.user_id ?? null,
     reviewAuthorName: row.reviews?.profiles?.display_name ?? "Anonymous",
     reviewRating: row.reviews?.rating ?? 0,
     reviewTitle: row.reviews?.title ?? null,
@@ -426,4 +442,77 @@ export async function fetchModerationActions(
     detail: row.detail,
     createdAt: row.created_at,
   }));
+}
+
+/* ------------------------------------------------------------ warnings --- */
+
+export type UserWarning = {
+  id: string;
+  userId: string;
+  issuedByName: string;
+  reason: string;
+  acknowledgedAt: string | null;
+  createdAt: string;
+};
+
+type UserWarningRow = {
+  id: string;
+  user_id: string;
+  reason: string;
+  acknowledged_at: string | null;
+  created_at: string;
+  issuer: { display_name: string | null; username: string | null } | null;
+};
+
+const WARNING_SELECT =
+  "id, user_id, reason, acknowledged_at, created_at, issuer:profiles!user_warnings_issued_by_fkey(display_name, username)";
+
+function mapWarning(row: UserWarningRow): UserWarning {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    issuedByName: personName(row.issuer),
+    reason: row.reason,
+    acknowledgedAt: row.acknowledged_at,
+    createdAt: row.created_at,
+  };
+}
+
+export async function issueWarning(
+  client: SupabaseClient,
+  input: {
+    userId: string;
+    issuedBy: string;
+    reason: string;
+    targetType?: string | null;
+    targetId?: string | null;
+  }
+): Promise<void> {
+  const { error } = await client.from("user_warnings").insert({
+    user_id: input.userId,
+    issued_by: input.issuedBy,
+    reason: input.reason,
+    target_type: input.targetType ?? null,
+    target_id: input.targetId ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function fetchWarningsForUser(client: SupabaseClient, userId: string): Promise<UserWarning[]> {
+  const { data, error } = await client
+    .from("user_warnings")
+    .select(WARNING_SELECT)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as UserWarningRow[]).map(mapWarning);
+}
+
+/** Recipients can only mark a warning as seen — the rest of the row is pinned by a trigger. */
+export async function acknowledgeWarning(client: SupabaseClient, warningId: string): Promise<void> {
+  const { error } = await client
+    .from("user_warnings")
+    .update({ acknowledged_at: new Date().toISOString() })
+    .eq("id", warningId);
+  if (error) throw error;
 }

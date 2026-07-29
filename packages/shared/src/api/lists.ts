@@ -351,9 +351,12 @@ type PublicListRow = {
   owner: { username: string | null; display_name: string | null } | null;
 };
 
+export type PublicListSort = "newest" | "most_liked" | "least_liked";
+
 export async function fetchPublicLists(
   client: SupabaseClient,
-  viewerUserId?: string | null
+  viewerUserId?: string | null,
+  sort: PublicListSort = "newest"
 ): Promise<PublicList[]> {
   const { data, error } = await client
     .from("lists")
@@ -371,6 +374,92 @@ export async function fetchPublicLists(
   const [previewByList, likesByList] = await Promise.all([
     fetchPreviewLocationIds(client, listIds),
     fetchLikeInfo(client, listIds, viewerUserId ?? ""),
+  ]);
+
+  const lists = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    itemCount: row.list_items?.[0]?.count ?? 0,
+    createdAt: row.created_at,
+    isPublic: row.is_public,
+    likeCount: likesByList.get(row.id)?.count ?? 0,
+    likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
+    previewLocationIds: previewByList.get(row.id) ?? [],
+    ownerUsername: row.owner?.username ?? null,
+    ownerDisplayName: row.owner?.display_name ?? null,
+  }));
+
+  // Like counts are assembled here rather than in the query, so ordering by
+  // them has to happen after mapping. Ties fall back to newest first.
+  if (sort === "most_liked" || sort === "least_liked") {
+    const direction = sort === "most_liked" ? -1 : 1;
+    lists.sort(
+      (a, b) =>
+        (a.likeCount - b.likeCount) * direction ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  return lists;
+}
+
+/* ---------------------------------------------------------- list saves --- */
+
+/**
+ * Saving a public list to your own Saved page. Separate from liking: a like is
+ * public and shows on the card, a save is private and only changes where the
+ * list appears for you.
+ */
+export async function setListSaved(
+  client: SupabaseClient,
+  listId: string,
+  userId: string,
+  saved: boolean
+): Promise<void> {
+  if (saved) {
+    const { error } = await client.from("list_saves").insert({ list_id: listId, user_id: userId });
+    if (error) throw error;
+  } else {
+    const { error } = await client.from("list_saves").delete().match({ list_id: listId, user_id: userId });
+    if (error) throw error;
+  }
+}
+
+export async function fetchListSavedState(
+  client: SupabaseClient,
+  listId: string,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("list_saves")
+    .select("list_id")
+    .match({ list_id: listId, user_id: userId })
+    .maybeSingle();
+  if (error) throw error;
+  return data !== null;
+}
+
+/** The lists this user has saved, for the Saved page. */
+export async function fetchSavedLists(client: SupabaseClient, userId: string): Promise<PublicList[]> {
+  const { data, error } = await client
+    .from("list_saves")
+    .select(
+      "created_at, lists(id, name, description, created_at, is_public, list_items(count), owner:profiles!lists_user_id_fkey(username, display_name))"
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const rows = ((data ?? []) as unknown as { lists: PublicListRow | null }[])
+    .map((row) => row.lists)
+    .filter((list): list is PublicListRow => list !== null);
+  if (rows.length === 0) return [];
+
+  const listIds = rows.map((row) => row.id);
+  const [previewByList, likesByList] = await Promise.all([
+    fetchPreviewLocationIds(client, listIds),
+    fetchLikeInfo(client, listIds, userId),
   ]);
 
   return rows.map((row) => ({

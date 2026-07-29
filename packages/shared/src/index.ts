@@ -93,6 +93,9 @@ export {
   searchUsers,
   setUserRole,
   fetchModerationActions,
+  issueWarning,
+  fetchWarningsForUser,
+  acknowledgeWarning,
 } from "./api/moderation";
 export type {
   LocationReport,
@@ -104,6 +107,7 @@ export type {
   UserBan,
   ManagedUser,
   ModerationAction,
+  UserWarning,
 } from "./api/moderation";
 
 export {
@@ -113,7 +117,11 @@ export {
   markAllNotificationsRead,
   deleteNotification,
 } from "./api/notifications";
-export type { Notification, ShareNotificationPayload } from "./api/notifications";
+export type {
+  Notification,
+  ShareNotificationPayload,
+  RoleGrantedNotificationPayload,
+} from "./api/notifications";
 
 export {
   fetchLists,
@@ -131,8 +139,18 @@ export {
   fetchListShareRecipients,
   deleteListShare,
   fetchPublicLists,
+  setListSaved,
+  fetchListSavedState,
+  fetchSavedLists,
 } from "./api/lists";
-export type { LocationList, ListItemLocation, SharedList, ListShareRecipient, PublicList } from "./api/lists";
+export type {
+  LocationList,
+  ListItemLocation,
+  SharedList,
+  ListShareRecipient,
+  PublicList,
+  PublicListSort,
+} from "./api/lists";
 
 export {
   submitBusinessClaim,

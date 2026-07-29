@@ -48,14 +48,14 @@ const EMPTY_STATS: ProfileStats = {
 
 const STAT_SECTIONS: Record<string, string> = {
   Favorites: 'favorites',
-  'Bucket list': 'bucketList',
+  'Saved for later': 'bucketList',
   Shared: 'shared',
 };
 
 function statTiles(stats: ProfileStats) {
   return [
     { label: 'Favorites', value: stats.favorites, color: '#E8A93B' },
-    { label: 'Bucket list', value: stats.bucketList, color: '#4C8FE8' },
+    { label: 'Saved for later', value: stats.bucketList, color: '#4C8FE8' },
     { label: 'Shared', value: stats.shared, color: '#B0B4BA' },
     { label: 'Reviews', value: stats.reviews, color: '#4CD37A' },
     { label: 'Added', value: stats.added, color: '#C34CE8' },
