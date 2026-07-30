@@ -135,7 +135,7 @@ export {
   removeLocationFromList,
   fetchListMembershipForLocation,
   shareList,
-  fetchListsSharedWithMe,
+  fetchMyListShares,
   fetchListShareRecipients,
   deleteListShare,
   fetchPublicLists,
@@ -162,5 +162,11 @@ export {
 } from "./api/business-claims";
 export type { ClaimStatus, BusinessClaim } from "./api/business-claims";
 
-export { fetchFriendships, sendFriendRequest, acceptFriendRequest, removeFriendship } from "./api/friends";
+export {
+  fetchFriendships,
+  sendFriendRequest,
+  acceptFriendRequest,
+  removeFriendship,
+  fetchPendingFriendRequestCount,
+} from "./api/friends";
 export type { Friend, FriendStatus, FriendDirection } from "./api/friends";

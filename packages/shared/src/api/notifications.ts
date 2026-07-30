@@ -17,6 +17,12 @@ export type RoleGrantedNotificationPayload = {
   role: string;
 };
 
+export type FriendNotificationPayload = {
+  friendship_id: string;
+  /** The other person: who sent the request, or who accepted it. */
+  sender_name: string;
+};
+
 export type Notification =
   | {
       id: string;
@@ -36,6 +42,20 @@ export type Notification =
       id: string;
       type: "role_granted";
       payload: RoleGrantedNotificationPayload;
+      readAt: string | null;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      type: "friend_request";
+      payload: FriendNotificationPayload;
+      readAt: string | null;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      type: "friend_accepted";
+      payload: FriendNotificationPayload;
       readAt: string | null;
       createdAt: string;
     };

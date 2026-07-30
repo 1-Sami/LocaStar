@@ -275,14 +275,19 @@ export type SharedList = {
   description: string | null;
   itemCount: number;
   sharedAt: string;
-  senderUsername: string | null;
-  senderDisplayName: string | null;
+  /** "sent" = I shared it out, "received" = someone shared it with me. */
+  direction: "sent" | "received";
+  /** The person at the other end: the recipient if sent, the sender if received. */
+  otherPartyUsername: string | null;
+  otherPartyDisplayName: string | null;
 };
 
 type SharedListRow = {
   id: string;
   created_at: string;
+  sender_id: string;
   sender: { username: string | null; display_name: string | null } | null;
+  recipient: { username: string | null; display_name: string | null } | null;
   list: {
     id: string;
     name: string;
@@ -291,30 +296,42 @@ type SharedListRow = {
   } | null;
 };
 
-export async function fetchListsSharedWithMe(client: SupabaseClient, userId: string): Promise<SharedList[]> {
+/**
+ * Every list share this user is part of, in both directions — mirroring how
+ * shared *locations* already work. Fetching only the received side made a list
+ * you shared out invisible to you, so there was no way to see who you had
+ * shared with.
+ */
+export async function fetchMyListShares(client: SupabaseClient, userId: string): Promise<SharedList[]> {
   const { data, error } = await client
     .from("list_shares")
     .select(
-      `id, created_at,
+      `id, created_at, sender_id,
        sender:profiles!list_shares_sender_id_fkey(username, display_name),
+       recipient:profiles!list_shares_recipient_id_fkey(username, display_name),
        list:lists(id, name, description, list_items(count))`
     )
-    .eq("recipient_id", userId)
+    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
     .order("created_at", { ascending: false });
   if (error) throw error;
 
   return ((data ?? []) as unknown as SharedListRow[])
     .filter((row) => row.list !== null)
-    .map((row) => ({
-      id: row.list!.id,
-      shareId: row.id,
-      name: row.list!.name,
-      description: row.list!.description,
-      itemCount: row.list!.list_items?.[0]?.count ?? 0,
-      sharedAt: row.created_at,
-      senderUsername: row.sender?.username ?? null,
-      senderDisplayName: row.sender?.display_name ?? null,
-    }));
+    .map((row) => {
+      const sent = row.sender_id === userId;
+      const otherParty = sent ? row.recipient : row.sender;
+      return {
+        id: row.list!.id,
+        shareId: row.id,
+        name: row.list!.name,
+        description: row.list!.description,
+        itemCount: row.list!.list_items?.[0]?.count ?? 0,
+        sharedAt: row.created_at,
+        direction: sent ? ("sent" as const) : ("received" as const),
+        otherPartyUsername: otherParty?.username ?? null,
+        otherPartyDisplayName: otherParty?.display_name ?? null,
+      };
+    });
 }
 
 export async function deleteListShare(client: SupabaseClient, shareId: string): Promise<void> {

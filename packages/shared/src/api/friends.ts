@@ -82,6 +82,20 @@ export async function sendFriendRequest(
   if (error) throw error;
 }
 
+/** Incoming requests still waiting on this user — drives the Friends badge. */
+export async function fetchPendingFriendRequestCount(
+  client: SupabaseClient,
+  userId: string
+): Promise<number> {
+  const { count, error } = await client
+    .from("friendships")
+    .select("*", { count: "exact", head: true })
+    .eq("recipient_id", userId)
+    .eq("status", "pending");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function acceptFriendRequest(client: SupabaseClient, friendshipId: string): Promise<void> {
   const { error } = await client
     .from("friendships")

@@ -52,6 +52,10 @@ export default function NotificationsScreen() {
     }
     // A role grant has nowhere to navigate — reading it is the whole point.
     if (notification.type === 'role_granted') return;
+    if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
+      router.push('/friends' as never);
+      return;
+    }
     if (notification.type === 'list_share') {
       router.push({ pathname: '/lists/[id]', params: { id: notification.payload.list_id, shared: '1' } });
     } else {
@@ -114,6 +118,24 @@ export default function NotificationsScreen() {
                         <ThemedText type="small" themeColor="textSecondary">
                           With great power comes great responsibility — every action you take is recorded in
                           the moderation log, so use it thoughtfully and fairly.
+                        </ThemedText>
+                      </>
+                    ) : notification.type === 'friend_request' ? (
+                      <>
+                        <ThemedText type="default" style={styles.noteText}>
+                          {notification.payload.sender_name} sent you a friend request
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Tap to accept or decline it on your Friends page.
+                        </ThemedText>
+                      </>
+                    ) : notification.type === 'friend_accepted' ? (
+                      <>
+                        <ThemedText type="default" style={styles.noteText}>
+                          {notification.payload.sender_name} accepted your friend request
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          You can now share places and lists with each other.
                         </ThemedText>
                       </>
                     ) : (

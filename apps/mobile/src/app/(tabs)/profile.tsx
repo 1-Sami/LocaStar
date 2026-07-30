@@ -2,6 +2,7 @@ import {
   acknowledgeWarning,
   fetchMyActiveBan,
   fetchOpenReportsCount,
+  fetchPendingFriendRequestCount,
   fetchProfile,
   fetchProfileStats,
   fetchWarningsForUser,
@@ -134,6 +135,7 @@ export default function ProfileScreen() {
   const [isModerator, setIsModerator] = useState(false);
   const [myRole, setMyRole] = useState<UserRole>('user');
   const [openReportsCount, setOpenReportsCount] = useState(0);
+  const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const [myBan, setMyBan] = useState<UserBan | null>(null);
   const [myWarnings, setMyWarnings] = useState<UserWarning[]>([]);
 
@@ -153,6 +155,13 @@ export default function ProfileScreen() {
           if (!cancelled) setMyBan(ban);
         })
         .catch(() => {});
+      fetchPendingFriendRequestCount(supabase, session.user.id)
+        .then((count) => {
+          if (!cancelled) setPendingFriendRequests(count);
+        })
+        .catch(() => {
+          if (!cancelled) setPendingFriendRequests(0);
+        });
       fetchWarningsForUser(supabase, session.user.id)
         .then((warnings) => {
           // Only unacknowledged ones need the user's attention.
@@ -366,7 +375,12 @@ export default function ProfileScreen() {
 
         <View style={styles.menu}>
           {PRIMARY_MENU_ITEMS.map((item) => (
-            <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
+            <MenuRow
+              key={item}
+              item={item}
+              badgeCount={item === 'Friends' ? pendingFriendRequests : undefined}
+              onPress={() => handleMenuPress(item)}
+            />
           ))}
         </View>
 

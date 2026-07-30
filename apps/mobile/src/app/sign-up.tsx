@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -25,7 +26,14 @@ export default function SignUpScreen() {
   const router = useRouter();
   const theme = useTheme();
 
+  // Only complain once they've actually started typing the second one, so the
+  // form doesn't show an error before there's anything to compare.
+  const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  const canSubmit =
+    Boolean(email.trim()) && password.length >= MIN_PASSWORD_LENGTH && password === confirmPassword;
+
   const onSubmit = async () => {
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     const { error: signUpError, needsEmailConfirmation } = await signUpWithPassword(
@@ -79,6 +87,19 @@ export default function SignUpScreen() {
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
+        <PasswordInput
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          placeholder="Repeat password"
+          placeholderTextColor={theme.textSecondary}
+          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+        />
+
+        {passwordsMismatch && (
+          <ThemedText type="small" style={styles.error}>
+            The two passwords don&apos;t match.
+          </ThemedText>
+        )}
 
         {error && (
           <ThemedText type="small" style={styles.error}>
@@ -88,7 +109,7 @@ export default function SignUpScreen() {
 
         <Pressable
           onPress={onSubmit}
-          disabled={submitting || !email || password.length < MIN_PASSWORD_LENGTH}
+          disabled={submitting || !canSubmit}
           style={[styles.submitButton, { backgroundColor: theme.primary }]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
             {submitting ? 'Signing up...' : 'Sign up'}

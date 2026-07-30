@@ -40,7 +40,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithPassword = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
-    return { error: error?.message ?? null, needsEmailConfirmation: !error && !data.session };
+    if (error) return { error: error.message, needsEmailConfirmation: false };
+
+    // Supabase deliberately answers a sign-up for an already-registered email
+    // with a success-shaped response, so that nobody can use this endpoint to
+    // discover which emails have accounts. The tell is a user with no identities
+    // attached. Without this check the person is shown "check your email" and
+    // waits for a confirmation link that is never sent.
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      return {
+        error: 'An account with that email already exists. Log in instead, or reset your password.',
+        needsEmailConfirmation: false,
+      };
+    }
+
+    return { error: null, needsEmailConfirmation: !data.session };
   };
 
   const signOut = async () => {
