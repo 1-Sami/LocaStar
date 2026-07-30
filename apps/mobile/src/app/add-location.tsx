@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,10 +29,22 @@ import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { supabase } from '@/lib/supabase';
 
-function formatReverseGeocodeResult(result: Location.LocationGeocodedAddress): string {
-  const line1 = [result.name, result.street].filter(Boolean).join(' ');
-  const line2 = [result.postalCode, result.city].filter(Boolean).join(' ');
-  return [line1, line2, result.country].filter((part) => part && part.trim()).join(', ');
+function formatStreetLine(result: Location.LocationGeocodedAddress): string {
+  // Swedish street addresses put the number after the name (e.g. "Sturevägen 6"),
+  // so build from `street`/`streetNumber` directly rather than the ambiguous
+  // `name` field, whose ordering isn't consistent across platforms.
+  return [result.street, result.streetNumber].filter(Boolean).join(' ');
+}
+
+function resolveCity(result: Location.LocationGeocodedAddress): string | null {
+  // `city` frequently comes back null from the geocoder for addresses outside
+  // a major urban core — fall back to the district/subregion, which is
+  // usually the actual town/city name in that case.
+  return result.city || result.subregion || result.district || null;
+}
+
+function formatCityLine(result: Location.LocationGeocodedAddress): string {
+  return [result.postalCode, resolveCity(result)].filter(Boolean).join(' ');
 }
 
 // Roughly a city block. Wide enough to catch the same court pinned slightly
@@ -98,7 +110,8 @@ export default function AddLocationScreen() {
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
   const [description, setDescription] = useState('');
   const [hours, setHours] = useState<OpeningHours>({});
   const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
@@ -123,6 +136,13 @@ export default function AddLocationScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  // Submitting is several writes in a row, and the later ones can fail on their
+  // own (a photo upload especially). Without this, retrying re-ran the whole
+  // sequence and created a second copy of the location every time. Remember
+  // what already landed so a retry finishes the job instead of repeating it.
+  const createdLocationId = useRef<string | null>(null);
+  const uploadedPhotoCount = useRef(0);
 
   useEffect(() => {
     fetchCategories(supabase)
@@ -159,9 +179,13 @@ export default function AddLocationScreen() {
     Location.reverseGeocodeAsync(next)
       .then((results) => {
         const result = results[0];
-        const formatted = result ? formatReverseGeocodeResult(result) : '';
-        if (formatted) setAddress(formatted);
-        setGeocodedCity(result?.city ?? null);
+        if (result) {
+          const streetLine = formatStreetLine(result);
+          const cityLine = formatCityLine(result);
+          if (streetLine) setAddressLine1(streetLine);
+          if (cityLine) setAddressLine2(cityLine);
+        }
+        setGeocodedCity(result ? resolveCity(result) : null);
         setGeocodedCountry(result?.country ?? null);
       })
       .catch(() => {})
@@ -216,7 +240,8 @@ export default function AddLocationScreen() {
   const canSubmit =
     Boolean(
       name.trim() &&
-        address.trim() &&
+        addressLine1.trim() &&
+        addressLine2.trim() &&
         categoryIds.length > 0 &&
         hasPhoto &&
         pinCoords &&
@@ -232,11 +257,14 @@ export default function AddLocationScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      const locationId = await submitLocation(supabase, {
+      const address = [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', ');
+      const locationId =
+        createdLocationId.current ??
+        (await submitLocation(supabase, {
         kind: isActivity ? 'activity' : 'place',
         name: name.trim(),
         description: description.trim() || null,
-        address: address.trim(),
+        address,
         city: geocodedCity,
         country: geocodedCountry,
         lat: pinCoords.latitude,
@@ -256,12 +284,16 @@ export default function AddLocationScreen() {
         otherCategoryDetail: hasOtherCategory ? otherCategoryDetail.trim() : null,
         availableSummer,
         availableWinter,
-      });
+        }));
+      createdLocationId.current = locationId;
 
-      for (const uri of photoUris) {
+      // Resume at the photo that failed rather than re-uploading the ones that
+      // already went up (which would attach them to the location twice).
+      for (let index = uploadedPhotoCount.current; index < photoUris.length; index += 1) {
         const path = `locations/${locationId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-        await uploadImageToMedia(path, uri);
+        await uploadImageToMedia(path, photoUris[index]);
         await addLocationPhoto(supabase, locationId, session.user.id, path);
+        uploadedPhotoCount.current = index + 1;
       }
 
       if (isOwner) {
@@ -271,7 +303,11 @@ export default function AddLocationScreen() {
       setSubmitted(true);
     } catch (err) {
       console.error(`Failed to submit ${noun}`, err);
-      setError('Something went wrong submitting your ' + noun + '. Try again.');
+      setError(
+        createdLocationId.current
+          ? `Your ${noun} was saved, but its photos didn't finish uploading. Tap submit again to retry — that won't create a second ${noun}.`
+          : `Something went wrong submitting your ${noun}. Try again.`
+      );
     } finally {
       setSubmitting(false);
     }
@@ -378,9 +414,17 @@ export default function AddLocationScreen() {
           )}
 
           <TextInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder={geocoding ? 'Looking up address…' : '*Address'}
+            value={addressLine1}
+            onChangeText={setAddressLine1}
+            placeholder={geocoding ? 'Looking up address…' : '*Street address'}
+            placeholderTextColor={LIGHT_PLACEHOLDER}
+            style={[styles.input, styles.lightInput]}
+          />
+
+          <TextInput
+            value={addressLine2}
+            onChangeText={setAddressLine2}
+            placeholder={geocoding ? 'Looking up address…' : '*Postal code and city'}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
           />

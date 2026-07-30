@@ -16,9 +16,39 @@ function formatCardDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function cityCountryLabel(location: CardLocation): string | null {
-  const parts = [location.city, location.country].filter((part): part is string => Boolean(part && part.trim()));
-  return parts.length > 0 ? parts.join(', ') : null;
+function cityLabel(location: CardLocation): string | null {
+  return location.city && location.city.trim() ? location.city : null;
+}
+
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * The stored address ends with the city, and older ones end with the country
+ * too. The card prints the city on its own line underneath, so trim those off
+ * the end to leave just the street and postal code — otherwise the city shows
+ * up on both rows.
+ */
+function streetLine(location: CardLocation): string | null {
+  const stored = location.address?.trim();
+  if (!stored) return null;
+
+  let address: string = stored;
+
+  // Country first: it sits after the city, so it has to come off first for the
+  // city to be at the end where we can strip it.
+  for (const part of [location.country, location.city]) {
+    const trimmed = part?.trim();
+    if (!trimmed) continue;
+    const stripped: string = address
+      .replace(new RegExp(`[,\\s]*${escapeForRegExp(trimmed)}\\s*$`, 'i'), '')
+      .replace(/[,\s]+$/, '');
+    // Keep the original if trimming would leave nothing to show.
+    if (stripped) address = stripped;
+  }
+
+  return address || null;
 }
 
 export function LocationCard({
@@ -37,7 +67,8 @@ export function LocationCard({
   onPress?: () => void;
 }) {
   const categoryColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
-  const cityCountry = cityCountryLabel(location);
+  const city = cityLabel(location);
+  const street = streetLine(location);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const handleContentLayout = (event: LayoutChangeEvent) => {
     setContentHeight(event.nativeEvent.layout.height);
@@ -94,9 +125,9 @@ export function LocationCard({
             </ThemedText>
           )}
 
-          {location.address ? (
+          {street ? (
             <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
-              {location.address}
+              {street}
             </ThemedText>
           ) : location.distanceKm !== null ? (
             <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
@@ -105,9 +136,9 @@ export function LocationCard({
           ) : null}
 
           <View style={styles.bottomRow}>
-            {cityCountry ? (
+            {city ? (
               <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.bottomRowFill]}>
-                {cityCountry}
+                {city}
               </ThemedText>
             ) : (
               <View style={styles.bottomRowFill} />
