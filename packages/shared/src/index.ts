@@ -101,6 +101,7 @@ export type {
   LocationReport,
   LocationReportStatus,
   LocationStatus,
+  ResolutionAction,
   ReviewReport,
   ReviewStatus,
   BanStatus,

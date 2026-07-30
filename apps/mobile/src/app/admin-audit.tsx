@@ -39,7 +39,30 @@ function roleLabel(role: UserRole | null): string {
   return 'User';
 }
 
-/** Renders the jsonb detail as "from → to" where present, else key: value lines. */
+// The decision a moderator recorded when resolving a report.
+const RESOLUTION_LABELS: Record<string, string> = {
+  dismissed: 'Dismissed the report',
+  warned: 'Warned the author',
+  hidden: 'Hid the content',
+  removed: 'Removed the content',
+};
+
+const DETAIL_LABELS: Record<string, string> = {
+  action: 'Action',
+  note: 'Reason given',
+  reason: 'Reason given',
+  status: 'Status',
+  expires_at: 'Expires',
+};
+
+function formatDetailValue(key: string, value: unknown): string {
+  if (key === 'action') return RESOLUTION_LABELS[String(value)] ?? String(value);
+  // Quote free text so it reads as someone's words rather than a field value.
+  if (key === 'note' || key === 'reason') return `“${String(value)}”`;
+  return String(value);
+}
+
+/** Renders the jsonb detail as "from → to" where present, else labelled lines. */
 function detailLines(detail: Record<string, unknown> | null): string[] {
   if (!detail) return [];
   const lines: string[] = [];
@@ -49,7 +72,8 @@ function detailLines(detail: Record<string, unknown> | null): string[] {
   for (const [key, value] of Object.entries(detail)) {
     if (key === 'from' || key === 'to' || value === null || value === undefined) continue;
     if (key.endsWith('_id')) continue;
-    lines.push(`${key.replace(/_/g, ' ')}: ${String(value)}`);
+    const label = DETAIL_LABELS[key] ?? key.replace(/_/g, ' ');
+    lines.push(`${label}: ${formatDetailValue(key, value)}`);
   }
   return lines;
 }

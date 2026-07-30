@@ -5,6 +5,9 @@ import type { UserRole } from "./profile";
 export type LocationReportStatus = "open" | "reviewed" | "actioned" | "dismissed";
 export type LocationStatus = "pending" | "active" | "flagged" | "removed";
 
+/** What the moderator actually decided, recorded rather than inferred. */
+export type ResolutionAction = "dismissed" | "warned" | "hidden" | "removed";
+
 export type LocationReport = {
   id: string;
   locationId: string;
@@ -19,6 +22,8 @@ export type LocationReport = {
   status: LocationReportStatus;
   createdAt: string;
   resolvedAt: string | null;
+  resolutionAction: ResolutionAction | null;
+  resolutionNote: string | null;
 };
 
 type LocationReportRow = {
@@ -29,6 +34,8 @@ type LocationReportRow = {
   status: LocationReportStatus;
   created_at: string;
   resolved_at: string | null;
+  resolution_action: ResolutionAction | null;
+  resolution_note: string | null;
   locations: {
     name: string;
     status: LocationStatus;
@@ -42,7 +49,7 @@ const LOCATION_REPORT_SELECT =
   // `locations` has two FKs to `profiles` (created_by and claimed_by), so the
   // nested embed must name the constraint — an unqualified profiles(...) here
   // is ambiguous and makes PostgREST reject the whole query.
-  "id, location_id, reason, details, status, created_at, resolved_at, locations(name, status, created_by, profiles!locations_created_by_fkey(display_name)), profiles!location_reports_reporter_id_fkey(display_name)";
+  "id, location_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, locations(name, status, created_by, profiles!locations_created_by_fkey(display_name)), profiles!location_reports_reporter_id_fkey(display_name)";
 
 function mapLocationReport(row: LocationReportRow): LocationReport {
   return {
@@ -58,6 +65,8 @@ function mapLocationReport(row: LocationReportRow): LocationReport {
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
+    resolutionAction: row.resolution_action,
+    resolutionNote: row.resolution_note,
   };
 }
 
@@ -85,11 +94,19 @@ export async function resolveLocationReport(
   client: SupabaseClient,
   reportId: string,
   status: LocationReportStatus,
-  resolvedBy: string
+  resolvedBy: string,
+  action: ResolutionAction,
+  note: string
 ): Promise<void> {
   const { error } = await client
     .from("location_reports")
-    .update({ status, resolved_by: resolvedBy, resolved_at: new Date().toISOString() })
+    .update({
+      status,
+      resolved_by: resolvedBy,
+      resolved_at: new Date().toISOString(),
+      resolution_action: action,
+      resolution_note: note,
+    })
     .eq("id", reportId);
   if (error) throw error;
 }
@@ -122,6 +139,8 @@ export type ReviewReport = {
   status: LocationReportStatus;
   createdAt: string;
   resolvedAt: string | null;
+  resolutionAction: ResolutionAction | null;
+  resolutionNote: string | null;
 };
 
 type ReviewReportRow = {
@@ -132,6 +151,8 @@ type ReviewReportRow = {
   status: LocationReportStatus;
   created_at: string;
   resolved_at: string | null;
+  resolution_action: ResolutionAction | null;
+  resolution_note: string | null;
   reviews: {
     rating: number;
     title: string | null;
@@ -146,7 +167,7 @@ type ReviewReportRow = {
 };
 
 const REVIEW_REPORT_SELECT =
-  "id, review_id, reason, details, status, created_at, resolved_at, reviews(rating, title, body, status, location_id, user_id, profiles(display_name), locations(name)), profiles!review_reports_reporter_id_fkey(display_name)";
+  "id, review_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, reviews(rating, title, body, status, location_id, user_id, profiles(display_name), locations(name)), profiles!review_reports_reporter_id_fkey(display_name)";
 
 function mapReviewReport(row: ReviewReportRow): ReviewReport {
   return {
@@ -166,6 +187,8 @@ function mapReviewReport(row: ReviewReportRow): ReviewReport {
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
+    resolutionAction: row.resolution_action,
+    resolutionNote: row.resolution_note,
   };
 }
 
@@ -193,11 +216,19 @@ export async function resolveReviewReport(
   client: SupabaseClient,
   reportId: string,
   status: LocationReportStatus,
-  resolvedBy: string
+  resolvedBy: string,
+  action: ResolutionAction,
+  note: string
 ): Promise<void> {
   const { error } = await client
     .from("review_reports")
-    .update({ status, resolved_by: resolvedBy, resolved_at: new Date().toISOString() })
+    .update({
+      status,
+      resolved_by: resolvedBy,
+      resolved_at: new Date().toISOString(),
+      resolution_action: action,
+      resolution_note: note,
+    })
     .eq("id", reportId);
   if (error) throw error;
 }

@@ -15,6 +15,7 @@ import {
   verifyLocationOwner,
   type BusinessClaim,
   type LocationReport,
+  type ResolutionAction,
   type ReviewReport,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ModerationActionModal } from '@/components/moderation-action-modal';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -34,13 +36,29 @@ import { supabase } from '@/lib/supabase';
 
 type Tab = 'locations' | 'reviews' | 'claims';
 
-function locationActionLabel(report: LocationReport): string {
-  if (report.locationStatus === 'flagged') return 'Flagged';
+const RESOLUTION_LABELS: Record<ResolutionAction, string> = {
+  dismissed: 'Dismissed',
+  warned: 'Warned the author',
+  hidden: 'Hidden',
+  removed: 'Removed',
+};
+
+/**
+ * What the moderator chose. Reports handled before the decision was recorded
+ * have no action stored, so fall back to inferring it from the content's
+ * current status — which is what the screen used to do for everything.
+ */
+function resolutionLabel(action: ResolutionAction | null, inferred: string): string {
+  return action ? RESOLUTION_LABELS[action] : inferred;
+}
+
+function inferredLocationLabel(report: LocationReport): string {
+  if (report.locationStatus === 'flagged') return 'Hidden';
   if (report.locationStatus === 'removed') return 'Removed';
   return 'Dismissed';
 }
 
-function reviewActionLabel(report: ReviewReport): string {
+function inferredReviewLabel(report: ReviewReport): string {
   if (report.reviewStatus === 'hidden') return 'Hidden';
   if (report.reviewStatus === 'removed') return 'Removed';
   return 'Dismissed';
@@ -49,6 +67,17 @@ function reviewActionLabel(report: ReviewReport): string {
 function claimActionLabel(claim: BusinessClaim): string {
   return claim.status === 'approved' ? 'Approved' : 'Rejected';
 }
+
+/** A decision waiting on the moderator to type a reason and confirm it. */
+type PendingDecision = {
+  reportId: string;
+  title: string;
+  consequence: string;
+  noteLabel: string;
+  confirmLabel: string;
+  destructive: boolean;
+  run: (note: string) => Promise<void>;
+};
 
 export default function AdminReportsScreen() {
   const { session } = useAuth();
@@ -69,34 +98,15 @@ export default function AdminReportsScreen() {
   // that tab — they'd see an empty list and their actions would silently fail.
   const [isAdmin, setIsAdmin] = useState(false);
 
-  /**
-   * Warn the person behind a reported item. Bans deliberately stay on the
-   * People & bans screen, where duration and reason get proper input — a
-   * one-tap ban from a report card is too easy to fire by accident.
-   */
-  const handleWarnAuthor = async (
-    authorId: string | null,
-    authorName: string,
-    reason: string,
-    targetType: string,
-    targetId: string
-  ) => {
-    if (!session || !authorId) return;
-    const confirmed = await confirmAsync(
-      `Warn ${authorName}?`,
-      `They posted the reported ${targetType}. They'll see the warning on their profile with the reason "${reason}". The ${targetType} stays visible — hide or remove it separately if it should come down.`,
-      'Send warning'
-    );
-    if (!confirmed) return;
-    setBusyId(targetId);
+  const [pending, setPending] = useState<PendingDecision | null>(null);
+
+  const runPendingDecision = async (note: string) => {
+    if (!pending) return;
+    setBusyId(pending.reportId);
     try {
-      await issueWarning(supabase, {
-        userId: authorId,
-        issuedBy: session.user.id,
-        reason,
-        targetType,
-        targetId,
-      });
+      await pending.run(note);
+      setPending(null);
+      reload();
     } finally {
       setBusyId(null);
     }
@@ -142,111 +152,144 @@ export default function AdminReportsScreen() {
     }, [reload])
   );
 
-  const handleDismissLocation = async (report: LocationReport) => {
-    if (!session) return;
-    const confirmed = await confirmAsync(
-      'Dismiss this report?',
-      `The report is closed and "${report.locationName}" stays visible to everyone. ${report.locationCreatorName} is not told anything.`,
-      'Dismiss report'
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await resolveLocationReport(supabase, report.id, 'dismissed', session.user.id);
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  /* ---------------------------------------------------- location reports --- */
 
-  const handleFlagLocation = async (report: LocationReport) => {
-    if (!session) return;
-    const confirmed = await confirmAsync(
-      'Hide this location?',
-      `"${report.locationName}" disappears from search, the map and everyone's lists, but is not deleted — you can restore it later. Use this when you're not sure yet.`,
-      'Hide it'
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await updateLocationStatus(supabase, report.locationId, 'flagged');
-      await resolveLocationReport(supabase, report.id, 'actioned', session.user.id);
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const askDismissLocation = (report: LocationReport) =>
+    setPending({
+      reportId: report.id,
+      title: 'Dismiss this report?',
+      consequence: `The report is closed and "${report.locationName}" stays visible to everyone. ${report.locationCreatorName} is not told anything.`,
+      noteLabel: 'Why are you dismissing it?',
+      confirmLabel: 'Dismiss report',
+      destructive: false,
+      run: async (note) => {
+        if (!session) return;
+        await resolveLocationReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
+      },
+    });
 
-  const handleRemoveLocation = async (report: LocationReport) => {
-    if (!session) return;
-    const confirmed = await confirmAsync(
-      'Remove this location?',
-      `"${report.locationName}" is taken down for everyone, along with its reviews and photos. Use this when the place is fake, unlawful or clearly wrong.`,
-      'Remove'
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await updateLocationStatus(supabase, report.locationId, 'removed');
-      await resolveLocationReport(supabase, report.id, 'actioned', session.user.id);
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  /**
+   * Warn the person behind a reported item. Bans deliberately stay on the
+   * People & bans screen, where duration and reason get proper input — a
+   * one-tap ban from a report card is too easy to fire by accident.
+   */
+  const askWarnLocationAuthor = (report: LocationReport) =>
+    setPending({
+      reportId: report.id,
+      title: `Warn ${report.locationCreatorName}?`,
+      consequence: `They added "${report.locationName}". They'll see your reason on their profile. The location stays visible — hide or remove it separately if it should come down.`,
+      noteLabel: 'What should they be told? (they will read this)',
+      confirmLabel: 'Send warning',
+      destructive: false,
+      run: async (note) => {
+        if (!session || !report.locationCreatorId) return;
+        await issueWarning(supabase, {
+          userId: report.locationCreatorId,
+          issuedBy: session.user.id,
+          reason: note,
+          targetType: 'location',
+          targetId: report.locationId,
+        });
+        await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'warned', note);
+      },
+    });
 
-  const handleDismissReview = async (report: ReviewReport) => {
-    if (!session) return;
-    const confirmed = await confirmAsync(
-      'Dismiss this report?',
-      `The report is closed and the review by ${report.reviewAuthorName} stays visible. They are not told anything.`,
-      'Dismiss report'
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await resolveReviewReport(supabase, report.id, 'dismissed', session.user.id);
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const askHideLocation = (report: LocationReport) =>
+    setPending({
+      reportId: report.id,
+      title: 'Hide this location?',
+      consequence: `"${report.locationName}" disappears from search, the map and everyone's lists, but is not deleted — you can restore it later. Use this when you're not sure yet.`,
+      noteLabel: 'Why are you hiding it?',
+      confirmLabel: 'Hide it',
+      destructive: false,
+      run: async (note) => {
+        if (!session) return;
+        await updateLocationStatus(supabase, report.locationId, 'flagged');
+        await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'hidden', note);
+      },
+    });
 
-  const handleHideReview = async (report: ReviewReport) => {
-    if (!session) return;
-    const confirmed = await confirmAsync(
-      'Hide this review?',
-      `The review by ${report.reviewAuthorName} disappears from "${report.locationName}" and stops counting toward its rating. It is not deleted — you can restore it later.`,
-      'Hide it'
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await updateReviewStatus(supabase, report.reviewId, 'hidden');
-      await resolveReviewReport(supabase, report.id, 'actioned', session.user.id);
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const askRemoveLocation = (report: LocationReport) =>
+    setPending({
+      reportId: report.id,
+      title: 'Remove this location?',
+      consequence: `"${report.locationName}" is taken down for everyone, along with its reviews and photos. Use this when the place is fake, unlawful or clearly wrong.`,
+      noteLabel: 'Why are you removing it?',
+      confirmLabel: 'Remove',
+      destructive: true,
+      run: async (note) => {
+        if (!session) return;
+        await updateLocationStatus(supabase, report.locationId, 'removed');
+        await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
+      },
+    });
 
-  const handleRemoveReview = async (report: ReviewReport) => {
-    if (!session) return;
-    const confirmed = await confirmAsync(
-      'Remove this review?',
-      `The review by ${report.reviewAuthorName} is taken down for good and stops counting toward the rating of "${report.locationName}".`,
-      'Remove'
-    );
-    if (!confirmed) return;
-    setBusyId(report.id);
-    try {
-      await updateReviewStatus(supabase, report.reviewId, 'removed');
-      await resolveReviewReport(supabase, report.id, 'actioned', session.user.id);
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  /* ------------------------------------------------------ review reports --- */
+
+  const askDismissReview = (report: ReviewReport) =>
+    setPending({
+      reportId: report.id,
+      title: 'Dismiss this report?',
+      consequence: `The report is closed and the review by ${report.reviewAuthorName} stays visible. They are not told anything.`,
+      noteLabel: 'Why are you dismissing it?',
+      confirmLabel: 'Dismiss report',
+      destructive: false,
+      run: async (note) => {
+        if (!session) return;
+        await resolveReviewReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
+      },
+    });
+
+  const askWarnReviewAuthor = (report: ReviewReport) =>
+    setPending({
+      reportId: report.id,
+      title: `Warn ${report.reviewAuthorName}?`,
+      consequence: `They wrote the reported review on "${report.locationName}". They'll see your reason on their profile. The review stays visible — hide or remove it separately if it should come down.`,
+      noteLabel: 'What should they be told? (they will read this)',
+      confirmLabel: 'Send warning',
+      destructive: false,
+      run: async (note) => {
+        if (!session || !report.reviewAuthorId) return;
+        await issueWarning(supabase, {
+          userId: report.reviewAuthorId,
+          issuedBy: session.user.id,
+          reason: note,
+          targetType: 'review',
+          targetId: report.reviewId,
+        });
+        await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'warned', note);
+      },
+    });
+
+  const askHideReview = (report: ReviewReport) =>
+    setPending({
+      reportId: report.id,
+      title: 'Hide this review?',
+      consequence: `The review by ${report.reviewAuthorName} disappears from "${report.locationName}" and stops counting toward its rating. It is not deleted — you can restore it later.`,
+      noteLabel: 'Why are you hiding it?',
+      confirmLabel: 'Hide it',
+      destructive: false,
+      run: async (note) => {
+        if (!session) return;
+        await updateReviewStatus(supabase, report.reviewId, 'hidden');
+        await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'hidden', note);
+      },
+    });
+
+  const askRemoveReview = (report: ReviewReport) =>
+    setPending({
+      reportId: report.id,
+      title: 'Remove this review?',
+      consequence: `The review by ${report.reviewAuthorName} is taken down for good and stops counting toward the rating of "${report.locationName}".`,
+      noteLabel: 'Why are you removing it?',
+      confirmLabel: 'Remove',
+      destructive: true,
+      run: async (note) => {
+        if (!session) return;
+        await updateReviewStatus(supabase, report.reviewId, 'removed');
+        await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
+      },
+    });
 
   const handleApproveClaim = async (claim: BusinessClaim) => {
     const confirmed = await confirmAsync(
@@ -330,6 +373,7 @@ export default function AdminReportsScreen() {
                   <ThemedText type="smallBold">Dismiss</ThemedText> — close the report, change nothing.{'\n'}
                   <ThemedText type="smallBold">Warn</ThemedText> — message the person who posted it; the
                   content stays up.{'\n'}
+                  Every action asks you for a reason, which is saved to the moderation log.{'\n'}
                   <ThemedText type="smallBold">Hide</ThemedText> — take it out of the app but keep it, so
                   you can restore it.{'\n'}
                   <ThemedText type="smallBold">Remove</ThemedText> — take it down for good.
@@ -370,29 +414,21 @@ export default function AdminReportsScreen() {
                       <Pressable
                         style={[styles.actionButton, styles.dismissButton]}
                         disabled={busy}
-                        onPress={() => handleDismissLocation(report)}>
+                        onPress={() => askDismissLocation(report)}>
                         <ThemedText type="smallBold">Dismiss</ThemedText>
                       </Pressable>
                       {report.locationCreatorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busy}
-                          onPress={() =>
-                            handleWarnAuthor(
-                              report.locationCreatorId,
-                              report.locationCreatorName,
-                              report.reason,
-                              'location',
-                              report.locationId
-                            )
-                          }>
+                          onPress={() => askWarnLocationAuthor(report)}>
                           <ThemedText type="smallBold">Warn</ThemedText>
                         </Pressable>
                       )}
                       <Pressable
                         style={[styles.actionButton, styles.flagButton]}
                         disabled={busy}
-                        onPress={() => handleFlagLocation(report)}>
+                        onPress={() => askHideLocation(report)}>
                         <ThemedText type="smallBold" style={styles.flagButtonText}>
                           Hide
                         </ThemedText>
@@ -400,7 +436,7 @@ export default function AdminReportsScreen() {
                       <Pressable
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
-                        onPress={() => handleRemoveLocation(report)}>
+                        onPress={() => askRemoveLocation(report)}>
                         <ThemedText type="smallBold" style={styles.removeButtonText}>
                           Remove
                         </ThemedText>
@@ -443,29 +479,21 @@ export default function AdminReportsScreen() {
                       <Pressable
                         style={[styles.actionButton, styles.dismissButton]}
                         disabled={busy}
-                        onPress={() => handleDismissReview(report)}>
+                        onPress={() => askDismissReview(report)}>
                         <ThemedText type="smallBold">Dismiss</ThemedText>
                       </Pressable>
                       {report.reviewAuthorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busy}
-                          onPress={() =>
-                            handleWarnAuthor(
-                              report.reviewAuthorId,
-                              report.reviewAuthorName,
-                              report.reason,
-                              'review',
-                              report.reviewId
-                            )
-                          }>
+                          onPress={() => askWarnReviewAuthor(report)}>
                           <ThemedText type="smallBold">Warn</ThemedText>
                         </Pressable>
                       )}
                       <Pressable
                         style={[styles.actionButton, styles.flagButton]}
                         disabled={busy}
-                        onPress={() => handleHideReview(report)}>
+                        onPress={() => askHideReview(report)}>
                         <ThemedText type="smallBold" style={styles.flagButtonText}>
                           Hide
                         </ThemedText>
@@ -473,7 +501,7 @@ export default function AdminReportsScreen() {
                       <Pressable
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
-                        onPress={() => handleRemoveReview(report)}>
+                        onPress={() => askRemoveReview(report)}>
                         <ThemedText type="smallBold" style={styles.removeButtonText}>
                           Remove
                         </ThemedText>
@@ -541,7 +569,8 @@ export default function AdminReportsScreen() {
                       <ThemedText type="smallBold">{report.locationName}</ThemedText>
                     </Pressable>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {reviewActionLabel(report)} · By {report.reviewAuthorName}
+                      {resolutionLabel(report.resolutionAction, inferredReviewLabel(report))} · By{' '}
+                      {report.reviewAuthorName}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       Reported by {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
@@ -550,6 +579,11 @@ export default function AdminReportsScreen() {
                     {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
                         {report.details}
+                      </ThemedText>
+                    )}
+                    {report.resolutionNote && (
+                      <ThemedText type="small" style={styles.resolutionNote}>
+                        Moderator: &ldquo;{report.resolutionNote}&rdquo;
                       </ThemedText>
                     )}
                   </ThemedView>
@@ -562,8 +596,8 @@ export default function AdminReportsScreen() {
                       <ThemedText type="smallBold">{report.locationName}</ThemedText>
                     </Pressable>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {locationActionLabel(report)} · Reported by {report.reporterName} ·{' '}
-                      {new Date(report.createdAt).toLocaleDateString()}
+                      {resolutionLabel(report.resolutionAction, inferredLocationLabel(report))} · Reported by{' '}
+                      {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default" style={styles.reason}>
                       {report.reason}
@@ -571,6 +605,11 @@ export default function AdminReportsScreen() {
                     {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
                         {report.details}
+                      </ThemedText>
+                    )}
+                    {report.resolutionNote && (
+                      <ThemedText type="small" style={styles.resolutionNote}>
+                        Moderator: &ldquo;{report.resolutionNote}&rdquo;
                       </ThemedText>
                     )}
                   </ThemedView>
@@ -597,6 +636,18 @@ export default function AdminReportsScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+
+      <ModerationActionModal
+        visible={pending !== null}
+        title={pending?.title ?? ''}
+        consequence={pending?.consequence ?? ''}
+        noteLabel={pending?.noteLabel ?? ''}
+        confirmLabel={pending?.confirmLabel ?? ''}
+        destructive={pending?.destructive ?? false}
+        submitting={pending !== null && busyId === pending.reportId}
+        onCancel={() => setPending(null)}
+        onConfirm={runPendingDecision}
+      />
     </ThemedView>
   );
 }
@@ -651,6 +702,11 @@ const styles = StyleSheet.create({
   },
   reason: {
     marginTop: Spacing.one,
+  },
+  resolutionNote: {
+    marginTop: Spacing.one,
+    fontStyle: 'italic',
+    color: '#4CD37A',
   },
   actionsRow: {
     flexDirection: 'row',
