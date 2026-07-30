@@ -13,12 +13,12 @@ import {
   type UserWarning,
 } from '@locastar/shared';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { SUPPORT_EMAIL } from '@/constants/support';
@@ -275,10 +275,7 @@ export default function ProfileScreen() {
 
         <View style={styles.profileRow}>
           <Pressable onPress={() => router.push('/settings/profile-picture' as never)}>
-            <Image
-              source={{ uri: avatarUrl ?? `https://picsum.photos/seed/${session.user.id}/200/200` }}
-              style={styles.avatar}
-            />
+            <Avatar url={avatarUrl} size={82} />
           </Pressable>
           <View style={styles.infoColumn}>
             <View style={styles.usernameRow}>
@@ -443,11 +440,6 @@ const styles = StyleSheet.create({
     height: 9,
     borderRadius: 5,
     backgroundColor: '#E05252',
-  },
-  avatar: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
   },
   infoColumn: {
     flexShrink: 1,

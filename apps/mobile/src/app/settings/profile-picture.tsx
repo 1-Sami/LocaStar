@@ -1,17 +1,30 @@
 import { fetchProfile, updateProfile } from '@locastar/shared';
-import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirmAsync } from '@/lib/confirm';
 import { pickImage, uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
+
+/**
+ * Recovers the storage path from a public URL so the file itself can be
+ * deleted. "Remove" that only cleared the profile field would leave the photo
+ * sitting at a public URL, which isn't what removing a picture should mean.
+ */
+function storagePathFromPublicUrl(url: string): string | null {
+  const marker = '/object/public/media/';
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return decodeURIComponent(url.slice(index + marker.length));
+}
 
 export default function ProfilePictureScreen() {
   const { session } = useAuth();
@@ -19,6 +32,7 @@ export default function ProfilePictureScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useFocusEffect(
@@ -60,6 +74,32 @@ export default function ProfilePictureScreen() {
     }
   };
 
+  const handleRemoveImage = async () => {
+    if (!session || !avatarUrl) return;
+    const confirmed = await confirmAsync(
+      'Remove your profile picture?',
+      "Your photo is deleted and you'll show up with the default picture instead. You can add a new one any time.",
+      'Remove'
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    setRemoving(true);
+    try {
+      await updateProfile(supabase, session.user.id, { avatar_url: null });
+      // Best-effort: the profile is already updated, so a storage hiccup
+      // shouldn't make it look like the removal failed.
+      const path = storagePathFromPublicUrl(avatarUrl);
+      if (path) await supabase.storage.from('media').remove([path]);
+      setAvatarUrl(null);
+      refreshProfile();
+    } catch {
+      setError('Something went wrong removing your photo. Try again.');
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   if (loading) {
     return (
       <ThemedView style={styles.container}>
@@ -74,10 +114,13 @@ export default function ProfilePictureScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
-          <Image
-            source={{ uri: avatarUrl ?? `https://picsum.photos/seed/${session?.user.id}/200/200` }}
-            style={styles.avatar}
-          />
+          <Avatar url={avatarUrl} size={140} />
+
+          {!avatarUrl && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+              You haven&apos;t added a photo yet.
+            </ThemedText>
+          )}
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -85,11 +128,25 @@ export default function ProfilePictureScreen() {
             </ThemedText>
           )}
 
-          <Pressable style={[styles.button, uploading && styles.buttonDisabled]} disabled={uploading} onPress={handlePickImage}>
+          <Pressable
+            style={[styles.button, (uploading || removing) && styles.buttonDisabled]}
+            disabled={uploading || removing}
+            onPress={handlePickImage}>
             <ThemedText type="smallBold" style={styles.buttonText}>
-              {uploading ? 'Uploading…' : 'Choose a photo'}
+              {uploading ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Choose a photo'}
             </ThemedText>
           </Pressable>
+
+          {avatarUrl && (
+            <Pressable
+              style={[styles.removeButton, (uploading || removing) && styles.buttonDisabled]}
+              disabled={uploading || removing}
+              onPress={handleRemoveImage}>
+              <ThemedText type="smallBold" style={styles.removeButtonText}>
+                {removing ? 'Removing…' : 'Remove photo'}
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -113,10 +170,8 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
     paddingHorizontal: Spacing.five,
   },
-  avatar: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+  centerText: {
+    textAlign: 'center',
   },
   errorText: {
     color: '#E05252',
@@ -134,5 +189,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#ffffff',
+  },
+  removeButton: {
+    height: 48,
+    paddingHorizontal: Spacing.five,
+    borderRadius: Spacing.five,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E05252',
+  },
+  removeButtonText: {
+    color: '#E05252',
   },
 });

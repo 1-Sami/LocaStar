@@ -1,14 +1,13 @@
 import { searchShareCandidates, type ShareCandidate } from '@locastar/shared';
-import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { placeholderImage } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 
 export function ShareModal({
@@ -115,10 +114,7 @@ export function ShareModal({
 
               {selected ? (
                 <View style={styles.selectedRow}>
-                  <Image
-                    source={{ uri: selected.avatarUrl ?? placeholderImage(`avatar-${selected.id}`) }}
-                    style={styles.avatar}
-                  />
+                  <Avatar url={selected.avatarUrl} size={36} />
                   <ThemedText type="default" style={styles.selectedName}>
                     {selected.displayName ?? selected.username ?? 'Unnamed user'}
                   </ThemedText>
@@ -140,10 +136,7 @@ export function ShareModal({
                   />
                   {results.map((candidate) => (
                     <Pressable key={candidate.id} style={styles.resultRow} onPress={() => setSelected(candidate)}>
-                      <Image
-                        source={{ uri: candidate.avatarUrl ?? placeholderImage(`avatar-${candidate.id}`) }}
-                        style={styles.avatar}
-                      />
+                      <Avatar url={candidate.avatarUrl} size={36} />
                       <View>
                         <ThemedText type="default">
                           {candidate.displayName ?? candidate.username ?? 'Unnamed user'}
@@ -240,11 +233,6 @@ const styles = StyleSheet.create({
   },
   selectedName: {
     flex: 1,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
   },
   errorText: {
     color: '#E05252',

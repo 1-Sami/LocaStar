@@ -173,7 +173,13 @@ export default function SearchScreen() {
           </Pressable>
         </View>
 
-        {loading ? (
+        {/*
+          Only take the list away for the very first load. Swapping it for a
+          spinner on every refresh unmounts it, which throws away how far the
+          person had scrolled — so coming back from a location started at the
+          top again.
+        */}
+        {loading && cards.length === 0 ? (
           <ActivityIndicator style={styles.loadingIndicator} color={SearchPalette.accent} />
         ) : (
           <FlatList
@@ -338,6 +344,7 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexGrow: 0,
+    flexShrink: 0,
     height: 44,
     marginTop: Spacing.three,
   },
@@ -355,16 +362,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    // Fixed height rather than padding around the text: a padding-driven pill
+    // is sized from font metrics, so it got squeezed and clipped its label when
+    // the keyboard opened. Matches the category chips.
+    height: 34,
     borderRadius: 8.5,
     backgroundColor: SearchPalette.card,
   },
   filterButtonText: {
     fontFamily: MONO_FONT,
     fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
     letterSpacing: 0.5,
     color: SearchPalette.text,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   resetFiltersButton: {
     alignSelf: 'flex-start',

@@ -6,19 +6,18 @@ import {
   type Friend,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { ShareModal } from '@/components/share-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
-import { placeholderImage } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 
 function FriendRow({
@@ -30,10 +29,7 @@ function FriendRow({
 }) {
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
-      <Image
-        source={{ uri: friend.avatarUrl ?? placeholderImage(`avatar-${friend.userId}`) }}
-        style={styles.avatar}
-      />
+      <Avatar url={friend.avatarUrl} size={40} />
       <View style={styles.rowText}>
         <ThemedText type="smallBold">{friend.displayName ?? friend.username ?? 'Unnamed user'}</ThemedText>
         {friend.username && (
@@ -260,11 +256,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     borderRadius: Spacing.two,
     padding: Spacing.three,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
   },
   rowText: {
     flex: 1,
