@@ -32,7 +32,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    // Fixed height (not padding-driven) so the pill's size can't depend on
+    // font-metric measurement — that's what was causing the chip to flash
+    // at the wrong size for a frame, and clip descenders on some labels.
+    height: 34,
     borderRadius: 10,
     borderWidth: 1.5,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -40,5 +43,7 @@ const styles = StyleSheet.create({
   label: {
     color: '#ffffff',
     letterSpacing: 0.3,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });

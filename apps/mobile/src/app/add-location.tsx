@@ -57,22 +57,26 @@ function YesNoRow({
   label,
   value,
   onChange,
+  yesLabel = 'YES',
+  noLabel = 'NO',
 }: {
   label: string;
-  value: boolean;
+  value: boolean | null;
   onChange: (value: boolean) => void;
+  yesLabel?: string;
+  noLabel?: string;
 }) {
   return (
     <View style={styles.yesNoRow}>
       <ThemedText type="default">{label}</ThemedText>
       <View style={styles.yesNoOptions}>
         <Pressable style={styles.yesNoOption} onPress={() => onChange(true)}>
-          <ThemedText type="small">YES</ThemedText>
-          <View style={[styles.checkbox, value && styles.checkboxChecked]} />
+          <ThemedText type="small">{yesLabel}</ThemedText>
+          <View style={[styles.checkbox, value === true && styles.checkboxChecked]} />
         </Pressable>
         <Pressable style={styles.yesNoOption} onPress={() => onChange(false)}>
-          <ThemedText type="small">NO</ThemedText>
-          <View style={[styles.checkbox, !value && styles.checkboxChecked]} />
+          <ThemedText type="small">{noLabel}</ThemedText>
+          <View style={[styles.checkbox, value === false && styles.checkboxChecked]} />
         </Pressable>
       </View>
     </View>
@@ -108,9 +112,9 @@ export default function AddLocationScreen() {
   const [nearbyExisting, setNearbyExisting] = useState<NearbyLocation[]>([]);
   const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
   const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
-  const [visibleAsCreator, setVisibleAsCreator] = useState(true);
-  const [isOwner, setIsOwner] = useState(false);
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [visibleAsCreator, setVisibleAsCreator] = useState<boolean | null>(null);
+  const [isOwner, setIsOwner] = useState<boolean | null>(null);
+  const [isPrivate, setIsPrivate] = useState<boolean | null>(null);
   const [availableSummer, setAvailableSummer] = useState(false);
   const [availableWinter, setAvailableWinter] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -218,7 +222,9 @@ export default function AddLocationScreen() {
         pinCoords &&
         emailValid &&
         otherCategoryValid &&
-        (!isActivity || (startDate && endDate && !dateError))
+        visibleAsCreator !== null &&
+        isOwner !== null &&
+        (!isActivity || (startDate && endDate && !dateError && isPrivate !== null))
     ) && !submitting;
 
   const handleSubmit = async () => {
@@ -242,8 +248,8 @@ export default function AddLocationScreen() {
         email: isActivity ? email.trim() : null,
         hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
         hoursNotApplicable,
-        creatorVisible: visibleAsCreator,
-        visibility: isActivity && isPrivate ? 'private' : 'public',
+        creatorVisible: visibleAsCreator === true,
+        visibility: isActivity && isPrivate === true ? 'private' : 'public',
         startsAt: isActivity ? startsAtIso : null,
         publishAt: isActivity ? publishAtIso : null,
         expiresAt: isActivity ? expiresAtIso : null,
@@ -462,9 +468,11 @@ export default function AddLocationScreen() {
           {isActivity && (
             <>
               <YesNoRow
-                label="Make this a private activity (only visible to people you share it with, e.g. a party or wedding)?"
+                label="*Should this activity be public or private? Private is only visible to people you share it with (e.g. a party or wedding)."
                 value={isPrivate}
                 onChange={setIsPrivate}
+                yesLabel="PRIVATE"
+                noLabel="PUBLIC"
               />
 
               <DateField label="*Start date" value={startDate} onChange={setStartDate} placeholder="When does it start?" />
@@ -494,12 +502,12 @@ export default function AddLocationScreen() {
           )}
 
           <YesNoRow
-            label="Do you want to be visible as the creator?"
+            label="*Do you want to be visible as the creator?"
             value={visibleAsCreator}
             onChange={setVisibleAsCreator}
           />
 
-          <YesNoRow label={`Are you the owner of the ${noun}?`} value={isOwner} onChange={setIsOwner} />
+          <YesNoRow label={`*Are you the owner of the ${noun}?`} value={isOwner} onChange={setIsOwner} />
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>

@@ -187,7 +187,9 @@ export default function AccountInfoScreen() {
           )}
           {saved && !error && (
             <ThemedText type="small" style={styles.savedText}>
-              {emailChangePending ? 'Saved. Check your new email to confirm the change.' : 'Saved.'}
+              {emailChangePending
+                ? 'Saved. Check both your old and new email to confirm the change.'
+                : 'Saved.'}
             </ThemedText>
           )}
 
