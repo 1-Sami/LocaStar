@@ -12,12 +12,12 @@ import {
   type ListShareRecipient,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LocationPhoto } from '@/components/location-photo';
 import { ShareModal } from '@/components/share-modal';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
@@ -26,7 +26,6 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
-import { placeholderImage } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 
 export default function ListDetailScreen() {
@@ -231,11 +230,7 @@ export default function ListDetailScreen() {
                         </Pressable>
                       )}
                     </View>
-                    <Image
-                      source={{ uri: item.imageUrl ?? placeholderImage(item.locationId) }}
-                      style={styles.cardImage}
-                      contentFit="cover"
-                    />
+                    <LocationPhoto url={item.imageUrl} style={styles.cardImage} />
                   </View>
                 </ThemedView>
               ))

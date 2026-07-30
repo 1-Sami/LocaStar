@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LocationPhoto } from '@/components/location-photo';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { openDirections } from '@/lib/directions';
@@ -25,7 +25,7 @@ export function FavoriteCard({
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
+        <LocationPhoto url={location.imageUrl} style={styles.image} />
         <View style={styles.iconRow}>
           <Pressable style={styles.iconButton} onPress={onToggleFavorite} hitSlop={8}>
             <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.iconInactive}>

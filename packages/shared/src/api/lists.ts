@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { coverPhotoPath } from "./saves";
+
+export type ListPreviewLocation = {
+  locationId: string;
+  /** Public URL of that location's first photo, null if it has none. */
+  imageUrl: string | null;
+};
+
 export type LocationList = {
   id: string;
   name: string;
@@ -9,7 +17,7 @@ export type LocationList = {
   isPublic: boolean;
   likeCount: number;
   likedByMe: boolean;
-  previewLocationIds: string[];
+  previewLocations: ListPreviewLocation[];
 };
 
 type ListRow = {
@@ -34,7 +42,7 @@ export async function fetchLists(client: SupabaseClient, userId: string): Promis
   if (listIds.length === 0) return [];
 
   const [previewByList, likesByList] = await Promise.all([
-    fetchPreviewLocationIds(client, listIds),
+    fetchPreviewLocations(client, listIds),
     fetchLikeInfo(client, listIds, userId),
   ]);
 
@@ -47,26 +55,42 @@ export async function fetchLists(client: SupabaseClient, userId: string): Promis
     isPublic: row.is_public,
     likeCount: likesByList.get(row.id)?.count ?? 0,
     likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
-    previewLocationIds: previewByList.get(row.id) ?? [],
+    previewLocations: previewByList.get(row.id) ?? [],
   }));
 }
 
-async function fetchPreviewLocationIds(
+/**
+ * The first few locations in each list, with their cover photo.
+ *
+ * List cards used to render a random stock image per location id; carrying the
+ * real photo through means a list looks like the places actually in it.
+ */
+async function fetchPreviewLocations(
   client: SupabaseClient,
   listIds: string[]
-): Promise<Map<string, string[]>> {
+): Promise<Map<string, ListPreviewLocation[]>> {
   const { data, error } = await client
     .from("list_items")
-    .select("list_id, location_id")
+    .select("list_id, location_id, location:locations(location_photos(storage_path, created_at))")
     .in("list_id", listIds)
     .order("added_at", { ascending: false });
   if (error) throw error;
 
-  const byList = new Map<string, string[]>();
-  for (const row of (data ?? []) as { list_id: string; location_id: string }[]) {
+  type PreviewRow = {
+    list_id: string;
+    location_id: string;
+    location: { location_photos: { storage_path: string; created_at: string }[] } | null;
+  };
+
+  const byList = new Map<string, ListPreviewLocation[]>();
+  for (const row of (data ?? []) as unknown as PreviewRow[]) {
     const existing = byList.get(row.list_id) ?? [];
     if (existing.length < 3) {
-      existing.push(row.location_id);
+      const path = coverPhotoPath(row.location?.location_photos);
+      existing.push({
+        locationId: row.location_id,
+        imageUrl: path ? client.storage.from("media").getPublicUrl(path).data.publicUrl : null,
+      });
       byList.set(row.list_id, existing);
     }
   }
@@ -389,7 +413,7 @@ export async function fetchPublicLists(
   if (listIds.length === 0) return [];
 
   const [previewByList, likesByList] = await Promise.all([
-    fetchPreviewLocationIds(client, listIds),
+    fetchPreviewLocations(client, listIds),
     fetchLikeInfo(client, listIds, viewerUserId ?? ""),
   ]);
 
@@ -402,7 +426,7 @@ export async function fetchPublicLists(
     isPublic: row.is_public,
     likeCount: likesByList.get(row.id)?.count ?? 0,
     likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
-    previewLocationIds: previewByList.get(row.id) ?? [],
+    previewLocations: previewByList.get(row.id) ?? [],
     ownerUsername: row.owner?.username ?? null,
     ownerDisplayName: row.owner?.display_name ?? null,
   }));
@@ -475,7 +499,7 @@ export async function fetchSavedLists(client: SupabaseClient, userId: string): P
 
   const listIds = rows.map((row) => row.id);
   const [previewByList, likesByList] = await Promise.all([
-    fetchPreviewLocationIds(client, listIds),
+    fetchPreviewLocations(client, listIds),
     fetchLikeInfo(client, listIds, userId),
   ]);
 
@@ -488,7 +512,7 @@ export async function fetchSavedLists(client: SupabaseClient, userId: string): P
     isPublic: row.is_public,
     likeCount: likesByList.get(row.id)?.count ?? 0,
     likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
-    previewLocationIds: previewByList.get(row.id) ?? [],
+    previewLocations: previewByList.get(row.id) ?? [],
     ownerUsername: row.owner?.username ?? null,
     ownerDisplayName: row.owner?.display_name ?? null,
   }));

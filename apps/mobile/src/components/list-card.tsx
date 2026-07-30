@@ -1,11 +1,10 @@
 import type { LocationList } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LocationPhoto } from '@/components/location-photo';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { placeholderImage } from '@/lib/location-adapters';
 
 export function ListCard({
   list,
@@ -18,7 +17,7 @@ export function ListCard({
   onPress: () => void;
   onToggleLike: () => void;
 }) {
-  const [main, ...rest] = list.previewLocationIds;
+  const [main, ...rest] = list.previewLocations;
 
   return (
     <Pressable onPress={onPress}>
@@ -32,18 +31,18 @@ export function ListCard({
 
         <View style={styles.collage}>
           {main ? (
-            <Image source={{ uri: placeholderImage(main) }} style={styles.mainPhoto} contentFit="cover" />
+            <LocationPhoto url={main.imageUrl} style={styles.mainPhoto} iconSize={20} />
           ) : (
             <View style={[styles.mainPhoto, styles.photoPlaceholder]} />
           )}
           {rest.length > 0 && (
             <View style={styles.subPhotoRow}>
-              {rest.map((locationId) => (
-                <Image
-                  key={locationId}
-                  source={{ uri: placeholderImage(locationId) }}
+              {rest.map((preview) => (
+                <LocationPhoto
+                  key={preview.locationId}
+                  url={preview.imageUrl}
                   style={styles.subPhoto}
-                  contentFit="cover"
+                  iconSize={14}
                 />
               ))}
             </View>

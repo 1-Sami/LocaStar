@@ -88,7 +88,8 @@ export function AddToListModal({
           isPublic: false,
           likeCount: 0,
           likedByMe: false,
-          previewLocationIds: [locationId],
+          // The photo arrives on the next fetch; this is just the optimistic row.
+          previewLocations: [{ locationId, imageUrl: null }],
         },
         ...current,
       ]);

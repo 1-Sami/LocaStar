@@ -161,6 +161,7 @@ export default function FavoritesScreen() {
   const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
   const [savedLists, setSavedLists] = useState<PublicList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Partial<Record<string, number>>>({});
@@ -214,6 +215,7 @@ export default function FavoritesScreen() {
       setSavedLists(savedListRows);
     } finally {
       setLoading(false);
+      setHasLoadedOnce(true);
     }
   }, [session]);
 
@@ -296,7 +298,12 @@ export default function FavoritesScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {loading ? (
+        {/*
+          Only for the first load. Swapping the content for a spinner on every
+          focus unmounts the list and throws away the scroll position — the
+          same bug that had to be fixed on Search.
+        */}
+        {loading && !hasLoadedOnce ? (
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
+import { LocationPhoto } from '@/components/location-photo';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, SearchPalette, Spacing } from '@/constants/theme';
 import { openDirections } from '@/lib/directions';
@@ -78,7 +78,7 @@ export function LocationCard({
     <Pressable style={[styles.card, { borderColor: categoryColor }]} onPress={onPress}>
       <View style={styles.mainRow}>
         <View style={[styles.imageWrapper, { height: contentHeight ?? FALLBACK_IMAGE_HEIGHT }]}>
-          <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
+          <LocationPhoto url={location.imageUrl} style={styles.image} iconSize={26} />
           <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
             <ThemedText type="small" style={styles.categoryBadgeText} numberOfLines={1}>
               {location.categoryLabel.toUpperCase()}

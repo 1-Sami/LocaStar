@@ -48,10 +48,12 @@ export type SavedLocation = {
   review_count: number;
   kind: "place" | "activity";
   category_slug: string | null;
+  /** Storage path of the location's first photo, if it has one. */
+  cover_photo_path: string | null;
 };
 
 const JOINED_LOCATION_SELECT =
-  "location:locations(id, name, description, address, city, country, avg_rating, review_count, kind, location_categories(categories(slug)))";
+  "location:locations(id, name, description, address, city, country, avg_rating, review_count, kind, location_categories(categories(slug)), location_photos(storage_path, created_at))";
 
 type JoinedLocationRow = {
   location: {
@@ -65,8 +67,17 @@ type JoinedLocationRow = {
     review_count: number;
     kind: "place" | "activity";
     location_categories: { categories: { slug: string } | null }[];
+    location_photos: { storage_path: string; created_at: string }[];
   } | null;
 };
+
+/** The oldest photo — the one whoever added the place chose first. */
+export function coverPhotoPath(
+  photos: { storage_path: string; created_at: string }[] | null | undefined
+): string | null {
+  if (!photos || photos.length === 0) return null;
+  return [...photos].sort((a, b) => a.created_at.localeCompare(b.created_at))[0].storage_path;
+}
 
 function mapJoinedLocation(row: JoinedLocationRow): SavedLocation | null {
   const location = row.location;
@@ -82,6 +93,7 @@ function mapJoinedLocation(row: JoinedLocationRow): SavedLocation | null {
     review_count: location.review_count,
     kind: location.kind,
     category_slug: location.location_categories?.[0]?.categories?.slug ?? null,
+    cover_photo_path: coverPhotoPath(location.location_photos),
   };
 }
 

@@ -11,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { verifyCurrentPassword } from '@/lib/reauth';
+import { usernameProblem } from '@/lib/username';
 import { supabase } from '@/lib/supabase';
 
 export default function AccountInfoScreen() {
@@ -51,6 +52,10 @@ export default function AccountInfoScreen() {
 
   const trimmedEmail = email.trim();
   const emailChanged = Boolean(trimmedEmail) && trimmedEmail !== (session?.user.email ?? '');
+  // Same rule as sign-up and the database constraint, so a bad handle is
+  // caught here rather than coming back as a raw constraint violation.
+  const trimmedUsername = username.trim();
+  const usernameIssue = trimmedUsername.length > 0 ? usernameProblem(trimmedUsername) : null;
 
   const handleSave = async () => {
     if (!session) return;
@@ -60,6 +65,11 @@ export default function AccountInfoScreen() {
 
     // Changing the account email is a takeover vector, so make sure whoever is
     // holding the phone actually knows the password before allowing it.
+    if (usernameIssue) {
+      setError(usernameIssue);
+      return;
+    }
+
     if (emailChanged && !currentPassword) {
       setError('Enter your current password to change your email.');
       return;

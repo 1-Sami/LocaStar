@@ -23,6 +23,8 @@ export type NearbyLocation = {
   is_boosted: boolean;
   available_summer: boolean;
   available_winter: boolean;
+  /** Storage path of the location's first photo, null if it has none. */
+  cover_photo_path: string | null;
 };
 
 export type NearbyLocationsParams = {

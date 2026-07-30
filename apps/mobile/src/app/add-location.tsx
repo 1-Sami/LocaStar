@@ -136,6 +136,7 @@ export default function AddLocationScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [claimFailed, setClaimFailed] = useState(false);
 
   // Submitting is several writes in a row, and the later ones can fail on their
   // own (a photo upload especially). Without this, retrying re-ran the whole
@@ -297,7 +298,15 @@ export default function AddLocationScreen() {
       }
 
       if (isOwner) {
-        await submitBusinessClaim(supabase, locationId, session.user.id, null).catch(() => {});
+        // Previously swallowed: the person said they own the place, the claim
+        // failed, and they were told everything succeeded. Report it instead —
+        // the location itself is already saved, so this isn't fatal.
+        try {
+          await submitBusinessClaim(supabase, locationId, session.user.id, null);
+        } catch (claimError) {
+          console.error('Ownership claim failed', claimError);
+          setClaimFailed(true);
+        }
       }
 
       setSubmitted(true);
@@ -325,6 +334,12 @@ export default function AddLocationScreen() {
             <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
               Your {noun} has been submitted for review. It'll go live once it's approved.
             </ThemedText>
+            {claimFailed && (
+              <ThemedText type="small" style={[styles.errorText, styles.centerText]}>
+                Your {noun} was saved, but we couldn&apos;t register your ownership claim. Open the {noun} and
+                use &ldquo;Claim this business&rdquo; to try again.
+              </ThemedText>
+            )}
             <Pressable style={styles.submitButton} onPress={() => router.back()}>
               <ThemedText type="smallBold" style={styles.submitButtonText}>
                 Done

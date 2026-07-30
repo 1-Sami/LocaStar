@@ -9,7 +9,8 @@ type AuthContextValue = {
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithPassword: (
     email: string,
-    password: string
+    password: string,
+    username: string
   ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
 };
@@ -38,8 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signUpWithPassword = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  const signUpWithPassword = async (email: string, password: string, username: string) => {
+    // handle_new_user() reads this to set the profile's handle, so people
+    // aren't given one derived from their email address.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    });
     if (error) return { error: error.message, needsEmailConfirmation: false };
 
     // Supabase deliberately answers a sign-up for an already-registered email

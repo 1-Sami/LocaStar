@@ -13,6 +13,7 @@ export type CardLocation = {
   city: string | null;
   country: string | null;
   distanceKm: number | null;
-  imageUrl: string;
+  /** null when the location has no photo — cards show a placeholder instead. */
+  imageUrl: string | null;
   startsAt: string | null;
 };

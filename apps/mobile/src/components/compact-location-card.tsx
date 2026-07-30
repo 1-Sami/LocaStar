@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LocationPhoto } from '@/components/location-photo';
 import { STAR_COLOR } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, Spacing } from '@/constants/theme';
@@ -27,7 +27,7 @@ export function CompactLocationCard({
   return (
     <Pressable style={[styles.card, { backgroundColor: cardColor }]} onPress={onPress}>
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: location.imageUrl }} style={styles.image} contentFit="cover" />
+        <LocationPhoto url={location.imageUrl} style={styles.image} />
         <View style={[styles.categoryBadge, { backgroundColor: cardColor }]}>
           <ThemedText type="small" style={[styles.whiteText, styles.badgeText]} numberOfLines={1}>
             {location.categoryLabel}

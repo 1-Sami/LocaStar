@@ -9,7 +9,12 @@ import { ThemedView } from '@/components/themed-view';
 import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { usernameProblem } from '@/lib/username';
 import { useTheme } from '@/hooks/use-theme';
+
+// Deliberately loose — real validation is the confirmation email. This only
+// catches obvious typos before submitting.
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 
 
@@ -17,6 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +37,13 @@ export default function SignUpScreen() {
   const problem = passwordProblem(password);
   const showPasswordProblem = password.length > 0 && problem !== null;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const canSubmit = Boolean(email.trim()) && problem === null && password === confirmPassword;
+  const trimmedUsername = username.trim();
+  const usernameIssue = usernameProblem(trimmedUsername);
+  const showUsernameProblem = trimmedUsername.length > 0 && usernameIssue !== null;
+  const emailLooksValid = EMAIL_PATTERN.test(email.trim());
+  const showEmailProblem = email.trim().length > 0 && !emailLooksValid;
+  const canSubmit =
+    emailLooksValid && usernameIssue === null && problem === null && password === confirmPassword;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -39,7 +51,8 @@ export default function SignUpScreen() {
     setError(null);
     const { error: signUpError, needsEmailConfirmation } = await signUpWithPassword(
       email.trim(),
-      password
+      password,
+      trimmedUsername
     );
     setSubmitting(false);
     if (signUpError) {
@@ -81,6 +94,32 @@ export default function SignUpScreen() {
           keyboardType="email-address"
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
+
+        {showEmailProblem && (
+          <ThemedText type="small" style={styles.error}>
+            That doesn&apos;t look like an email address.
+          </ThemedText>
+        )}
+
+        <TextInput
+          value={username}
+          onChangeText={setUsername}
+          placeholder="Username"
+          placeholderTextColor={theme.textSecondary}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+        />
+        <ThemedText type="small" themeColor="textSecondary">
+          This is the name shown next to your reviews and the places you add. You can change it later.
+        </ThemedText>
+
+        {showUsernameProblem && (
+          <ThemedText type="small" style={styles.error}>
+            {usernameIssue}
+          </ThemedText>
+        )}
+
         <PasswordInput
           value={password}
           onChangeText={setPassword}

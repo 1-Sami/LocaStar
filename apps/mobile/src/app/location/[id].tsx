@@ -27,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToListModal } from '@/components/add-to-list-modal';
 import { ClaimBusinessModal } from '@/components/claim-business-modal';
+import { LocationPhoto } from '@/components/location-photo';
 import { ReportModal } from '@/components/report-modal';
 import { ShareModal } from '@/components/share-modal';
 import { STAR_COLOR, StarRating } from '@/components/star-rating';
@@ -38,7 +39,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { openDirections } from '@/lib/directions';
-import { placeholderImage } from '@/lib/location-adapters';
 import { buildLocationShareLink } from '@/lib/public-link';
 import { supabase } from '@/lib/supabase';
 
@@ -246,7 +246,8 @@ export default function LocationDetailScreen() {
 
   const isFavorite = favoriteIds.has(location.id);
   const isBucketListed = bucketListIds.has(location.id);
-  const heroImages = photos.length > 0 ? photos : [placeholderImage(location.id)];
+  // No stand-in image: a place with no photo says so rather than borrowing one.
+  const heroImages = photos;
   const ratingCounts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
   const maxCount = Math.max(1, ...ratingCounts);
   const myReview = session ? reviews.find((r) => r.user_id === session.user.id) : undefined;
@@ -394,23 +395,27 @@ export default function LocationDetailScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.heroWrapper} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
-            <ScrollView
-              ref={heroScrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={(e) => {
-                if (heroWidth > 0) {
-                  setActivePhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth));
-                }
-              }}
-              scrollEventThrottle={32}>
-              {heroImages.map((uri, index) => (
-                <Pressable key={index} onPress={() => openViewerAt(index)}>
-                  <Image source={{ uri }} style={[styles.hero, { width: heroWidth }]} contentFit="cover" />
-                </Pressable>
-              ))}
-            </ScrollView>
+            {heroImages.length === 0 ? (
+              <LocationPhoto url={null} style={[styles.hero, { width: heroWidth }]} iconSize={44} />
+            ) : (
+              <ScrollView
+                ref={heroScrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  if (heroWidth > 0) {
+                    setActivePhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth));
+                  }
+                }}
+                scrollEventThrottle={32}>
+                {heroImages.map((uri, index) => (
+                  <Pressable key={index} onPress={() => openViewerAt(index)}>
+                    <Image source={{ uri }} style={[styles.hero, { width: heroWidth }]} contentFit="cover" />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
             <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="arrow-back" size={18} color="#ffffff" />
             </Pressable>

@@ -1,9 +1,17 @@
 import type { ListItemLocation, NearbyLocation, SavedLocation } from '@locastar/shared';
 
+import { supabase } from '@/lib/supabase';
 import type { CardLocation } from '@/types/location';
 
-export function placeholderImage(seed: string) {
-  return `https://picsum.photos/seed/locastar-${seed}/640/480`;
+/**
+ * Public URL for a photo in the media bucket, or null when there isn't one.
+ *
+ * Cards used to fill the gap with a random stock photo, which read as an image
+ * whoever added the place had chosen. A location with no photo now says so.
+ */
+function photoUrl(storagePath: string | null): string | null {
+  if (!storagePath) return null;
+  return supabase.storage.from('media').getPublicUrl(storagePath).data.publicUrl;
 }
 
 export function nearbyLocationToCard(location: NearbyLocation): CardLocation {
@@ -20,7 +28,7 @@ export function nearbyLocationToCard(location: NearbyLocation): CardLocation {
     city: location.city,
     country: location.country,
     distanceKm: Math.round(location.distance_m / 100) / 10,
-    imageUrl: placeholderImage(location.id),
+    imageUrl: photoUrl(location.cover_photo_path),
     startsAt: location.starts_at,
   };
 }
@@ -39,7 +47,7 @@ export function savedLocationToCard(location: SavedLocation): CardLocation {
     city: location.city,
     country: location.country,
     distanceKm: null,
-    imageUrl: placeholderImage(location.location_id),
+    imageUrl: photoUrl(location.cover_photo_path),
     startsAt: null,
   };
 }
@@ -58,7 +66,8 @@ export function listItemToCard(item: ListItemLocation): CardLocation {
     city: item.city,
     country: item.country,
     distanceKm: null,
-    imageUrl: placeholderImage(item.locationId),
+    // fetchListItems already resolves this to a public URL.
+    imageUrl: item.imageUrl,
     startsAt: null,
   };
 }

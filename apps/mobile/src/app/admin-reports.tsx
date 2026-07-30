@@ -93,6 +93,9 @@ export default function AdminReportsScreen() {
   const [openClaims, setOpenClaims] = useState<BusinessClaim[]>([]);
   const [handledClaims, setHandledClaims] = useState<BusinessClaim[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Business claims are admin-only in RLS, so superusers must not be offered
   // that tab — they'd see an empty list and their actions would silently fail.
@@ -103,10 +106,16 @@ export default function AdminReportsScreen() {
   const runPendingDecision = async (note: string) => {
     if (!pending) return;
     setBusyId(pending.reportId);
+    setActionError(null);
     try {
       await pending.run(note);
       setPending(null);
       reload();
+    } catch (err) {
+      // A moderation action failing quietly is the worst case here: the
+      // moderator would assume it went through and move on.
+      console.error('Moderation action failed', err);
+      setActionError("That didn't go through. Nothing was changed — try again.");
     } finally {
       setBusyId(null);
     }
@@ -134,16 +143,18 @@ export default function AdminReportsScreen() {
         setHandledReviewReports(handledReviews);
         setOpenClaims(openClaimsResult);
         setHandledClaims(handledClaimsResult);
+        setLoadFailed(false);
       })
-      .catch(() => {
-        setOpenLocationReports([]);
-        setHandledLocationReports([]);
-        setOpenReviewReports([]);
-        setHandledReviewReports([]);
-        setOpenClaims([]);
-        setHandledClaims([]);
+      .catch((err) => {
+        // Clearing the lists here would render as "All caught up", which is
+        // indistinguishable from a genuinely empty queue. Say it failed.
+        console.error('Failed to load reports', err);
+        setLoadFailed(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setHasLoadedOnce(true);
+      });
   }, [session]);
 
   useFocusEffect(
@@ -363,10 +374,27 @@ export default function AdminReportsScreen() {
           )}
         </View>
 
-        {loading ? (
+        {loading && !hasLoadedOnce ? (
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
+            {loadFailed && (
+              <ThemedView type="backgroundElement" style={styles.loadErrorCard}>
+                <ThemedText type="smallBold" style={styles.loadErrorText}>
+                  Couldn&apos;t load reports
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  This list may be out of date or incomplete. Pull back and reopen the page to try again.
+                </ThemedText>
+              </ThemedView>
+            )}
+            {actionError && (
+              <ThemedView type="backgroundElement" style={styles.loadErrorCard}>
+                <ThemedText type="smallBold" style={styles.loadErrorText}>
+                  {actionError}
+                </ThemedText>
+              </ThemedView>
+            )}
             {activeTab !== 'claims' && (
               <ThemedView type="backgroundElement" style={styles.legendCard}>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -386,7 +414,7 @@ export default function AdminReportsScreen() {
 
             {openReports.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-                No open reports. All caught up.
+                {loadFailed ? 'Reports could not be loaded.' : 'No open reports. All caught up.'}
               </ThemedText>
             ) : activeTab === 'locations' ? (
               openLocationReports.map((report) => {
@@ -696,6 +724,16 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.two,
+  },
+  loadErrorCard: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.one,
+    borderWidth: 1,
+    borderColor: '#E05252',
+  },
+  loadErrorText: {
+    color: '#E05252',
   },
   handledCard: {
     opacity: 0.85,
