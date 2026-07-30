@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MIN_PASSWORD_LENGTH } from '@/constants/auth';
+import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
@@ -37,7 +37,9 @@ export default function ResetPasswordScreen() {
   }, [code]);
 
   const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const canSave = password.length >= MIN_PASSWORD_LENGTH && !mismatch && !saving;
+  const problem = passwordProblem(password);
+  const showPasswordProblem = password.length > 0 && problem !== null;
+  const canSave = problem === null && !mismatch && !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -108,7 +110,7 @@ export default function ResetPasswordScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="subtitle">Set a new password</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Choose a new password (at least 8 characters, with letters and digits).
+          Choose a new password.
         </ThemedText>
 
         <PasswordInput
@@ -118,6 +120,11 @@ export default function ResetPasswordScreen() {
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
+        {showPasswordProblem && (
+          <ThemedText type="small" style={styles.error}>
+            {problem}
+          </ThemedText>
+        )}
         <PasswordInput
           value={confirmPassword}
           onChangeText={setConfirmPassword}

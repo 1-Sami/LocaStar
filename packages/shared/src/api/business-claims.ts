@@ -21,11 +21,11 @@ type ClaimRow = {
   verification_notes: string | null;
   created_at: string;
   locations: { name: string } | null;
-  profiles: { display_name: string | null } | null;
+  profiles: { username: string | null; display_name: string | null } | null;
 };
 
 const CLAIM_SELECT =
-  "id, location_id, user_id, status, verification_notes, created_at, locations(name), profiles(display_name)";
+  "id, location_id, user_id, status, verification_notes, created_at, locations(name), profiles(username, display_name)";
 
 function mapClaim(row: ClaimRow): BusinessClaim {
   return {
@@ -33,7 +33,7 @@ function mapClaim(row: ClaimRow): BusinessClaim {
     locationId: row.location_id,
     locationName: row.locations?.name ?? "Unknown location",
     claimantId: row.user_id,
-    claimantName: row.profiles?.display_name ?? "Anonymous",
+    claimantName: row.profiles?.username ?? row.profiles?.display_name ?? "Anonymous",
     status: row.status,
     verificationNotes: row.verification_notes,
     createdAt: row.created_at,

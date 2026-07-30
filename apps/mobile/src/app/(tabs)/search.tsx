@@ -1,8 +1,8 @@
 import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -43,6 +43,15 @@ export default function SearchScreen() {
   const [activeSeason, setActiveSeason] = useState<'summer' | 'winter' | null>(
     initialSeason === 'summer' || initialSeason === 'winter' ? initialSeason : null
   );
+  // Results used to load once and never again, so a location added since the
+  // app started never showed up. Bumping this on focus re-runs the query.
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshKey((key) => key + 1);
+    }, [])
+  );
 
   useEffect(() => {
     fetchCategories(supabase)
@@ -81,7 +90,7 @@ export default function SearchScreen() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [coords, query, activeSlugs, sortBy, activeSeason]);
+  }, [coords, query, activeSlugs, sortBy, activeSeason, refreshKey]);
 
   const cards = results.map(nearbyLocationToCard);
   const sortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort';

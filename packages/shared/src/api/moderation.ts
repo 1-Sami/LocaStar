@@ -40,16 +40,16 @@ type LocationReportRow = {
     name: string;
     status: LocationStatus;
     created_by: string | null;
-    profiles: { display_name: string | null } | null;
+    profiles: { username: string | null; display_name: string | null } | null;
   } | null;
-  profiles: { display_name: string | null } | null;
+  profiles: { username: string | null; display_name: string | null } | null;
 };
 
 const LOCATION_REPORT_SELECT =
   // `locations` has two FKs to `profiles` (created_by and claimed_by), so the
   // nested embed must name the constraint — an unqualified profiles(...) here
   // is ambiguous and makes PostgREST reject the whole query.
-  "id, location_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, locations(name, status, created_by, profiles!locations_created_by_fkey(display_name)), profiles!location_reports_reporter_id_fkey(display_name)";
+  "id, location_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, locations(name, status, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
 
 function mapLocationReport(row: LocationReportRow): LocationReport {
   return {
@@ -58,10 +58,10 @@ function mapLocationReport(row: LocationReportRow): LocationReport {
     locationName: row.locations?.name ?? "Unknown location",
     locationStatus: row.locations?.status ?? "active",
     locationCreatorId: row.locations?.created_by ?? null,
-    locationCreatorName: row.locations?.profiles?.display_name ?? "Unknown",
+    locationCreatorName: row.locations?.profiles?.username ?? row.locations?.profiles?.display_name ?? "Unknown",
     reason: row.reason,
     details: row.details,
-    reporterName: row.profiles?.display_name ?? "Anonymous",
+    reporterName: row.profiles?.username ?? row.profiles?.display_name ?? "Anonymous",
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
@@ -160,21 +160,21 @@ type ReviewReportRow = {
     status: ReviewStatus;
     location_id: string;
     user_id: string;
-    profiles: { display_name: string | null } | null;
+    profiles: { username: string | null; display_name: string | null } | null;
     locations: { name: string } | null;
   } | null;
-  profiles: { display_name: string | null } | null;
+  profiles: { username: string | null; display_name: string | null } | null;
 };
 
 const REVIEW_REPORT_SELECT =
-  "id, review_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, reviews(rating, title, body, status, location_id, user_id, profiles(display_name), locations(name)), profiles!review_reports_reporter_id_fkey(display_name)";
+  "id, review_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, reviews(rating, title, body, status, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
 
 function mapReviewReport(row: ReviewReportRow): ReviewReport {
   return {
     id: row.id,
     reviewId: row.review_id,
     reviewAuthorId: row.reviews?.user_id ?? null,
-    reviewAuthorName: row.reviews?.profiles?.display_name ?? "Anonymous",
+    reviewAuthorName: row.reviews?.profiles?.username ?? row.reviews?.profiles?.display_name ?? "Anonymous",
     reviewRating: row.reviews?.rating ?? 0,
     reviewTitle: row.reviews?.title ?? null,
     reviewBody: row.reviews?.body ?? null,
@@ -183,7 +183,7 @@ function mapReviewReport(row: ReviewReportRow): ReviewReport {
     locationName: row.reviews?.locations?.name ?? "Unknown location",
     reason: row.reason,
     details: row.details,
-    reporterName: row.profiles?.display_name ?? "Anonymous",
+    reporterName: row.profiles?.username ?? row.profiles?.display_name ?? "Anonymous",
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
@@ -290,8 +290,10 @@ const BAN_SELECT =
   "banned:profiles!user_bans_user_id_fkey(display_name, username), " +
   "issuer:profiles!user_bans_issued_by_fkey(display_name, username)";
 
+// Username first: accounts created with only an email have no display_name, so
+// preferring display_name rendered them as "Unknown".
 function personName(p: { display_name: string | null; username: string | null } | null): string {
-  return p?.display_name ?? p?.username ?? "Unknown";
+  return p?.username ?? p?.display_name ?? "Unknown";
 }
 
 function mapBan(row: UserBanRow): UserBan {

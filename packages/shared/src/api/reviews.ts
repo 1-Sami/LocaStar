@@ -21,7 +21,7 @@ type ReviewRow = {
   title: string | null;
   body: string | null;
   created_at: string;
-  profiles: { display_name: string | null; avatar_url: string | null } | null;
+  profiles: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
   review_likes: { count: number }[];
   review_photos: { storage_path: string }[];
 };
@@ -34,7 +34,7 @@ export async function fetchReviews(
   const { data, error } = await client
     .from("reviews")
     .select(
-      "id, user_id, rating, title, body, created_at, profiles(display_name, avatar_url), review_likes(count), review_photos(storage_path)"
+      "id, user_id, rating, title, body, created_at, profiles(username, display_name, avatar_url), review_likes(count), review_photos(storage_path)"
     )
     .eq("location_id", locationId)
     .eq("status", "visible")
@@ -64,7 +64,10 @@ export async function fetchReviews(
     title: row.title,
     body: row.body,
     created_at: row.created_at,
-    author_name: row.profiles?.display_name ?? "Anonymous",
+    // Username first, matching how the DB triggers name people. Accounts made
+    // with just an email have no display_name, so preferring it showed
+    // "Anonymous" for everyone who never set one in settings.
+    author_name: row.profiles?.username ?? row.profiles?.display_name ?? "Anonymous",
     author_avatar_url: row.profiles?.avatar_url ?? null,
     likeCount: row.review_likes?.[0]?.count ?? 0,
     likedByMe: likedReviewIds.has(row.id),

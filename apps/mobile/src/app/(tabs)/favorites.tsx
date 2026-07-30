@@ -11,8 +11,8 @@ import {
   type SharedList,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   type LayoutChangeEvent,
@@ -217,9 +217,13 @@ export default function FavoritesScreen() {
     }
   }, [session]);
 
-  useEffect(() => {
-    reload().catch(() => {});
-  }, [reload]);
+  // On focus rather than on mount: saving or sharing something from another
+  // screen used to leave this list stale until the app was restarted.
+  useFocusEffect(
+    useCallback(() => {
+      reload().catch(() => {});
+    }, [reload])
+  );
 
   const handleToggleFavorite = async (id: string) => {
     await toggleFavorite(id);

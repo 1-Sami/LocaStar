@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MIN_PASSWORD_LENGTH } from '@/constants/auth';
+import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
@@ -23,7 +23,9 @@ export default function ChangePasswordScreen() {
   const [saved, setSaved] = useState(false);
 
   const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const canSave = currentPassword.length > 0 && password.length >= MIN_PASSWORD_LENGTH && !mismatch && !saving;
+  const problem = passwordProblem(password);
+  const showPasswordProblem = password.length > 0 && problem !== null;
+  const canSave = currentPassword.length > 0 && problem === null && !mismatch && !saving;
 
   const handleSave = async () => {
     setSaving(true);
@@ -56,7 +58,7 @@ export default function ChangePasswordScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
           <ThemedText type="small" themeColor="textSecondary">
-            Confirm your current password, then choose a new one (at least 8 characters, with letters and digits).
+            Confirm your current password, then choose a new one.
           </ThemedText>
 
           <PasswordInput
@@ -81,6 +83,11 @@ export default function ChangePasswordScreen() {
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
+          {showPasswordProblem && (
+            <ThemedText type="small" style={styles.errorText}>
+              {problem}
+            </ThemedText>
+          )}
           <PasswordInput
             value={confirmPassword}
             onChangeText={(text) => {

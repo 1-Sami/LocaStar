@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MIN_PASSWORD_LENGTH } from '@/constants/auth';
+import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -26,11 +26,12 @@ export default function SignUpScreen() {
   const router = useRouter();
   const theme = useTheme();
 
-  // Only complain once they've actually started typing the second one, so the
-  // form doesn't show an error before there's anything to compare.
+  // Only complain once they've actually started typing, so the form doesn't
+  // greet them with errors for fields they haven't filled in yet.
+  const problem = passwordProblem(password);
+  const showPasswordProblem = password.length > 0 && problem !== null;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const canSubmit =
-    Boolean(email.trim()) && password.length >= MIN_PASSWORD_LENGTH && password === confirmPassword;
+  const canSubmit = Boolean(email.trim()) && problem === null && password === confirmPassword;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -83,10 +84,17 @@ export default function SignUpScreen() {
         <PasswordInput
           value={password}
           onChangeText={setPassword}
-          placeholder="Password (min. 8 characters, letters and digits)"
+          placeholder="Password"
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
+
+        {showPasswordProblem && (
+          <ThemedText type="small" style={styles.error}>
+            {problem}
+          </ThemedText>
+        )}
+
         <PasswordInput
           value={confirmPassword}
           onChangeText={setConfirmPassword}
