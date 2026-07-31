@@ -30,3 +30,6 @@ Thumbs.db
 # Logs
 npm-debug.log*
 pnpm-debug.log*
+
+# Cloudflare wrangler local state/cache
+.wrangler/
