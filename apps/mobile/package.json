@@ -48,6 +48,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:web": "node scripts/build-web.mjs",
+    "preview:web": "wrangler pages dev dist --port 8788",
     "lint": "expo lint"
   },
   "private": true
