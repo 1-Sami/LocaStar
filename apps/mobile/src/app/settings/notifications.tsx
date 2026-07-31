@@ -1,4 +1,9 @@
-import { fetchProfile, updateProfile, type NotificationPreferences } from '@locastar/shared';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  fetchMyPrivateProfile,
+  updateProfile,
+  type NotificationPreferences,
+} from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Switch, View } from 'react-native';
@@ -16,7 +21,7 @@ const rows: { key: keyof NotificationPreferences; label: string; description: st
   { key: 'marketing', label: 'News & offers', description: 'Product updates and promotions' },
 ];
 
-const DEFAULT_PREFERENCES: NotificationPreferences = { reviews: true, shares: true, marketing: false };
+const DEFAULT_PREFERENCES: NotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES;
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
@@ -28,7 +33,9 @@ export default function NotificationsScreen() {
       if (!session) return;
       let cancelled = false;
       setLoading(true);
-      fetchProfile(supabase, session.user.id)
+      // Not readable off `profiles` any more — that table is world-readable,
+      // so the private columns come back through a self-scoped RPC instead.
+      fetchMyPrivateProfile(supabase)
         .then((profile) => {
           if (!cancelled) setPreferences(profile.notification_preferences ?? DEFAULT_PREFERENCES);
         })

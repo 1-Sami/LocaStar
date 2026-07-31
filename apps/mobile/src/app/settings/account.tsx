@@ -1,4 +1,4 @@
-import { fetchProfile, updateProfile } from '@locastar/shared';
+import { fetchMyPrivateProfile, fetchProfile, updateProfile } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -34,11 +34,13 @@ export default function AccountInfoScreen() {
       let cancelled = false;
       setLoading(true);
       setEmail(session.user.email ?? '');
-      fetchProfile(supabase, session.user.id)
-        .then((profile) => {
+      // The handle is public, the home address is not — the latter lives
+      // behind a self-scoped RPC because `profiles` is world-readable.
+      Promise.all([fetchProfile(supabase, session.user.id), fetchMyPrivateProfile(supabase)])
+        .then(([profile, priv]) => {
           if (cancelled) return;
           setUsername(profile.username ?? '');
-          setAddress(profile.home_address ?? '');
+          setAddress(priv.home_address ?? '');
         })
         .catch(() => {})
         .finally(() => {

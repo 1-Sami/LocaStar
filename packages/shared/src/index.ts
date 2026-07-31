@@ -63,13 +63,16 @@ export {
   fetchProfileStats,
   fetchMyReviews,
   fetchProfile,
+  fetchMyPrivateProfile,
   updateProfile,
   isModeratorRole,
+  DEFAULT_NOTIFICATION_PREFERENCES,
 } from "./api/profile";
 export type {
   ProfileStats,
   MyReview,
   Profile,
+  PrivateProfile,
   ProfileUpdate,
   ThemePreference,
   NotificationPreferences,

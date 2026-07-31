@@ -93,6 +93,13 @@ export type NotificationPreferences = {
   marketing: boolean;
 };
 
+/** Marketing stays off unless it is actively opted into. */
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  reviews: true,
+  shares: true,
+  marketing: false,
+};
+
 /**
  * "superuser" is the moderation tier (handles reports, can flag/hide/remove
  * content). "admin" is the company tier and keeps every superuser power plus
@@ -111,22 +118,50 @@ export type Profile = {
   display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
-  home_address: string | null;
   theme_preference: ThemePreference;
-  notification_preferences: NotificationPreferences;
   role: UserRole;
 };
 
+/**
+ * The publicly readable half of a profile — this is what everyone sees on a
+ * review, a location or a share sheet.
+ *
+ * `home_address` and `notification_preferences` are deliberately absent: the
+ * profiles SELECT policy is `using (true)`, so any column named here is
+ * readable by anyone holding the anon key. Those two are granted per-column to
+ * nobody and come back through `fetchMyPrivateProfile` instead. Adding either
+ * one to this select would publish it to the world — see migration
+ * 0066_profiles_hide_private_columns.sql.
+ */
 export async function fetchProfile(client: SupabaseClient, userId: string): Promise<Profile> {
   const { data, error } = await client
     .from("profiles")
-    .select(
-      "id, username, display_name, bio, avatar_url, home_address, theme_preference, notification_preferences, role"
-    )
+    .select("id, username, display_name, bio, avatar_url, theme_preference, role")
     .eq("id", userId)
     .single();
   if (error) throw error;
   return data as Profile;
+}
+
+export type PrivateProfile = {
+  home_address: string | null;
+  notification_preferences: NotificationPreferences;
+};
+
+/**
+ * The signed-in user's own private settings, via a security-definer function
+ * scoped to auth.uid(). It takes no user id on purpose — there is no parameter
+ * to point at someone else's row.
+ */
+export async function fetchMyPrivateProfile(client: SupabaseClient): Promise<PrivateProfile> {
+  const { data, error } = await client.rpc("my_private_profile");
+  if (error) throw error;
+
+  const row = (data ?? [])[0] as PrivateProfile | undefined;
+  return {
+    home_address: row?.home_address ?? null,
+    notification_preferences: row?.notification_preferences ?? DEFAULT_NOTIFICATION_PREFERENCES,
+  };
 }
 
 export type ProfileUpdate = Partial<{
