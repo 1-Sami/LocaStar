@@ -304,6 +304,11 @@ export type SharedList = {
   /** The person at the other end: the recipient if sent, the sender if received. */
   otherPartyUsername: string | null;
   otherPartyDisplayName: string | null;
+  /**
+   * How many people this list was shared with. Only meaningful when
+   * direction is "sent"; 0 for a list someone shared with you.
+   */
+  recipientCount: number;
 };
 
 type SharedListRow = {
@@ -339,27 +344,70 @@ export async function fetchMyListShares(client: SupabaseClient, userId: string):
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  return ((data ?? []) as unknown as SharedListRow[])
-    .filter((row) => row.list !== null)
-    .map((row) => {
-      const sent = row.sender_id === userId;
-      const otherParty = sent ? row.recipient : row.sender;
-      return {
-        id: row.list!.id,
-        shareId: row.id,
-        name: row.list!.name,
-        description: row.list!.description,
-        itemCount: row.list!.list_items?.[0]?.count ?? 0,
-        sharedAt: row.created_at,
-        direction: sent ? ("sent" as const) : ("received" as const),
-        otherPartyUsername: otherParty?.username ?? null,
-        otherPartyDisplayName: otherParty?.display_name ?? null,
-      };
-    });
+  const rows = ((data ?? []) as unknown as SharedListRow[]).filter((row) => row.list !== null);
+
+  // One row per share means a list shared with three people appeared three
+  // times in your own Shared section. Collapse the sent side to one card per
+  // list and count the recipients instead. The received side stays one card
+  // per share — those are genuinely separate people sharing with you.
+  const sentByList = new Map<string, SharedList>();
+  const result: SharedList[] = [];
+
+  for (const row of rows) {
+    const sent = row.sender_id === userId;
+    const otherParty = sent ? row.recipient : row.sender;
+    const entry: SharedList = {
+      id: row.list!.id,
+      shareId: row.id,
+      name: row.list!.name,
+      description: row.list!.description,
+      itemCount: row.list!.list_items?.[0]?.count ?? 0,
+      sharedAt: row.created_at,
+      direction: sent ? "sent" : "received",
+      otherPartyUsername: otherParty?.username ?? null,
+      otherPartyDisplayName: otherParty?.display_name ?? null,
+      recipientCount: sent ? 1 : 0,
+    };
+
+    if (!sent) {
+      result.push(entry);
+      continue;
+    }
+
+    const existing = sentByList.get(entry.id);
+    if (existing) {
+      existing.recipientCount += 1;
+    } else {
+      sentByList.set(entry.id, entry);
+      result.push(entry);
+    }
+  }
+
+  return result;
 }
 
 export async function deleteListShare(client: SupabaseClient, shareId: string): Promise<void> {
   const { error } = await client.from("list_shares").delete().eq("id", shareId);
+  if (error) throw error;
+}
+
+/**
+ * Withdraws a list from everyone it was shared with.
+ *
+ * The Shared section collapses a list you shared into one card, so removing it
+ * has to revoke every recipient — deleting a single share would drop the card
+ * while other people could still see the list.
+ */
+export async function stopSharingList(
+  client: SupabaseClient,
+  listId: string,
+  senderId: string
+): Promise<void> {
+  const { error } = await client
+    .from("list_shares")
+    .delete()
+    .eq("list_id", listId)
+    .eq("sender_id", senderId);
   if (error) throw error;
 }
 

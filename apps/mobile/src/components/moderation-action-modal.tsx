@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -45,7 +46,7 @@ export function ModerationActionModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
+      <SheetRoot>
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
         <ThemedView type="backgroundElement" style={styles.sheet}>
           <ThemedText type="subtitle" style={styles.title}>
@@ -85,17 +86,12 @@ export function ModerationActionModal({
             </Pressable>
           </View>
         </ThemedView>
-      </View>
+      </SheetRoot>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
   sheet: {
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,

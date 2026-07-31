@@ -139,6 +139,7 @@ export {
   fetchMyListShares,
   fetchListShareRecipients,
   deleteListShare,
+  stopSharingList,
   fetchPublicLists,
   setListSaved,
   fetchListSavedState,

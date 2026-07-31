@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput } from 'react-native';
 
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -61,7 +62,7 @@ export function ReportModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={styles.modalRoot}>
+      <SheetRoot>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         <ThemedView type="backgroundElement" style={styles.modalContent}>
           {submitted ? (
@@ -113,17 +114,12 @@ export function ReportModal({
             </>
           )}
         </ThemedView>
-      </View>
+      </SheetRoot>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
   modalContent: {
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,

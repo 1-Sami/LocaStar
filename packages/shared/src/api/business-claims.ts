@@ -89,12 +89,34 @@ export async function fetchHandledBusinessClaims(client: SupabaseClient): Promis
   return ((data ?? []) as unknown as ClaimRow[]).map(mapClaim);
 }
 
+/**
+ * Approving or rejecting a claim hands someone control of a listing, so record
+ * why — the same rule every report action follows. The note is appended to
+ * verification_notes rather than replacing the claimant's own justification.
+ */
 export async function resolveBusinessClaim(
   client: SupabaseClient,
   claimId: string,
-  status: "approved" | "rejected"
+  status: "approved" | "rejected",
+  note?: string
 ): Promise<void> {
-  const { error } = await client.from("business_claims").update({ status }).eq("id", claimId);
+  const trimmed = note?.trim();
+  const update: Record<string, unknown> = { status };
+
+  if (trimmed) {
+    const { data, error: readError } = await client
+      .from("business_claims")
+      .select("verification_notes")
+      .eq("id", claimId)
+      .single();
+    if (readError) throw readError;
+
+    const existing = (data as { verification_notes: string | null } | null)?.verification_notes;
+    const decision = `[${status}] ${trimmed}`;
+    update.verification_notes = existing ? `${existing}\n\n${decision}` : decision;
+  }
+
+  const { error } = await client.from("business_claims").update(update).eq("id", claimId);
   if (error) throw error;
 }
 

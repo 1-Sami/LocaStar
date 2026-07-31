@@ -31,7 +31,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
 type Tab = 'locations' | 'reviews' | 'claims';
@@ -302,38 +301,37 @@ export default function AdminReportsScreen() {
       },
     });
 
-  const handleApproveClaim = async (claim: BusinessClaim) => {
-    const confirmed = await confirmAsync(
-      'Approve this claim?',
-      `"${claim.locationName}" will be marked as verified and owned by ${claim.claimantName}.`,
-      'Approve'
-    );
-    if (!confirmed) return;
-    setBusyId(claim.id);
-    try {
-      await verifyLocationOwner(supabase, claim.locationId, claim.claimantId);
-      await resolveBusinessClaim(supabase, claim.id, 'approved');
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  /* ----------------------------------------------------- business claims --- */
 
-  const handleRejectClaim = async (claim: BusinessClaim) => {
-    const confirmed = await confirmAsync(
-      'Reject this claim?',
-      `The claim on "${claim.locationName}" by ${claim.claimantName} will be rejected.`,
-      'Reject'
-    );
-    if (!confirmed) return;
-    setBusyId(claim.id);
-    try {
-      await resolveBusinessClaim(supabase, claim.id, 'rejected');
-      reload();
-    } finally {
-      setBusyId(null);
-    }
-  };
+  // Claims used to resolve straight from a plain confirm dialog, so nothing
+  // recorded why a listing changed hands. They now follow the same
+  // state-your-reason rule as every report action.
+  const askApproveClaim = (claim: BusinessClaim) =>
+    setPending({
+      reportId: claim.id,
+      title: 'Approve this claim?',
+      consequence: `"${claim.locationName}" will be marked as verified and owned by ${claim.claimantName}. They'll be able to edit its details.`,
+      noteLabel: 'What verified their ownership?',
+      confirmLabel: 'Approve',
+      destructive: false,
+      run: async (note) => {
+        await verifyLocationOwner(supabase, claim.locationId, claim.claimantId);
+        await resolveBusinessClaim(supabase, claim.id, 'approved', note);
+      },
+    });
+
+  const askRejectClaim = (claim: BusinessClaim) =>
+    setPending({
+      reportId: claim.id,
+      title: 'Reject this claim?',
+      consequence: `The claim on "${claim.locationName}" by ${claim.claimantName} is rejected. The listing is unchanged and stays unverified.`,
+      noteLabel: 'Why are you rejecting it?',
+      confirmLabel: 'Reject',
+      destructive: true,
+      run: async (note) => {
+        await resolveBusinessClaim(supabase, claim.id, 'rejected', note);
+      },
+    });
 
   // If an admin's role is revoked while the claims tab is open, fall back.
   const activeTab: Tab = tab === 'claims' && !isAdmin ? 'locations' : tab;
@@ -558,18 +556,18 @@ export default function AdminReportsScreen() {
 
                     <View style={styles.actionsRow}>
                       <Pressable
-                        style={[styles.actionButton, styles.claimActionButton, styles.removeButton]}
+                        style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
-                        onPress={() => handleRejectClaim(claim)}>
-                        <ThemedText type="small" style={styles.removeButtonText}>
+                        onPress={() => askRejectClaim(claim)}>
+                        <ThemedText type="smallBold" style={styles.removeButtonText}>
                           Reject
                         </ThemedText>
                       </Pressable>
                       <Pressable
-                        style={[styles.actionButton, styles.claimActionButton, styles.flagButton]}
+                        style={[styles.actionButton, styles.flagButton]}
                         disabled={busy}
-                        onPress={() => handleApproveClaim(claim)}>
-                        <ThemedText type="small" style={styles.flagButtonText}>
+                        onPress={() => askApproveClaim(claim)}>
+                        <ThemedText type="smallBold" style={styles.flagButtonText}>
                           Approve
                         </ThemedText>
                       </Pressable>
@@ -760,11 +758,6 @@ const styles = StyleSheet.create({
   },
   dismissButton: {
     backgroundColor: 'rgba(128,128,128,0.25)',
-  },
-  claimActionButton: {
-    flex: 0,
-    height: 20,
-    paddingHorizontal: Spacing.two,
   },
   flagButton: {
     backgroundColor: '#E8A93B',

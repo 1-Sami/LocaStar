@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -102,7 +103,7 @@ export function AddToListModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalRoot}>
+      <SheetRoot>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <ThemedView type="backgroundElement" style={styles.modalContent}>
           <ThemedText type="subtitle" style={styles.modalTitle}>
@@ -148,17 +149,12 @@ export function AddToListModal({
             <ThemedText type="smallBold">Done</ThemedText>
           </Pressable>
         </ThemedView>
-      </View>
+      </SheetRoot>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
   modalContent: {
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,

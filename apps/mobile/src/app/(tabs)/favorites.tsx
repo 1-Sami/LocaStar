@@ -1,5 +1,6 @@
 import {
   deleteListShare,
+  stopSharingList,
   deleteShare,
   fetchMyListShares,
   fetchMyShares,
@@ -255,16 +256,26 @@ export default function FavoritesScreen() {
 
   const handleDeleteSharedList = async (list: SharedList) => {
     const otherParty = list.otherPartyUsername ?? list.otherPartyDisplayName ?? 'them';
+    // A sent card stands for every recipient, so say how many lose access and
+    // revoke all of them — pulling a single share would leave the others able
+    // to see a list that has disappeared from this screen.
+    const audience =
+      list.recipientCount > 1 ? `${list.recipientCount} people` : otherParty;
     const confirmed = await confirmAsync(
       list.direction === 'sent' ? 'Stop sharing this list?' : 'Remove this shared list?',
       list.direction === 'sent'
-        ? `${otherParty} will no longer be able to see "${list.name}". Your list itself is not deleted.`
+        ? `${audience} will no longer be able to see "${list.name}". Your list itself is not deleted.`
         : 'This removes it from your Shared list. The list itself is not affected for its owner.',
       list.direction === 'sent' ? 'Stop sharing' : 'Remove'
     );
     if (!confirmed) return;
     setSharedLists((current) => current.filter((l) => l.shareId !== list.shareId));
-    deleteListShare(supabase, list.shareId).catch(() => reload());
+
+    const request =
+      list.direction === 'sent' && session
+        ? stopSharingList(supabase, list.id, session.user.id)
+        : deleteListShare(supabase, list.shareId);
+    request.catch(() => reload());
   };
 
   if (!session) {
@@ -386,8 +397,11 @@ export default function FavoritesScreen() {
                     <View key={list.shareId} style={styles.cardWithNote}>
                       <View style={styles.noteRow}>
                         <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
-                          {list.direction === 'sent' ? 'Shared with' : 'Shared by'}{' '}
-                          {list.otherPartyUsername ?? list.otherPartyDisplayName ?? 'someone'}
+                          {list.direction === 'sent'
+                            ? `Shared with ${list.otherPartyUsername ?? list.otherPartyDisplayName ?? 'someone'}${
+                                list.recipientCount > 1 ? ` and ${list.recipientCount - 1} other${list.recipientCount > 2 ? 's' : ''}` : ''
+                              }`
+                            : `Shared by ${list.otherPartyUsername ?? list.otherPartyDisplayName ?? 'someone'}`}
                         </ThemedText>
                         <Pressable onPress={() => handleDeleteSharedList(list)} hitSlop={8}>
                           <Ionicons name="close-circle" size={18} color="#E05252" />

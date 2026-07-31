@@ -417,7 +417,7 @@ export async function searchUsers(client: SupabaseClient, query: string): Promis
 
   return rows.map((row) => ({
     id: row.id,
-    name: row.display_name ?? row.username ?? "Unknown",
+    name: row.username ?? row.display_name ?? "Unknown",
     username: row.username,
     role: row.role,
     isBanned: banned.has(row.id),

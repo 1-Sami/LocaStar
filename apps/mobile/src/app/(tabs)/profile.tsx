@@ -336,7 +336,15 @@ export default function ProfileScreen() {
             <Pressable
               onPress={() => {
                 setMyWarnings((current) => current.filter((w) => w.id !== warning.id));
-                acknowledgeWarning(supabase, warning.id).catch(() => {});
+                acknowledgeWarning(supabase, warning.id).catch((err) => {
+                  // Swallowing this made the warning silently reappear on the
+                  // next load with no explanation. Put it back straight away so
+                  // what's on screen matches what was actually saved.
+                  console.error('Could not acknowledge warning', err);
+                  setMyWarnings((current) =>
+                    current.some((w) => w.id === warning.id) ? current : [...current, warning]
+                  );
+                });
               }}>
               <ThemedText type="smallBold" style={styles.warningDismiss}>
                 Got it

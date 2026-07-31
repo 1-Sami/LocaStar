@@ -31,7 +31,7 @@ function FriendRow({
     <ThemedView type="backgroundElement" style={styles.row}>
       <Avatar url={friend.avatarUrl} size={40} />
       <View style={styles.rowText}>
-        <ThemedText type="smallBold">{friend.displayName ?? friend.username ?? 'Unnamed user'}</ThemedText>
+        <ThemedText type="smallBold">{friend.username ?? friend.displayName ?? 'Unnamed user'}</ThemedText>
         {friend.username && (
           <ThemedText type="small" themeColor="textSecondary">
             @{friend.username}
@@ -94,7 +94,7 @@ export default function FriendsScreen() {
   const handleRemove = async (friend: Friend) => {
     const confirmed = await confirmAsync(
       'Remove this friend?',
-      `${friend.displayName ?? friend.username ?? 'This person'} will be removed from your friends list.`,
+      `${friend.username ?? friend.displayName ?? 'This person'} will be removed from your friends list.`,
       'Remove'
     );
     if (!confirmed) return;

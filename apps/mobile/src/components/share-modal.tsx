@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -87,7 +88,7 @@ export function ShareModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={styles.modalRoot}>
+      <SheetRoot>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         <ThemedView type="backgroundElement" style={styles.modalContent}>
           {submitted ? (
@@ -97,8 +98,8 @@ export function ShareModal({
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary">
                 {successMessage
-                  ? successMessage(selected?.displayName ?? selected?.username ?? 'They')
-                  : `${selected?.displayName ?? selected?.username ?? 'They'} will see it ${successNoun}.`}
+                  ? successMessage(selected?.username ?? selected?.displayName ?? 'They')
+                  : `${selected?.username ?? selected?.displayName ?? 'They'} will see it ${successNoun}.`}
               </ThemedText>
               <Pressable style={styles.submitButton} onPress={handleClose}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
@@ -116,7 +117,7 @@ export function ShareModal({
                 <View style={styles.selectedRow}>
                   <Avatar url={selected.avatarUrl} size={36} />
                   <ThemedText type="default" style={styles.selectedName}>
-                    {selected.displayName ?? selected.username ?? 'Unnamed user'}
+                    {selected.username ?? selected.displayName ?? 'Unnamed user'}
                   </ThemedText>
                   <Pressable onPress={() => setSelected(null)} hitSlop={8}>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -139,7 +140,7 @@ export function ShareModal({
                       <Avatar url={candidate.avatarUrl} size={36} />
                       <View>
                         <ThemedText type="default">
-                          {candidate.displayName ?? candidate.username ?? 'Unnamed user'}
+                          {candidate.username ?? candidate.displayName ?? 'Unnamed user'}
                         </ThemedText>
                         {candidate.username && (
                           <ThemedText type="small" themeColor="textSecondary">
@@ -185,17 +186,12 @@ export function ShareModal({
             </>
           )}
         </ThemedView>
-      </View>
+      </SheetRoot>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
   modalContent: {
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,

@@ -61,12 +61,23 @@ export default function ProfilePictureScreen() {
     if (!uri) return;
 
     setUploading(true);
+    const previousUrl = avatarUrl;
     try {
       const path = `avatars/${session.user.id}-${Date.now()}.jpg`;
       const publicUrl = await uploadImageToMedia(path, uri);
       await updateProfile(supabase, session.user.id, { avatar_url: publicUrl });
       setAvatarUrl(publicUrl);
       refreshProfile();
+
+      // Each upload used a fresh timestamped path and nothing removed the old
+      // one, so every change left the previous picture readable at its public
+      // URL. Clean it up once the new one is safely in place — best effort,
+      // since the change itself has already succeeded.
+      const previousPath = previousUrl ? storagePathFromPublicUrl(previousUrl) : null;
+      if (previousPath && previousPath !== path) {
+        const { error: removeError } = await supabase.storage.from('media').remove([previousPath]);
+        if (removeError) console.error('Could not delete the previous avatar', removeError);
+      }
     } catch {
       setError('Something went wrong uploading your photo. Try again.');
     } finally {
@@ -87,10 +98,23 @@ export default function ProfilePictureScreen() {
     setRemoving(true);
     try {
       await updateProfile(supabase, session.user.id, { avatar_url: null });
-      // Best-effort: the profile is already updated, so a storage hiccup
-      // shouldn't make it look like the removal failed.
+
+      // storage.remove() resolves with an { error } rather than throwing, so
+      // an unchecked call reports success even when the file is still sitting
+      // at a public URL. The profile change has already landed, so don't fail
+      // the whole action — say the picture is gone from the app but the file
+      // wasn't deleted.
       const path = storagePathFromPublicUrl(avatarUrl);
-      if (path) await supabase.storage.from('media').remove([path]);
+      if (path) {
+        const { error: removeError } = await supabase.storage.from('media').remove([path]);
+        if (removeError) {
+          console.error('Avatar file delete failed', removeError);
+          setError(
+            "Your picture was removed from your profile, but the file couldn't be deleted. Try removing it again."
+          );
+        }
+      }
+
       setAvatarUrl(null);
       refreshProfile();
     } catch {
