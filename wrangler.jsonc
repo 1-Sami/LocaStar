@@ -1,0 +1,16 @@
+{
+  // Static hosting for the Expo web build on Cloudflare Workers.
+  //
+  // There is no Worker script — this is an assets-only Worker, so `main` is
+  // deliberately omitted. `apps/mobile/scripts/build-web.mjs` produces the
+  // directory below, including the _redirects rules that map dynamic routes
+  // (/location/<id>, /lists/<id>) onto their prerendered pages.
+  "name": "locastar",
+  "compatibility_date": "2026-07-31",
+  "assets": {
+    "directory": "./apps/mobile/dist",
+    // Serve the app's own not-found page rather than a bare Cloudflare 404.
+    // The build script writes 404.html for this.
+    "not_found_handling": "404-page"
+  }
+}
