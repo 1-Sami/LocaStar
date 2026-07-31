@@ -1,4 +1,5 @@
 import { LegalBullet, LegalPage, LegalSection, LegalText } from '@/components/legal-page';
+import { SUPPORT_EMAIL } from '@/constants/support';
 
 /**
  * Written to match how the app actually behaves — content publishes
@@ -72,7 +73,7 @@ export default function TermsScreen() {
         <LegalText>
           A restriction can be temporary or permanent. While restricted you can still sign in and browse,
           but you cannot post reviews, add places, share, or send requests. Every moderator action is
-          recorded. If you think a decision was wrong, email sadek_mirza@hotmail.com and we will look at
+          recorded. If you think a decision was wrong, email {SUPPORT_EMAIL} and we will look at
           it again.
         </LegalText>
       </LegalSection>

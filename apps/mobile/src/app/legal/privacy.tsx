@@ -1,4 +1,5 @@
 import { LegalBullet, LegalPage, LegalSection, LegalText } from '@/components/legal-page';
+import { SUPPORT_EMAIL } from '@/constants/support';
 
 /**
  * Drafted from what the app actually collects (see the Supabase schema), not
@@ -11,7 +12,7 @@ export default function PrivacyPolicyScreen() {
         <LegalText>
           LocaStar is operated by Application AB, Hundhamravägen 7, 145 70 Norsborg, Stockholm, Sweden.
           Application AB is the data controller for the personal data described here. You can reach us at
-          sadek_mirza@hotmail.com for any question about your data.
+          {' '}{SUPPORT_EMAIL} for any question about your data.
         </LegalText>
       </LegalSection>
 
@@ -106,7 +107,7 @@ export default function PrivacyPolicyScreen() {
           Under the GDPR you have the right to access your data, correct it, delete it, receive a copy in
           a portable format, and object to or restrict how we use it. You can delete your account at any
           time from Settings, which removes your data as described above. For anything else, email us at
-          sadek_mirza@hotmail.com and we will respond within one month.
+          {' '}{SUPPORT_EMAIL} and we will respond within one month.
         </LegalText>
         <LegalText>
           If you believe we have handled your data incorrectly, you can complain to the Swedish Authority
