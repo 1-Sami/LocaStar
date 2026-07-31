@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,23 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
+
+/**
+ * Where the reset link should land.
+ *
+ * This was hardcoded to `locastar://reset-password`, the native deep-link
+ * scheme. Reset emails get opened wherever the person reads their mail —
+ * usually a desktop or webmail browser — and a browser has no handler for
+ * `locastar://`, so the link silently did nothing. Only the https address
+ * works everywhere; on a phone with the app installed the OS can still hand
+ * it to the app.
+ */
+function resetRedirectTo(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return `${window.location.origin}/reset-password`;
+  }
+  return 'https://locastar.se/reset-password';
+}
 
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
@@ -21,7 +38,7 @@ export default function ForgotPasswordScreen() {
     setSubmitting(true);
     setError(null);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: 'locastar://reset-password',
+      redirectTo: resetRedirectTo(),
     });
     setSubmitting(false);
     if (resetError) {

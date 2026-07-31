@@ -25,15 +25,52 @@ export default function ResetPasswordScreen() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!code) {
-      setLinkError('This reset link is invalid or has expired. Request a new one.');
-      setExchanging(false);
-      return;
+    let cancelled = false;
+    const fail = () => {
+      if (!cancelled) {
+        setLinkError('This reset link is invalid or has expired. Request a new one.');
+        setExchanging(false);
+      }
+    };
+    const succeed = () => {
+      if (!cancelled) setExchanging(false);
+    };
+
+    // Supabase hands the recovery session back in one of two shapes depending
+    // on the auth flow: PKCE puts a `?code=` in the query, while the implicit
+    // flow (the client default here) puts the tokens in the URL *fragment*.
+    // This screen only ever read `?code=`, so a real reset link reported
+    // itself as expired. Accept both.
+    if (code) {
+      supabase.auth
+        .exchangeCodeForSession(code)
+        .then(({ error: exchangeError }) => (exchangeError ? fail() : succeed()))
+        .catch(fail);
+      return () => {
+        cancelled = true;
+      };
     }
-    supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
-      if (exchangeError) setLinkError('This reset link is invalid or has expired. Request a new one.');
-      setExchanging(false);
-    });
+
+    const fragment = typeof window !== 'undefined' ? window.location.hash : '';
+    if (fragment) {
+      const params = new URLSearchParams(fragment.replace(/^#/, ''));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        supabase.auth
+          .setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ error: sessionError }) => (sessionError ? fail() : succeed()))
+          .catch(fail);
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
+
+    fail();
+    return () => {
+      cancelled = true;
+    };
   }, [code]);
 
   const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
