@@ -7,7 +7,7 @@ import { SUPPORT_EMAIL } from '@/constants/support';
  */
 export default function PrivacyPolicyScreen() {
   return (
-    <LegalPage lastUpdated="29 July 2026">
+    <LegalPage lastUpdated="1 August 2026">
       <LegalSection title="Who we are">
         <LegalText>
           LocaStar is operated by Application AB, Hundhamravägen 7, 145 70 Norsborg, Stockholm, Sweden.
@@ -95,10 +95,26 @@ export default function PrivacyPolicyScreen() {
 
       <LegalSection title="How long we keep it">
         <LegalText>
-          We keep your account data for as long as your account exists. If you delete your account, your
-          profile, reviews, saved places and lists are deleted with it. Records of moderation decisions —
-          such as a removed location or a ban — are kept for up to two years so we can enforce our rules
-          consistently and handle appeals, even after an account is gone.
+          We keep your account data for as long as your account exists. If you delete your account, we
+          delete your profile, username, profile picture, home address, saved places, favourites, lists
+          and friend connections.
+        </LegalText>
+        <LegalText>
+          What you contributed to the map is kept, but is no longer connected to you. Reviews, photos and
+          places you added stay in the app with your name removed, shown as coming from a deleted
+          account, and can no longer be traced back to you. We do this because other people rely on them:
+          a place can lose its entire rating history if one person leaves, which would make the app less
+          accurate for everyone else. Our legal basis is our legitimate interest in keeping the service
+          accurate and useful.
+        </LegalText>
+        <LegalText>
+          If a review or photo of yours contains something personal you want removed rather than
+          unlinked, email us at {SUPPORT_EMAIL} and we will delete it.
+        </LegalText>
+        <LegalText>
+          Records of moderation decisions — such as a removed location or a ban — are kept for up to two
+          years so we can enforce our rules consistently and handle appeals, even after an account is
+          gone.
         </LegalText>
       </LegalSection>
 

@@ -1,4 +1,5 @@
 import {
+  DELETED_ACCOUNT_NAME,
   deleteList,
   fetchListItems,
   fetchListMeta,
@@ -242,7 +243,7 @@ export default function ListDetailScreen() {
             {meta && (
               <View style={styles.attribution}>
                 <ThemedText type="smallBold" themeColor="textSecondary">
-                  by {meta.ownerUsername ?? meta.ownerDisplayName ?? 'Deleted account'}
+                  by {meta.ownerUsername ?? meta.ownerDisplayName ?? DELETED_ACCOUNT_NAME}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   Created {formatListDate(meta.createdAt)}

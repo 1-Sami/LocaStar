@@ -69,6 +69,7 @@ export {
   fetchMyPrivateProfile,
   updateProfile,
   isModeratorRole,
+  DELETED_ACCOUNT_NAME,
   DEFAULT_NOTIFICATION_PREFERENCES,
 } from "./api/profile";
 export type {

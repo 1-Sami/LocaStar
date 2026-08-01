@@ -85,6 +85,16 @@ export async function fetchMyReviews(
     }));
 }
 
+/**
+ * Shown wherever a contribution outlived the account that made it.
+ *
+ * Since 0071 deleting an account anonymises reviews, photos and locations
+ * rather than removing them, so a missing profile row means "this person left",
+ * not "this person has no name". Distinct from "Anonymous", which is the
+ * fallback for a profile that exists but has no handle set.
+ */
+export const DELETED_ACCOUNT_NAME = "Deleted account";
+
 export type ThemePreference = "light" | "dark" | "system";
 
 export type NotificationPreferences = {

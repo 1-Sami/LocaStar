@@ -1,8 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { DELETED_ACCOUNT_NAME } from "./profile";
+
 export type Review = {
   id: string;
-  user_id: string;
+  /** Null once the author deleted their account; the review is kept. */
+  user_id: string | null;
   rating: number;
   title: string | null;
   body: string | null;
@@ -67,7 +70,13 @@ export async function fetchReviews(
     // Username first, matching how the DB triggers name people. Accounts made
     // with just an email have no display_name, so preferring it showed
     // "Anonymous" for everyone who never set one in settings.
-    author_name: row.profiles?.username ?? row.profiles?.display_name ?? "Anonymous",
+    //
+    // No profile row at all is a different case: since 0071 the author deleted
+    // their account and the review was kept, unattributed. Testing the row
+    // rather than the names keeps those two apart.
+    author_name: row.profiles
+      ? (row.profiles.username ?? row.profiles.display_name ?? "Anonymous")
+      : DELETED_ACCOUNT_NAME,
     author_avatar_url: row.profiles?.avatar_url ?? null,
     likeCount: row.review_likes?.[0]?.count ?? 0,
     likedByMe: likedReviewIds.has(row.id),

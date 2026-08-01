@@ -706,7 +706,12 @@ export default function LocationDetailScreen() {
                           style={[
                             styles.reviewAvatar,
                             styles.reviewAvatarFallback,
-                            { backgroundColor: avatarColorFor(review.user_id) },
+                            {
+                              // An anonymised review has no author id, so fall
+                              // back to the review's own id — still stable, so
+                              // the placeholder colour doesn't change per render.
+                              backgroundColor: avatarColorFor(review.user_id ?? review.id),
+                            },
                           ]}>
                           <ThemedText type="smallBold" style={styles.reviewAvatarInitial}>
                             {(review.author_name?.[0] ?? '?').toUpperCase()}

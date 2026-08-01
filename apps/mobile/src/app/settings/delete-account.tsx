@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SUPPORT_EMAIL } from '@/constants/support';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
@@ -19,7 +20,7 @@ export default function DeleteAccountScreen() {
   const handleDelete = async () => {
     const confirmed = await confirmAsync(
       'Delete your account?',
-      'This permanently deletes your profile, reviews, favorites, lists, and everything else tied to your account. This cannot be undone.',
+      'This permanently deletes your profile, favorites, lists and friends. Reviews, photos and places you added stay in the app with your name removed. This cannot be undone.',
       'Delete account'
     );
     if (!confirmed) return;
@@ -46,8 +47,13 @@ export default function DeleteAccountScreen() {
             Delete your account
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            This permanently deletes your profile, reviews, favorites, bucket list, shared
-            locations, and lists. There is no way to undo this.
+            This permanently deletes your profile, username, profile picture, home address, favorites,
+            bucket list, shared locations, lists and friends. There is no way to undo this.
+          </ThemedText>
+          <ThemedText type="default" themeColor="textSecondary">
+            Reviews, photos and places you added stay in the app with your name removed, so the places
+            other people rely on don&apos;t lose their ratings. They can no longer be traced back to
+            you. If you want something you posted deleted rather than unlinked, email {SUPPORT_EMAIL}.
           </ThemedText>
 
           {error && (

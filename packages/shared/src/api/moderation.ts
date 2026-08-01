@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { DELETED_ACCOUNT_NAME } from "./profile";
 import type { UserRole } from "./profile";
 
 export type LocationReportStatus = "open" | "reviewed" | "actioned" | "dismissed";
@@ -293,7 +294,10 @@ const BAN_SELECT =
 // Username first: accounts created with only an email have no display_name, so
 // preferring display_name rendered them as "Unknown".
 function personName(p: { display_name: string | null; username: string | null } | null): string {
-  return p?.username ?? p?.display_name ?? "Unknown";
+  // A missing row means the account was deleted and its contributions kept
+  // (0071); "Unknown" is for a profile that is present but unnamed.
+  if (!p) return DELETED_ACCOUNT_NAME;
+  return p.username ?? p.display_name ?? "Unknown";
 }
 
 function mapBan(row: UserBanRow): UserBan {
