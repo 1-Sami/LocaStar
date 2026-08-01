@@ -11,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authRedirectTo } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
+import { writeFailureMessage } from '@/lib/restriction';
 import { verifyCurrentPassword } from '@/lib/reauth';
 import { usernameProblem } from '@/lib/username';
 import { supabase } from '@/lib/supabase';
@@ -107,7 +108,12 @@ export default function AccountInfoScreen() {
 
       setSaved(true);
     } catch {
-      setError('Something went wrong saving your account info. Try again.');
+      setError(
+        await writeFailureMessage(
+          session.user.id,
+          'Something went wrong saving your account info. Try again.'
+        )
+      );
     } finally {
       setSaving(false);
     }

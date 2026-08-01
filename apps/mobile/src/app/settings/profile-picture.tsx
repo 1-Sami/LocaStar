@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { pickImage, uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
+import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -79,7 +80,12 @@ export default function ProfilePictureScreen() {
         if (removeError) console.error('Could not delete the previous avatar', removeError);
       }
     } catch {
-      setError('Something went wrong uploading your photo. Try again.');
+      setError(
+        await writeFailureMessage(
+          session.user.id,
+          'Something went wrong uploading your photo. Try again.'
+        )
+      );
     } finally {
       setUploading(false);
     }
@@ -118,7 +124,12 @@ export default function ProfilePictureScreen() {
       setAvatarUrl(null);
       refreshProfile();
     } catch {
-      setError('Something went wrong removing your photo. Try again.');
+      setError(
+        await writeFailureMessage(
+          session.user.id,
+          'Something went wrong removing your photo. Try again.'
+        )
+      );
     } finally {
       setRemoving(false);
     }
