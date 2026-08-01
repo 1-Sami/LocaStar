@@ -33,7 +33,9 @@ export default function ChangePasswordScreen() {
     setSaved(false);
 
     // Anyone holding an unlocked phone could otherwise take over the account
-    // outright, so prove they know the existing password first.
+    // outright, so prove they know the existing password first. This also
+    // refreshes the session, which "Secure password change" needs: it wants a
+    // login from the last 24 hours before it will accept a new password.
     const confirmed = await verifyCurrentPassword(session?.user.email ?? '', currentPassword);
     if (!confirmed) {
       setError('That password is incorrect.');
@@ -41,7 +43,15 @@ export default function ChangePasswordScreen() {
       return;
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    // current_password is not belt-and-braces on top of the check above — the
+    // project has "Require current password when updating" switched on, and
+    // GoTrue rejects the update outright without it, with "Current password
+    // required when setting new password." Verifying it here proves nothing to
+    // the server; only sending it does.
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      current_password: currentPassword,
+    });
     setSaving(false);
     if (updateError) {
       setError(updateError.message);
