@@ -50,7 +50,11 @@
     "web": "expo start --web",
     "build:web": "node scripts/build-web.mjs",
     "preview:web": "wrangler pages dev dist --port 8788",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "eas:setup": "eas login && eas init",
+    "eas:env": "eas env:create --scope project --environment production --name EXPO_PUBLIC_SUPABASE_URL --type string && eas env:create --scope project --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --type string",
+    "build:android": "eas build --platform android --profile preview",
+    "build:ios": "eas build --platform ios --profile preview"
   },
   "private": true
 }
