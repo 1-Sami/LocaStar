@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 export default function MyListsScreen() {
@@ -57,7 +58,9 @@ export default function MyListsScreen() {
       setIsPublic(false);
       reload();
     } catch {
-      setError('Something went wrong creating the list. Try again.');
+      setError(
+        await writeFailureMessage(session.user.id, 'Something went wrong creating the list. Try again.')
+      );
     } finally {
       setCreating(false);
     }

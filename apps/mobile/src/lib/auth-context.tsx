@@ -1,6 +1,7 @@
 import type { Session } from '@locastar/shared';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { authRedirectTo } from '@/lib/auth-redirect';
 import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username } },
+      options: { data: { username }, emailRedirectTo: authRedirectTo('/') },
     });
     if (error) return { error: error.message, needsEmailConfirmation: false };
 

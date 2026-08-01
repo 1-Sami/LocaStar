@@ -6,6 +6,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
+import { writeFailureMessage } from '@/lib/restriction';
 
 const MIN_REASON_WORDS = 10;
 
@@ -23,6 +25,7 @@ export function ClaimBusinessModal({
   onSubmit: (verificationNotes: string) => Promise<void>;
 }) {
   const theme = useTheme();
+  const { session } = useAuth();
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -47,7 +50,12 @@ export function ClaimBusinessModal({
       await onSubmit(notes.trim());
       setSubmitted(true);
     } catch {
-      setError('Something went wrong submitting your claim. Try again.');
+      setError(
+        await writeFailureMessage(
+          session?.user.id,
+          'Something went wrong submitting your claim. Try again.'
+        )
+      );
     } finally {
       setSubmitting(false);
     }

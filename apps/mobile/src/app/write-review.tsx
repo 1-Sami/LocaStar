@@ -19,6 +19,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { uploadImageToMedia } from '@/lib/media-upload';
+import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 function StarPicker({ value, onChange }: { value: number; onChange: (rating: number) => void }) {
@@ -108,7 +109,12 @@ export default function WriteReviewScreen() {
       router.back();
     } catch (err) {
       console.error('Failed to submit review', err);
-      setError('Something went wrong submitting your review. Try again.');
+      setError(
+        await writeFailureMessage(
+          session.user.id,
+          'Something went wrong submitting your review. Try again.'
+        )
+      );
       setSubmitting(false);
     }
   };

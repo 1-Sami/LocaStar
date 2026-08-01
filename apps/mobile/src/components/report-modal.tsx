@@ -6,6 +6,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
+import { writeFailureMessage } from '@/lib/restriction';
 
 const REPORT_REASONS = [
   'Spam',
@@ -30,6 +32,7 @@ export function ReportModal({
   onSubmit: (reason: string, details: string | null) => Promise<void>;
 }) {
   const theme = useTheme();
+  const { session } = useAuth();
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +57,12 @@ export function ReportModal({
       await onSubmit(reason as string, details.trim());
       setSubmitted(true);
     } catch {
-      setError('Something went wrong submitting your report. Try again.');
+      setError(
+        await writeFailureMessage(
+          session?.user.id,
+          'Something went wrong submitting your report. Try again.'
+        )
+      );
     } finally {
       setSubmitting(false);
     }

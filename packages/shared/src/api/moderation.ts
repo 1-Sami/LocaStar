@@ -389,11 +389,27 @@ export type ManagedUser = {
   isBanned: boolean;
 };
 
+/**
+ * PostgREST parses `or=(...)` as a comma-separated list, so a raw value with a
+ * comma, a bracket or a quote in it changes the shape of the filter instead of
+ * being searched for. Wrapping the value in double quotes makes PostgREST read
+ * it as a literal; backslashes and quotes have to be escaped to survive that.
+ *
+ * Admin-only and read-only, on a table admins can already read in full, so
+ * this is about a comma in the search box not producing a baffling error —
+ * not about privilege. Left un-escaped: % and _, which stay useful as
+ * wildcards when an admin is hunting through the user list.
+ */
+function quoteFilterValue(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
 export async function searchUsers(client: SupabaseClient, query: string): Promise<ManagedUser[]> {
   const trimmed = query.trim();
   let request = client.from("profiles").select("id, display_name, username, role").limit(25);
   if (trimmed) {
-    request = request.or(`username.ilike.%${trimmed}%,display_name.ilike.%${trimmed}%`);
+    const pattern = quoteFilterValue(`%${trimmed}%`);
+    request = request.or(`username.ilike.${pattern},display_name.ilike.${pattern}`);
   }
   const { data, error } = await request;
   if (error) throw error;

@@ -27,6 +27,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
+import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 function formatStreetLine(result: Location.LocationGeocodedAddress): string {
@@ -314,8 +315,13 @@ export default function AddLocationScreen() {
       console.error(`Failed to submit ${noun}`, err);
       setError(
         createdLocationId.current
-          ? `Your ${noun} was saved, but its photos didn't finish uploading. Tap submit again to retry — that won't create a second ${noun}.`
-          : `Something went wrong submitting your ${noun}. Try again.`
+          ? // Already saved, so a restriction isn't what stopped this — the
+            // photos are the only outstanding part.
+            `Your ${noun} was saved, but its photos didn't finish uploading. Tap submit again to retry — that won't create a second ${noun}.`
+          : await writeFailureMessage(
+              session.user.id,
+              `Something went wrong submitting your ${noun}. Try again.`
+            )
       );
     } finally {
       setSubmitting(false);

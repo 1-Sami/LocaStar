@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 export function ShareModal({
@@ -80,7 +81,7 @@ export function ShareModal({
       await onShare(selected.id, note.trim() || null);
       setSubmitted(true);
     } catch {
-      setError(errorMessage);
+      setError(await writeFailureMessage(session?.user.id, errorMessage));
     } finally {
       setSubmitting(false);
     }

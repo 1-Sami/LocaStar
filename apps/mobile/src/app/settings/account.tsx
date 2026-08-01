@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { authRedirectTo } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 import { verifyCurrentPassword } from '@/lib/reauth';
 import { usernameProblem } from '@/lib/username';
@@ -95,7 +96,10 @@ export default function AccountInfoScreen() {
       });
 
       if (emailChanged) {
-        const { error: emailError } = await supabase.auth.updateUser({ email: trimmedEmail });
+        const { error: emailError } = await supabase.auth.updateUser(
+          { email: trimmedEmail },
+          { emailRedirectTo: authRedirectTo('/') }
+        );
         if (emailError) throw emailError;
         setEmailChangePending(true);
         setCurrentPassword('');
