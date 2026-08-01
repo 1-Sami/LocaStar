@@ -1,5 +1,6 @@
 import {
   acceptFriendRequest,
+  blockUser,
   fetchFriendships,
   removeFriendship,
   sendFriendRequest,
@@ -91,6 +92,30 @@ export default function FriendsScreen() {
     }
   };
 
+  // Blocking is the only irreversible-feeling action here and it sits next to
+  // Decline, so it gets a confirmation naming the person and spelling out what
+  // it does — including that it can be undone, so nobody avoids it out of
+  // uncertainty.
+  const handleBlock = async (friend: Friend) => {
+    if (!session) return;
+    const name = friend.username ?? friend.displayName ?? 'This person';
+    const confirmed = await confirmAsync(
+      `Block ${name}?`,
+      `${name} will no longer be able to send you friend requests, or share locations and lists with you. They are not told they have been blocked. You can undo this in Settings › Blocked users.`,
+      'Block'
+    );
+    if (!confirmed) return;
+
+    setBusyId(friend.friendshipId);
+    try {
+      await blockUser(supabase, session.user.id, friend.userId);
+      // The block also clears the friendship row, so drop it locally too.
+      setFriendships((current) => current.filter((f) => f.friendshipId !== friend.friendshipId));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleRemove = async (friend: Friend) => {
     const confirmed = await confirmAsync(
       'Remove this friend?',
@@ -155,6 +180,14 @@ export default function FriendsScreen() {
                         onPress={() => handleDecline(friend)}
                         hitSlop={8}>
                         <Ionicons name="close" size={18} color="#ffffff" />
+                      </Pressable>
+                      <Pressable
+                        style={[styles.iconButton, styles.blockButton]}
+                        disabled={busyId === friend.friendshipId}
+                        onPress={() => handleBlock(friend)}
+                        accessibilityLabel={`Block ${friend.username ?? friend.displayName ?? 'this person'}`}
+                        hitSlop={8}>
+                        <Ionicons name="ban" size={18} color="#ffffff" />
                       </Pressable>
                     </View>
                   </FriendRow>
@@ -276,5 +309,10 @@ const styles = StyleSheet.create({
   },
   declineButton: {
     backgroundColor: '#E05252',
+  },
+  // Deliberately darker than Decline rather than a third bright colour —
+  // Block sits next to it and should not read as just another way to say no.
+  blockButton: {
+    backgroundColor: '#4A4A4A',
   },
 });

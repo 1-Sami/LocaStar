@@ -59,6 +59,9 @@ export {
 } from "./api/reviews";
 export type { Review, ReviewInput, ReviewPhoto, ReviewReportInput } from "./api/reviews";
 
+export { fetchBlockedUsers, blockUser, unblockUser } from "./api/blocks";
+export type { BlockedUser } from "./api/blocks";
+
 export {
   fetchProfileStats,
   fetchMyReviews,

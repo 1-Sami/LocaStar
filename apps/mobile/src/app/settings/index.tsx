@@ -11,6 +11,7 @@ const rows: { label: string; href: string }[] = [
   { label: 'Account info', href: '/settings/account' },
   { label: 'Theme', href: '/settings/theme' },
   { label: 'Notifications', href: '/settings/notifications' },
+  { label: 'Blocked users', href: '/settings/blocked' },
   { label: 'Privacy Policy', href: '/legal/privacy' },
   { label: 'Terms of Service', href: '/legal/terms' },
 ];

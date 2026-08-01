@@ -32,6 +32,7 @@ function ThemedNavigation() {
         <Stack.Screen name="settings/account" options={{ title: 'Account info' }} />
         <Stack.Screen name="settings/theme" options={{ title: 'Theme' }} />
         <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="settings/blocked" options={{ title: 'Blocked users' }} />
         <Stack.Screen name="settings/delete-account" options={{ title: 'Delete account' }} />
         <Stack.Screen name="about" options={{ title: 'About' }} />
         <Stack.Screen name="legal/privacy" options={{ title: 'Privacy Policy' }} />
