@@ -50,6 +50,33 @@ function emailFromJwt(authHeader: string): string | null {
   }
 }
 
+/**
+ * The project's publishable key, for when SUPABASE_ANON_KEY finally goes.
+ *
+ * The dashboard marks SUPABASE_ANON_KEY deprecated in favour of
+ * SUPABASE_PUBLISHABLE_KEYS, which is a JSON dictionary rather than a bare
+ * key — so it cannot simply be read as a drop-in replacement. Parsed leniently
+ * because the exact shape is Supabase's to change, and the alternative to
+ * guessing wrong here is the deletion email silently never sending.
+ */
+function publishableKey(): string | null {
+  const raw = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS');
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    const values = Array.isArray(parsed) ? parsed : Object.values(parsed);
+    for (const value of values) {
+      if (typeof value === 'string' && value) return value;
+      const nested = (value as { api_key?: unknown })?.api_key;
+      if (typeof nested === 'string' && nested) return nested;
+    }
+    return null;
+  } catch {
+    // Not JSON after all — treat it as the key itself rather than giving up.
+    return raw;
+  }
+}
+
 function emailBody() {
   const text = [
     'Your LocaStar account has been deleted.',
@@ -90,12 +117,8 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Not signed in' }, 401);
 
-  // Supabase injects the project's own key, but the name depends on how old the
-  // project is: legacy anon keys and the newer publishable keys are exposed
-  // under different variables. Accept either rather than failing over a name.
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const anonKey =
-    Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? publishableKey();
   if (!supabaseUrl || !anonKey) {
     console.error('Missing SUPABASE_URL or project key — cannot reach PostgREST');
     return json({ error: 'Server misconfigured' }, 500);
