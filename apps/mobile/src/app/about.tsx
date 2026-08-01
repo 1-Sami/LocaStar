@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +23,16 @@ function Feature({ lead, children }: { lead: string; children: string }) {
 
 export default function AboutScreen() {
   const version = Constants.expoConfig?.version ?? '1.0.0';
+
+  // Which JS bundle is actually running. Fixes now ship over the air, so
+  // "is my fix live yet?" stopped being answerable from the version number
+  // alone — an unchanged 1.0.0 covers every update ever published. Without
+  // this the honest answer to a bug report is a guess about whether the
+  // person has the fix, which is how a fixed bug gets debugged twice.
+  const buildLabel = Updates.isEmbeddedLaunch
+    ? 'Original install — no updates applied yet'
+    : `Update ${Updates.updateId?.slice(0, 8) ?? 'unknown'}` +
+      (Updates.createdAt ? ` · ${Updates.createdAt.toISOString().slice(0, 16).replace('T', ' ')}` : '');
 
   return (
     <ThemedView style={styles.container}>
@@ -131,6 +142,9 @@ export default function AboutScreen() {
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
             Application AB · Version {version}
           </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.buildLine}>
+            {buildLabel}
+          </ThemedText>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -189,5 +203,9 @@ const styles = StyleSheet.create({
   version: {
     textAlign: 'center',
     marginTop: Spacing.two,
+  },
+  buildLine: {
+    textAlign: 'center',
+    opacity: 0.7,
   },
 });
