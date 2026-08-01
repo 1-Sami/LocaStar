@@ -8,6 +8,7 @@ export {
   submitLocation,
   addLocationPhoto,
   fetchLocationPhotos,
+  makeCoverPhoto,
   reportLocation,
   updateLocation,
   fetchLocationCategoryIds,
@@ -29,6 +30,7 @@ export type {
   LocationReportInput,
   LocationUpdate,
   MyAddedLocation,
+  GalleryPhoto,
 } from "./api/locations";
 
 export {

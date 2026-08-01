@@ -213,13 +213,38 @@ export async function addLocationPhoto(
   if (error) throw error;
 }
 
-export async function fetchLocationPhotos(client: SupabaseClient, locationId: string): Promise<string[]> {
+export type GalleryPhoto = {
+  url: string;
+  /**
+   * The location_photos row id, or null for a photo that came from a review.
+   *
+   * Review photos belong to their review, not to the place, so they can't be
+   * promoted to cover — the id is what the gallery uses to tell the two apart.
+   */
+  photoId: string | null;
+};
+
+/**
+ * Every photo shown on a location: the location's own, then any from visible
+ * reviews.
+ *
+ * Ordering deliberately matches the `cover` lateral in nearby_locations
+ * (sort_order, then created_at ascending), so the picture on the card is the
+ * same one that leads the gallery. These used to disagree — the card showed
+ * the oldest photo while the gallery listed newest first, so the "hero shot"
+ * on the card was the last one you reached by swiping.
+ */
+export async function fetchLocationPhotos(
+  client: SupabaseClient,
+  locationId: string
+): Promise<GalleryPhoto[]> {
   const [locationPhotos, reviewPhotos] = await Promise.all([
     client
       .from("location_photos")
-      .select("storage_path")
+      .select("id, storage_path, sort_order")
       .eq("location_id", locationId)
-      .order("created_at", { ascending: false }),
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
     client
       .from("reviews")
       .select("review_photos(storage_path)")
@@ -232,12 +257,47 @@ export async function fetchLocationPhotos(client: SupabaseClient, locationId: st
 
   const publicUrl = (storagePath: string) => client.storage.from("media").getPublicUrl(storagePath).data.publicUrl;
 
-  const fromLocation = (locationPhotos.data as { storage_path: string }[]).map((row) => publicUrl(row.storage_path));
+  const fromLocation = (locationPhotos.data as { id: string; storage_path: string }[]).map((row) => ({
+    url: publicUrl(row.storage_path),
+    photoId: row.id,
+  }));
   const fromReviews = (reviewPhotos.data as { review_photos: { storage_path: string }[] }[]).flatMap((row) =>
-    row.review_photos.map((photo) => publicUrl(photo.storage_path))
+    row.review_photos.map((photo) => ({ url: publicUrl(photo.storage_path), photoId: null }))
   );
 
   return [...fromLocation, ...fromReviews];
+}
+
+/**
+ * Promotes a photo to the front of its location.
+ *
+ * Rather than renumbering every row, this drops the chosen photo one below the
+ * current minimum. Everything starts at 0, so the first promotion lands at -1,
+ * the next at -2, and existing order is otherwise undisturbed.
+ *
+ * Enforced by RLS to moderators and the verified owner (migration 0072) — this
+ * will simply affect no rows for anyone else.
+ */
+export async function makeCoverPhoto(
+  client: SupabaseClient,
+  locationId: string,
+  photoId: string
+): Promise<void> {
+  const { data, error } = await client
+    .from("location_photos")
+    .select("sort_order")
+    .eq("location_id", locationId)
+    .order("sort_order", { ascending: true })
+    .limit(1);
+  if (error) throw error;
+
+  const lowest = (data as { sort_order: number }[])[0]?.sort_order ?? 0;
+
+  const { error: updateError } = await client
+    .from("location_photos")
+    .update({ sort_order: lowest - 1 })
+    .eq("id", photoId);
+  if (updateError) throw updateError;
 }
 
 export type LocationReportInput = {

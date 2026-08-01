@@ -3,6 +3,7 @@ import {
   fetchLocationById,
   fetchLocationPhotos,
   fetchMyClaimForLocation,
+  makeCoverPhoto,
   fetchProfile,
   fetchReviews,
   reportLocation,
@@ -13,6 +14,7 @@ import {
   submitBusinessClaim,
   type BusinessClaim,
   type DayKey,
+  type GalleryPhoto,
   type LocationDetail,
   type OpeningHours,
   type Review,
@@ -38,6 +40,7 @@ import { useSaves } from '@/hooks/use-saves';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
+import { useSharedProfile } from '@/lib/profile-context';
 import { openDirections } from '@/lib/directions';
 import { buildLocationShareLink } from '@/lib/public-link';
 import { supabase } from '@/lib/supabase';
@@ -118,10 +121,11 @@ export default function LocationDetailScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
+  const { isModerator } = useSharedProfile();
 
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [locationReportVisible, setLocationReportVisible] = useState(false);
@@ -244,10 +248,39 @@ export default function LocationDetailScreen() {
     );
   }
 
+  // Reordering is limited to moderators and the verified owner. RLS enforces
+  // the same rule (0072), so this only decides whether the control is shown.
+  const canReorderPhotos =
+    isModerator || Boolean(session && location.claimed_by === session.user.id && location.is_verified);
+
+  const viewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
+  // Review photos belong to their review, not the place, so they can't lead it.
+  const canPromoteCurrentPhoto = canReorderPhotos && Boolean(viewerPhoto?.photoId) && viewerIndex !== 0;
+
+  const handleMakeCover = async () => {
+    if (!viewerPhoto?.photoId || !id) return;
+    const confirmed = await confirmAsync(
+      'Make this the cover photo?',
+      'This picture will lead the gallery and appear on this place wherever it is listed.',
+      'Make cover'
+    );
+    if (!confirmed) return;
+    try {
+      await makeCoverPhoto(supabase, id, viewerPhoto.photoId);
+      const refreshed = await fetchLocationPhotos(supabase, id);
+      setPhotos(refreshed);
+      setViewerIndex(0);
+      setActivePhotoIndex(0);
+    } catch {
+      // Left silent on purpose: RLS refusing is the expected outcome for
+      // anyone who shouldn't be here, and the control is already hidden.
+    }
+  };
+
   const isFavorite = favoriteIds.has(location.id);
   const isBucketListed = bucketListIds.has(location.id);
   // No stand-in image: a place with no photo says so rather than borrowing one.
-  const heroImages = photos;
+  const heroImages = photos.map((photo) => photo.url);
   const ratingCounts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
   const maxCount = Math.max(1, ...ratingCounts);
   const myReview = session ? reviews.find((r) => r.user_id === session.user.id) : undefined;
@@ -742,7 +775,7 @@ export default function LocationDetailScreen() {
                           <Pressable
                             key={index}
                             onPress={() => {
-                              const galleryIndex = photos.indexOf(uri);
+                              const galleryIndex = photos.findIndex((photo) => photo.url === uri);
                               openViewerAt(galleryIndex >= 0 ? galleryIndex : 0);
                             }}>
                             <Image source={{ uri }} style={styles.reviewPhotoThumb} contentFit="cover" />
@@ -917,9 +950,9 @@ export default function LocationDetailScreen() {
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.galleryGrid}>
-              {photos.map((uri, index) => (
+              {photos.map((photo, index) => (
                 <Pressable key={index} style={styles.galleryThumbWrapper} onPress={() => openViewerAt(index)}>
-                  <Image source={{ uri }} style={styles.galleryThumb} contentFit="cover" />
+                  <Image source={{ uri: photo.url }} style={styles.galleryThumb} contentFit="cover" />
                 </Pressable>
               ))}
             </ScrollView>
@@ -945,9 +978,9 @@ export default function LocationDetailScreen() {
               }
             }}
             scrollEventThrottle={32}>
-            {photos.map((uri, index) => (
+            {photos.map((photo, index) => (
               <View key={index} style={[styles.viewerPage, { width: viewerWidth }]}>
-                <Image source={{ uri }} style={styles.viewerImage} contentFit="contain" />
+                <Image source={{ uri: photo.url }} style={styles.viewerImage} contentFit="contain" />
               </View>
             ))}
           </ScrollView>
@@ -960,6 +993,17 @@ export default function LocationDetailScreen() {
               <Ionicons name="close" size={24} color="#ffffff" />
             </Pressable>
           </SafeAreaView>
+
+          {canPromoteCurrentPhoto && (
+            <SafeAreaView style={styles.viewerFooter} edges={['bottom']} pointerEvents="box-none">
+              <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
+                <Ionicons name="star" size={14} color="#000000" />
+                <ThemedText type="smallBold" style={styles.makeCoverText}>
+                  Make cover photo
+                </ThemedText>
+              </Pressable>
+            </SafeAreaView>
+          )}
         </View>
       </Modal>
     </ThemedView>
@@ -1107,6 +1151,26 @@ const styles = StyleSheet.create({
   },
   viewerCount: {
     color: '#ffffff',
+  },
+  viewerFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    paddingBottom: Spacing.four,
+  },
+  makeCoverButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: '#F5C242',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.five,
+  },
+  makeCoverText: {
+    color: '#000000',
   },
   viewerCloseButton: {
     width: 36,
