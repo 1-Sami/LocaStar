@@ -4,6 +4,14 @@ import { Platform } from 'react-native';
 const PRODUCTION_ORIGIN = 'https://locastar.se';
 
 /**
+ * The app's own scheme, from `expo.scheme` in app.json.
+ *
+ * Only for handing off *from* an already-opened web page — never as the target
+ * of an email link, for the reason spelled out on `authRedirectTo` below.
+ */
+export const APP_SCHEME_URL = 'locastar://';
+
+/**
  * Where a link in an auth email should send someone.
  *
  * Auth mail gets opened wherever the person reads their mail — usually a

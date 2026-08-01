@@ -1,5 +1,13 @@
 import type { Session } from '@locastar/shared';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { AppState } from 'react-native';
 
 import { authRedirectTo } from '@/lib/auth-redirect';
 import { supabase } from '@/lib/supabase';
@@ -14,6 +22,7 @@ type AuthContextValue = {
     username: string
   ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -35,6 +44,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Pulls a new access token, which is the only way a change made outside the
+  // app — confirming an email address, most of all — reaches the client.
+  const refreshSession = useCallback(async () => {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data.session) setSession(data.session);
+  }, []);
+
+  // Confirming an email happens in a browser, so the app is never told. Someone
+  // who signs up, taps the link in their mail app and switches back would
+  // otherwise still be sitting in front of "check your email" with no way
+  // forward but signing out. Watch for the return to the foreground, and only
+  // while there is actually something to learn.
+  const awaitingConfirmation = Boolean(session && !session.user.email_confirmed_at);
+  useEffect(() => {
+    if (!awaitingConfirmation) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshSession();
+    });
+    return () => subscription.remove();
+  }, [awaitingConfirmation, refreshSession]);
+
   const signInWithPassword = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
@@ -46,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username }, emailRedirectTo: authRedirectTo('/') },
+      options: { data: { username }, emailRedirectTo: authRedirectTo('/auth/confirmed') },
     });
     if (error) return { error: error.message, needsEmailConfirmation: false };
 
@@ -71,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, loading, signInWithPassword, signUpWithPassword, signOut }}>
+      value={{ session, loading, signInWithPassword, signUpWithPassword, signOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );

@@ -397,6 +397,13 @@ port = 54327
 backend = "postgres"
 
 # Experimental features may be deprecated any time
+# Deletes the caller's account and emails them a confirmation. verify_jwt is
+# the default, but it is spelled out because this function's safety depends on
+# it: the address it mails is read straight out of the token, so an unverified
+# token would turn it into an open relay.
+[functions.delete-account]
+verify_jwt = true
+
 [experimental]
 # Configures Postgres storage engine to use OrioleDB (S3)
 orioledb_version = ""

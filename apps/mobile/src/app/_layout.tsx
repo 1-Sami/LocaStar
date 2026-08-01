@@ -20,6 +20,7 @@ function ThemedNavigation() {
         <Stack.Screen name="sign-up" options={{ presentation: 'modal', title: 'Sign up' }} />
         <Stack.Screen name="forgot-password" options={{ presentation: 'modal', title: 'Reset password' }} />
         <Stack.Screen name="reset-password" options={{ presentation: 'modal', title: 'Reset password' }} />
+        <Stack.Screen name="auth/confirmed" options={{ headerShown: false }} />
         <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
         <Stack.Screen name="my-reviews" options={{ title: 'My reviews' }} />

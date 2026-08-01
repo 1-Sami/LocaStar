@@ -99,7 +99,7 @@ export default function AccountInfoScreen() {
       if (emailChanged) {
         const { error: emailError } = await supabase.auth.updateUser(
           { email: trimmedEmail },
-          { emailRedirectTo: authRedirectTo('/') }
+          { emailRedirectTo: authRedirectTo('/auth/confirmed') }
         );
         if (emailError) throw emailError;
         setEmailChangePending(true);

@@ -40,8 +40,19 @@ export default function DeleteAccountScreen() {
         await removeAvatarFile(profile?.avatar_url ?? null);
       }
 
-      const { error: rpcError } = await supabase.rpc('delete_own_account');
-      if (rpcError) throw rpcError;
+      // The edge function deletes the account and then emails a confirmation,
+      // which the app cannot do for itself: the address has to come from a
+      // verified token rather than from whatever the client claims. If it is
+      // unreachable, delete directly instead — leaving is a right, and a mail
+      // outage is no reason to hold someone in an account they want gone. The
+      // only cost is a missing notification.
+      const { error: functionError } = await supabase.functions.invoke('delete-account');
+      if (functionError) {
+        console.error('Falling back to direct deletion, no email sent', functionError);
+        const { error: rpcError } = await supabase.rpc('delete_own_account');
+        if (rpcError) throw rpcError;
+      }
+
       await signOut();
       router.replace('/');
     } catch {
@@ -66,6 +77,10 @@ export default function DeleteAccountScreen() {
             Reviews, photos and places you added stay in the app with your name removed, so the places
             other people rely on don&apos;t lose their ratings. They can no longer be traced back to
             you. If you want something you posted deleted rather than unlinked, email {SUPPORT_EMAIL}.
+          </ThemedText>
+          <ThemedText type="default" themeColor="textSecondary">
+            We&apos;ll send a confirmation to your email address so you know it happened — and so you
+            can tell us if it wasn&apos;t you.
           </ThemedText>
 
           {error && (

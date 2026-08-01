@@ -5,6 +5,8 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { LocaStarLogo } from '@/components/locastar-logo';
+
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
@@ -33,7 +35,10 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  // Sized and coloured to match the native splash in app.json exactly, so the
+  // handover from one to the other is invisible. The logo's own teal tile
+  // disappears against the identical background, leaving just the mark.
+  const image = <LocaStarLogo size={112} />;
 
   return animate ? (
     <Animated.View
@@ -140,7 +145,7 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
+    backgroundColor: '#125F6F',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,

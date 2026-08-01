@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "se.locastar.app",
+      "sha256_cert_fingerprints": [
+        "34:35:B4:32:52:F6:EB:69:9B:F0:0F:7E:72:98:1A:1E:98:47:66:E8:6D:2F:F2:96:2B:FB:39:65:95:75:45:EA"
+      ]
+    }
+  }
+]
