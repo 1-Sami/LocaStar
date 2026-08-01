@@ -126,6 +126,7 @@ export {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  deleteAllNotifications,
 } from "./api/notifications";
 export type {
   Notification,

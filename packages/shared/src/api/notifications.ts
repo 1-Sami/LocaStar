@@ -116,3 +116,15 @@ export async function deleteNotification(client: SupabaseClient, notificationId:
   const { error } = await client.from("notifications").delete().eq("id", notificationId);
   if (error) throw error;
 }
+
+/**
+ * Clears the whole list at once, rather than one tap per row.
+ *
+ * Scoped by user_id even though RLS already restricts the table to the caller:
+ * an unfiltered `delete()` is one policy mistake away from clearing everyone's
+ * notifications, and PostgREST is happy to issue it.
+ */
+export async function deleteAllNotifications(client: SupabaseClient, userId: string): Promise<void> {
+  const { error } = await client.from("notifications").delete().eq("user_id", userId);
+  if (error) throw error;
+}

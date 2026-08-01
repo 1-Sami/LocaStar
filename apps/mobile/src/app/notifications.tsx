@@ -1,4 +1,5 @@
 import {
+  deleteAllNotifications,
   deleteNotification,
   fetchNotifications,
   markAllNotificationsRead,
@@ -82,6 +83,29 @@ export default function NotificationsScreen() {
     if (!notification.readAt) refreshUnreadCount();
   };
 
+  const handleDeleteAll = async () => {
+    if (!session) return;
+    const count = notifications.length;
+    const confirmed = await confirmAsync(
+      `Delete all ${count} notification${count === 1 ? '' : 's'}?`,
+      "This can't be undone. Anything they point to — friend requests, shared lists, places — stays where it is.",
+      'Delete all'
+    );
+    if (!confirmed) return;
+
+    const previous = notifications;
+    setNotifications([]);
+    try {
+      await deleteAllNotifications(supabase, session.user.id);
+    } catch {
+      // Put the list back rather than leaving an empty screen that lies:
+      // a reload would do it too, but this keeps scroll position and costs
+      // no round trip.
+      setNotifications(previous);
+    }
+    refreshUnreadCount();
+  };
+
   const hasUnread = notifications.some((n) => !n.readAt);
 
   return (
@@ -95,11 +119,20 @@ export default function NotificationsScreen() {
           </ThemedText>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
-            {hasUnread && (
-              <Pressable onPress={handleMarkAllRead} style={styles.markAllRow}>
-                <ThemedText type="linkPrimary">Mark all as read</ThemedText>
+            <View style={styles.bulkActionsRow}>
+              {hasUnread ? (
+                <Pressable onPress={handleMarkAllRead} hitSlop={8}>
+                  <ThemedText type="linkPrimary">Mark all as read</ThemedText>
+                </Pressable>
+              ) : (
+                <View />
+              )}
+              <Pressable onPress={handleDeleteAll} hitSlop={8}>
+                <ThemedText type="smallBold" style={styles.deleteAllText}>
+                  Delete all
+                </ThemedText>
               </Pressable>
-            )}
+            </View>
             {notifications.map((notification) => (
               <View key={notification.id} style={styles.cardWrapper}>
                 <Pressable onPress={() => handleOpen(notification)}>
@@ -195,9 +228,14 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.four,
     gap: Spacing.two,
   },
-  markAllRow: {
-    alignItems: 'flex-end',
+  bulkActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: Spacing.one,
+  },
+  deleteAllText: {
+    color: '#E05252',
   },
   cardWrapper: {
     position: 'relative',

@@ -117,6 +117,7 @@ export default function AddLocationScreen() {
   const [hours, setHours] = useState<OpeningHours>({});
   const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
   const [otherCategoryDetail, setOtherCategoryDetail] = useState('');
+  const [categoryQuery, setCategoryQuery] = useState('');
   const [website, setWebsite] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -199,6 +200,15 @@ export default function AddLocationScreen() {
     .map((c) => c.name)
     .join(', ');
   const hasOtherCategory = categories.some((c) => categoryIds.includes(c.id) && c.slug === 'other');
+
+  // Already-picked categories stay visible while searching, so a narrow query
+  // can't hide a selection and make it look like it was lost.
+  const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
+  const visibleCategories = trimmedCategoryQuery
+    ? categories.filter(
+        (c) => c.name.toLowerCase().includes(trimmedCategoryQuery) || categoryIds.includes(c.id)
+      )
+    : categories;
 
   const toggleCategory = (categoryId: string) => {
     setCategoryIds((current) =>
@@ -601,13 +611,40 @@ export default function AddLocationScreen() {
             <ThemedText type="subtitle" style={styles.modalTitle}>
               Categories
             </ThemedText>
-            <ScrollView>
-              {categories.map((category) => (
-                <Pressable key={category.id} style={styles.modalRow} onPress={() => toggleCategory(category.id)}>
-                  <ThemedText type="default">{category.name}</ThemedText>
-                  <ThemedText type="default">{categoryIds.includes(category.id) ? '✓' : ''}</ThemedText>
+
+            <View style={[styles.categorySearchBar, { borderColor: theme.backgroundSelected }]}>
+              <Ionicons name="search-sharp" size={15} color={theme.textSecondary} />
+              <TextInput
+                value={categoryQuery}
+                onChangeText={setCategoryQuery}
+                placeholder="Search categories"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.categorySearchInput, { color: theme.text }]}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {categoryQuery.length > 0 && (
+                <Pressable onPress={() => setCategoryQuery('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
                 </Pressable>
-              ))}
+              )}
+            </View>
+
+            {/* keyboardShouldPersistTaps, or the first tap only dismisses the
+                keyboard and the category the person aimed at is not selected. */}
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {visibleCategories.length === 0 ? (
+                <ThemedText type="default" themeColor="textSecondary" style={styles.modalEmptyText}>
+                  No categories match that search.
+                </ThemedText>
+              ) : (
+                visibleCategories.map((category) => (
+                  <Pressable key={category.id} style={styles.modalRow} onPress={() => toggleCategory(category.id)}>
+                    <ThemedText type="default">{category.name}</ThemedText>
+                    <ThemedText type="default">{categoryIds.includes(category.id) ? '✓' : ''}</ThemedText>
+                  </Pressable>
+                ))
+              )}
             </ScrollView>
             <Pressable style={styles.doneButton} onPress={() => setPickerVisible(false)}>
               <ThemedText type="smallBold" style={styles.submitButtonText}>
@@ -819,6 +856,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: Spacing.two,
+  },
+  categorySearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
+  },
+  categorySearchInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+  modalEmptyText: {
+    paddingVertical: Spacing.three,
   },
   doneButton: {
     height: 44,

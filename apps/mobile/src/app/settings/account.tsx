@@ -181,6 +181,10 @@ export default function AccountInfoScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   Required to change the email on your account.
                 </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  You&apos;ll need to confirm from both your old and new inbox, and after that you
+                  log in with the new address. Only use an address you control.
+                </ThemedText>
               </View>
             )}
 
@@ -210,7 +214,7 @@ export default function AccountInfoScreen() {
           {saved && !error && (
             <ThemedText type="small" style={styles.savedText}>
               {emailChangePending
-                ? 'Saved. Check both your old and new email to confirm the change.'
+                ? 'Saved. Confirm from both your old and new inbox — the change only takes effect once both are done. After that, log in with the new address.'
                 : 'Saved.'}
             </ThemedText>
           )}
