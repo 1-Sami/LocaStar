@@ -26,6 +26,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
+import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
 
 export default function ListDetailScreen() {
@@ -38,6 +39,7 @@ export default function ListDetailScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { session } = useAuth();
+  const { isModerator } = useSharedProfile();
   const isSharedView = shared === '1';
 
   const [items, setItems] = useState<ListItemLocation[]>([]);
@@ -118,6 +120,19 @@ export default function ListDetailScreen() {
     router.back();
   };
 
+  // Deleting somebody else's list is a moderation action, so it says so, and
+  // it's recorded in the moderation log by a database trigger either way.
+  const handleModeratorDeleteList = async () => {
+    const confirmed = await confirmAsync(
+      'Delete this list as a moderator?',
+      "This permanently deletes someone else's list. The action is recorded in the moderation log. This can't be undone.",
+      'Delete'
+    );
+    if (!confirmed) return;
+    await deleteList(supabase, id);
+    router.back();
+  };
+
   const handleShareList = async (recipientId: string) => {
     if (!session) return;
     await shareList(supabase, id, session.user.id, recipientId);
@@ -176,13 +191,24 @@ export default function ListDetailScreen() {
           ),
           headerRight: () =>
             isSharedView ? (
-              <Pressable style={styles.headerSaveButton} onPress={handleToggleSaved} hitSlop={8}>
-                <Ionicons
-                  name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                  size={18}
-                  color={isSaved ? '#F5C242' : theme.text}
-                />
-              </Pressable>
+              <View style={styles.headerActions}>
+                <Pressable style={styles.headerSaveButton} onPress={handleToggleSaved} hitSlop={8}>
+                  <Ionicons
+                    name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                    size={18}
+                    color={isSaved ? '#F5C242' : theme.text}
+                  />
+                </Pressable>
+                {isModerator && (
+                  <Pressable
+                    style={styles.headerDeleteButton}
+                    onPress={handleModeratorDeleteList}
+                    accessibilityLabel="Delete this list as a moderator"
+                    hitSlop={8}>
+                    <Ionicons name="trash-outline" size={16} color="#ffffff" />
+                  </Pressable>
+                )}
+              </View>
             ) : (
               <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList} hitSlop={8}>
                 <Ionicons name="trash-outline" size={16} color="#ffffff" />
@@ -398,6 +424,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.three,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   actionsRow: {
     flexDirection: 'row',
