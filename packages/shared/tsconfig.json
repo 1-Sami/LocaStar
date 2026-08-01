@@ -8,7 +8,9 @@
     "declaration": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "rootDir": "src",
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src"]
 }
