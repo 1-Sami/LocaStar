@@ -165,6 +165,62 @@ export async function setListLiked(
   }
 }
 
+export type ListMeta = {
+  id: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  ownerUsername: string | null;
+  ownerDisplayName: string | null;
+};
+
+type ListMetaRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  owner: { username: string | null; display_name: string | null } | null;
+};
+
+/**
+ * Who made a list and how current it is, for the attribution line on the list
+ * screen. Kept separate from fetchListItems so opening a list doesn't re-fetch
+ * every place just to redraw a byline.
+ *
+ * Returns null when the list is gone — worth handling, since the nightly
+ * cleanup can remove an empty public list out from under an open screen.
+ */
+export async function fetchListMeta(
+  client: SupabaseClient,
+  listId: string
+): Promise<ListMeta | null> {
+  const { data, error } = await client
+    .from("lists")
+    .select(
+      "id, name, description, is_public, created_at, updated_at, owner:profiles!lists_user_id_fkey(username, display_name)"
+    )
+    .eq("id", listId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as unknown as ListMetaRow;
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    isPublic: row.is_public,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    ownerUsername: row.owner?.username ?? null,
+    ownerDisplayName: row.owner?.display_name ?? null,
+  };
+}
+
 export type ListItemLocation = {
   locationId: string;
   name: string;

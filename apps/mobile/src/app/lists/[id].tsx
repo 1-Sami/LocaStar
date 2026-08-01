@@ -1,6 +1,7 @@
 import {
   deleteList,
   fetchListItems,
+  fetchListMeta,
   fetchListSavedState,
   fetchListShareRecipients,
   removeLocationFromList,
@@ -9,6 +10,7 @@ import {
   setListVisibility,
   shareList,
   type ListItemLocation,
+  type ListMeta,
   type ListShareRecipient,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +29,18 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { useSharedProfile } from '@/lib/profile-context';
+
+function formatListDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function sameDay(a: string, b: string): boolean {
+  return formatListDate(a) === formatListDate(b);
+}
 import { supabase } from '@/lib/supabase';
 
 export default function ListDetailScreen() {
@@ -43,6 +57,7 @@ export default function ListDetailScreen() {
   const isSharedView = shared === '1';
 
   const [items, setItems] = useState<ListItemLocation[]>([]);
+  const [meta, setMeta] = useState<ListMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyLocationId, setBusyLocationId] = useState<string | null>(null);
   const [shareVisible, setShareVisible] = useState(false);
@@ -81,6 +96,9 @@ export default function ListDetailScreen() {
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+    fetchListMeta(supabase, id)
+      .then(setMeta)
+      .catch(() => setMeta(null));
   }, [id]);
 
   const reloadShareRecipients = useCallback(() => {
@@ -221,6 +239,20 @@ export default function ListDetailScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
+            {meta && (
+              <View style={styles.attribution}>
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  by {meta.ownerUsername ?? meta.ownerDisplayName ?? 'Deleted account'}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Created {formatListDate(meta.createdAt)}
+                  {/* Only worth a second date once it differs — otherwise every
+                      untouched list reads "Created X · Updated X". */}
+                  {!sameDay(meta.createdAt, meta.updatedAt) &&
+                    ` · Updated ${formatListDate(meta.updatedAt)}`}
+                </ThemedText>
+              </View>
+            )}
             {items.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 No places in this list yet. Add one from a location's page.
@@ -428,6 +460,10 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  attribution: {
+    gap: Spacing.half,
+    marginBottom: Spacing.one,
   },
   actionsRow: {
     flexDirection: 'row',

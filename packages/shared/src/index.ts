@@ -138,6 +138,7 @@ export {
   setListVisibility,
   setListLiked,
   fetchListItems,
+  fetchListMeta,
   addLocationToList,
   removeLocationFromList,
   fetchListMembershipForLocation,
@@ -154,6 +155,7 @@ export {
 export type {
   LocationList,
   ListItemLocation,
+  ListMeta,
   SharedList,
   ListShareRecipient,
   PublicList,
