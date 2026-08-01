@@ -68,6 +68,12 @@
         "projectId": "ac35b462-da44-4e1d-8dec-e7771210cb07"
       }
     },
-    "owner": "1-sami"
+    "owner": "1-sami",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ac35b462-da44-4e1d-8dec-e7771210cb07"
+    }
   }
 }

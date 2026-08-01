@@ -7,13 +7,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { SUPPORT_EMAIL } from '@/constants/support';
 import { Spacing } from '@/constants/theme';
+import { fetchProfile } from '@locastar/shared';
+
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
+import { removeAvatarFile } from '@/lib/media-upload';
 import { supabase } from '@/lib/supabase';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { session, signOut } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +31,15 @@ export default function DeleteAccountScreen() {
     setDeleting(true);
     setError(null);
     try {
+      // The avatar is a picture of a person, so it goes rather than being
+      // orphaned. It has to happen here, before the account disappears:
+      // Supabase refuses direct deletes against storage.objects, so the SQL
+      // function cannot do it (migration 0073).
+      if (session) {
+        const profile = await fetchProfile(supabase, session.user.id).catch(() => null);
+        await removeAvatarFile(profile?.avatar_url ?? null);
+      }
+
       const { error: rpcError } = await supabase.rpc('delete_own_account');
       if (rpcError) throw rpcError;
       await signOut();

@@ -10,22 +10,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
-import { pickImage, uploadImageToMedia } from '@/lib/media-upload';
+import { pickImage, storagePathFromPublicUrl, uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
-
-/**
- * Recovers the storage path from a public URL so the file itself can be
- * deleted. "Remove" that only cleared the profile field would leave the photo
- * sitting at a public URL, which isn't what removing a picture should mean.
- */
-function storagePathFromPublicUrl(url: string): string | null {
-  const marker = '/object/public/media/';
-  const index = url.indexOf(marker);
-  if (index === -1) return null;
-  return decodeURIComponent(url.slice(index + marker.length));
-}
 
 export default function ProfilePictureScreen() {
   const { session } = useAuth();

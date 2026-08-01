@@ -4,6 +4,40 @@ import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 
+/**
+ * Recovers the storage path from a public URL so the file itself can be
+ * deleted. Removing only the database reference would leave the image sitting
+ * at a public URL, which isn't what removing a picture should mean.
+ */
+export function storagePathFromPublicUrl(url: string): string | null {
+  const marker = '/object/public/media/';
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return decodeURIComponent(url.slice(index + marker.length));
+}
+
+/**
+ * Deletes the signed-in user's avatar file.
+ *
+ * Has to happen from the client: Supabase refuses direct deletes against
+ * storage.objects ("Direct deletion from storage tables is not allowed"), so
+ * delete_own_account() cannot do it in SQL — see migration 0073.
+ *
+ * Never throws. Account deletion is a right, and failing to tidy one image is
+ * not a reason to block someone from leaving.
+ */
+export async function removeAvatarFile(avatarUrl: string | null): Promise<void> {
+  if (!avatarUrl) return;
+  const path = storagePathFromPublicUrl(avatarUrl);
+  if (!path) return;
+  try {
+    const { error } = await supabase.storage.from('media').remove([path]);
+    if (error) console.error('Could not delete the avatar file', error);
+  } catch (err) {
+    console.error('Could not delete the avatar file', err);
+  }
+}
+
 export async function pickImage(): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
