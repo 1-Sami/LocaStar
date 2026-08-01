@@ -2,7 +2,7 @@
   "name": "@locastar/mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
-  "packageManager": "pnpm@11.12.0",
+  "packageManager": "pnpm@11.18.0",
   "dependencies": {
     "@expo/ui": "~57.0.4",
     "@expo/vector-icons": "^15.1.1",
@@ -52,7 +52,6 @@
     "build:web": "node scripts/build-web.mjs",
     "preview:web": "wrangler pages dev dist --port 8788",
     "lint": "expo lint",
-    "eas-build-pre-install": "corepack enable && corepack prepare pnpm@11.12.0 --activate || npm install -g pnpm@11.12.0",
     "eas:login": "npx eas-cli@latest login",
     "eas:init": "npx eas-cli@latest init",
     "eas:env": "npx eas-cli@latest env:create --scope project",
