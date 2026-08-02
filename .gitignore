@@ -19,6 +19,13 @@ apps/web/out/
 dist/
 build/
 
+# Agent skills. The skills themselves live in .agents/ and are committed —
+# they are small, and pinning them keeps everyone's tooling on the same
+# guidance. .claude/skills/ is only a set of symlinks the installer creates
+# for Claude Code, and they hold absolute paths to this machine, so they are
+# meaningless in anyone else's clone. Re-created by `npx skills add`.
+.claude/skills/
+
 # Editor
 .vscode/
 .idea/
