@@ -3,6 +3,7 @@ import {
   deleteLocationPhoto,
   deleteReview,
   fetchLocationById,
+  isAlwaysOpen,
   fetchLocationPhotos,
   fetchMyClaimForLocation,
   makeCoverPhoto,
@@ -71,6 +72,12 @@ function getTodayKey(): DayKey {
 }
 
 function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabel: string; secondaryLabel: string } {
+  // Seven full days is always-open, and the generic path would describe it as
+  // "Open now · Closes 24:00" — technically derived from the data, and useless.
+  if (isAlwaysOpen(hours)) {
+    return { isOpen: true, primaryLabel: 'Open 24 hours', secondaryLabel: 'Every day' };
+  }
+
   const now = new Date();
   const todayIndex = now.getDay();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();

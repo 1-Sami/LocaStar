@@ -6,6 +6,29 @@ export type LocationVisibility = "public" | "private";
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type OpeningHours = Partial<Record<DayKey, { open: string; close: string }>>;
 
+export const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+/**
+ * Always open, expressed in the shape the column already has: every day from
+ * midnight to midnight.
+ *
+ * Deliberately not a new `open_24_7` column. A boolean beside `hours` invites
+ * the two disagreeing — a place flagged always-open while also carrying
+ * Tuesday 09:00-17:00 — and every reader would then have to know which wins.
+ * As seven full days it is simply true, and the existing open/closed logic
+ * needs no special case: 00:00 to 24:00 always contains now.
+ */
+export const ALWAYS_OPEN: OpeningHours = DAY_KEYS.reduce<OpeningHours>((acc, day) => {
+  acc[day] = { open: "00:00", close: "24:00" };
+  return acc;
+}, {});
+
+/** True when hours cover every day in full — what the UI shows as "Open 24 hours". */
+export function isAlwaysOpen(hours: OpeningHours | null | undefined): boolean {
+  if (!hours) return false;
+  return DAY_KEYS.every((day) => hours[day]?.open === "00:00" && hours[day]?.close === "24:00");
+}
+
 export type NearbyLocation = {
   id: string;
   kind: LocationKind;

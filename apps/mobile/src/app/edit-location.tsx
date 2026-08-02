@@ -30,7 +30,8 @@ export default function EditLocationScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
   const [hours, setHours] = useState<OpeningHours>({});
   const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
   const [availableSummer, setAvailableSummer] = useState(false);
@@ -51,7 +52,13 @@ export default function EditLocationScreen() {
           if (location) {
             setName(location.name);
             setDescription(location.description ?? '');
-            setAddress(location.address ?? '');
+            // Stored as one string, joined with ', ' by add-location. Split on
+            // the LAST comma so a street containing one ("Torg 1, uppg B")
+            // keeps it, and the postcode/city half stays intact.
+            const stored = location.address ?? '';
+            const cut = stored.lastIndexOf(',');
+            setAddressLine1(cut === -1 ? stored : stored.slice(0, cut).trim());
+            setAddressLine2(cut === -1 ? '' : stored.slice(cut + 1).trim());
             setHours(location.hours ?? {});
             setHoursNotApplicable(location.hours_not_applicable);
             setAvailableSummer(location.available_summer);
@@ -80,8 +87,13 @@ export default function EditLocationScreen() {
     );
   };
 
+  // An address is what makes a place findable, so editing must not be a way to
+  // empty one that already exists. Both halves are required, matching the two
+  // fields on the create form rather than a single free-text box.
+  const canSave = Boolean(name.trim() && addressLine1.trim() && addressLine2.trim());
+
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!canSave) return;
     setSubmitting(true);
     setError(null);
     setSaved(false);
@@ -89,7 +101,7 @@ export default function EditLocationScreen() {
       await updateLocation(supabase, id, {
         name: name.trim(),
         description: description.trim() || null,
-        address: address.trim() || null,
+        address: [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', '),
         hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
         hoursNotApplicable,
         availableSummer,
@@ -138,12 +150,23 @@ export default function EditLocationScreen() {
           </Pressable>
 
           <TextInput
-            value={address}
+            value={addressLine1}
             onChangeText={(text) => {
-              setAddress(text);
+              setAddressLine1(text);
               setSaved(false);
             }}
-            placeholder="Address (optional)"
+            placeholder="*Street name and number"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+          />
+
+          <TextInput
+            value={addressLine2}
+            onChangeText={(text) => {
+              setAddressLine2(text);
+              setSaved(false);
+            }}
+            placeholder="*Post code and city"
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
@@ -205,8 +228,8 @@ export default function EditLocationScreen() {
           )}
 
           <Pressable
-            style={[styles.saveButton, (!name.trim() || submitting) && styles.saveButtonDisabled]}
-            disabled={!name.trim() || submitting}
+            style={[styles.saveButton, (!canSave || submitting) && styles.saveButtonDisabled]}
+            disabled={!canSave || submitting}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveButtonText}>
               {submitting ? 'Saving…' : 'Save changes'}

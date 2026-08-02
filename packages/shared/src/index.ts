@@ -2,6 +2,9 @@ export { createSupabaseClient } from "./supabaseClient";
 export type { Session, User } from "@supabase/supabase-js";
 
 export {
+  ALWAYS_OPEN,
+  DAY_KEYS,
+  isAlwaysOpen,
   fetchNearbyLocations,
   fetchCategories,
   fetchLocationById,

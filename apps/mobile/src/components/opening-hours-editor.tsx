@@ -1,4 +1,4 @@
-import type { DayKey, OpeningHours } from '@locastar/shared';
+import { ALWAYS_OPEN, isAlwaysOpen, type DayKey, type OpeningHours } from '@locastar/shared';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -33,12 +33,26 @@ export function OpeningHoursEditor({
     onChange(next);
   };
 
+  const alwaysOpen = isAlwaysOpen(hours);
+
   return (
     <View style={styles.hoursCard}>
       <ThemedText type="smallBold" style={styles.hoursCardTitle}>
         Open hours (optional)
       </ThemedText>
-      {DAYS.map((day) => {
+
+      {/* A public park or an outdoor gym is genuinely always open. Without
+          this the only honest options were leaving the hours blank, which
+          reads as "nobody knows", or typing 00:00-24:00 seven times. */}
+      <Pressable style={styles.alwaysOpenRow} onPress={() => onChange(alwaysOpen ? {} : ALWAYS_OPEN)}>
+        <View style={[styles.lightCheckbox, alwaysOpen && styles.checkboxChecked]} />
+        <ThemedText type="small" style={styles.hoursDayLabel}>
+          Open 24/7
+        </ThemedText>
+      </Pressable>
+
+      {!alwaysOpen &&
+        DAYS.map((day) => {
         const entry = hours[day.key];
         const isOpen = Boolean(entry);
         return (
@@ -84,6 +98,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
+  },
+  alwaysOpenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
   },
   hoursCard: {
     backgroundColor: '#ffffff',
