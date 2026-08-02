@@ -153,10 +153,15 @@ export default function AddLocationScreen() {
       .catch(() => setCategories([]));
   }, []);
 
+  // Go through handlePinChange rather than setting the pin directly, so the
+  // opening position is geocoded like any other. It used to only set the pin:
+  // anyone who left it where their phone put them submitted with city and
+  // country null, because those two are *only* ever filled in by the geocode —
+  // there are no fields for them. That silently emptied the city line on every
+  // card for locations added without touching the map.
   useEffect(() => {
     if (coords && !pinCoords) {
-      setPinCoords(coords);
-      checkForNearbyDuplicates(coords);
+      handlePinChange(coords);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords]);
@@ -348,7 +353,15 @@ export default function AddLocationScreen() {
               Thanks!
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
-              Your {noun} has been submitted for review. It'll go live once it's approved.
+              {/* There is no approval queue: the insert policy requires
+                  status = 'active', and the read policy shows an active,
+                  published location straight away. Saying it was "submitted
+                  for review" and would "go live once approved" contradicted
+                  both the database and the disclaimer on the form itself, and
+                  left people waiting for an email that was never coming. */}
+              {publishAtIso
+                ? `Your ${noun} is saved and will go live on ${new Date(publishAtIso).toLocaleDateString()}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.`
+                : `Your ${noun} is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.`}
             </ThemedText>
             {claimFailed && (
               <ThemedText type="small" style={[styles.errorText, styles.centerText]}>
