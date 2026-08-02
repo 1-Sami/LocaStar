@@ -124,6 +124,7 @@ export default function AddLocationScreen() {
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
   const [geocoding, setGeocoding] = useState(false);
+  const [addressPinFailed, setAddressPinFailed] = useState(false);
   const [nearbyExisting, setNearbyExisting] = useState<NearbyLocation[]>([]);
   const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
   const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
@@ -139,6 +140,10 @@ export default function AddLocationScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [claimFailed, setClaimFailed] = useState(false);
+
+  // True once the person edits either address field themselves, so the
+  // reverse-geocoder stops rewriting what they wrote.
+  const addressEdited = useRef(false);
 
   // Submitting is several writes in a row, and the later ones can fail on their
   // own (a photo upload especially). Without this, retrying re-ran the whole
@@ -180,14 +185,22 @@ export default function AddLocationScreen() {
       .catch(() => setNearbyExisting([]));
   };
 
-  const handlePinChange = (next: MapCoords) => {
+  /**
+   * @param keepAddress leave the typed address alone and take only city and
+   * country from the geocoder. Set when the pin moved *because* of the
+   * address, so the answer doesn't overwrite the question.
+   */
+  const handlePinChange = (next: MapCoords, keepAddress = false) => {
     setPinCoords(next);
     checkForNearbyDuplicates(next);
     setGeocoding(true);
     Location.reverseGeocodeAsync(next)
       .then((results) => {
         const result = results[0];
-        if (result) {
+        // Never clobber an address someone typed themselves. Before this,
+        // typing the address and then nudging the pin silently replaced it
+        // with whatever the geocoder said about the new spot.
+        if (result && !keepAddress && !addressEdited.current) {
           const streetLine = formatStreetLine(result);
           const cityLine = formatCityLine(result);
           if (streetLine) setAddressLine1(streetLine);
@@ -198,6 +211,41 @@ export default function AddLocationScreen() {
       })
       .catch(() => {})
       .finally(() => setGeocoding(false));
+  };
+
+  /**
+   * Moves the pin to the address that was typed.
+   *
+   * The pin is what actually locates a place — geom drives every distance
+   * search and the map — while the address is only text beside it. Leave the
+   * pin where the phone happened to be and type an address 70km away, and the
+   * place is recorded at your feet: a playground in Eskilstuna filed 18 metres
+   * from a gym in Norsborg, showing as "10 m away" to everyone nearby. The
+   * Directions button still worked, because that one uses the address, which
+   * is exactly why the mistake is invisible until someone searches.
+   *
+   * Runs on blur rather than per keystroke — a half-typed street geocodes to
+   * the wrong place, and the geocoder is a network call.
+   */
+  const handleAddressBlur = async () => {
+    if (!addressEdited.current) return;
+    const query = [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', ');
+    if (!query) return;
+
+    setGeocoding(true);
+    setAddressPinFailed(false);
+    try {
+      const [hit] = await Location.geocodeAsync(query);
+      if (!hit) {
+        setAddressPinFailed(true);
+        return;
+      }
+      handlePinChange({ latitude: hit.latitude, longitude: hit.longitude }, true);
+    } catch {
+      setAddressPinFailed(true);
+    } finally {
+      setGeocoding(false);
+    }
   };
 
   const selectedCategoryLabel = categories
@@ -459,7 +507,12 @@ export default function AddLocationScreen() {
 
           <TextInput
             value={addressLine1}
-            onChangeText={setAddressLine1}
+            onChangeText={(text) => {
+              addressEdited.current = true;
+              setAddressPinFailed(false);
+              setAddressLine1(text);
+            }}
+            onBlur={handleAddressBlur}
             placeholder={geocoding ? 'Looking up address…' : '*Street address'}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
@@ -467,11 +520,27 @@ export default function AddLocationScreen() {
 
           <TextInput
             value={addressLine2}
-            onChangeText={setAddressLine2}
+            onChangeText={(text) => {
+              addressEdited.current = true;
+              setAddressPinFailed(false);
+              setAddressLine2(text);
+            }}
+            onBlur={handleAddressBlur}
             placeholder={geocoding ? 'Looking up address…' : '*Postal code and city'}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
           />
+
+          {/* Silence here would be the dangerous outcome: the pin stays where
+              the phone is, the place is saved at your feet, and nothing looks
+              wrong until someone searches nearby and finds it. */}
+          {addressPinFailed && (
+            <ThemedText type="small" style={styles.addressWarning}>
+              We couldn&apos;t find that address on the map, so the pin hasn&apos;t moved. Check the
+              spelling, or drag the pin to the right spot yourself — the pin is what decides where
+              this place actually is.
+            </ThemedText>
+          )}
 
           <Pressable style={[styles.input, styles.lightInput, styles.categoryInput]} onPress={() => setPickerVisible(true)}>
             <ThemedText type="default" style={[styles.categoryInputText, !selectedCategoryLabel && styles.lightPlaceholderText]} numberOfLines={1}>
@@ -815,6 +884,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#E05252',
+  },
+  addressWarning: {
+    color: '#E8A93B',
+    marginTop: -Spacing.one,
   },
   submitButton: {
     height: 48,

@@ -144,6 +144,10 @@ function avatarColorFor(id: string): string {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
+// Long descriptions push the reviews far below the fold. Six lines is about a
+// short paragraph -- enough to judge whether a place is worth reading on about.
+const DESCRIPTION_LINES = 6;
+
 const REVIEW_SORT_OPTIONS = [
   { key: 'newest', label: 'Newest' },
   { key: 'highest', label: 'Highest rated' },
@@ -184,6 +188,8 @@ export default function LocationDetailScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [descriptionTruncated, setDescriptionTruncated] = useState(false);
   const [reviewSort, setReviewSort] = useState<ReviewSort>('newest');
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
@@ -733,9 +739,29 @@ export default function LocationDetailScreen() {
 
             {location.description && (
               <View style={[styles.infoCard, { borderColor: theme.backgroundSelected }]}>
-                <ThemedText type="default" themeColor="textSecondary" style={styles.descriptionText}>
+                <ThemedText
+                  type="default"
+                  themeColor="textSecondary"
+                  style={styles.descriptionText}
+                  numberOfLines={descriptionExpanded ? undefined : DESCRIPTION_LINES}
+                  // Measured on the clamped render: onTextLayout reports the
+                  // lines actually drawn, so a description that fits shows no
+                  // "Read more" at all. Guessing from character count would be
+                  // wrong the moment someone changes font size.
+                  onTextLayout={(event) => {
+                    if (!descriptionExpanded && event.nativeEvent.lines.length >= DESCRIPTION_LINES) {
+                      setDescriptionTruncated(true);
+                    }
+                  }}>
                   {location.description}
                 </ThemedText>
+                {descriptionTruncated && (
+                  <Pressable onPress={() => setDescriptionExpanded((open) => !open)} hitSlop={8}>
+                    <ThemedText type="smallBold" style={styles.readMoreText}>
+                      {descriptionExpanded ? 'Show less' : 'Read more…'}
+                    </ThemedText>
+                  </Pressable>
+                )}
               </View>
             )}
 
@@ -1470,6 +1496,10 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     padding: Spacing.three,
     marginTop: Spacing.four,
+  },
+  readMoreText: {
+    color: TEAL,
+    marginTop: Spacing.two,
   },
   descriptionText: {
     lineHeight: 22,
