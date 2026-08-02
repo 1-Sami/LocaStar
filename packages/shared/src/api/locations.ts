@@ -101,9 +101,14 @@ export type LocationDetail = {
   available_summer: boolean;
   available_winter: boolean;
   other_category_detail: string | null;
+  /** From generated columns on locations, so the screen can show how far away it is. */
+  lat: number;
+  lng: number;
 };
 
 type LocationDetailRow = {
+  lat: number;
+  lng: number;
   id: string;
   kind: LocationKind;
   name: string;
@@ -222,6 +227,8 @@ export type GalleryPhoto = {
    * promoted to cover — the id is what the gallery uses to tell the two apart.
    */
   photoId: string | null;
+  /** Needed to remove the stored file, not just the row, when a photo is deleted. */
+  storagePath: string;
 };
 
 /**
@@ -260,12 +267,38 @@ export async function fetchLocationPhotos(
   const fromLocation = (locationPhotos.data as { id: string; storage_path: string }[]).map((row) => ({
     url: publicUrl(row.storage_path),
     photoId: row.id,
+    storagePath: row.storage_path,
   }));
   const fromReviews = (reviewPhotos.data as { review_photos: { storage_path: string }[] }[]).flatMap((row) =>
-    row.review_photos.map((photo) => ({ url: publicUrl(photo.storage_path), photoId: null }))
+    row.review_photos.map((photo) => ({
+      url: publicUrl(photo.storage_path),
+      photoId: null,
+      storagePath: photo.storage_path,
+    }))
   );
 
   return [...fromLocation, ...fromReviews];
+}
+
+/**
+ * Removes a location photo, for its uploader or a moderator.
+ *
+ * The row is what the gallery reads, so it goes first; the stored object is
+ * tidied afterwards and never allowed to fail the removal. A moderator taking
+ * down something harmful must not be left looking at it because the storage
+ * call timed out.
+ */
+export async function deleteLocationPhoto(
+  client: SupabaseClient,
+  photoId: string,
+  storagePath: string | null
+): Promise<void> {
+  const { error } = await client.from("location_photos").delete().eq("id", photoId);
+  if (error) throw error;
+  // Best effort, and deliberately unchecked: the row is what the gallery reads,
+  // so the photo is already gone from view. An orphaned object is worth less
+  // than leaving a moderator staring at an image they just took down.
+  if (storagePath) await client.storage.from("media").remove([storagePath]);
 }
 
 /**
@@ -321,7 +354,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -359,6 +392,8 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     available_summer: row.available_summer,
     available_winter: row.available_winter,
     other_category_detail: row.other_category_detail,
+    lat: row.lat,
+    lng: row.lng,
   };
 }
 

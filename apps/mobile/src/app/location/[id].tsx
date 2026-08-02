@@ -1,5 +1,7 @@
 import {
   deleteLocation,
+  deleteLocationPhoto,
+  deleteReview,
   fetchLocationById,
   fetchLocationPhotos,
   fetchMyClaimForLocation,
@@ -10,6 +12,7 @@ import {
   reportReview,
   setLocationCreatorVisible,
   setReviewLiked,
+  setReviewStatus,
   shareLocation,
   submitBusinessClaim,
   type BusinessClaim,
@@ -38,6 +41,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useTheme } from '@/hooks/use-theme';
+import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { useSharedProfile } from '@/lib/profile-context';
@@ -97,6 +101,31 @@ function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabe
   return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: 'Hours unavailable' };
 }
 
+/**
+ * Straight-line distance in metres. Haversine, on a mean Earth radius.
+ *
+ * The search results get distance_m from nearby_locations, but opening a
+ * location directly — from a share link, or the map — never runs that query,
+ * so the screen has to work it out from the coordinates it already holds.
+ * "As the crow flies", same as the cards: the walking route is longer, and
+ * quoting one without a routing service would be a guess.
+ */
+function metresBetween(a: { latitude: number; longitude: number }, b: { lat: number; lng: number }): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.lat - a.latitude);
+  const dLng = toRad(b.lng - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function formatMetres(metres: number): string {
+  return metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`;
+}
+
 function formatActivityDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -122,6 +151,7 @@ export default function LocationDetailScreen() {
   const { session } = useAuth();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
   const { isModerator } = useSharedProfile();
+  const { coords: userCoords, usingFallback } = useUserLocation();
 
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -253,9 +283,44 @@ export default function LocationDetailScreen() {
   const canReorderPhotos =
     isModerator || Boolean(session && location.claimed_by === session.user.id && location.is_verified);
 
+  // Suppressed when useUserLocation is on its Stockholm fallback: that is a
+  // stand-in so search has somewhere to look from, and quoting a distance
+  // measured from it would be a confident, wrong number rather than none.
+  const distanceLabel =
+    location && userCoords && !usingFallback
+      ? formatMetres(metresBetween(userCoords, { lat: location.lat, lng: location.lng }))
+      : null;
+
   const viewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
   // Review photos belong to their review, not the place, so they can't lead it.
   const canPromoteCurrentPhoto = canReorderPhotos && Boolean(viewerPhoto?.photoId) && viewerIndex !== 0;
+
+  // Only location photos can be removed from here. A review's photo belongs to
+  // its review, so taking it down means acting on the review itself — deleting
+  // the image alone would leave the words it illustrated sitting there.
+  const canDeleteCurrentPhoto = isModerator && Boolean(viewerPhoto?.photoId);
+
+  const handleDeletePhoto = async () => {
+    if (!viewerPhoto?.photoId || !id) return;
+    const confirmed = await confirmAsync(
+      'Delete this photo?',
+      'It is removed from this place for everyone, and the deletion is recorded in the moderation log. This cannot be undone.',
+      'Delete'
+    );
+    if (!confirmed) return;
+    try {
+      await deleteLocationPhoto(supabase, viewerPhoto.photoId, viewerPhoto.storagePath);
+      const refreshed = await fetchLocationPhotos(supabase, id);
+      setPhotos(refreshed);
+      // Close the viewer if that was the last photo, otherwise stay put and
+      // let the next one slide into this index.
+      setViewerIndex(refreshed.length === 0 ? null : Math.min(viewerIndex ?? 0, refreshed.length - 1));
+      setActivePhotoIndex(0);
+    } catch {
+      // Silent for the same reason as handleMakeCover: RLS refusing is the
+      // expected outcome for anyone who shouldn't be here.
+    }
+  };
 
   const handleMakeCover = async () => {
     if (!viewerPhoto?.photoId || !id) return;
@@ -312,6 +377,54 @@ export default function LocationDetailScreen() {
       return;
     }
     setReportingReviewId(reviewId);
+  };
+
+  const handleDeleteOwnReview = async (reviewId: string) => {
+    const confirmed = await confirmAsync(
+      'Delete your review?',
+      "Your rating and any photos on it go too, and the place's average is recalculated. This can't be undone.",
+      'Delete'
+    );
+    if (!confirmed) return;
+
+    const previous = reviews;
+    setReviews((current) => current.filter((r) => r.id !== reviewId));
+    try {
+      await deleteReview(supabase, reviewId);
+      // The average and count live on the location row and are recalculated by
+      // trigger, so re-read rather than trying to patch them here.
+      const fresh = await fetchLocationById(supabase, id);
+      if (fresh) setLocation(fresh);
+    } catch {
+      setReviews(previous);
+    }
+  };
+
+  /**
+   * Takes a review down as a moderator.
+   *
+   * 'removed' rather than a delete: it is reversible, and a trigger records it
+   * in the moderation log. Deleting a harmful comment outright would also
+   * destroy the evidence that it was ever posted. Only the author gets to
+   * erase their own words.
+   */
+  const handleRemoveReview = async (reviewId: string) => {
+    const confirmed = await confirmAsync(
+      'Remove this review?',
+      'It stops being visible to everyone immediately, and the removal is recorded in the moderation log. It can be restored from there.',
+      'Remove'
+    );
+    if (!confirmed) return;
+
+    const previous = reviews;
+    setReviews((current) => current.filter((r) => r.id !== reviewId));
+    try {
+      await setReviewStatus(supabase, reviewId, 'removed');
+      const fresh = await fetchLocationById(supabase, id);
+      if (fresh) setLocation(fresh);
+    } catch {
+      setReviews(previous);
+    }
   };
 
   const handleToggleLike = async (review: Review) => {
@@ -536,6 +649,15 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
+            {distanceLabel && (
+              <View style={styles.infoRow}>
+                <Ionicons name="navigate-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" themeColor="textSecondary" style={styles.addressText}>
+                  {distanceLabel} away
+                </ThemedText>
+              </View>
+            )}
+
             {location.kind === 'activity' && location.starts_at && (
               <View style={styles.infoRow}>
                 <Ionicons name="calendar-outline" size={16} color={theme.text} />
@@ -725,12 +847,29 @@ export default function LocationDetailScreen() {
                   <View
                     key={review.id}
                     style={[styles.reviewCard, { borderColor: theme.backgroundSelected }]}>
-                    <Pressable
-                      style={styles.reviewFlagButton}
-                      onPress={() => handleOpenReviewReport(review.id)}
-                      hitSlop={8}>
-                      <Ionicons name="flag-outline" size={14} color={theme.textSecondary} />
-                    </Pressable>
+                    {/* Reporting your own review achieves nothing — it would
+                        only put your own words in front of a moderator. Your
+                        own gets a delete instead, and a moderator gets the
+                        take-down directly rather than having to file a report
+                        against content they are already looking at. */}
+                    <View style={styles.reviewActions}>
+                      {session && review.user_id === session.user.id ? (
+                        <Pressable onPress={() => handleDeleteOwnReview(review.id)} hitSlop={8}>
+                          <Ionicons name="trash-outline" size={14} color={theme.textSecondary} />
+                        </Pressable>
+                      ) : (
+                        <>
+                          {isModerator && (
+                            <Pressable onPress={() => handleRemoveReview(review.id)} hitSlop={8}>
+                              <Ionicons name="eye-off-outline" size={15} color="#E05252" />
+                            </Pressable>
+                          )}
+                          <Pressable onPress={() => handleOpenReviewReport(review.id)} hitSlop={8}>
+                            <Ionicons name="flag-outline" size={14} color={theme.textSecondary} />
+                          </Pressable>
+                        </>
+                      )}
+                    </View>
                     <View style={styles.reviewHeader}>
                       {review.author_avatar_url ? (
                         <Image source={{ uri: review.author_avatar_url }} style={styles.reviewAvatar} />
@@ -994,14 +1133,24 @@ export default function LocationDetailScreen() {
             </Pressable>
           </SafeAreaView>
 
-          {canPromoteCurrentPhoto && (
+          {(canPromoteCurrentPhoto || canDeleteCurrentPhoto) && (
             <SafeAreaView style={styles.viewerFooter} edges={['bottom']} pointerEvents="box-none">
-              <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
-                <Ionicons name="star" size={14} color="#000000" />
-                <ThemedText type="smallBold" style={styles.makeCoverText}>
-                  Make cover photo
-                </ThemedText>
-              </Pressable>
+              {canPromoteCurrentPhoto && (
+                <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
+                  <Ionicons name="star" size={14} color="#000000" />
+                  <ThemedText type="smallBold" style={styles.makeCoverText}>
+                    Make cover photo
+                  </ThemedText>
+                </Pressable>
+              )}
+              {canDeleteCurrentPhoto && (
+                <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
+                  <Ionicons name="trash-outline" size={14} color="#ffffff" />
+                  <ThemedText type="smallBold" style={styles.deletePhotoText}>
+                    Delete photo
+                  </ThemedText>
+                </Pressable>
+              )}
             </SafeAreaView>
           )}
         </View>
@@ -1158,6 +1307,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: 'center',
+    gap: Spacing.two,
     paddingBottom: Spacing.four,
   },
   makeCoverButton: {
@@ -1168,6 +1318,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two,
     borderRadius: Spacing.five,
+  },
+  deletePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    height: 36,
+    borderRadius: Spacing.five,
+    backgroundColor: '#E05252',
+  },
+  deletePhotoText: {
+    color: '#ffffff',
   },
   makeCoverText: {
     color: '#000000',
@@ -1437,11 +1599,15 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     position: 'relative',
   },
-  reviewFlagButton: {
+  reviewActions: {
     position: 'absolute',
     top: Spacing.two,
     right: Spacing.two,
     padding: Spacing.one,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    zIndex: 1,
   },
   reviewHeader: {
     flexDirection: 'row',

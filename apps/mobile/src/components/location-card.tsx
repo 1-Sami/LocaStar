@@ -8,9 +8,22 @@ import { CategoryColors, SearchPalette, Spacing } from '@/constants/theme';
 import { openDirections } from '@/lib/directions';
 import type { CardLocation } from '@/types/location';
 
-const IMAGE_WIDTH = 100;
+const IMAGE_WIDTH = 116;
 // Used only for the very first paint, before onLayout reports the content column's real height.
 const FALLBACK_IMAGE_HEIGHT = 96;
+
+/**
+ * How far the place is from the person looking at it.
+ *
+ * distance_m comes from nearby_locations, which measures from the coordinates
+ * the search was run with -- the user's own position. Metres below a
+ * kilometre, because "0.4 km" reads as further away than "400 m".
+ */
+function formatDistance(distanceKm: number | null): string | null {
+  if (distanceKm === null) return null;
+  if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`;
+  return `${distanceKm.toFixed(1)} km`;
+}
 
 function formatCardDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -69,6 +82,7 @@ export function LocationCard({
   const categoryColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
   const city = cityLabel(location);
   const street = streetLine(location);
+  const distance = formatDistance(location.distanceKm);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const handleContentLayout = (event: LayoutChangeEvent) => {
     setContentHeight(event.nativeEvent.layout.height);
@@ -125,21 +139,32 @@ export function LocationCard({
             </ThemedText>
           )}
 
-          {street ? (
+          {street && (
             <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
               {street}
             </ThemedText>
-          ) : location.distanceKm !== null ? (
-            <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
-              ~{location.distanceKm} km from city
-            </ThemedText>
-          ) : null}
+          )}
 
           <View style={styles.bottomRow}>
-            {city ? (
-              <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.bottomRowFill]}>
-                {city}
-              </ThemedText>
+            {/* City and distance share a line. The old copy here read "~N km
+                from city", which named the wrong origin — nearby_locations
+                measures from the searching user, not from the town centre. */}
+            {city || distance ? (
+              <View style={[styles.bottomRowFill, styles.placeRow]}>
+                {city && (
+                  <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.cityText]}>
+                    {city}
+                  </ThemedText>
+                )}
+                {distance && (
+                  <View style={styles.distanceChip}>
+                    <Ionicons name="navigate-outline" size={11} color={SearchPalette.textMuted} />
+                    <ThemedText type="small" style={styles.mutedText}>
+                      {distance}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
             ) : (
               <View style={styles.bottomRowFill} />
             )}
@@ -181,7 +206,7 @@ const styles = StyleSheet.create({
   categoryBadge: {
     position: 'absolute',
     top: Spacing.two,
-    left: Spacing.two,
+    left: Spacing.half,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
     borderRadius: 4,
@@ -239,6 +264,20 @@ const styles = StyleSheet.create({
   },
   bottomRowFill: {
     flex: 1,
+  },
+  placeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  cityText: {
+    flexShrink: 1,
+  },
+  distanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 0,
   },
   directionsButton: {
     flexDirection: 'row',

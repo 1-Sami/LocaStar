@@ -177,3 +177,32 @@ export async function reportReview(client: SupabaseClient, input: ReviewReportIn
   });
   if (error) throw error;
 }
+
+/**
+ * Deletes a review outright. For the author removing their own.
+ *
+ * The photos and likes go with it by cascade, and the location's rating is
+ * recalculated by trigger. A moderator taking something down should use
+ * `setReviewStatus` instead — see the note there.
+ */
+export async function deleteReview(client: SupabaseClient, reviewId: string): Promise<void> {
+  const { error } = await client.from("reviews").delete().eq("id", reviewId);
+  if (error) throw error;
+}
+
+/**
+ * Hides or removes a review as a moderator.
+ *
+ * Deliberately not a delete. 'removed' is reversible, and a trigger writes
+ * every status change to `moderation_actions` — destroying a harmful comment
+ * outright would also destroy the record that it was ever posted, which is the
+ * thing you most want to keep. Only the author gets to erase their own words.
+ */
+export async function setReviewStatus(
+  client: SupabaseClient,
+  reviewId: string,
+  status: "visible" | "hidden" | "removed"
+): Promise<void> {
+  const { error } = await client.from("reviews").update({ status }).eq("id", reviewId);
+  if (error) throw error;
+}

@@ -9,6 +9,7 @@ export {
   addLocationPhoto,
   fetchLocationPhotos,
   makeCoverPhoto,
+  deleteLocationPhoto,
   reportLocation,
   updateLocation,
   fetchLocationCategoryIds,
@@ -57,6 +58,8 @@ export {
   fetchReviewPhotos,
   deleteReviewPhoto,
   reportReview,
+  deleteReview,
+  setReviewStatus,
   setReviewLiked,
 } from "./api/reviews";
 export type { Review, ReviewInput, ReviewPhoto, ReviewReportInput } from "./api/reviews";
