@@ -115,7 +115,6 @@ export default function AddLocationScreen() {
   const [addressLine2, setAddressLine2] = useState('');
   const [description, setDescription] = useState('');
   const [hours, setHours] = useState<OpeningHours>({});
-  const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
   const [otherCategoryDetail, setOtherCategoryDetail] = useState('');
   const [categoryQuery, setCategoryQuery] = useState('');
   const [website, setWebsite] = useState('');
@@ -339,8 +338,8 @@ export default function AddLocationScreen() {
         phone: isActivity ? null : phone.trim() || null,
         website: isActivity ? null : website.trim() || null,
         email: isActivity ? email.trim() : null,
-        hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
-        hoursNotApplicable,
+        hours: Object.keys(hours).length === 0 ? null : hours,
+        hoursNotApplicable: false,
         creatorVisible: visibleAsCreator === true,
         visibility: isActivity && isPrivate === true ? 'private' : 'public',
         startsAt: isActivity ? startsAtIso : null,
@@ -582,14 +581,13 @@ export default function AddLocationScreen() {
             multiline
           />
 
-          <Pressable style={styles.hoursNaRow} onPress={() => setHoursNotApplicable((v) => !v)}>
-            <View style={[styles.checkbox, hoursNotApplicable && styles.checkboxChecked]} />
-            <ThemedText type="small" style={styles.hoursNaLabel}>
-              This {noun} has no set opening hours (e.g. always open, a public property)
-            </ThemedText>
-          </Pressable>
-
-          {!hoursNotApplicable && <OpeningHoursEditor hours={hours} onChange={setHours} />}
+          {/* "This place has no set opening hours" used to sit here. Open 24/7
+              inside the editor covers the same case and covers it better: it
+              says the place *is* open rather than that nobody filled the hours
+              in, and it produces real hours the app can answer "open now?"
+              with. Removed here as well as on the edit screen, so the create
+              form cannot keep minting rows that the edit screen then rewrites. */}
+          <OpeningHoursEditor hours={hours} onChange={setHours} />
 
           {isActivity ? (
             <TextInput
@@ -805,14 +803,6 @@ const styles = StyleSheet.create({
   categoryInputText: {
     flex: 1,
     color: '#000000',
-  },
-  hoursNaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  hoursNaLabel: {
-    flex: 1,
   },
   yesNoRow: {
     gap: Spacing.two,

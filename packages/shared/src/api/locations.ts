@@ -493,6 +493,16 @@ export type LocationUpdate = {
    */
   lat?: number;
   lng?: number;
+  /**
+   * Contact details, or undefined to leave them as they are.
+   *
+   * Both were writable at creation and readable by fetchLocationById, but no
+   * screen offered a way to change them, so a typo in a website was permanent.
+   * Same creator-guard caveat as the pin: the trigger pins phone, email and
+   * website for anyone who is not a moderator or the verified owner.
+   */
+  website?: string | null;
+  phone?: string | null;
   hours: OpeningHours | null;
   hoursNotApplicable: boolean;
   availableSummer: boolean;
@@ -513,6 +523,8 @@ export async function updateLocation(
       ...(input.lat !== undefined && input.lng !== undefined
         ? { geom: `POINT(${input.lng} ${input.lat})` }
         : {}),
+      ...(input.website !== undefined ? { website: input.website } : {}),
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
       hours: input.hoursNotApplicable ? null : input.hours,
       hours_not_applicable: input.hoursNotApplicable,
       available_summer: input.availableSummer,

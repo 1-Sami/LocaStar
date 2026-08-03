@@ -1,12 +1,15 @@
 import {
+  ALWAYS_OPEN,
   fetchCategories,
   fetchLocationById,
   fetchLocationCategoryIds,
   setLocationCategories,
   updateLocation,
   type Category,
+  type LocationKind,
   type OpeningHours,
 } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
@@ -20,6 +23,16 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
+
+/** Label above a field. The asterisk marks the ones that must not be emptied. */
+function FieldLabel({ children, required }: { children: string; required?: boolean }) {
+  return (
+    <ThemedText type="small" themeColor="textSecondary">
+      {children}
+      {required ? ' *' : ''}
+    </ThemedText>
+  );
+}
 
 export default function EditLocationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,8 +51,10 @@ export default function EditLocationScreen() {
   const addressEdited = useRef(false);
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
+  const [website, setWebsite] = useState('');
+  const [phone, setPhone] = useState('');
+  const [kind, setKind] = useState<LocationKind>('place');
   const [hours, setHours] = useState<OpeningHours>({});
-  const [hoursNotApplicable, setHoursNotApplicable] = useState(false);
   const [availableSummer, setAvailableSummer] = useState(false);
   const [availableWinter, setAvailableWinter] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -66,8 +81,14 @@ export default function EditLocationScreen() {
             const cut = stored.lastIndexOf(',');
             setAddressLine1(cut === -1 ? stored : stored.slice(0, cut).trim());
             setAddressLine2(cut === -1 ? '' : stored.slice(cut + 1).trim());
-            setHours(location.hours ?? {});
-            setHoursNotApplicable(location.hours_not_applicable);
+            setWebsite(location.website ?? '');
+            setPhone(location.phone ?? '');
+            setKind(location.kind);
+            // "This place has no set opening hours" is gone — Open 24/7 says the
+            // same thing and says it better. Rows that still carry the old flag
+            // open with 24/7 already ticked, so the meaning survives, it is
+            // visible before you save, and it can be unticked like any other.
+            setHours(location.hours_not_applicable ? ALWAYS_OPEN : (location.hours ?? {}));
             setAvailableSummer(location.available_summer);
             setAvailableWinter(location.available_winter);
           }
@@ -128,10 +149,11 @@ export default function EditLocationScreen() {
     }
   };
 
-  // An address is what makes a place findable, so editing must not be a way to
-  // empty one that already exists. Both halves are required, matching the two
-  // fields on the create form rather than a single free-text box.
-  const canSave = Boolean(name.trim() && addressLine1.trim() && addressLine2.trim());
+  // A name and an address are what make a place findable, so editing must not
+  // be a way to empty either. Both address halves are required, matching the
+  // create form rather than a single free-text box.
+  const missingName = !name.trim();
+  const canSave = Boolean(!missingName && addressLine1.trim() && addressLine2.trim());
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -145,8 +167,12 @@ export default function EditLocationScreen() {
         address: [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', '),
         lat: pinCoords?.latitude,
         lng: pinCoords?.longitude,
-        hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
-        hoursNotApplicable,
+        // Activities never collected these, so don't start writing them here.
+        website: kind === 'activity' ? undefined : website.trim() || null,
+        phone: kind === 'activity' ? undefined : phone.trim() || null,
+        hours: Object.keys(hours).length === 0 ? null : hours,
+        // Always cleared: the flag's one meaning is now carried by 24/7 hours.
+        hoursNotApplicable: false,
         availableSummer,
         availableWinter,
       });
@@ -173,52 +199,74 @@ export default function EditLocationScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <TextInput
-            value={name}
-            onChangeText={(text) => {
-              setName(text);
-              setSaved(false);
-            }}
-            placeholder="Name"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-          />
+          <View style={styles.field}>
+            <FieldLabel required>Name/Title</FieldLabel>
+            <TextInput
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                setSaved(false);
+              }}
+              placeholder="Name"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+            />
+            {missingName && (
+              <ThemedText type="small" style={styles.addressWarning}>
+                A name is required — this is what people see and search for.
+              </ThemedText>
+            )}
+          </View>
 
-          <Pressable
-            style={[styles.input, styles.categoryInput, { borderColor: theme.backgroundElement }]}
-            onPress={() => setPickerVisible(true)}>
-            <ThemedText type="default" themeColor={selectedCategoryLabel ? undefined : 'textSecondary'} numberOfLines={1}>
-              {selectedCategoryLabel || 'Choose categories (optional)'}
-            </ThemedText>
-          </Pressable>
+          <View style={styles.field}>
+            <FieldLabel>Activity</FieldLabel>
+            <Pressable
+              style={[styles.input, styles.categoryInput, { borderColor: theme.fieldBorder }]}
+              onPress={() => setPickerVisible(true)}>
+              <ThemedText
+                type="default"
+                themeColor={selectedCategoryLabel ? undefined : 'textSecondary'}
+                numberOfLines={1}
+                style={styles.categoryInputText}>
+                {selectedCategoryLabel || 'Choose categories (optional)'}
+              </ThemedText>
+              <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
+            </Pressable>
+          </View>
 
-          <TextInput
-            value={addressLine1}
-            onChangeText={(text) => {
-              addressEdited.current = true;
-              setAddressPinFailed(false);
-              setAddressLine1(text);
-              setSaved(false);
-            }}
-            onBlur={handleAddressBlur}
-            placeholder="*Street name and number"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-          />
+          <View style={styles.field}>
+            <FieldLabel required>Street</FieldLabel>
+            <TextInput
+              value={addressLine1}
+              onChangeText={(text) => {
+                addressEdited.current = true;
+                setAddressPinFailed(false);
+                setAddressLine1(text);
+                setSaved(false);
+              }}
+              onBlur={handleAddressBlur}
+              placeholder="Street name and number"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+            />
+          </View>
 
-          <TextInput
-            value={addressLine2}
-            onChangeText={(text) => {
-              addressEdited.current = true;
-              setAddressPinFailed(false);
-              setAddressLine2(text);
-              setSaved(false);
-            }}
-            onBlur={handleAddressBlur}
-            placeholder="*Post code and city"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
-          />
+          <View style={styles.field}>
+            <FieldLabel required>Area</FieldLabel>
+            <TextInput
+              value={addressLine2}
+              onChangeText={(text) => {
+                addressEdited.current = true;
+                setAddressPinFailed(false);
+                setAddressLine2(text);
+                setSaved(false);
+              }}
+              onBlur={handleAddressBlur}
+              placeholder="Post code and city"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+            />
+          </View>
 
           {addressPinFailed && (
             <ThemedText type="small" style={styles.addressWarning}>
@@ -231,7 +279,7 @@ export default function EditLocationScreen() {
               address while leaving the place itself pinned in the wrong town,
               which is exactly how a playground in Eskilstuna ended up filed
               eighteen metres from a gym in Norsborg. */}
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="small" themeColor="textSecondary" style={styles.section}>
             {geocoding ? 'Looking up address…' : 'Drag the pin if it is in the wrong spot.'}
           </ThemedText>
           {pinCoords && (
@@ -244,29 +292,70 @@ export default function EditLocationScreen() {
             </View>
           )}
 
-          <TextInput
-            value={description}
-            onChangeText={(text) => {
-              setDescription(text);
-              setSaved(false);
-            }}
-            placeholder="Description (optional)"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, styles.bodyInput, { color: theme.text, borderColor: theme.backgroundElement }]}
-            multiline
-          />
+          <View style={styles.field}>
+            <FieldLabel>Description</FieldLabel>
+            <TextInput
+              value={description}
+              onChangeText={(text) => {
+                setDescription(text);
+                setSaved(false);
+              }}
+              placeholder="Description (optional)"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, styles.bodyInput, { color: theme.text, borderColor: theme.fieldBorder }]}
+              multiline
+            />
+          </View>
 
-          <Pressable style={styles.hoursNaRow} onPress={() => setHoursNotApplicable((v) => !v)}>
-            <View style={[styles.checkbox, hoursNotApplicable && styles.checkboxChecked]} />
-            <ThemedText type="small" style={styles.hoursNaLabel}>
-              This place has no set opening hours (e.g. always open, a public property)
-            </ThemedText>
-          </Pressable>
+          {/* Activities never collect these, matching the create form. */}
+          {kind !== 'activity' && (
+            <>
+              <View style={styles.field}>
+                <FieldLabel>Website</FieldLabel>
+                <TextInput
+                  value={website}
+                  onChangeText={(text) => {
+                    setWebsite(text);
+                    setSaved(false);
+                  }}
+                  placeholder="Website (optional)"
+                  placeholderTextColor={theme.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+                />
+              </View>
 
-          {!hoursNotApplicable && <OpeningHoursEditor hours={hours} onChange={setHours} />}
+              <View style={styles.field}>
+                <FieldLabel>Phone number</FieldLabel>
+                <TextInput
+                  value={phone}
+                  onChangeText={(text) => {
+                    setPhone(text);
+                    setSaved(false);
+                  }}
+                  placeholder="Phone number (optional)"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="phone-pad"
+                  style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+                />
+              </View>
+            </>
+          )}
 
-          <View style={styles.seasonRow}>
-            <ThemedText type="default">When is this available? (optional)</ThemedText>
+          <View style={styles.section}>
+            <OpeningHoursEditor
+              hours={hours}
+              onChange={(next) => {
+                setHours(next);
+                setSaved(false);
+              }}
+            />
+          </View>
+
+          <View style={[styles.seasonRow, styles.section]}>
+            <ThemedText type="default">When to visit the location. (Optional)</ThemedText>
             <View style={styles.seasonOptions}>
               <Pressable
                 style={styles.seasonOption}
@@ -350,15 +439,18 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  hoursNaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    // Tight, because each field now carries its own label and a visible box.
+    // The old 16 between bare, borderless inputs made four text fields read as
+    // four unrelated lines of text.
     gap: Spacing.two,
   },
-  hoursNaLabel: {
-    flex: 1,
+  field: {
+    gap: Spacing.one,
+  },
+  // Breathing room between groups of fields and the blocks that follow them,
+  // now that the gap between individual fields is deliberately small.
+  section: {
+    marginTop: Spacing.two,
   },
   checkbox: {
     width: 22,
@@ -384,14 +476,25 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
+    // A full point rather than a hairline: the outline is the only thing that
+    // says "this is a box you can type in".
+    borderWidth: 1,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
   },
   categoryInput: {
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    // Matches what a TextInput of the same padding ends up at, so the picker
+    // does not sit a few pixels shorter than the fields around it.
+    minHeight: 44,
+  },
+  categoryInputText: {
+    flex: 1,
   },
   bodyInput: {
     height: 100,

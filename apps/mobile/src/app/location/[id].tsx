@@ -28,7 +28,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToListModal } from '@/components/add-to-list-modal';
@@ -107,6 +107,29 @@ function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabe
     }
   }
   return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: 'Hours unavailable' };
+}
+
+/**
+ * A stored website as something openable, or null if there is nothing usable.
+ *
+ * People type "eskilstuna.se" as often as they paste a full URL, and a bare
+ * host has no scheme for the OS to route, so the tap does nothing at all.
+ */
+function websiteHref(raw: string | null): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+/** The same address without the scheme or a trailing slash — a URL bar is not a label. */
+function websiteText(href: string): string {
+  return href.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+}
+
+function openUrl(url: string): void {
+  // Nothing to tell the user if this fails: they tapped a link, and a device
+  // with no browser or dialler for it is not something the screen can fix.
+  Linking.openURL(url).catch(() => {});
 }
 
 function formatActivityDate(iso: string): string {
@@ -279,6 +302,9 @@ export default function LocationDetailScreen() {
     location && userCoords && !usingFallback
       ? formatDistance(metresBetween(userCoords, { lat: location.lat, lng: location.lng }))
       : null;
+
+  const websiteUrl = websiteHref(location.website);
+  const websiteLabel = websiteUrl ? websiteText(websiteUrl) : null;
 
   const viewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
   // Review photos belong to their review, not the place, so they can't lead it.
@@ -655,6 +681,26 @@ export default function LocationDetailScreen() {
                   {location.expires_at ? ` · Ends ${formatActivityDate(location.expires_at)}` : ''}
                 </ThemedText>
               </View>
+            )}
+
+            {/* Both were collected when a place was added and then shown
+                nowhere, so a website someone had typed in was simply lost. */}
+            {websiteUrl && (
+              <Pressable style={styles.infoRow} onPress={() => openUrl(websiteUrl)}>
+                <Ionicons name="globe-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" style={[styles.addressText, styles.linkText]} numberOfLines={1}>
+                  {websiteLabel}
+                </ThemedText>
+              </Pressable>
+            )}
+
+            {location.phone && (
+              <Pressable style={styles.infoRow} onPress={() => openUrl(`tel:${location.phone}`)}>
+                <Ionicons name="call-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" style={[styles.addressText, styles.linkText]}>
+                  {location.phone}
+                </ThemedText>
+              </Pressable>
             )}
 
             {location.creator_visible && location.creator_username && (
@@ -1439,6 +1485,10 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     fontSize: 14,
+  },
+  linkText: {
+    color: '#4C8FE8',
+    textDecorationLine: 'underline',
   },
   actionButtonsRow: {
     flexDirection: 'row',

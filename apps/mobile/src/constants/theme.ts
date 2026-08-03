@@ -16,6 +16,11 @@ export const Colors = {
     textSecondary: '#60646C',
     primary: '#14747A',
     accent: '#E8A93B',
+    // Outline for form fields. backgroundElement was being used for this and is
+    // all but invisible against the page — on dark, a #1C1D21 border on a
+    // #0A0A0D background reads as no border at all, so inputs looked like
+    // floating text rather than boxes you could type in.
+    fieldBorder: 'rgba(0,0,0,0.35)',
   },
   dark: {
     text: '#ffffff',
@@ -25,6 +30,7 @@ export const Colors = {
     textSecondary: '#B0B4BA',
     primary: '#2BA3A3',
     accent: '#E8A93B',
+    fieldBorder: 'rgba(255,255,255,0.55)',
   },
 } as const;
 
