@@ -16,7 +16,7 @@
  * file, and it is deliberately not the script's business to decide when your
  * work is ready to record.
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,22 +54,32 @@ console.log(`APP_RELEASE ${match[1]}.${match[2]}.${match[3]} → ${next}`);
 
 const message = process.argv.slice(3).join(' ').trim();
 
+const args = [
+  'eas-cli@latest',
+  'update',
+  '--branch',
+  BRANCH,
+  '--environment',
+  ENVIRONMENT,
+  '--message',
+  message ? `v${next} — ${message}` : `v${next}`,
+  '--non-interactive',
+];
+
+// Windows needs a shell: Node refuses to spawn a .cmd directly
+// (CVE-2024-27980). Building the whole command as one string and handing it to
+// execSync is the supported way to do that — passing an args array alongside
+// `shell: true` works but is deprecated (DEP0190), because Node concatenates
+// the arguments without escaping them. Everywhere else, no shell at all.
+const onWindows = process.platform === 'win32';
+const quote = (arg) => (/[\s"&|<>^]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg);
+
 try {
-  execFileSync(
-    process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    [
-      'eas-cli@latest',
-      'update',
-      '--branch',
-      BRANCH,
-      '--environment',
-      ENVIRONMENT,
-      '--message',
-      message ? `v${next} — ${message}` : `v${next}`,
-      '--non-interactive',
-    ],
-    { cwd: appRoot, stdio: 'inherit' }
-  );
+  if (onWindows) {
+    execSync(['npx.cmd', ...args.map(quote)].join(' '), { cwd: appRoot, stdio: 'inherit' });
+  } else {
+    execFileSync('npx', args, { cwd: appRoot, stdio: 'inherit' });
+  }
 } catch {
   writeFileSync(releaseFile, original);
   console.error(`\nPublish failed. APP_RELEASE put back to ${match[1]}.${match[2]}.${match[3]}.`);
