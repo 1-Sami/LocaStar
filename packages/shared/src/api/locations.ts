@@ -485,6 +485,14 @@ export type LocationUpdate = {
   name: string;
   description: string | null;
   address: string | null;
+  /**
+   * New coordinates, or undefined to leave the pin where it is.
+   *
+   * Only moderators and verified owners can actually move it -- the creator
+   * guard trigger pins geom for everyone else and silently reverts the change.
+   */
+  lat?: number;
+  lng?: number;
   hours: OpeningHours | null;
   hoursNotApplicable: boolean;
   availableSummer: boolean;
@@ -502,6 +510,9 @@ export async function updateLocation(
       name: input.name,
       description: input.description,
       address: input.address,
+      ...(input.lat !== undefined && input.lng !== undefined
+        ? { geom: `POINT(${input.lng} ${input.lat})` }
+        : {}),
       hours: input.hoursNotApplicable ? null : input.hours,
       hours_not_applicable: input.hoursNotApplicable,
       available_summer: input.availableSummer,

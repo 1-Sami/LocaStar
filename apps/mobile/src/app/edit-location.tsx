@@ -8,10 +8,12 @@ import {
   type OpeningHours,
 } from '@locastar/shared';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import * as Location from 'expo-location';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -30,6 +32,10 @@ export default function EditLocationScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [addressPinFailed, setAddressPinFailed] = useState(false);
+  const addressEdited = useRef(false);
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [hours, setHours] = useState<OpeningHours>({});
@@ -52,6 +58,7 @@ export default function EditLocationScreen() {
           if (location) {
             setName(location.name);
             setDescription(location.description ?? '');
+            setPinCoords({ latitude: location.lat, longitude: location.lng });
             // Stored as one string, joined with ', ' by add-location. Split on
             // the LAST comma so a street containing one ("Torg 1, uppg B")
             // keeps it, and the postcode/city half stays intact.
@@ -87,6 +94,40 @@ export default function EditLocationScreen() {
     );
   };
 
+  const handlePinChange = (next: MapCoords) => {
+    setPinCoords(next);
+    setSaved(false);
+  };
+
+  /**
+   * Moves the pin to the typed address.
+   *
+   * Same reasoning as the create form: geom is what locates a place, the
+   * address is only text beside it, and nothing connected the two. Here it
+   * matters more — this screen exists to correct mistakes, and until now it
+   * could fix the words while leaving the place itself in the wrong town.
+   */
+  const handleAddressBlur = async () => {
+    if (!addressEdited.current) return;
+    const query = [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', ');
+    if (!query) return;
+    setGeocoding(true);
+    setAddressPinFailed(false);
+    try {
+      const [hit] = await Location.geocodeAsync(query);
+      if (!hit) {
+        setAddressPinFailed(true);
+        return;
+      }
+      setPinCoords({ latitude: hit.latitude, longitude: hit.longitude });
+      setSaved(false);
+    } catch {
+      setAddressPinFailed(true);
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
   // An address is what makes a place findable, so editing must not be a way to
   // empty one that already exists. Both halves are required, matching the two
   // fields on the create form rather than a single free-text box.
@@ -102,6 +143,8 @@ export default function EditLocationScreen() {
         name: name.trim(),
         description: description.trim() || null,
         address: [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', '),
+        lat: pinCoords?.latitude,
+        lng: pinCoords?.longitude,
         hours: hoursNotApplicable || Object.keys(hours).length === 0 ? null : hours,
         hoursNotApplicable,
         availableSummer,
@@ -152,9 +195,12 @@ export default function EditLocationScreen() {
           <TextInput
             value={addressLine1}
             onChangeText={(text) => {
+              addressEdited.current = true;
+              setAddressPinFailed(false);
               setAddressLine1(text);
               setSaved(false);
             }}
+            onBlur={handleAddressBlur}
             placeholder="*Street name and number"
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
@@ -163,13 +209,40 @@ export default function EditLocationScreen() {
           <TextInput
             value={addressLine2}
             onChangeText={(text) => {
+              addressEdited.current = true;
+              setAddressPinFailed(false);
               setAddressLine2(text);
               setSaved(false);
             }}
+            onBlur={handleAddressBlur}
             placeholder="*Post code and city"
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
+
+          {addressPinFailed && (
+            <ThemedText type="small" style={styles.addressWarning}>
+              We couldn&apos;t find that address on the map, so the pin hasn&apos;t moved. Drag it to
+              the right spot instead — the pin is what decides where this place is.
+            </ThemedText>
+          )}
+
+          {/* The pin is the location. Without this the screen could correct an
+              address while leaving the place itself pinned in the wrong town,
+              which is exactly how a playground in Eskilstuna ended up filed
+              eighteen metres from a gym in Norsborg. */}
+          <ThemedText type="small" themeColor="textSecondary">
+            {geocoding ? 'Looking up address…' : 'Drag the pin if it is in the wrong spot.'}
+          </ThemedText>
+          {pinCoords && (
+            <View style={styles.mapWrapper}>
+              <MapPinPicker
+                initialLatitude={pinCoords.latitude}
+                initialLongitude={pinCoords.longitude}
+                onChange={handlePinChange}
+              />
+            </View>
+          )}
 
           <TextInput
             value={description}
@@ -323,6 +396,14 @@ const styles = StyleSheet.create({
   bodyInput: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  mapWrapper: {
+    height: 220,
+    borderRadius: Spacing.two,
+    overflow: 'hidden',
+  },
+  addressWarning: {
+    color: '#E8A93B',
   },
   errorText: {
     color: '#E05252',
