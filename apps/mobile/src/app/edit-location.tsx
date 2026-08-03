@@ -24,6 +24,10 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
+// Same shape check as the create form — deliberately loose. Anything stricter
+// rejects addresses that are perfectly valid.
+const EMAIL_PATTERN = /\S+@\S+\.\S+/;
+
 /** Label above a field. The asterisk marks the ones that must not be emptied. */
 function FieldLabel({ children, required }: { children: string; required?: boolean }) {
   return (
@@ -53,6 +57,7 @@ export default function EditLocationScreen() {
   const [addressLine2, setAddressLine2] = useState('');
   const [website, setWebsite] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [kind, setKind] = useState<LocationKind>('place');
   const [hours, setHours] = useState<OpeningHours>({});
   const [availableSummer, setAvailableSummer] = useState(false);
@@ -83,6 +88,7 @@ export default function EditLocationScreen() {
             setAddressLine2(cut === -1 ? '' : stored.slice(cut + 1).trim());
             setWebsite(location.website ?? '');
             setPhone(location.phone ?? '');
+            setEmail(location.email ?? '');
             setKind(location.kind);
             // "This place has no set opening hours" is gone — Open 24/7 says the
             // same thing and says it better. Rows that still carry the old flag
@@ -153,7 +159,9 @@ export default function EditLocationScreen() {
   // be a way to empty either. Both address halves are required, matching the
   // create form rather than a single free-text box.
   const missingName = !name.trim();
-  const canSave = Boolean(!missingName && addressLine1.trim() && addressLine2.trim());
+  // Optional, but has to be an address if given — same rule as the create form.
+  const emailValid = kind !== 'activity' || email.trim() === '' || EMAIL_PATTERN.test(email.trim());
+  const canSave = Boolean(!missingName && addressLine1.trim() && addressLine2.trim() && emailValid);
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -167,9 +175,11 @@ export default function EditLocationScreen() {
         address: [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', '),
         lat: pinCoords?.latitude,
         lng: pinCoords?.longitude,
-        // Activities never collected these, so don't start writing them here.
-        website: kind === 'activity' ? undefined : website.trim() || null,
+        website: website.trim() || null,
+        // Split by kind, matching the create form: don't start writing a phone
+        // number onto an activity, or an email onto a place.
         phone: kind === 'activity' ? undefined : phone.trim() || null,
+        email: kind === 'activity' ? email.trim() || null : undefined,
         hours: Object.keys(hours).length === 0 ? null : hours,
         // Always cleared: the flag's one meaning is now carried by 24/7 hours.
         hoursNotApplicable: false,
@@ -307,41 +317,63 @@ export default function EditLocationScreen() {
             />
           </View>
 
-          {/* Activities never collect these, matching the create form. */}
-          {kind !== 'activity' && (
-            <>
-              <View style={styles.field}>
-                <FieldLabel>Website</FieldLabel>
-                <TextInput
-                  value={website}
-                  onChangeText={(text) => {
-                    setWebsite(text);
-                    setSaved(false);
-                  }}
-                  placeholder="Website (optional)"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
-                />
-              </View>
+          <View style={styles.field}>
+            <FieldLabel>Website</FieldLabel>
+            <TextInput
+              value={website}
+              onChangeText={(text) => {
+                setWebsite(text);
+                setSaved(false);
+              }}
+              placeholder="Website (optional)"
+              placeholderTextColor={theme.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+            />
+          </View>
 
-              <View style={styles.field}>
-                <FieldLabel>Phone number</FieldLabel>
-                <TextInput
-                  value={phone}
-                  onChangeText={(text) => {
-                    setPhone(text);
-                    setSaved(false);
-                  }}
-                  placeholder="Phone number (optional)"
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="phone-pad"
-                  style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
-                />
-              </View>
-            </>
+          {/* Contact details split by kind, matching the create form: an
+              activity has an organiser to email, a place has a number to ring. */}
+          {kind === 'activity' ? (
+            <View style={styles.field}>
+              <FieldLabel>Contact email</FieldLabel>
+              <TextInput
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setSaved(false);
+                }}
+                placeholder="Contact email (optional)"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+              />
+              {!emailValid && (
+                <ThemedText type="small" style={styles.addressWarning}>
+                  That doesn&apos;t look like an email address. Leave it empty if you&apos;d rather not
+                  give one.
+                </ThemedText>
+              )}
+            </View>
+          ) : (
+            <View style={styles.field}>
+              <FieldLabel>Phone number</FieldLabel>
+              <TextInput
+                value={phone}
+                onChangeText={(text) => {
+                  setPhone(text);
+                  setSaved(false);
+                }}
+                placeholder="Phone number (optional)"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="phone-pad"
+                style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
+              />
+            </View>
           )}
 
           <View style={styles.section}>

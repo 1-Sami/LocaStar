@@ -703,6 +703,15 @@ export default function LocationDetailScreen() {
               </Pressable>
             )}
 
+            {location.email && (
+              <Pressable style={styles.infoRow} onPress={() => openUrl(`mailto:${location.email}`)}>
+                <Ionicons name="mail-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" style={[styles.addressText, styles.linkText]} numberOfLines={1}>
+                  {location.email}
+                </ThemedText>
+              </Pressable>
+            )}
+
             {location.creator_visible && location.creator_username && (
               <View style={styles.addedByRow}>
                 <ThemedText type="small" themeColor="textSecondary">

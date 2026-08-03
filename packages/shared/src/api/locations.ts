@@ -503,6 +503,7 @@ export type LocationUpdate = {
    */
   website?: string | null;
   phone?: string | null;
+  email?: string | null;
   hours: OpeningHours | null;
   hoursNotApplicable: boolean;
   availableSummer: boolean;
@@ -525,6 +526,7 @@ export async function updateLocation(
         : {}),
       ...(input.website !== undefined ? { website: input.website } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.email !== undefined ? { email: input.email } : {}),
       hours: input.hoursNotApplicable ? null : input.hours,
       hours_not_applicable: input.hoursNotApplicable,
       available_summer: input.availableSummer,

@@ -269,7 +269,9 @@ export default function AddLocationScreen() {
   };
 
   const hasPhoto = photoUris.length > 0;
-  const emailValid = !isActivity || EMAIL_PATTERN.test(email.trim());
+  // Optional, but has to be an address if given: a contact nobody can reach is
+  // worse than no contact at all.
+  const emailValid = !isActivity || email.trim() === '' || EMAIL_PATTERN.test(email.trim());
   const otherCategoryValid = !hasOtherCategory || otherCategoryDetail.trim().length > 0;
   let dateError: string | null = null;
   let expiresAtIso: string | null = null;
@@ -336,8 +338,8 @@ export default function AddLocationScreen() {
         categoryIds,
         userId: session.user.id,
         phone: isActivity ? null : phone.trim() || null,
-        website: isActivity ? null : website.trim() || null,
-        email: isActivity ? email.trim() : null,
+        website: website.trim() || null,
+        email: isActivity ? email.trim() || null : null,
         hours: Object.keys(hours).length === 0 ? null : hours,
         hoursNotApplicable: false,
         creatorVisible: visibleAsCreator === true,
@@ -590,15 +592,30 @@ export default function AddLocationScreen() {
           <OpeningHoursEditor hours={hours} onChange={setHours} />
 
           {isActivity ? (
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="*Email"
-              placeholderTextColor={LIGHT_PLACEHOLDER}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={[styles.input, styles.lightInput]}
-            />
+            <>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Contact email (optional)"
+                placeholderTextColor={LIGHT_PLACEHOLDER}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={[styles.input, styles.lightInput]}
+              />
+              {/* An activity has a page to point at as often as a place does —
+                  a festival's line-up, a ticket link. The field was simply
+                  never offered here. */}
+              <TextInput
+                value={website}
+                onChangeText={setWebsite}
+                placeholder="Website (optional)"
+                placeholderTextColor={LIGHT_PLACEHOLDER}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                style={[styles.input, styles.lightInput]}
+              />
+            </>
           ) : (
             <>
               <TextInput
@@ -607,6 +624,8 @@ export default function AddLocationScreen() {
                 placeholder="Website (optional)"
                 placeholderTextColor={LIGHT_PLACEHOLDER}
                 autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
                 style={[styles.input, styles.lightInput]}
               />
               <TextInput
