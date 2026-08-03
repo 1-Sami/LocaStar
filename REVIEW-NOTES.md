@@ -44,6 +44,64 @@ below is a suggestion, not a change.
 
 ---
 
+# Second pass — 2026-08-03
+
+## Fixed this pass
+
+- **[A] `is_banned()` disclosed ban status to anonymous callers.** 0062 closed
+  this for signed-in users by requiring `target = auth.uid() or is_moderator()`,
+  with an escape hatch for `auth.uid() is null` — "a trigger, migration or
+  service-role context". But `anon` has no `sub` claim either, so every
+  unauthenticated REST caller took that branch. `/rest/v1/rpc/is_banned` with
+  nothing but the publishable key returned the truth, and `profiles` is
+  world-readable, so the ids to ask about were free: moderation state for every
+  account, enumerable by anyone. Probed before and after — anon now gets `false`,
+  self/moderator/trigger still get the truth, and all 20 enforcement policies use
+  the no-argument form so enforcement is untouched.
+  — `supabase/migrations/0078_is_banned_no_anon_leak.sql`
+
+- **[B] The web build could silently stop serving a new dynamic route.** The
+  script threw if a *declared* route went missing, but a newly added one — say
+  `profile/[id]` — would export fine and then 404 in production with no other
+  symptom. It now walks `dist` and fails on any bracket file not in
+  `DYNAMIC_ROUTES`. — `apps/mobile/scripts/build-web.mjs`
+
+- **[C] Expo starter-template leftovers.** `AnimatedIcon` in both
+  `animated-icon.tsx` and `animated-icon.web.tsx` was unrendered code drawing the
+  *Expo* logo on Expo-blue, plus `animated-icon.module.css`, `expo-logo.png`,
+  `expo-badge*.png`, `react-logo*.png`, `tutorial-web.png`, `logo-glow.png` and
+  the whole `tabIcons/` folder — none referenced (the tab bar uses SF Symbols and
+  Material names). Repo tidiness only: unreferenced assets were never bundled, so
+  this does not shrink the app.
+
+- **[D] `build-web.mjs` had the same DEP0190 shell hazard** already fixed in
+  `publish-update.mjs` — an args array passed with `shell: true`, which Node
+  concatenates without escaping.
+
+## Worth knowing, no action taken
+
+- **[E] The duplicate check was doing nothing for two days.** `add-location`
+  looks for existing locations within `DUPLICATE_RADIUS_M = 200`, but migration
+  0076 broke `ST_DWithin` in `nearby_locations` (see 0077), so the radius was
+  ignored and the query returned *every* location, sliced to five, ordered by a
+  distance of zero. Anything added between 0076 and 0077 was shown five
+  unrelated places as "already nearby". Fixed as a side effect of 0077; noted
+  because it explains behaviour that looked like a bug in the form.
+
+- **[F] `hours_not_applicable` is now a legacy column.** Neither form writes
+  `true` any more, and the edit screen converts existing `true` rows to 24/7
+  hours on load. Once no rows carry it, the column and its display branch on the
+  location screen can go. Don't drop it before then.
+
+- **[G] Resolved since the first pass:** [1] second account exists (`sadek2`),
+  [2] location-photo ownership closed by 0075, [4] `locastar.se/location/<id>`
+  confirmed serving. [19] is still open and now has teeth: running `expo lint`
+  on this machine edits `package.json`, rewrites ~2400 lines of `pnpm-lock.yaml`,
+  edits `pnpm-workspace.yaml` and drops a stray `app.json` at the repo root. It
+  is a trap, not just a missing feature.
+
+---
+
 ## Ideas to go over
 
 ### Before you start adding content

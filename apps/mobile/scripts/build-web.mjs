@@ -11,9 +11,9 @@
 // Verified against `wrangler pages dev`: the response for /location/<uuid> is
 // byte-identical to dist/location/[id].html.
 
-import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { execFileSync, execSync } from 'node:child_process';
+import { copyFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,11 +27,15 @@ const DYNAMIC_ROUTES = [
 ];
 
 console.log('> expo export --platform web');
-execFileSync('npx', ['expo', 'export', '--platform', 'web'], {
-  cwd: appRoot,
-  stdio: 'inherit',
-  shell: process.platform === 'win32',
-});
+// Windows needs a shell (Node won't spawn a .cmd directly since CVE-2024-27980),
+// but an args array plus `shell: true` is deprecated — DEP0190 — because Node
+// concatenates them unescaped. One command string for Windows, no shell at all
+// anywhere else. Same treatment as scripts/publish-update.mjs.
+if (process.platform === 'win32') {
+  execSync('npx.cmd expo export --platform web', { cwd: appRoot, stdio: 'inherit' });
+} else {
+  execFileSync('npx', ['expo', 'export', '--platform', 'web'], { cwd: appRoot, stdio: 'inherit' });
+}
 
 const rules = [];
 for (const route of DYNAMIC_ROUTES) {
@@ -45,6 +49,32 @@ for (const route of DYNAMIC_ROUTES) {
   }
   copyFileSync(from, join(dist, route.servedAs));
   rules.push(`${route.urlPrefix}/*  /${route.servedAs.replace(/\.html$/, '')}  200`);
+}
+
+// The loop above catches a route that was renamed or removed. It cannot catch a
+// route that was *added*, and that failure is the quiet one: the page exports
+// fine, nothing errors, and /profile/<id> just 404s in production for as long as
+// nobody happens to try it. So walk the export and insist every bracket file is
+// accounted for.
+function bracketFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return bracketFiles(full);
+    return entry.isFile() && entry.name.includes('[') && entry.name.endsWith('.html') ? [full] : [];
+  });
+}
+
+const declared = new Set(DYNAMIC_ROUTES.map((r) => r.exported.replace(/\//g, '\\')));
+const unhandled = bracketFiles(dist)
+  .map((f) => relative(dist, f))
+  .filter((f) => !declared.has(f) && !declared.has(f.replace(/\\/g, '/')));
+
+if (unhandled.length > 0) {
+  throw new Error(
+    `Dynamic route(s) exported but not served: ${unhandled.join(', ')}.\n` +
+      `Add an entry to DYNAMIC_ROUTES in scripts/build-web.mjs, or these URLs will 404 ` +
+      `in production with no other symptom.`
+  );
 }
 
 writeFileSync(
