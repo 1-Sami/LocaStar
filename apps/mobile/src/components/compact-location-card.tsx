@@ -5,6 +5,7 @@ import { LocationPhoto } from '@/components/location-photo';
 import { STAR_COLOR } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, Spacing } from '@/constants/theme';
+import { formatDistance } from '@/lib/distance';
 import type { CardLocation } from '@/types/location';
 
 const IMAGE_HEIGHT = 100;
@@ -63,7 +64,7 @@ export function CompactLocationCard({
           </ThemedText>
         </View>
         <ThemedText type="small" style={styles.whiteTextSecondary} numberOfLines={1}>
-          {location.address ?? (location.distanceKm !== null ? `~${location.distanceKm} km` : '')}
+          {location.address ?? formatDistance(location.distanceM) ?? ''}
         </ThemedText>
       </View>
     </Pressable>

@@ -459,8 +459,8 @@ export default function AddLocationScreen() {
           </ThemedText>
           {pinCoords ? (
             <MapPinPicker
-              initialLatitude={pinCoords.latitude}
-              initialLongitude={pinCoords.longitude}
+              latitude={pinCoords.latitude}
+              longitude={pinCoords.longitude}
               onChange={handlePinChange}
             />
           ) : (

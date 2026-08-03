@@ -1,8 +1,13 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 export type MapCoords = { latitude: number; longitude: number };
+
+/** Same point, allowing for float noise on the round trip through the WebView. */
+function samePoint(a: MapCoords, b: MapCoords): boolean {
+  return Math.abs(a.latitude - b.latitude) < 1e-9 && Math.abs(a.longitude - b.longitude) < 1e-9;
+}
 
 function buildMapHtml(lat: number, lng: number): string {
   return `<!DOCTYPE html>
@@ -32,39 +37,89 @@ function buildMapHtml(lat: number, lng: number): string {
     marker.setLatLng(e.latlng);
     sendPosition(e.latlng);
   });
+
+  // Called from the app when the pin moves for a reason the map knows nothing
+  // about — currently, geocoding a typed address. Deliberately silent: it does
+  // not postMessage back, so moving the pin this way cannot loop.
+  window.moveMarker = function (lat, lng) {
+    var target = L.latLng(lat, lng);
+    marker.setLatLng(target);
+    map.setView(target, map.getZoom());
+  };
 </script>
 </body>
 </html>`;
 }
 
+/**
+ * A draggable pin on an OpenStreetMap tile layer.
+ *
+ * The position is controlled: pass the coordinates in, and moving them moves
+ * the marker. That matters because typing an address geocodes it, and until
+ * the marker followed, the form could say one place while the pin sat in
+ * another — which is how a playground in Eskilstuna ended up filed eighteen
+ * metres from a gym in Norsborg.
+ */
 export function MapPinPicker({
-  initialLatitude,
-  initialLongitude,
+  latitude,
+  longitude,
   onChange,
 }: {
-  initialLatitude: number;
-  initialLongitude: number;
+  latitude: number;
+  longitude: number;
   onChange: (coords: MapCoords) => void;
 }) {
-  // Build the HTML once from the initial coords only — re-rendering it on
-  // every pin move would reload the whole map and fight the user's drag.
-  const initial = useRef({ initialLatitude, initialLongitude });
-  const html = useMemo(
-    () => buildMapHtml(initial.current.initialLatitude, initial.current.initialLongitude),
-    []
-  );
+  // The HTML is built once, from wherever the pin started. Rebuilding it on
+  // every move would reload the whole map and fight the user's drag; later
+  // moves are pushed in through window.moveMarker instead.
+  const seed = useRef({ latitude, longitude });
+  const html = useMemo(() => buildMapHtml(seed.current.latitude, seed.current.longitude), []);
+
+  const webview = useRef<WebView>(null);
+  const loaded = useRef(false);
+  const pending = useRef<MapCoords | null>(null);
+  // The last position the map itself reported. Pushing that straight back would
+  // recentre the view under the finger that had just finished dragging.
+  const fromMap = useRef<MapCoords | null>(null);
+
+  const moveMarker = (coords: MapCoords) => {
+    webview.current?.injectJavaScript(
+      `window.moveMarker && window.moveMarker(${coords.latitude}, ${coords.longitude}); true;`
+    );
+  };
+
+  useEffect(() => {
+    const target = { latitude, longitude };
+    if (fromMap.current && samePoint(fromMap.current, target)) return;
+    // Geocoding can resolve before Leaflet has finished loading; hold the
+    // position and apply it once the page is up.
+    if (!loaded.current) {
+      pending.current = target;
+      return;
+    }
+    moveMarker(target);
+  }, [latitude, longitude]);
 
   return (
     <View style={styles.container}>
       <WebView
+        ref={webview}
         originWhitelist={['*']}
         source={{ html }}
         style={styles.webview}
+        onLoadEnd={() => {
+          loaded.current = true;
+          if (pending.current) {
+            moveMarker(pending.current);
+            pending.current = null;
+          }
+        }}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
             if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-              onChange({ latitude: data.latitude, longitude: data.longitude });
+              fromMap.current = { latitude: data.latitude, longitude: data.longitude };
+              onChange(fromMap.current);
             }
           } catch {
             // ignore malformed messages from the page

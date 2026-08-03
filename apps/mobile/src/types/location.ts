@@ -12,7 +12,8 @@ export type CardLocation = {
   address: string | null;
   city: string | null;
   country: string | null;
-  distanceKm: number | null;
+  /** Metres from the searching user, unrounded. null when it isn't known. */
+  distanceM: number | null;
   /** null when the location has no photo — cards show a placeholder instead. */
   imageUrl: string | null;
   startsAt: string | null;

@@ -27,7 +27,7 @@ export function nearbyLocationToCard(location: NearbyLocation): CardLocation {
     address: location.address,
     city: location.city,
     country: location.country,
-    distanceKm: Math.round(location.distance_m / 100) / 10,
+    distanceM: location.distance_m,
     imageUrl: photoUrl(location.cover_photo_path),
     startsAt: location.starts_at,
   };
@@ -46,7 +46,7 @@ export function savedLocationToCard(location: SavedLocation): CardLocation {
     address: location.address,
     city: location.city,
     country: location.country,
-    distanceKm: null,
+    distanceM: null,
     imageUrl: photoUrl(location.cover_photo_path),
     startsAt: null,
   };
@@ -65,7 +65,7 @@ export function listItemToCard(item: ListItemLocation): CardLocation {
     address: item.address,
     city: item.city,
     country: item.country,
-    distanceKm: null,
+    distanceM: null,
     // fetchListItems already resolves this to a public URL.
     imageUrl: item.imageUrl,
     startsAt: null,

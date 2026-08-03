@@ -47,6 +47,7 @@ import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { useSharedProfile } from '@/lib/profile-context';
 import { openDirections } from '@/lib/directions';
+import { formatDistance, metresBetween } from '@/lib/distance';
 import { buildLocationShareLink } from '@/lib/public-link';
 import { supabase } from '@/lib/supabase';
 
@@ -106,31 +107,6 @@ function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabe
     }
   }
   return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: 'Hours unavailable' };
-}
-
-/**
- * Straight-line distance in metres. Haversine, on a mean Earth radius.
- *
- * The search results get distance_m from nearby_locations, but opening a
- * location directly — from a share link, or the map — never runs that query,
- * so the screen has to work it out from the coordinates it already holds.
- * "As the crow flies", same as the cards: the walking route is longer, and
- * quoting one without a routing service would be a guess.
- */
-function metresBetween(a: { latitude: number; longitude: number }, b: { lat: number; lng: number }): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const R = 6371000;
-  const dLat = toRad(b.lat - a.latitude);
-  const dLng = toRad(b.lng - a.longitude);
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-function formatMetres(metres: number): string {
-  return metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`;
 }
 
 function formatActivityDate(iso: string): string {
@@ -301,7 +277,7 @@ export default function LocationDetailScreen() {
   // measured from it would be a confident, wrong number rather than none.
   const distanceLabel =
     location && userCoords && !usingFallback
-      ? formatMetres(metresBetween(userCoords, { lat: location.lat, lng: location.lng }))
+      ? formatDistance(metresBetween(userCoords, { lat: location.lat, lng: location.lng }))
       : null;
 
   const viewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;

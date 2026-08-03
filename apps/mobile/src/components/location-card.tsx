@@ -6,31 +6,15 @@ import { LocationPhoto } from '@/components/location-photo';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, SearchPalette, Spacing } from '@/constants/theme';
 import { openDirections } from '@/lib/directions';
+import { formatDistance } from '@/lib/distance';
 import type { CardLocation } from '@/types/location';
 
 const IMAGE_WIDTH = 116;
 // Used only for the very first paint, before onLayout reports the content column's real height.
 const FALLBACK_IMAGE_HEIGHT = 96;
 
-/**
- * How far the place is from the person looking at it.
- *
- * distance_m comes from nearby_locations, which measures from the coordinates
- * the search was run with -- the user's own position. Metres below a
- * kilometre, because "0.4 km" reads as further away than "400 m".
- */
-function formatDistance(distanceKm: number | null): string | null {
-  if (distanceKm === null) return null;
-  if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`;
-  return `${distanceKm.toFixed(1)} km`;
-}
-
 function formatCardDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function cityLabel(location: CardLocation): string | null {
-  return location.city && location.city.trim() ? location.city : null;
 }
 
 function escapeForRegExp(value: string): string {
@@ -38,30 +22,41 @@ function escapeForRegExp(value: string): string {
 }
 
 /**
- * The stored address ends with the city, and older ones end with the country
- * too. The card prints the city on its own line underneath, so trim those off
- * the end to leave just the street and postal code — otherwise the city shows
- * up on both rows.
+ * The address as the two lines the card prints: street, then postcode and city.
+ *
+ * add-location and edit-location both store it as "<street>, <postcode city>",
+ * so splitting on the LAST comma recovers exactly those halves — and a street
+ * that contains a comma of its own ("Torg 1, uppg B") keeps it. Older rows can
+ * carry the country on the end too; there is no room for it on a card and it is
+ * the least useful part, so it comes off first.
  */
-function streetLine(location: CardLocation): string | null {
-  const stored = location.address?.trim();
-  if (!stored) return null;
+function addressLines(location: CardLocation): { street: string | null; area: string | null } {
+  const city = location.city?.trim() || null;
+  let address = location.address?.trim() ?? '';
 
-  let address: string = stored;
-
-  // Country first: it sits after the city, so it has to come off first for the
-  // city to be at the end where we can strip it.
-  for (const part of [location.country, location.city]) {
-    const trimmed = part?.trim();
-    if (!trimmed) continue;
-    const stripped: string = address
-      .replace(new RegExp(`[,\\s]*${escapeForRegExp(trimmed)}\\s*$`, 'i'), '')
+  const country = location.country?.trim();
+  if (country) {
+    const stripped = address
+      .replace(new RegExp(`[,\\s]*${escapeForRegExp(country)}\\s*$`, 'i'), '')
       .replace(/[,\s]+$/, '');
     // Keep the original if trimming would leave nothing to show.
     if (stripped) address = stripped;
   }
 
-  return address || null;
+  if (!address) return { street: null, area: city };
+
+  const cut = address.lastIndexOf(',');
+  if (cut === -1) {
+    // Nothing to split on. If the row carries a city column and the address
+    // does not already end with it, that becomes the second line.
+    const endsWithCity = city !== null && new RegExp(`${escapeForRegExp(city)}$`, 'i').test(address);
+    return { street: address, area: endsWithCity ? null : city };
+  }
+
+  return {
+    street: address.slice(0, cut).trim() || null,
+    area: address.slice(cut + 1).trim() || null,
+  };
 }
 
 export function LocationCard({
@@ -80,9 +75,8 @@ export function LocationCard({
   onPress?: () => void;
 }) {
   const categoryColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
-  const city = cityLabel(location);
-  const street = streetLine(location);
-  const distance = formatDistance(location.distanceKm);
+  const { street, area } = addressLines(location);
+  const distance = formatDistance(location.distanceM);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const handleContentLayout = (event: LayoutChangeEvent) => {
     setContentHeight(event.nativeEvent.layout.height);
@@ -139,35 +133,35 @@ export function LocationCard({
             </ThemedText>
           )}
 
+          {/* Street and postcode/city get a line each, the way an address is
+              written on an envelope. Squeezed onto one line they ran past the
+              edge and truncated mid-postcode. */}
           {street && (
             <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.addressLine]}>
               {street}
             </ThemedText>
           )}
+          {area && (
+            <ThemedText type="small" numberOfLines={1} style={styles.mutedText}>
+              {area}
+            </ThemedText>
+          )}
 
           <View style={styles.bottomRow}>
-            {/* City and distance share a line. The old copy here read "~N km
-                from city", which named the wrong origin — nearby_locations
-                measures from the searching user, not from the town centre. */}
-            {city || distance ? (
-              <View style={[styles.bottomRowFill, styles.placeRow]}>
-                {city && (
-                  <ThemedText type="small" numberOfLines={1} style={[styles.mutedText, styles.cityText]}>
-                    {city}
+            {/* The old copy here read "~N km from city", which named the wrong
+                origin — nearby_locations measures from the searching user, not
+                from the town centre. Always rendered, distance or not, so
+                "Direction" stays pinned to the right edge either way. */}
+            <View style={[styles.bottomRowFill, styles.placeRow]}>
+              {distance && (
+                <View style={styles.distanceChip}>
+                  <Ionicons name="navigate-outline" size={11} color={SearchPalette.textMuted} />
+                  <ThemedText type="small" style={styles.mutedText}>
+                    {distance}
                   </ThemedText>
-                )}
-                {distance && (
-                  <View style={styles.distanceChip}>
-                    <Ionicons name="navigate-outline" size={11} color={SearchPalette.textMuted} />
-                    <ThemedText type="small" style={styles.mutedText}>
-                      {distance}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View style={styles.bottomRowFill} />
-            )}
+                </View>
+              )}
+            </View>
             <Pressable
               style={styles.directionsButton}
               onPress={() => openDirections(location.address ?? location.name)}
@@ -219,7 +213,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: Spacing.three,
+    // Tighter top and bottom than the sides. The second address line has to
+    // come from somewhere, and there was more air above the title than the
+    // layout needed — so the card gains a line without growing.
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     gap: Spacing.half,
   },
   titleRow: {
@@ -269,9 +267,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-  },
-  cityText: {
-    flexShrink: 1,
   },
   distanceChip: {
     flexDirection: 'row',
