@@ -53,6 +53,7 @@
     "build:web": "node scripts/build-web.mjs",
     "preview:web": "wrangler pages dev dist --port 8788",
     "lint": "expo lint",
+    "release": "node scripts/publish-update.mjs",
     "eas:login": "npx eas-cli@latest login",
     "eas:init": "npx eas-cli@latest init",
     "eas:env": "npx eas-cli@latest env:create --scope project",

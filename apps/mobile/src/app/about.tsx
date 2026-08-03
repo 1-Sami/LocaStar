@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -7,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LocaStarLogo } from '@/components/locastar-logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { APP_RELEASE } from '@/constants/release';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 /** One "Bold lead-in. Rest of the sentence." row in the features list. */
@@ -22,13 +22,10 @@ function Feature({ lead, children }: { lead: string; children: string }) {
 }
 
 export default function AboutScreen() {
-  const version = Constants.expoConfig?.version ?? '1.0.0';
-
-  // Which JS bundle is actually running. Fixes now ship over the air, so
-  // "is my fix live yet?" stopped being answerable from the version number
-  // alone — an unchanged 1.0.0 covers every update ever published. Without
-  // this the honest answer to a bug report is a guess about whether the
-  // person has the fix, which is how a fixed bug gets debugged twice.
+  // APP_RELEASE moves with every published update, so "which version am I on?"
+  // has a real answer. The line underneath is for us rather than for users:
+  // when someone reports a bug, the update id says exactly which bundle they
+  // were running, which beats guessing whether they already have the fix.
   const buildLabel = Updates.isEmbeddedLaunch
     ? 'Original install — no updates applied yet'
     : `Update ${Updates.updateId?.slice(0, 8) ?? 'unknown'}` +
@@ -140,7 +137,7 @@ export default function AboutScreen() {
           </View>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-            Application AB · Version {version}
+            Application AB · Version v{APP_RELEASE}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.buildLine}>
             {buildLabel}
