@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { MENU_ICONS } from '@/constants/menu-icons';
 import { SUPPORT_EMAIL } from '@/constants/support';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -66,25 +67,6 @@ const PRIMARY_MENU_ITEMS = ['My lists', 'Friends', 'Add location', 'Add activity
 const SECONDARY_MENU_ITEMS = ['Settings', 'About'];
 // Kept in their own group so moderation tools don't sit flush against About.
 const MODERATOR_MENU_ITEMS = ['Reports', 'People & bans', 'Moderation log'];
-
-const MENU_ICONS: Record<
-  string,
-  { icon: keyof typeof Ionicons.glyphMap; family?: 'ionicons'; color: string } | {
-    icon: keyof typeof MaterialCommunityIcons.glyphMap;
-    family: 'material';
-    color: string;
-  }
-> = {
-  'My lists': { icon: 'folder-marker-outline', family: 'material', color: '#4C8FE8' },
-  Friends: { icon: 'people-outline', color: '#F5738A' },
-  'Add location': { icon: 'add-circle-outline', color: '#C34CE8' },
-  'Add activity': { icon: 'time-outline', color: '#E8A93B' },
-  Settings: { icon: 'settings-outline', color: '#B0B4BA' },
-  About: { icon: 'information-circle-outline', color: '#14747A' },
-  'Reports': { icon: 'flag-outline', color: '#E05252' },
-  'People & bans': { icon: 'shield-checkmark-outline', color: '#E8A93B' },
-  'Moderation log': { icon: 'document-text-outline', color: '#4C8FE8' },
-};
 
 function MenuRow({
   item,

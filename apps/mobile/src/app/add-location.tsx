@@ -20,6 +20,7 @@ import { DateField } from '@/components/date-field';
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { PhotoPicker } from '@/components/photo-picker';
+import { ScreenTitle } from '@/components/screen-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -395,7 +396,7 @@ export default function AddLocationScreen() {
   if (submitted) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ title: headerConfig.label }} />
+        <Stack.Screen options={{ headerTitle: () => <ScreenTitle label={headerConfig.label} /> }} />
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <View style={styles.confirmation}>
             <ThemedText type="subtitle" style={styles.confirmationTitle}>
@@ -431,16 +432,9 @@ export default function AddLocationScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: headerConfig.label }} />
+      <Stack.Screen options={{ headerTitle: () => <ScreenTitle label={headerConfig.label} /> }} />
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.headerRow}>
-            <Ionicons name={headerConfig.icon} size={22} color={headerConfig.color} />
-            <ThemedText type="subtitle" style={[styles.headerTitle, { color: headerConfig.color }]}>
-              {headerConfig.label}
-            </ThemedText>
-          </View>
-
           <ThemedText type="smallBold" style={styles.photoLabel}>
             *Mandatory: at least 1 picture
           </ThemedText>
@@ -769,18 +763,6 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     gap: Spacing.three,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.one,
-    marginBottom: Spacing.one,
-  },
-  headerTitle: {
-    fontSize: 20,
-    lineHeight: 26,
-    textDecorationLine: 'underline',
   },
   photoLabel: {
     marginTop: -Spacing.one,
