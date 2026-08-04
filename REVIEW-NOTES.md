@@ -102,6 +102,32 @@ below is a suggestion, not a change.
 
 ---
 
+# Waiting on the next native build
+
+These cannot ship over the air. An `eas update` only replaces JavaScript and
+assets; anything that adds a native module needs a new binary, and publishing
+JS that imports a module the installed binary lacks **crashes the app on
+launch** — which would also block every further OTA until everyone reinstalled.
+
+- **[R1] Reminders for dated activities.** Agreed feature: when someone saves an
+  activity, notify them on the start date and on the last day. `starts_at` and
+  `expires_at` are already stored, so there is no schema work. It needs
+  `expo-notifications`, which is **not currently a dependency** — the app's
+  "notifications" today are database rows polled every 30s by
+  `notifications-context`, not OS notifications. Plan: on-device scheduled
+  notifications keyed to the bucket-list save, a permission prompt, and an
+  off switch in Settings → Notifications. No server or push infrastructure.
+
+- **[R2] iOS universal links** — needs `apple-app-site-association` on
+  locastar.se plus an `associatedDomains` entitlement, so it is an entitlement
+  change and a rebuild. Blocked on an Apple Team ID, which needs the Apple
+  Developer Program. Deferred by the owner until launch day.
+
+Both should go into the same build, alongside the production profile for the
+stores.
+
+---
+
 ## Ideas to go over
 
 ### Before you start adding content
