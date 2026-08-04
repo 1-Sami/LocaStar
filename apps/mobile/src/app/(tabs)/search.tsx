@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AddFab } from '@/components/add-fab';
 import { CategoryChip } from '@/components/category-chip';
 import { LocationCard } from '@/components/location-card';
 import { BottomTabInset, Fonts, MaxContentWidth, SearchPalette, Spacing } from '@/constants/theme';
@@ -214,7 +213,6 @@ export default function SearchScreen() {
         )}
       </SafeAreaView>
 
-      <AddFab />
 
       <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={closePicker}>
         {/* The sheet is anchored to the bottom, so the keyboard opened straight

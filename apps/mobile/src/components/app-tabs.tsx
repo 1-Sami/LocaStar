@@ -30,12 +30,28 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>
 
+      {/* Middle slot on purpose: adding a place is the action the whole app
+          depends on, and it was previously three taps deep in the Profile menu. */}
+      <NativeTabs.Trigger name="add">
+        <NativeTabs.Trigger.Label>Add</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'plus.circle', selected: 'plus.circle.fill' }}
+          md="add_circle_outline"
+        />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="community">
         <NativeTabs.Trigger.Label>Community</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'person.3', selected: 'person.3.fill' }} md="groups" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="favorites">
+      {/*
+        Saved keeps its route but gives up its slot. iOS shows at most five tabs
+        and pushes the rest into a "More" list, so something had to move for Add
+        — and Saved is the one already reachable in a tap from the Profile stat
+        tiles (Favorites, Saved for later, Shared all open it).
+      */}
+      <NativeTabs.Trigger name="favorites" hidden>
         <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} md="bookmark" />
       </NativeTabs.Trigger>
