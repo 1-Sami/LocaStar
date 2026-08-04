@@ -3,9 +3,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddFab } from '@/components/add-fab';
 import { CategoryChip } from '@/components/category-chip';
 import { LocationCard } from '@/components/location-card';
 import { BottomTabInset, Fonts, MaxContentWidth, SearchPalette, Spacing } from '@/constants/theme';
@@ -201,9 +214,19 @@ export default function SearchScreen() {
         )}
       </SafeAreaView>
 
+      <AddFab />
+
       <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={closePicker}>
-        <Pressable style={styles.modalBackdrop} onPress={closePicker}>
-          {/* Swallow taps so interacting with the sheet doesn't dismiss it. */}
+        {/* The sheet is anchored to the bottom, so the keyboard opened straight
+            over the activity search box you were typing into. A Modal is its own
+            window on Android and does not inherit the activity's adjustResize,
+            so this has to be handled here rather than in app.json. */}
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          {/* Backdrop as a sibling rather than a wrapper: wrapping the sheet in
+              a Pressable would make every tap inside it dismiss the sheet. */}
+          <Pressable style={StyleSheet.absoluteFill} onPress={closePicker} />
           <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>Filter</Text>
 
@@ -268,7 +291,7 @@ export default function SearchScreen() {
               )}
             </ScrollView>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>

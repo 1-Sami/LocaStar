@@ -59,8 +59,13 @@ const STAT_SECTIONS: Record<string, string> = {
   Shared: 'shared',
 };
 
-const PRIMARY_MENU_ITEMS = ['My reviews', 'My lists', 'Friends', 'Add location', 'Add activity'];
+// "My reviews" is deliberately absent: the Reviews stat tile directly above
+// already goes there, and two controls a centimetre apart leading to the same
+// screen reads as a mistake rather than a convenience.
+const PRIMARY_MENU_ITEMS = ['My lists', 'Friends', 'Add location', 'Add activity'];
 const SECONDARY_MENU_ITEMS = ['Settings', 'About'];
+// Kept in their own group so moderation tools don't sit flush against About.
+const MODERATOR_MENU_ITEMS = ['Reports', 'People & bans', 'Moderation log'];
 
 const MENU_ICONS: Record<
   string,
@@ -70,7 +75,6 @@ const MENU_ICONS: Record<
     color: string;
   }
 > = {
-  'My reviews': { icon: 'create-outline', color: '#4CD37A' },
   'My lists': { icon: 'folder-marker-outline', family: 'material', color: '#4C8FE8' },
   Friends: { icon: 'people-outline', color: '#F5738A' },
   'Add location': { icon: 'add-circle-outline', color: '#C34CE8' },
@@ -199,12 +203,7 @@ export default function ProfileScreen() {
     if (confirmed) signOut();
   };
 
-  const secondaryMenuItems = isModerator
-    ? [...SECONDARY_MENU_ITEMS, 'Reports', 'People & bans', 'Moderation log']
-    : SECONDARY_MENU_ITEMS;
-
   const handleMenuPress = (item: string) => {
-    if (item === 'My reviews') router.push('/my-reviews');
     if (item === 'My lists') router.push('/lists' as never);
     if (item === 'Friends') router.push('/friends' as never);
     if (item === 'Add location') router.push({ pathname: '/add-location', params: { kind: 'place' } });
@@ -390,15 +389,23 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.menu, styles.menuGroupGap]}>
-          {secondaryMenuItems.map((item) => (
-            <MenuRow
-              key={item}
-              item={item}
-              badgeCount={item === 'Reports' ? openReportsCount : undefined}
-              onPress={() => handleMenuPress(item)}
-            />
+          {SECONDARY_MENU_ITEMS.map((item) => (
+            <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
           ))}
         </View>
+
+        {isModerator && (
+          <View style={[styles.menu, styles.menuGroupGap]}>
+            {MODERATOR_MENU_ITEMS.map((item) => (
+              <MenuRow
+                key={item}
+                item={item}
+                badgeCount={item === 'Reports' ? openReportsCount : undefined}
+                onPress={() => handleMenuPress(item)}
+              />
+            ))}
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -423,14 +430,16 @@ const styles = StyleSheet.create({
   // Sits above the profile row so the avatar/username stack under the bell.
   bellRow: {
     alignItems: 'flex-end',
-    paddingTop: Spacing.four,
+    paddingTop: Spacing.two,
   },
+  // Sits higher on the screen than it did, and the space it gave up is spent
+  // below instead — the avatar block used to crowd the stat tiles.
   profileRow: {
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.five,
   },
   notificationBellButton: {
     width: 48,

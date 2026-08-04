@@ -10,9 +10,15 @@ export default function AppTabs() {
   const { unreadCount } = useNotificationsBadge();
 
   return (
+    // "labeled" keeps every label on screen. The default is "auto", which on
+    // Android hides the label of every tab except the selected one — so four of
+    // the five became bare icons, and an icon alone does not say "Community" or
+    // "Saved" to someone opening the app for the first time. iOS labels all tabs
+    // regardless, so this also makes the two platforms agree.
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
+      labelVisibilityMode="labeled"
       labelStyle={{ selected: { color: colors.text } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>

@@ -12,6 +12,7 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddFab } from '@/components/add-fab';
 import { CompactLocationCard } from '@/components/compact-location-card';
 import { ListCard } from '@/components/list-card';
 import { LocaStarLogo } from '@/components/locastar-logo';
@@ -376,6 +377,10 @@ export default function HomeScreen() {
           />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Outside the SafeAreaView so it floats over the content rather than
+          being laid out after it. */}
+      <AddFab />
     </ThemedView>
   );
 }

@@ -44,11 +44,59 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
     onChange(uris.filter((_, i) => i !== index));
   };
 
+  /**
+   * Swaps a photo with its neighbour.
+   *
+   * Order is not cosmetic: photos are uploaded in this order and location_photos
+   * ties break on created_at, so the first one becomes the cover shown on every
+   * search card. Before this the only way to fix a wrong order was to remove
+   * every photo and re-add them in sequence.
+   */
+  const move = (index: number, by: -1 | 1) => {
+    const target = index + by;
+    if (target < 0 || target >= uris.length) return;
+    const next = [...uris];
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
   return (
     <View style={styles.row}>
       {uris.map((uri, index) => (
         <View key={`${uri}-${index}`} style={styles.slot}>
           <Image source={{ uri }} style={styles.image} contentFit="cover" />
+
+          {index === 0 && (
+            <View style={styles.coverBadge}>
+              <ThemedText type="small" style={styles.coverBadgeText}>
+                COVER
+              </ThemedText>
+            </View>
+          )}
+
+          {uris.length > 1 && (
+            <View style={styles.reorderBar}>
+              <Pressable
+                onPress={() => move(index, -1)}
+                disabled={index === 0}
+                hitSlop={6}
+                style={styles.reorderButton}>
+                <Ionicons name="chevron-back" size={16} color={index === 0 ? '#6B6B6B' : '#ffffff'} />
+              </Pressable>
+              <Pressable
+                onPress={() => move(index, 1)}
+                disabled={index === uris.length - 1}
+                hitSlop={6}
+                style={styles.reorderButton}>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={index === uris.length - 1 ? '#6B6B6B' : '#ffffff'}
+                />
+              </Pressable>
+            </View>
+          )}
+
           <Pressable style={styles.removeButton} onPress={() => handleRemove(index)} hitSlop={6}>
             <Ionicons name="close-circle" size={20} color="#E05252" />
           </Pressable>
@@ -59,6 +107,12 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
           <Ionicons name="add" size={28} color="#ffffff" />
         </View>
       </Pressable>
+
+      {uris.length > 1 && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.reorderHint}>
+          The first photo is the one people see on search results — use the arrows to reorder.
+        </ThemedText>
+      )}
 
       <Modal
         visible={sourceMenuVisible}
@@ -107,6 +161,38 @@ const styles = StyleSheet.create({
     right: -6,
     backgroundColor: '#ffffff',
     borderRadius: 10,
+  },
+  coverBadge: {
+    position: 'absolute',
+    top: Spacing.one,
+    left: Spacing.one,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: Spacing.one,
+    borderRadius: 3,
+  },
+  coverBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  reorderBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderBottomLeftRadius: Spacing.two,
+    borderBottomRightRadius: Spacing.two,
+  },
+  reorderButton: {
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.two,
+  },
+  reorderHint: {
+    width: '100%',
   },
   addSlot: {
     flex: 1,
