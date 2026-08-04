@@ -22,7 +22,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
+import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
+
+/** Mirrors the interval in migration 0079, which is what actually enforces it. */
+const CREATOR_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Same shape check as the create form — deliberately loose. Anything stricter
 // rejects addresses that are perfectly valid.
@@ -43,6 +48,9 @@ export default function EditLocationScreen() {
   const router = useRouter();
   const theme = useTheme();
 
+  const { session } = useAuth();
+  const { isModerator } = useSharedProfile();
+
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
@@ -59,6 +67,13 @@ export default function EditLocationScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [kind, setKind] = useState<LocationKind>('place');
+  // Only used to work out whether this save will actually be allowed through.
+  const [permissions, setPermissions] = useState<{
+    createdBy: string | null;
+    createdAt: string;
+    claimedBy: string | null;
+    isVerified: boolean;
+  } | null>(null);
   const [hours, setHours] = useState<OpeningHours>({});
   const [availableSummer, setAvailableSummer] = useState(false);
   const [availableWinter, setAvailableWinter] = useState(false);
@@ -90,6 +105,12 @@ export default function EditLocationScreen() {
             setPhone(location.phone ?? '');
             setEmail(location.email ?? '');
             setKind(location.kind);
+            setPermissions({
+              createdBy: location.created_by,
+              createdAt: location.created_at,
+              claimedBy: location.claimed_by,
+              isVerified: location.is_verified,
+            });
             // "This place has no set opening hours" is gone — Open 24/7 says the
             // same thing and says it better. Rows that still carry the old flag
             // open with 24/7 already ticked, so the meaning survives, it is
@@ -158,10 +179,31 @@ export default function EditLocationScreen() {
   // A name and an address are what make a place findable, so editing must not
   // be a way to empty either. Both address halves are required, matching the
   // create form rather than a single free-text box.
+  /**
+   * Whether the database will actually accept this save.
+   *
+   * Worth checking here and not only on the button that got you here: the
+   * creator's window can close while the form is open, and the guard trigger
+   * does not raise on a late write — it silently reverts the columns and
+   * reports success. Without this you would get "Saved." and no change.
+   */
+  const editWindowClosed = Boolean(
+    permissions &&
+      !isModerator &&
+      !(session && permissions.isVerified && permissions.claimedBy === session.user.id) &&
+      !(
+        session &&
+        permissions.createdBy === session.user.id &&
+        Date.now() - new Date(permissions.createdAt).getTime() < CREATOR_EDIT_WINDOW_MS
+      )
+  );
+
   const missingName = !name.trim();
   // Optional, but has to be an address if given — same rule as the create form.
   const emailValid = kind !== 'activity' || email.trim() === '' || EMAIL_PATTERN.test(email.trim());
-  const canSave = Boolean(!missingName && addressLine1.trim() && addressLine2.trim() && emailValid);
+  const canSave = Boolean(
+    !missingName && addressLine1.trim() && addressLine2.trim() && emailValid && !editWindowClosed
+  );
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -209,6 +251,13 @@ export default function EditLocationScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
+          {editWindowClosed && (
+            <ThemedText type="small" style={styles.addressWarning}>
+              The 24 hours you had to correct this have passed, so changes can no longer be saved.
+              Report the location or contact support if something on it is wrong.
+            </ThemedText>
+          )}
+
           <View style={styles.field}>
             <FieldLabel required>Name/Title</FieldLabel>
             <TextInput

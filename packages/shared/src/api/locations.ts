@@ -116,6 +116,8 @@ export type LocationDetail = {
   visibility: LocationVisibility;
   starts_at: string | null;
   publish_at: string;
+  /** Drives the creator's 24-hour edit window (migration 0079). */
+  created_at: string;
   expires_at: string | null;
   is_boosted: boolean;
   is_verified: boolean;
@@ -150,6 +152,8 @@ type LocationDetailRow = {
   visibility: LocationVisibility;
   starts_at: string | null;
   publish_at: string;
+  /** Drives the creator's 24-hour edit window (migration 0079). */
+  created_at: string;
   expires_at: string | null;
   is_boosted: boolean;
   is_verified: boolean;
@@ -377,7 +381,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -407,6 +411,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     visibility: row.visibility,
     starts_at: row.starts_at,
     publish_at: row.publish_at,
+    created_at: row.created_at,
     expires_at: row.expires_at,
     is_boosted: row.is_boosted,
     owner_username: row.is_verified ? (row.owner?.username ?? null) : null,

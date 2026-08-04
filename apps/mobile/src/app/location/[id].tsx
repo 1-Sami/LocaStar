@@ -132,6 +132,20 @@ function openUrl(url: string): void {
   Linking.openURL(url).catch(() => {});
 }
 
+/**
+ * How long a creator has to correct what they typed. Mirrors the interval in
+ * migration 0079 — the database is the thing that actually enforces it, and if
+ * these two ever disagree the button lies rather than the rule bending.
+ */
+const CREATOR_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function formatWindowLeft(ms: number): string {
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours >= 1) return `${hours} more ${hours === 1 ? 'hour' : 'hours'}`;
+  const minutes = Math.max(1, Math.round(ms / 60_000));
+  return `${minutes} more ${minutes === 1 ? 'minute' : 'minutes'}`;
+}
+
 function formatActivityDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -302,6 +316,19 @@ export default function LocationDetailScreen() {
     location && userCoords && !usingFallback
       ? formatDistance(metresBetween(userCoords, { lat: location.lat, lng: location.lng }))
       : null;
+
+  // Who may edit, matching what the database will actually allow. This used to
+  // check isAdmin while the trigger checks is_moderator(), so a moderator who
+  // wasn't an admin could edit through the API but saw no button.
+  const creatorWindowLeftMs =
+    session && location.created_by === session.user.id
+      ? CREATOR_EDIT_WINDOW_MS - (Date.now() - new Date(location.created_at).getTime())
+      : 0;
+  const withinCreatorWindow = creatorWindowLeftMs > 0;
+  const canEditLocation =
+    isModerator ||
+    Boolean(session && location.is_verified && location.claimed_by === session.user.id) ||
+    withinCreatorWindow;
 
   const websiteUrl = websiteHref(location.website);
   const websiteLabel = websiteUrl ? websiteText(websiteUrl) : null;
@@ -631,7 +658,7 @@ export default function LocationDetailScreen() {
                   </View>
                 )}
               </View>
-              {(isAdmin || (location.is_verified && session?.user.id === location.claimed_by)) && (
+              {canEditLocation && (
                 <Pressable onPress={() => router.push({ pathname: '/edit-location', params: { id: location.id } })}>
                   <ThemedText type="linkPrimary" style={styles.editLink}>
                     Edit
@@ -725,6 +752,14 @@ export default function LocationDetailScreen() {
                   </Pressable>
                 )}
               </View>
+            )}
+
+            {/* Say the window exists and that it ends, rather than letting the
+                Edit link vanish overnight with no explanation. */}
+            {withinCreatorWindow && !isModerator && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.statusLine}>
+                You added this — you can edit it for {formatWindowLeft(creatorWindowLeftMs)}.
+              </ThemedText>
             )}
 
             {location.is_verified ? (
