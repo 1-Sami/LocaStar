@@ -10,7 +10,7 @@ import {
   type OpeningHours,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -45,7 +45,6 @@ function FieldLabel({ children, required }: { children: string; required?: boole
 
 export default function EditLocationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const theme = useTheme();
 
   const { session } = useAuth();
@@ -176,9 +175,6 @@ export default function EditLocationScreen() {
     }
   };
 
-  // A name and an address are what make a place findable, so editing must not
-  // be a way to empty either. Both address halves are required, matching the
-  // create form rather than a single free-text box.
   /**
    * Whether the database will actually accept this save.
    *
@@ -198,6 +194,9 @@ export default function EditLocationScreen() {
       )
   );
 
+  // A name and an address are what make a place findable, so editing must not
+  // be a way to empty either. Both address halves are required, matching the
+  // create form rather than a single free-text box.
   const missingName = !name.trim();
   // Optional, but has to be an address if given — same rule as the create form.
   const emailValid = kind !== 'activity' || email.trim() === '' || EMAIL_PATTERN.test(email.trim());

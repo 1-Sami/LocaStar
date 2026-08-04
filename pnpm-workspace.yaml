@@ -1,3 +1,10 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm 11 refuses to run a dependency's install scripts unless it is listed
+# here, and `expo lint` treats that refusal as a hard failure. unrs-resolver is
+# the native resolver behind eslint-import-resolver; it is a dev dependency of
+# the lint tooling only and never reaches the app bundle.
+allowBuilds:
+  unrs-resolver: true
