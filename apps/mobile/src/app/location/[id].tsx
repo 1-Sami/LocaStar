@@ -330,6 +330,14 @@ export default function LocationDetailScreen() {
     Boolean(session && location.is_verified && location.claimed_by === session.user.id) ||
     withinCreatorWindow;
 
+  // A private activity is the creator's own event, not part of the public map,
+  // so they can remove it (0081). Public content stays admin-only: it carries
+  // other people's reviews and photos.
+  const ownsPrivateActivity = Boolean(
+    session && location.created_by === session.user.id && location.visibility === 'private'
+  );
+  const canDeleteLocation = isAdmin || ownsPrivateActivity;
+
   const websiteUrl = websiteHref(location.website);
   const websiteLabel = websiteUrl ? websiteText(websiteUrl) : null;
 
@@ -521,8 +529,8 @@ export default function LocationDetailScreen() {
 
   const handleDeleteLocation = async () => {
     const confirmed = await confirmAsync(
-      'Delete this location?',
-      `This permanently deletes "${location.name}" and everything tied to it — reviews, photos, saves, and shares. This can't be undone.`,
+      `Delete this ${location.kind}?`,
+      `This permanently deletes "${location.name}" and everything tied to it — reviews, photos, saves, and shares, including anything the people you invited added. This can't be undone.`,
       'Delete'
     );
     if (!confirmed) return;
@@ -1036,10 +1044,11 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
-            {isAdmin && (
+            {canDeleteLocation && (
               <Pressable style={styles.adminDeleteButton} onPress={handleDeleteLocation}>
                 <ThemedText type="smallBold" style={styles.adminDeleteButtonText}>
-                  Delete this {location.kind} (admin)
+                  Delete this {location.kind}
+                  {isAdmin && !ownsPrivateActivity ? ' (admin)' : ''}
                 </ThemedText>
               </Pressable>
             )}

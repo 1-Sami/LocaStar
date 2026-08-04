@@ -19,12 +19,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateField } from '@/components/date-field';
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
+import { HeaderBackButton } from '@/components/header-back-button';
 import { PhotoPicker } from '@/components/photo-picker';
 import { ScreenTitle } from '@/components/screen-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useDiscardWarning } from '@/hooks/use-discard-warning';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
@@ -136,6 +138,38 @@ export default function AddLocationScreen() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [publishDate, setPublishDate] = useState<Date | null>(null);
+  /**
+   * Has this person actually started, or did the form just fill itself in?
+   *
+   * Deliberately ignores the pin and both address lines: the pin is set from
+   * GPS on open and the address is reverse-geocoded from it, so counting either
+   * would pop a "discard?" prompt at someone who opened the screen and
+   * immediately changed their mind. Everything below requires a deliberate act.
+   */
+  const hasStarted =
+    photoUris.length > 0 ||
+    name.trim().length > 0 ||
+    description.trim().length > 0 ||
+    categoryIds.length > 0 ||
+    website.trim().length > 0 ||
+    phone.trim().length > 0 ||
+    email.trim().length > 0 ||
+    otherCategoryDetail.trim().length > 0 ||
+    Object.keys(hours).length > 0 ||
+    availableSummer ||
+    availableWinter ||
+    startDate !== null ||
+    endDate !== null ||
+    publishDate !== null ||
+    visibleAsCreator !== null ||
+    isOwner !== null ||
+    isPrivate !== null;
+
+  const { onBack } = useDiscardWarning(
+    hasStarted,
+    `Your ${noun} hasn't been submitted yet. Everything you've filled in will be lost.`
+  );
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -396,7 +430,14 @@ export default function AddLocationScreen() {
   if (submitted) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ headerTitle: () => <ScreenTitle label={headerConfig.label} /> }} />
+        <Stack.Screen
+        options={{
+          headerTitle: () => <ScreenTitle label={headerConfig.label} />,
+          headerLeft: () => <HeaderBackButton onPress={onBack} />,
+          // A half-filled form should not be dismissable by a stray swipe.
+          gestureEnabled: !hasStarted,
+        }}
+      />
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <View style={styles.confirmation}>
             <ThemedText type="subtitle" style={styles.confirmationTitle}>
@@ -432,7 +473,14 @@ export default function AddLocationScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerTitle: () => <ScreenTitle label={headerConfig.label} /> }} />
+      <Stack.Screen
+        options={{
+          headerTitle: () => <ScreenTitle label={headerConfig.label} />,
+          headerLeft: () => <HeaderBackButton onPress={onBack} />,
+          // A half-filled form should not be dismissable by a stray swipe.
+          gestureEnabled: !hasStarted,
+        }}
+      />
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="smallBold" style={styles.photoLabel}>

@@ -59,7 +59,7 @@ function statTiles(stats: ProfileStats) {
     { label: 'Shared', value: stats.shared, color: '#B0B4BA' },
     { label: 'Reviews', value: stats.reviews, color: '#4CD37A' },
     { label: 'Added', value: stats.added, color: '#C34CE8' },
-    { label: 'Lists', value: stats.lists, color: '#2BA3A3' },
+    { label: 'My lists', value: stats.lists, color: '#2BA3A3' },
     { label: 'Activities', value: stats.activities, color: '#F2545B' },
   ];
 }
@@ -207,7 +207,7 @@ export default function HomeScreen() {
       router.push('/my-locations' as never);
       return;
     }
-    if (label === 'Lists') {
+    if (label === 'My lists') {
       router.push('/lists' as never);
       return;
     }

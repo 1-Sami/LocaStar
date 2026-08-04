@@ -481,9 +481,38 @@ export async function setLocationCreatorVisible(
   if (error) throw error;
 }
 
+/**
+ * Removes a location and everything hanging off it.
+ *
+ * Every foreign key into locations is ON DELETE CASCADE, so the row takes its
+ * reviews, photos, saves, shares, list items, reports and claims with it. What
+ * cascade cannot reach is the storage bucket: the location_photos and
+ * review_photos rows disappear along with the only record of where their files
+ * live, so the objects are stranded with nothing pointing at them. Collect the
+ * paths *before* deleting, then tidy up after.
+ *
+ * Permitted to admins, and to the creator of a private activity (0081).
+ */
 export async function deleteLocation(client: SupabaseClient, locationId: string): Promise<void> {
+  const [locationPhotos, reviewPhotos] = await Promise.all([
+    client.from("location_photos").select("storage_path").eq("location_id", locationId),
+    client.from("reviews").select("review_photos(storage_path)").eq("location_id", locationId),
+  ]);
+
+  const paths = [
+    ...((locationPhotos.data ?? []) as { storage_path: string }[]).map((row) => row.storage_path),
+    ...((reviewPhotos.data ?? []) as { review_photos: { storage_path: string }[] }[]).flatMap((row) =>
+      row.review_photos.map((photo) => photo.storage_path)
+    ),
+  ].filter(Boolean);
+
   const { error } = await client.from("locations").delete().eq("id", locationId);
   if (error) throw error;
+
+  // Best effort, and deliberately unchecked: the rows are gone, so the place is
+  // already out of the app. An orphaned file is worth less than an error thrown
+  // at someone whose delete actually succeeded.
+  if (paths.length > 0) await client.storage.from("media").remove(paths);
 }
 
 export type LocationUpdate = {
