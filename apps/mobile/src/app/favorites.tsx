@@ -30,7 +30,7 @@ import { LocationCard } from '@/components/location-card';
 import { SectionBadge } from '@/components/section-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
@@ -281,7 +281,7 @@ export default function FavoritesScreen() {
   if (!session) {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <View style={styles.loggedOutPrompt}>
             <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
               Log in to see your favorites, bucket list, and shared places.
@@ -308,7 +308,7 @@ export default function FavoritesScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         {/*
           Only for the first load. Swapping the content for a spinner on every
           focus unmounts the list and throws away the scroll position — the
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.four,
+    paddingBottom: Spacing.six,
     gap: Spacing.five,
   },
   section: {

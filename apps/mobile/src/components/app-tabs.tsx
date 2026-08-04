@@ -46,15 +46,16 @@ export default function AppTabs() {
       </NativeTabs.Trigger>
 
       {/*
-        Saved keeps its route but gives up its slot. iOS shows at most five tabs
-        and pushes the rest into a "More" list, so something had to move for Add
-        — and Saved is the one already reachable in a tap from the Profile stat
-        tiles (Favorites, Saved for later, Shared all open it).
+        Saved is deliberately not here. iOS shows at most five tabs and pushes
+        the rest into a "More" list, so something had to give up its slot for
+        Add — and Saved is the one already reached in a tap from the Favorites,
+        Saved for later and Shared tiles on Home and Profile.
+
+        It lives at app/favorites.tsx, a pushed screen, NOT a hidden tab. A
+        hidden tab is filtered out of the navigator, and in production
+        NativeTabsView does not error on that — it silently falls back to tab
+        index 0, so every one of those tiles quietly landed you on Home.
       */}
-      <NativeTabs.Trigger name="favorites" hidden>
-        <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} md="bookmark" />
-      </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>

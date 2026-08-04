@@ -23,19 +23,23 @@ const TABS: { name: string; href: string; label: string; icon: IconName; iconAct
   // include the bare "/" it actually resolves to at runtime.
   { name: 'home', href: '/' as never, label: 'Home', icon: 'home-outline', iconActive: 'home' },
   { name: 'search', href: '/search', label: 'Search', icon: 'search-outline', iconActive: 'search' },
+  // Same order as the native bar. Add takes the slot Saved used to have, and
+  // Saved is reached from the stat tiles on Home and Profile — a TabTrigger
+  // name has to match a route inside the tabs group, and favorites is no
+  // longer one of them.
+  {
+    name: 'add',
+    href: '/add' as never,
+    label: 'Add',
+    icon: 'add-circle-outline',
+    iconActive: 'add-circle',
+  },
   {
     name: 'community',
     href: '/community',
     label: 'Community',
     icon: 'people-outline',
     iconActive: 'people',
-  },
-  {
-    name: 'favorites',
-    href: '/favorites',
-    label: 'Saved',
-    icon: 'bookmark-outline',
-    iconActive: 'bookmark',
   },
   {
     name: 'profile',

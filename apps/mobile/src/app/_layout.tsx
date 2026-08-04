@@ -28,6 +28,7 @@ function ThemedNavigation() {
           <Stack.Screen name="auth/confirmed" options={{ headerShown: false }} />
           <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
+          <Stack.Screen name="favorites" options={{ title: 'Saved' }} />
           <Stack.Screen name="my-reviews" options={{ title: 'My reviews' }} />
           <Stack.Screen name="my-locations" options={{ title: 'My added locations' }} />
           <Stack.Screen name="add-location" options={{ presentation: 'modal' }} />
