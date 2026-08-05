@@ -12,6 +12,39 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
+// Purple for places, brown for activities — the same split the Add tab and the
+// Profile menu already use (a place is #C34CE8 purple, an activity #E8A93B
+// amber). The amber is darkened here because a full-strength gold outline on a
+// dark card competes with the star rating sitting inside it.
+const PLACE_BORDER = '#C34CE8';
+const ACTIVITY_BORDER = '#8A6A2A';
+
+function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/**
+ * When an activity runs, as one line.
+ *
+ * Only activities carry dates; a place returns null and shows nothing. An
+ * activity with a start but no end is open-ended, so it reads "From …" rather
+ * than inventing a finish.
+ */
+function dateLine(location: MyAddedLocation): string | null {
+  if (location.kind !== 'activity') return null;
+  if (location.starts_at && location.expires_at) {
+    return `${formatDay(location.starts_at)} – ${formatDay(location.expires_at)}`;
+  }
+  if (location.starts_at) return `From ${formatDay(location.starts_at)}`;
+  if (location.expires_at) return `Until ${formatDay(location.expires_at)}`;
+  return null;
+}
+
+/** Past its end date. Keyed on expires_at: without one it never ends. */
+function hasEnded(location: MyAddedLocation): boolean {
+  return Boolean(location.expires_at && new Date(location.expires_at).getTime() < Date.now());
+}
+
 export default function MyLocationsScreen() {
   const { session } = useAuth();
   const router = useRouter();
@@ -49,38 +82,53 @@ export default function MyLocationsScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : locations.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-            You haven't added any locations or activities yet.
+            You haven&apos;t added any locations or activities yet.
           </ThemedText>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            {locations.map((location) => (
-              <Pressable
-                key={location.id}
-                style={styles.card}
-                onPress={() => router.push({ pathname: '/location/[id]', params: { id: location.id } })}>
-                <View style={styles.titleRow}>
-                  <ThemedText type="smallBold" style={styles.name} numberOfLines={1}>
-                    {location.name}
-                  </ThemedText>
-                  {location.is_verified && <Ionicons name="checkmark-circle" size={16} color="#4CD37A" />}
-                  {location.visibility === 'private' && (
-                    <Ionicons name="lock-closed" size={13} color="#E8A93B" />
+            {locations.map((location) => {
+              const isActivity = location.kind === 'activity';
+              const runs = dateLine(location);
+              const ended = hasEnded(location);
+              return (
+                <Pressable
+                  key={location.id}
+                  style={[styles.card, { borderColor: isActivity ? ACTIVITY_BORDER : PLACE_BORDER }]}
+                  onPress={() => router.push({ pathname: '/location/[id]', params: { id: location.id } })}>
+                  <View style={styles.titleRow}>
+                    <ThemedText type="smallBold" style={styles.name} numberOfLines={1}>
+                      {location.name}
+                    </ThemedText>
+                    {location.is_verified && <Ionicons name="checkmark-circle" size={16} color="#4CD37A" />}
+                    {location.visibility === 'private' && (
+                      <Ionicons name="lock-closed" size={13} color="#E8A93B" />
+                    )}
+                  </View>
+                  <View style={styles.metaRow}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {isActivity ? 'Activity' : 'Location'}
+                      {location.category_label ? ` · ${location.category_label}` : ''}
+                    </ThemedText>
+                  </View>
+                  {runs && (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {runs}
+                    </ThemedText>
                   )}
-                </View>
-                <View style={styles.metaRow}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {location.kind === 'activity' ? 'Activity' : 'Location'}
-                    {location.category_label ? ` · ${location.category_label}` : ''}
-                  </ThemedText>
-                </View>
-                <View style={styles.ratingRow}>
-                  <StarRating rating={location.avg_rating} size={13} />
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {location.avg_rating.toFixed(1)} · {location.review_count} reviews
-                  </ThemedText>
-                </View>
-              </Pressable>
-            ))}
+                  <View style={styles.ratingRow}>
+                    <StarRating rating={location.avg_rating} size={13} />
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.ratingText}>
+                      {location.avg_rating.toFixed(1)} · {location.review_count} reviews
+                    </ThemedText>
+                    {ended && (
+                      <ThemedText type="small" style={styles.endedText}>
+                        Ended
+                      </ThemedText>
+                    )}
+                  </View>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         )}
       </SafeAreaView>
@@ -110,11 +158,13 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.three,
   },
+  // A full outline rather than the old bottom hairline: the border is what
+  // tells a place apart from an activity at a glance, so it has to enclose.
   card: {
     gap: Spacing.half,
-    paddingBottom: Spacing.three,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128,128,128,0.25)',
+    padding: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
   },
   titleRow: {
     flexDirection: 'row',
@@ -131,5 +181,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  ratingText: {
+    flex: 1,
+  },
+  endedText: {
+    color: '#E05252',
   },
 });

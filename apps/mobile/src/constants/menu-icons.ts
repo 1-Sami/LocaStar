@@ -26,7 +26,7 @@ export const MENU_ICONS: Record<string, MenuIcon> = {
   'People & bans': { icon: 'shield-checkmark-outline', color: '#E8A93B' },
   'Moderation log': { icon: 'document-text-outline', color: '#4C8FE8' },
   'My reviews': { icon: 'create-outline', color: '#4CD37A' },
-  'My added locations': { icon: 'location-outline', color: '#C34CE8' },
+  'My contributions': { icon: 'location-outline', color: '#C34CE8' },
   Saved: { icon: 'bookmark-outline', color: '#4C8FE8' },
   Notifications: { icon: 'notifications-outline', color: '#E8A93B' },
 };

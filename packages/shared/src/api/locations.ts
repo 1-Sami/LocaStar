@@ -435,6 +435,9 @@ export type MyAddedLocation = {
   is_verified: boolean;
   visibility: LocationVisibility;
   created_at: string;
+  /** Both null for a place. On an activity, what it runs between. */
+  starts_at: string | null;
+  expires_at: string | null;
 };
 
 type MyAddedLocationRow = {
@@ -446,6 +449,8 @@ type MyAddedLocationRow = {
   is_verified: boolean;
   visibility: LocationVisibility;
   created_at: string;
+  starts_at: string | null;
+  expires_at: string | null;
   location_categories: { categories: { name: string } | null }[];
 };
 
@@ -453,7 +458,7 @@ export async function fetchMyAddedLocations(client: SupabaseClient, userId: stri
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, avg_rating, review_count, is_verified, visibility, created_at, location_categories(categories(name))"
+      "id, kind, name, avg_rating, review_count, is_verified, visibility, created_at, starts_at, expires_at, location_categories(categories(name))"
     )
     .eq("created_by", userId)
     .order("created_at", { ascending: false });
@@ -469,6 +474,8 @@ export async function fetchMyAddedLocations(client: SupabaseClient, userId: stri
     is_verified: row.is_verified,
     visibility: row.visibility,
     created_at: row.created_at,
+    starts_at: row.starts_at,
+    expires_at: row.expires_at,
   }));
 }
 

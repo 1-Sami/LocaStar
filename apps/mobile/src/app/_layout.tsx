@@ -31,7 +31,7 @@ function ThemedNavigation() {
           <Stack.Screen name="write-review" options={{ presentation: 'modal', title: 'Write a review' }} />
           <Stack.Screen name="favorites" options={{ headerTitle: () => <ScreenTitle label="Saved" /> }} />
           <Stack.Screen name="my-reviews" options={{ headerTitle: () => <ScreenTitle label="My reviews" /> }} />
-          <Stack.Screen name="my-locations" options={{ headerTitle: () => <ScreenTitle label="My added locations" /> }} />
+          <Stack.Screen name="my-locations" options={{ headerTitle: () => <ScreenTitle label="My contributions" /> }} />
           <Stack.Screen name="add-location" options={{ presentation: 'modal' }} />
           <Stack.Screen name="edit-location" options={{ presentation: 'modal', title: 'Edit location' }} />
           <Stack.Screen name="settings/index" options={{ headerTitle: () => <ScreenTitle label="Settings" /> }} />
