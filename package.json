@@ -3,6 +3,8 @@
   "private": true,
   "packageManager": "pnpm@11.18.0",
   "scripts": {
-    "mobile": "pnpm --filter @locastar/mobile start"
+    "mobile": "pnpm --filter @locastar/mobile start",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm --filter @locastar/mobile lint"
   }
 }
