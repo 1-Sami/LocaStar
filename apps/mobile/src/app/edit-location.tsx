@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -481,7 +482,7 @@ export default function EditLocationScreen() {
       </SafeAreaView>
 
       <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={() => setPickerVisible(false)}>
-        <View style={styles.modalRoot}>
+        <SheetRoot>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
@@ -501,7 +502,7 @@ export default function EditLocationScreen() {
               </ThemedText>
             </Pressable>
           </ThemedView>
-        </View>
+        </SheetRoot>
       </Modal>
     </ThemedView>
   );
@@ -608,11 +609,6 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#ffffff',
-  },
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     borderTopLeftRadius: Spacing.four,

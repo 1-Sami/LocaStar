@@ -8,14 +8,18 @@ import { KeyboardAvoidingView, Platform, StyleSheet, type ViewProps } from 'reac
  * could neither see what you were typing nor reach "Save". Lifting the sheet
  * keeps both visible.
  *
- * iOS needs `padding`; on Android the window already resizes for the keyboard,
- * and adding a behavior there double-counts it and leaves a gap.
+ * Android needs a behavior too, and used to be left as `undefined` here on the
+ * belief that "the window already resizes for the keyboard". It does not: a
+ * React Native Modal is its own Android window and does not inherit the
+ * activity's adjustResize, so the hook did nothing and every sheet stayed under
+ * the keyboard. `height` shrinks the sheet instead, which is what iOS gets from
+ * `padding`.
  */
 export function SheetRoot({ style, children, ...rest }: ViewProps) {
   return (
     <KeyboardAvoidingView
       style={[styles.root, style]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       {...rest}>
       {children}
     </KeyboardAvoidingView>

@@ -5,6 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
@@ -117,7 +118,7 @@ export default function MyListsScreen() {
       </SafeAreaView>
 
       <Modal visible={createVisible} animationType="slide" transparent onRequestClose={() => setCreateVisible(false)}>
-        <View style={styles.modalRoot}>
+        <SheetRoot>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setCreateVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
@@ -161,7 +162,7 @@ export default function MyListsScreen() {
               </ThemedText>
             </Pressable>
           </ThemedView>
-        </View>
+        </SheetRoot>
       </Modal>
     </ThemedView>
   );
@@ -195,11 +196,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.four,
     paddingHorizontal: Spacing.four,
-  },
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     borderTopLeftRadius: Spacing.four,

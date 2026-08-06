@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LocationPhoto } from '@/components/location-photo';
 import { ShareModal } from '@/components/share-modal';
 import { StarRating } from '@/components/star-rating';
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
@@ -343,7 +344,7 @@ export default function ListDetailScreen() {
       />
 
       <Modal visible={renameVisible} animationType="slide" transparent onRequestClose={() => setRenameVisible(false)}>
-        <View style={styles.modalRoot}>
+        <SheetRoot>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setRenameVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
@@ -371,7 +372,7 @@ export default function ListDetailScreen() {
               </ThemedText>
             </Pressable>
           </ThemedView>
-        </View>
+        </SheetRoot>
       </Modal>
     </ThemedView>
   );
@@ -492,11 +493,6 @@ const styles = StyleSheet.create({
   sharedWithSection: {
     marginTop: Spacing.two,
     gap: Spacing.half,
-  },
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     borderTopLeftRadius: Spacing.four,

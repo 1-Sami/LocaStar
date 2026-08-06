@@ -16,6 +16,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -328,7 +329,8 @@ export default function AdminUsersScreen() {
       </SafeAreaView>
 
       <Modal visible={banTarget !== null} animationType="slide" transparent onRequestClose={() => setBanTarget(null)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setBanTarget(null)}>
+        <SheetRoot>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setBanTarget(null)} />
           <Pressable style={styles.modalContent} onPress={() => {}}>
             <ThemedView type="backgroundElement" style={styles.modalInner}>
               <ThemedText type="subtitle" style={styles.modalTitle}>
@@ -391,7 +393,7 @@ export default function AdminUsersScreen() {
               </Pressable>
             </ThemedView>
           </Pressable>
-        </Pressable>
+        </SheetRoot>
       </Modal>
     </ThemedView>
   );
@@ -459,7 +461,6 @@ const styles = StyleSheet.create({
   neutralButton: { backgroundColor: 'rgba(128,128,128,0.25)' },
   dangerButton: { backgroundColor: '#E05252' },
   confirmButton: { backgroundColor: '#E8A93B' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalContent: { maxHeight: '85%' },
   modalInner: {
     borderTopLeftRadius: Spacing.four,

@@ -22,6 +22,7 @@ import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { HeaderBackButton } from '@/components/header-back-button';
 import { PhotoPicker } from '@/components/photo-picker';
 import { ScreenTitle } from '@/components/screen-title';
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -747,7 +748,10 @@ export default function AddLocationScreen() {
       </SafeAreaView>
 
       <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={() => setPickerVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setPickerVisible(false)}>
+        <SheetRoot>
+          {/* Backdrop as a sibling, not a wrapper: wrapping the sheet meant a
+              tap on any dead space inside it also dismissed the picker. */}
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
               Categories
@@ -793,7 +797,7 @@ export default function AddLocationScreen() {
               </ThemedText>
             </Pressable>
           </ThemedView>
-        </Pressable>
+        </SheetRoot>
       </Modal>
     </ThemedView>
   );
@@ -959,11 +963,6 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     borderTopLeftRadius: Spacing.four,
