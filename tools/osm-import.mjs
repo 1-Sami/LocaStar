@@ -114,6 +114,53 @@ function buildQuery(filters, bbox) {
  */
 const MERGE_RADIUS_M = 30;
 
+/**
+ * How many rows one run may import, unless --max says otherwise.
+ *
+ * The aim is to kickstart an area, not to fill it: somewhere under a fifth of
+ * what is really out there, with the rest left for the people who actually go.
+ * A map that already claims to know everywhere gives nobody a reason to add
+ * anything, and an import cannot say whether the hoop is bent.
+ */
+const DEFAULT_MAX_ROWS = 50;
+
+/**
+ * Picks n rows spread across the area rather than the first n found.
+ *
+ * Overpass returns roughly in id order, which is the order things were mapped —
+ * so the first fifty are typically fifty courts in whichever suburb one
+ * enthusiast surveyed. Farthest-point selection instead takes the most distant
+ * candidate each time, giving a seed that covers the region.
+ *
+ * Done BEFORE geocoding on purpose. Geocoding is the slow part at one request a
+ * second, and there is no sense spending four minutes on two hundred rows to
+ * then throw away three quarters of them. Choosing first needs only the
+ * coordinates, which are already in hand.
+ */
+function pickSpread(rows, n) {
+  if (rows.length <= n) return rows;
+  const picked = [rows[0]];
+  const rest = rows.slice(1);
+  while (picked.length < n && rest.length > 0) {
+    let bestIndex = 0;
+    let bestDistance = -1;
+    for (let i = 0; i < rest.length; i++) {
+      // Distance to the nearest already-picked row: maximise it.
+      let nearest = Infinity;
+      for (const p of picked) {
+        const d = metresBetween(p, rest[i]);
+        if (d < nearest) nearest = d;
+      }
+      if (nearest > bestDistance) {
+        bestDistance = nearest;
+        bestIndex = i;
+      }
+    }
+    picked.push(rest.splice(bestIndex, 1)[0]);
+  }
+  return picked;
+}
+
 /** Metres between two points. Haversine, mean Earth radius. */
 function metresBetween(a, b) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -468,10 +515,12 @@ async function main() {
   const sqlFile = flag('--sql');
   const owner = flag('--owner') ?? 'sam_86';
   const geocode = rest.includes('--geocode');
+  const maxRows = Number(flag('--max') ?? DEFAULT_MAX_ROWS);
 
   if (!CATEGORIES[slug] || !AREAS[areaKey]) {
     console.error(
-      'Usage: node tools/osm-import.mjs <category> <area> [--out file.json] [--sql file.sql] [--owner username]\n'
+      'Usage: node tools/osm-import.mjs <category> <area> [--geocode] [--max n]\n' +
+        '                                 [--out file.json] [--sql file.sql] [--owner username]\n'
     );
     console.error('  categories:', Object.keys(CATEGORIES).join(', '));
     console.error('  areas     :', Object.keys(AREAS).join(', '));
@@ -505,10 +554,18 @@ async function main() {
    * people using it are for.
    */
   const unplaceable = elements.length - named.length;
-  const needing = named.filter((r) => !r.address || !r.name).length;
   console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   console.log(`  ${unplaceable} skipped (no usable point)`);
 
+  // Deliberately a new binding rather than mutating `named` in place: when the
+  // count is under the cap pickSpread returns the very same array, so emptying
+  // `named` first would empty the source it is about to be refilled from.
+  const candidates = pickSpread(named, maxRows);
+  if (candidates.length < named.length) {
+    console.log(`  ${named.length - candidates.length} set aside (cap ${maxRows}, spread across the area)`);
+  }
+
+  const needing = candidates.filter((r) => !r.address || !r.name).length;
   if (needing > 0) {
     if (!geocode) {
       console.log(`  ${needing} lack an address or a name in OSM`);
@@ -516,15 +573,15 @@ async function main() {
       console.log(`  That is one request a second to Nominatim, so about ${Math.ceil((needing * 1.1) / 60)} min.`);
     } else {
       console.log(`  ${needing} need lookup — about ${Math.ceil((needing * 1.1) / 60)} min at 1 req/sec`);
-      await geocodeMissing(named, (n) => console.log(`    ${n}/${needing}…`));
+      await geocodeMissing(candidates, (n) => console.log(`    ${n}/${needing}…`));
     }
   }
 
-  const addressed = named.filter((r) => r.address && r.name);
+  const addressed = candidates.filter((r) => r.address && r.name);
   const { kept: rows, dropped } = dedupe(addressed);
 
-  console.log(`  ${named.length - addressed.length} skipped (still no address)`);
-  console.log(`  ${dropped.length} merged (same name within 100 m)`);
+  console.log(`  ${candidates.length - addressed.length} skipped (still no address)`);
+  console.log(`  ${dropped.length} merged (same name within ${MERGE_RADIUS_M} m)`);
   console.log(`  ${rows.length} importable`);
 
   if (dropped.length > 0) {
