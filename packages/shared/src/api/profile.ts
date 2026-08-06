@@ -13,11 +13,17 @@ export type ProfileStats = {
 async function countRows(
   client: SupabaseClient,
   table: string,
-  filters: Record<string, string>
+  filters: Record<string, string>,
+  nullColumns: string[] = []
 ): Promise<number> {
   let query = client.from(table).select("*", { count: "exact", head: true });
   for (const [column, value] of Object.entries(filters)) {
     query = query.eq(column, value);
+  }
+  // `.is(col, null)`, never `.eq(col, null)`: in SQL nothing equals null, so an
+  // eq filter would silently match no rows and quietly report a count of zero.
+  for (const column of nullColumns) {
+    query = query.is(column, null);
   }
   const { count, error } = await query;
   if (error) throw error;
@@ -33,9 +39,13 @@ export async function fetchProfileStats(
     countRows(client, "saves", { user_id: userId, kind: "bucket_list" }),
     countRows(client, "location_shares", { recipient_id: userId }),
     countRows(client, "reviews", { user_id: userId }),
-    countRows(client, "locations", { created_by: userId }),
+    // import_batch is null keeps bulk-imported rows out of a person's own
+    // numbers. Imports are created by a real account, so without this the
+    // owner's "Added" tile reads five thousand and their three real
+    // contributions are lost in it.
+    countRows(client, "locations", { created_by: userId }, ["import_batch"]),
     countRows(client, "lists", { user_id: userId }),
-    countRows(client, "locations", { created_by: userId, kind: "activity" }),
+    countRows(client, "locations", { created_by: userId, kind: "activity" }, ["import_batch"]),
   ]);
 
   return { favorites, bucketList, shared, reviews, added, lists, activities };

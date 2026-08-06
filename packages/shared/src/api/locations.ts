@@ -467,6 +467,9 @@ export async function fetchMyAddedLocations(client: SupabaseClient, userId: stri
       "id, kind, name, avg_rating, review_count, is_verified, visibility, created_at, starts_at, expires_at, location_categories(categories(name))"
     )
     .eq("created_by", userId)
+    // "My contributions" means what this person added, not what a bulk import
+    // filed under their account. `.is`, not `.eq` — nothing equals null.
+    .is("import_batch", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
 
