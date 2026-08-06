@@ -79,6 +79,35 @@ const CATEGORIES = {
   football: { filters: ['["leisure"="pitch"]["sport"="soccer"]'] },
   'dog-parks': { filters: ['["leisure"="dog_park"]'] },
   skatepark: { filters: ['["leisure"="skatepark"]', '["sport"="skateboard"]'] },
+  /*
+   * Golf is the first category made of genuinely large polygons, and the
+   * centroid is the wrong pin for it.
+   *
+   * A pitch, a library, a fitness station: the middle of the shape is the
+   * place. A golf course is 400 m to 2.9 km across, and its middle is out on
+   * the fairways — measured across ten cities, the centroid sits 160-385 m
+   * from the clubhouse, sometimes with no road anywhere near it. Directions to
+   * that point send someone into a hedge.
+   *
+   * So a course is pinned at something a visitor actually arrives at, and a
+   * course with no such thing mapped is not imported at all. That drops well
+   * over half of them, which is the right way round: a missing course is an
+   * invitation to add one, a course pinned in the rough is a wasted trip.
+   *
+   * Ranked — a clubhouse beats a car park, and among equals the one nearest
+   * the middle of the course wins, because a big club can have a maintenance
+   * yard tagged the same way out by the perimeter.
+   */
+  golf: {
+    filters: ['["leisure"="golf_course"]'],
+    primary: (tags) => tags.leisure === 'golf_course',
+    anchors: [
+      ['golf', 'clubhouse'],
+      ['leisure', 'clubhouse'],
+      ['building', 'clubhouse'],
+      ['amenity', 'parking'],
+    ],
+  },
 };
 
 /**
@@ -136,19 +165,101 @@ const NATIONWIDE = [
  * assigned back to their city afterwards by checking which box contains them,
  * which the coordinates already answer.
  */
-function buildQuery(filters, bboxes) {
+function buildQuery(filters, bboxes, anchors = null) {
   const boxes = Array.isArray(bboxes) ? bboxes : [bboxes];
   const parts = boxes
     .flatMap((bbox) =>
       filters.flatMap((f) => [`node${f}(${bbox});`, `way${f}(${bbox});`, `relation${f}(${bbox});`])
     )
     .join('\n  ');
+
   // `out geom` rather than `out center`. Overpass's "center" is the middle of
   // the bounding box, which it documents as possibly falling outside the object
   // — for an L-shaped building or a pitch on an odd plot, the pin lands off the
   // thing it is supposed to mark. With the real vertex list we can compute a
   // proper centroid instead.
-  return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout geom tags;`;
+  if (!anchors) return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout geom tags;`;
+
+  /*
+   * Anchors are fetched inside the matched polygons, not across the bounding
+   * boxes.
+   *
+   * The obvious version — ask for every amenity=parking in the ten city boxes
+   * and sort it out here — returns 26,000 elements and times the query out.
+   * map_to_area turns the courses themselves into search areas, so Overpass
+   * only ever looks at car parks that are already on a golf course, and the
+   * answer comes back in seconds.
+   */
+  const anchorParts = anchors
+    .map(([key, value]) => `nwr["${key}"="${value}"](area.courses);`)
+    .join('\n  ');
+  return (
+    `[out:json][timeout:300];\n` +
+    `(\n  ${parts}\n)->.primary;\n` +
+    `.primary map_to_area ->.courses;\n` +
+    `(\n  ${anchorParts}\n)->.anchors;\n` +
+    `(.primary; .anchors;);\nout geom tags;`
+  );
+}
+
+/**
+ * The closed rings of an element, for point-in-polygon tests.
+ *
+ * A way carries its own vertices. A relation's outer members are separate open
+ * ways that together form the boundary; concatenating them in member order
+ * reproduces the ring closely enough to say what is inside a golf course, which
+ * is all this is used for.
+ */
+function ringsOf(el) {
+  if (el.type === 'way') {
+    const ring = (el.geometry ?? []).filter((p) => p && typeof p.lat === 'number');
+    return ring.length >= 3 ? [ring] : [];
+  }
+  if (el.type === 'relation') {
+    const outer = (el.members ?? [])
+      .filter((m) => m.role !== 'inner' && m.geometry?.length)
+      .flatMap((m) => m.geometry.filter((p) => p && typeof p.lat === 'number'));
+    return outer.length >= 3 ? [outer] : [];
+  }
+  return [];
+}
+
+/**
+ * Ray casting, deliberately not a bounding-box test.
+ *
+ * Golf courses are wildly non-convex — they wrap around lakes, roads and whole
+ * housing estates. A bbox test would claim half the neighbourhood belongs to
+ * the course and happily pin a club at a supermarket car park across the road.
+ */
+function ringContains(ring, point) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[j];
+    const b = ring[i];
+    if (a.lat > point.lat !== b.lat > point.lat) {
+      const crossing = ((b.lon - a.lon) * (point.lat - a.lat)) / (b.lat - a.lat) + a.lon;
+      if (point.lng < crossing) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/**
+ * Where to actually put the pin for a large polygon: the best anchor inside it,
+ * or null when nothing suitable is mapped and the row should be dropped.
+ */
+function anchorPointFor(el, anchors) {
+  const rings = ringsOf(el);
+  if (rings.length === 0) return null;
+
+  const inside = anchors.filter((a) => rings.some((ring) => ringContains(ring, a.point)));
+  if (inside.length === 0) return null;
+
+  const bestRank = Math.min(...inside.map((a) => a.rank));
+  const centre = coordsOf(el);
+  return inside
+    .filter((a) => a.rank === bestRank)
+    .sort((a, b) => metresBetween(centre, a.point) - metresBetween(centre, b.point))[0].point;
 }
 
 /**
@@ -422,9 +533,11 @@ function addressOf(tags) {
  * do without is a point, because the pin is the thing that is expensive to fix
  * later; a name can be corrected in seconds.
  */
-function toRow(el, categorySlug, batch) {
+function toRow(el, categorySlug, batch, pointOverride = null) {
   const tags = el.tags ?? {};
-  const point = coordsOf(el);
+  // An override is the anchor point for a large polygon — the clubhouse rather
+  // than the middle of the fairways. See the golf entry in CATEGORIES.
+  const point = pointOverride ?? coordsOf(el);
   if (!point) return null;
   const { address, city } = addressOf(tags);
   return {
@@ -616,13 +729,46 @@ async function main() {
   const perArea = Math.max(1, Math.floor(maxRows / areaKeys.length));
   const started = Date.now();
 
+  const category = CATEGORIES[slug];
   console.log(`Overpass: ${slug} across ${areaKeys.length} areas, ${perArea} each`);
   const elements =
-    (await queryOverpass(buildQuery(CATEGORIES[slug].filters, areaKeys.map((k) => AREAS[k].bbox))))
-      .elements ?? [];
+    (
+      await queryOverpass(
+        buildQuery(
+          category.filters,
+          areaKeys.map((k) => AREAS[k].bbox),
+          category.anchors ?? null
+        )
+      )
+    ).elements ?? [];
   console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s\n`);
 
-  const allRows = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
+  let allRows;
+  if (!category.anchors) {
+    allRows = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
+  } else {
+    // One response holds both the courses and the things inside them; the
+    // primary predicate is what tells them apart.
+    const isPrimary = (el) => category.primary(el.tags ?? {});
+    const rank = (el) =>
+      category.anchors.findIndex(([key, value]) => (el.tags ?? {})[key] === value);
+    const anchorPoints = elements
+      .filter((el) => !isPrimary(el))
+      .map((el) => ({ rank: rank(el), point: coordsOf(el) }))
+      .filter((a) => a.rank >= 0 && a.point);
+
+    const courses = elements.filter(isPrimary);
+    allRows = courses
+      .map((el) => {
+        const point = anchorPointFor(el, anchorPoints);
+        return point ? toRow(el, slug, batch, point) : null;
+      })
+      .filter(Boolean);
+    console.log(
+      `  ${courses.length} courses, ${anchorPoints.length} anchors → ` +
+        `${allRows.length} placeable, ${courses.length - allRows.length} dropped (nothing to pin to)\n`
+    );
+  }
 
   // Bucket by the box each row falls in, then spread within each city. Doing it
   // per city rather than over the pool is the point: farthest-point selection
