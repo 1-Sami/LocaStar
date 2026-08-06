@@ -2,7 +2,7 @@ import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocati
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -29,6 +29,15 @@ import { supabase } from '@/lib/supabase';
 // Effectively "no radius limit" — search isn't restricted to nearby-only like Home is.
 const SEARCH_RADIUS_M = 20_000_000;
 
+/*
+ * Locations per page, fetched as you reach the bottom.
+ *
+ * The count above the list is the real total from the database, not this — the
+ * two used to be the same number, which is why Search insisted there were 100
+ * results when there were 801. See migration 0087.
+ */
+const PAGE_SIZE = 50;
+
 const SORT_OPTIONS = [
   { key: 'distance', label: 'Distance' },
   { key: 'rating', label: 'Highest rated' },
@@ -41,7 +50,9 @@ export default function SearchScreen() {
   const { season: initialSeason, sort: initialSort } = useLocalSearchParams<{ season?: string; sort?: string }>();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NearbyLocation[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const router = useRouter();
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
@@ -59,6 +70,17 @@ export default function SearchScreen() {
   // app started never showed up. Bumping this on focus re-runs the query.
   const [refreshKey, setRefreshKey] = useState(0);
 
+  /*
+   * Which search the results on screen belong to.
+   *
+   * Bumped whenever the filters change, and captured by loadMore so a page that
+   * arrives after the user has changed the filters can be dropped rather than
+   * appended. Comparing list lengths instead is not enough — a new search that
+   * also returns a full page looks identical, and page two of the old search
+   * would be spliced onto page one of the new one.
+   */
+  const searchGeneration = useRef(0);
+
   useFocusEffect(
     useCallback(() => {
       setRefreshKey((key) => key + 1);
@@ -74,6 +96,7 @@ export default function SearchScreen() {
   useEffect(() => {
     if (!coords) return;
     let cancelled = false;
+    searchGeneration.current += 1;
     const trimmed = query.trim();
 
     const timeout = setTimeout(() => {
@@ -86,12 +109,19 @@ export default function SearchScreen() {
         searchQuery: trimmed.length > 0 ? trimmed : null,
         sort: sortBy,
         season: activeSeason,
+        maxResults: PAGE_SIZE,
       })
         .then((result) => {
-          if (!cancelled) setResults(result);
+          if (cancelled) return;
+          setResults(result);
+          // total_count is on every row and identical across them; with no rows
+          // there is nothing to read it from, and the answer is zero anyway.
+          setTotalCount(result[0]?.total_count ?? 0);
         })
         .catch(() => {
-          if (!cancelled) setResults([]);
+          if (cancelled) return;
+          setResults([]);
+          setTotalCount(0);
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -106,6 +136,46 @@ export default function SearchScreen() {
 
   const cards = results.map(nearbyLocationToCard);
   const sortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort';
+  const hasMore = results.length < totalCount;
+
+  /*
+   * The next fifty, appended.
+   *
+   * Guarded on loading as well as loadingMore: FlatList fires onEndReached
+   * while the first page is still in flight (an empty list is scrolled to its
+   * end by definition), which would fetch page two and prepend it to nothing.
+   *
+   * Paging by offset is only sound because migration 0088 gave the RPC a total
+   * order. Before it the rating sort left every unrated row tied, and measured
+   * against live data consecutive pages shared four rows while four others
+   * became unreachable.
+   */
+  const loadMore = useCallback(() => {
+    if (!coords || loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const generation = searchGeneration.current;
+    const trimmed = query.trim();
+    fetchNearbyLocations(supabase, {
+      lat: coords.latitude,
+      lng: coords.longitude,
+      radiusM: SEARCH_RADIUS_M,
+      categorySlugs: activeSlugs,
+      searchQuery: trimmed.length > 0 ? trimmed : null,
+      sort: sortBy,
+      season: activeSeason,
+      maxResults: PAGE_SIZE,
+      offset: results.length,
+    })
+      .then((next) => {
+        // Belongs to a search the user has since moved on from.
+        if (generation !== searchGeneration.current) return;
+        setResults((current) => [...current, ...next]);
+      })
+      .catch(() => {
+        // Leave what is already shown; the next scroll retries.
+      })
+      .finally(() => setLoadingMore(false));
+  }, [coords, loading, loadingMore, hasMore, query, activeSlugs, sortBy, activeSeason, results.length]);
 
   const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
   const visibleCategories = trimmedCategoryQuery
@@ -134,6 +204,17 @@ export default function SearchScreen() {
             placeholderTextColor={SearchPalette.textMuted}
             style={styles.searchInput}
           />
+          {/* Only while there is something to clear — an X sitting over an
+              empty field reads as a way to close the search, which it is not. */}
+          {query.length > 0 && (
+            <Pressable
+              onPress={() => setQuery('')}
+              hitSlop={10}
+              accessibilityLabel="Clear search"
+              style={styles.searchClear}>
+              <Ionicons name="close-circle" size={18} color={SearchPalette.textMuted} />
+            </Pressable>
+          )}
         </View>
 
         <FlatList
@@ -178,7 +259,12 @@ export default function SearchScreen() {
         )}
 
         <View style={styles.metaRow}>
-          <Text style={styles.resultsCountText}>{loading ? 'SEARCHING…' : `${cards.length} RESULTS`}</Text>
+          {/* totalCount, not cards.length. The list holds one page; printing
+              its length meant printing the page size — "100 RESULTS" whether
+              there were a hundred or eight hundred. */}
+          <Text style={styles.resultsCountText}>
+            {loading ? 'SEARCHING…' : `${totalCount} RESULT${totalCount === 1 ? '' : 'S'}`}
+          </Text>
           <Pressable style={styles.sortButton} onPress={() => setSortMenuVisible(true)}>
             <Text style={styles.sortButtonText}>{sortLabel.toUpperCase()}</Text>
             <Ionicons name="swap-vertical-sharp" size={14} color={SearchPalette.text} />
@@ -199,6 +285,17 @@ export default function SearchScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<Text style={styles.emptyText}>No matches.</Text>}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingMore ? (
+                <ActivityIndicator style={styles.footerLoader} color={SearchPalette.accent} />
+              ) : hasMore ? null : cards.length > PAGE_SIZE ? (
+                // Only worth saying once there was actually more than one page
+                // to get through; on a short list it is noise.
+                <Text style={styles.listEndText}>THAT&apos;S ALL {totalCount}</Text>
+              ) : null
+            }
             renderItem={({ item }) => (
               <LocationCard
                 location={item}
@@ -363,6 +460,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     color: SearchPalette.text,
   },
+  searchClear: {
+    marginLeft: Spacing.two,
+  },
   filterRow: {
     flexGrow: 0,
     flexShrink: 0,
@@ -448,6 +548,17 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     marginTop: Spacing.six,
+    color: SearchPalette.textMuted,
+  },
+  footerLoader: {
+    marginVertical: Spacing.four,
+  },
+  listEndText: {
+    textAlign: 'center',
+    marginVertical: Spacing.four,
+    fontFamily: MONO_FONT,
+    fontSize: 11,
+    letterSpacing: 0.5,
     color: SearchPalette.textMuted,
   },
   modalBackdrop: {

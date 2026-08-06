@@ -57,6 +57,15 @@ export type NearbyLocation = {
    */
   result_lat: number;
   result_lng: number;
+  /**
+   * How many rows matched in total, before max_results was applied. Repeated on
+   * every row — it is a window function, not a separate query.
+   *
+   * Search used to count the rows it had been handed and call that the result
+   * count, which meant it printed the cap: "100 RESULTS" whether there were a
+   * hundred or eight hundred.
+   */
+  total_count: number;
 };
 
 export type NearbyLocationsParams = {
@@ -82,6 +91,12 @@ export type NearbyLocationsParams = {
    * proximity query. See migration 0086.
    */
   kind?: "place" | "activity" | null;
+  /**
+   * Rows to skip, for paging. Safe to page with because migration 0088 gave
+   * the RPC a total order — before it, the rating sort left every unrated row
+   * tied and consecutive pages both repeated and lost rows.
+   */
+  offset?: number;
 };
 
 export async function fetchNearbyLocations(
@@ -98,6 +113,7 @@ export async function fetchNearbyLocations(
     season_filter: params.season ?? null,
     max_results: params.maxResults ?? 100,
     kind_filter: params.kind ?? null,
+    result_offset: params.offset ?? 0,
   });
   if (error) throw error;
   return (data ?? []) as NearbyLocation[];
