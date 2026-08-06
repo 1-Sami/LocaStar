@@ -60,8 +60,10 @@ const CATEGORIES = {
   bowling: { filters: ['["leisure"="bowling_alley"]'] },
   'mini-golf': { filters: ['["leisure"="miniature_golf"]'] },
   'ice-skating': { filters: ['["leisure"="ice_rink"]'] },
-  climbing: { filters: ['["sport"="climbing"]'] },
-  'nature-reserves': { filters: ['["leisure"="nature_reserve"]'] },
+  // Excluding shops rather than requiring a leisure tag: outdoor crags are
+  // tagged natural=cliff with no leisure at all, and they are the point of the
+  // category. A climbing shop is not somewhere to climb.
+  climbing: { filters: ['["sport"="climbing"]["shop"!~"."]'] },
   // Free admission only, which is the whole point of the category. fee=no is
   // the explicit tag; museums with no fee tag at all are left out rather than
   // guessed at, because "we thought it was free" is a bad reason for a wasted trip.
@@ -106,6 +108,83 @@ const CATEGORIES = {
       ['leisure', 'clubhouse'],
       ['building', 'clubhouse'],
       ['amenity', 'parking'],
+    ],
+  },
+
+  // --- Pitches. All the same shape: the sport, on something you can play on. ---
+  tennis: { filters: ['["leisure"="pitch"]["sport"="tennis"]'] },
+  volleyball: {
+    // Beach volleyball is tagged separately and is the more common of the two
+    // in Sweden; both belong under one category here.
+    filters: ['["leisure"="pitch"]["sport"="volleyball"]', '["leisure"="pitch"]["sport"="beachvolleyball"]'],
+  },
+  cricket: { filters: ['["leisure"="pitch"]["sport"="cricket"]'] },
+  'amerikan-fotball': { filters: ['["leisure"="pitch"]["sport"="american_football"]'] },
+  // OSM spells it boules; pétanque is recorded underneath as a variant.
+  boule: { filters: ['["leisure"="pitch"]["sport"="boules"]'] },
+  parkour: { filters: ['["sport"="parkour"]'] },
+  // Requiring a leisure tag of some kind — pitch, sports_centre, track. Without
+  // it, sport=archery alone imported "Bågar & Pilar" on Triewaldsgränd, which
+  // is a bow shop in Gamla Stan, not somewhere to shoot.
+  'archery-ranges': { filters: ['["sport"="archery"]["leisure"]'] },
+  'track-and-field-stadium': { filters: ['["leisure"="track"]["sport"="athletics"]'] },
+
+  // --- Small standalone features. The middle of the shape is the place. ---
+  'grill-sites': { filters: ['["amenity"="bbq"]'] },
+  'picknick-parks': { filters: ['["tourism"="picnic_site"]'] },
+  camping: { filters: ['["tourism"="camp_site"]'] },
+  'disc-golf-frisbee': { filters: ['["leisure"="disc_golf_course"]'] },
+  // Ruins, castles and dig sites. historic=memorial and =monument are left out:
+  // a plaque on a wall is not somewhere to go and spend an afternoon.
+  'historical-ruins-places': {
+    filters: ['["historic"="ruins"]', '["historic"="castle"]', '["historic"="archaeological_site"]'],
+  },
+  // Outdoor pools only. A pool with no location tag is assumed outdoor, which
+  // is the common case in Sweden; explicit indoor ones are excluded.
+  swimming: {
+    filters: ['["leisure"="swimming_area"]', '["leisure"="swimming_pool"]["location"!="indoor"]["access"!="private"]'],
+  },
+  beaches: { filters: ['["natural"="beach"]'] },
+  /*
+   * Swedish 4H farms have no tag of their own anywhere in OSM, so the name is
+   * the only signal there is.
+   *
+   * It has to match "4H" as a whole word, though. A bare substring search
+   * imported "Top4Hair", a hairdresser in Järfälla, and "24HR Malmö" — the
+   * letters are there, surrounded by the wrong things. The guards either side
+   * require a non-alphanumeric or the end of the string.
+   */
+  '4h-farms': { filters: ['["name"~"(^|[^0-9A-Za-z])4H([^0-9A-Za-z]|$)"]'] },
+  // High ropes, adventure and theme parks — the paid day-out kind.
+  'action-parks': {
+    filters: ['["attraction"="high_ropes"]', '["tourism"="theme_park"]', '["sport"="climbing_adventure"]'],
+  },
+  'race-tracks-vehicle': { filters: ['["highway"="raceway"]', '["leisure"="track"]["sport"="motor"]'] },
+  outdoor: { filters: ['["leisure"="recreation_ground"]'] },
+
+  /*
+   * Large polygons, pinned the same way golf is: at the car park.
+   *
+   * A nature reserve is kilometres across and its middle is somewhere in the
+   * forest. The car park is the trailhead — it is where the sign, the map board
+   * and the road are, and it is where anyone going there actually starts. A
+   * reserve with no parking mapped is left out rather than pinned into the
+   * woods.
+   */
+  'nature-reserves': {
+    filters: ['["leisure"="nature_reserve"]'],
+    primary: (tags) => tags.leisure === 'nature_reserve',
+    anchors: [
+      ['tourism', 'information'],
+      ['amenity', 'parking'],
+    ],
+  },
+  skiing: {
+    filters: ['["landuse"="winter_sports"]'],
+    primary: (tags) => tags.landuse === 'winter_sports',
+    anchors: [
+      ['amenity', 'parking'],
+      ['building', 'yes'],
     ],
   },
 };
