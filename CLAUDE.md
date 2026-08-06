@@ -14,6 +14,7 @@ pnpm workspace. Three places code lives, and the split matters:
 | `packages/shared/src/api/` | **Every Supabase query.** Screens call these, never `supabase.from(...)` directly. |
 | `supabase/migrations/` | Schema and RLS, numbered `NNNN_name.sql`. |
 | `apps/mobile/scripts/` | Node build tooling — not app code. |
+| `tools/` | One-off data tooling, e.g. the OpenStreetMap importer. Never shipped. |
 
 `packages/shared` has no React and no DOM. It targets ES2020, so `console` is
 not available there.

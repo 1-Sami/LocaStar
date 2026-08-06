@@ -148,6 +148,12 @@ export default function HomeScreen() {
         lng: coords.longitude,
         radiusM: HOME_RADIUS_M,
         sort: 'distance',
+        // Home slices five sections out of this one query, so it needs more
+        // than the RPC's default of 100. Worth knowing what the cap changes:
+        // "Most liked" becomes most-liked *among the nearest 200* rather than
+        // in the whole country. With a national dataset that is arguably the
+        // better answer, but it is a change, not a no-op.
+        maxResults: 200,
       })
         .then((rows) => {
           if (!cancelled) setNearby(rows);

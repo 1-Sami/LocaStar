@@ -58,6 +58,11 @@ export type NearbyLocationsParams = {
   searchQuery?: string | null;
   sort?: "distance" | "rating";
   season?: "summer" | "winter" | null;
+  /**
+   * Most rows to return. The RPC defaults to 100; before migration 0083 there
+   * was no cap at all, so every search returned the entire table.
+   */
+  maxResults?: number;
 };
 
 export async function fetchNearbyLocations(
@@ -72,6 +77,7 @@ export async function fetchNearbyLocations(
     search_query: params.searchQuery ?? null,
     sort: params.sort ?? "distance",
     season_filter: params.season ?? null,
+    max_results: params.maxResults ?? 100,
   });
   if (error) throw error;
   return (data ?? []) as NearbyLocation[];
