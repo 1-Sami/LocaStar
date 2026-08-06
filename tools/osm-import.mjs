@@ -34,8 +34,19 @@ import { writeFileSync } from 'node:fs';
 const OVERPASS_MIRRORS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.osm.ch/api/interpreter',
 ];
+
+/*
+ * overpass.osm.ch was in this list and had to come out. It is a REGIONAL
+ * instance holding Swiss data only, so a Sweden query returns HTTP 200 with
+ * zero elements — indistinguishable from a successful empty search. Failing
+ * over to it turned a busy main server into a silent, confident "there are no
+ * basketball courts in Stockholm", and the empty-result guard then blamed a
+ * busy mirror, which was the wrong diagnosis.
+ *
+ * Verified before removing: the same query returns 0 for a Stockholm bbox and
+ * 48 for a Zurich one. Any mirror added here must be a full planet instance.
+ */
 
 /**
  * LocaStar category slug -> the OSM tags that mean it.
@@ -284,14 +295,22 @@ function addressOf(tags) {
   };
 }
 
+/**
+ * One OSM element as a candidate row.
+ *
+ * A missing name is fine — an outdoor gym or a pitch in a park usually has
+ * none, and 253 of Stockholm's 321 outdoor gyms are unnamed. What a row cannot
+ * do without is a point, because the pin is the thing that is expensive to fix
+ * later; a name can be corrected in seconds.
+ */
 function toRow(el, categorySlug, batch) {
   const tags = el.tags ?? {};
   const point = coordsOf(el);
-  if (!point || !tags.name) return null; // Unnamed or unplaceable is not a location.
+  if (!point) return null;
   const { address, city } = addressOf(tags);
   return {
     osm: `${el.type}/${el.id}`,
-    name: tags.name,
+    name: tags.name ?? null,
     categorySlug,
     lat: point.lat,
     lng: point.lng,
@@ -304,9 +323,84 @@ function toRow(el, categorySlug, batch) {
   };
 }
 
+const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Fills in address and name from the coordinates, for rows OSM left bare.
+ *
+ * Needed because these categories carry almost no addr:* tags — not one of
+ * Stockholm's 321 outdoor gyms has a full address in OSM — while the address is
+ * the part that matters most here.
+ *
+ * Names come out as the street, else the suburb, else the town: "Sankt
+ * Göransgatan", "Kungsholmen", "Nacka". No category prefix, because "Basketball
+ * court — " on nine hundred rows is noise, and the category is already on the
+ * card.
+ *
+ * ONE REQUEST PER SECOND, NOT NEGOTIABLE. Nominatim is donated infrastructure
+ * and its usage policy caps automated use at this rate; going faster gets the
+ * whole app's user agent blocked, not just this script. That makes a thousand
+ * rows about seventeen minutes. Run it per city, per category, and let it take
+ * the time.
+ */
+async function geocodeMissing(rows, onProgress) {
+  let done = 0;
+  for (const row of rows) {
+    if (row.address && row.name) continue;
+
+    try {
+      const url =
+        `${NOMINATIM}?format=jsonv2&lat=${row.lat}&lon=${row.lng}&zoom=18&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'LocaStar location import (support@locastar.se)' },
+      });
+      if (response.ok) {
+        const a = (await response.json()).address ?? {};
+        const area = a.suburb ?? a.city_district ?? a.neighbourhood ?? a.village ?? null;
+        // Nominatim falls back to the municipality when a point sits outside any
+        // named town, and Swedish municipalities carry the word: "Botkyrka
+        // kommun". In an address line that reads like a council office rather
+        // than a place, so drop the suffix — "146 54 Botkyrka" is what anyone
+        // would write on an envelope.
+        const town = (a.city ?? a.town ?? a.municipality ?? '').replace(/\s+kommun$/i, '') || null;
+
+        if (!row.address) {
+          const street = [a.road, a.house_number].filter(Boolean).join(' ');
+          const locality = [a.postcode, town].filter(Boolean).join(' ');
+          row.address = [street, locality].filter(Boolean).join(', ') || null;
+          row.city = row.city ?? town;
+        }
+        // Street, then area, then town — most specific first.
+        if (!row.name) row.name = a.road ?? area ?? town ?? null;
+      }
+    } catch {
+      // Leave the row bare; the address filter below drops it.
+    }
+
+    done++;
+    if (onProgress && done % 25 === 0) onProgress(done);
+    await sleep(1100);
+  }
+}
+
+/**
+ * Runs the query, moving on from any mirror that cannot actually answer it.
+ *
+ * An empty result is treated as a failure worth retrying elsewhere, not as an
+ * answer. Overpass reports several different problems as HTTP 200 with no
+ * elements — an internal timeout (with a `remark`), and a regional instance
+ * asked about somewhere outside its extract. The second is the dangerous one:
+ * it is a confident, wrong "there are none here", and it silently produced an
+ * empty import once already.
+ *
+ * A genuinely empty area therefore costs one extra request. That is a fair
+ * price for never mistaking a broken mirror for a fact.
+ */
 async function queryOverpass(query) {
   const failures = [];
   for (const url of OVERPASS_MIRRORS) {
+    const host = new URL(url).host;
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -319,15 +413,29 @@ async function queryOverpass(query) {
         },
         body: new URLSearchParams({ data: query }),
       });
-      if (response.ok) return response.json();
-      failures.push(`${new URL(url).host} -> ${response.status}`);
+      if (!response.ok) {
+        failures.push(`${host} -> HTTP ${response.status}`);
+        continue;
+      }
+      const payload = await response.json();
+      if (payload.remark) {
+        failures.push(`${host} -> ${payload.remark}`);
+        continue;
+      }
+      if ((payload.elements ?? []).length === 0) {
+        failures.push(`${host} -> 200 but no elements`);
+        continue;
+      }
+      return payload;
     } catch (error) {
-      failures.push(`${new URL(url).host} -> ${error.message}`);
+      failures.push(`${host} -> ${error.message}`);
     }
   }
   throw new Error(
-    `Every Overpass mirror refused:\n  ${failures.join('\n  ')}\n` +
-      'These are free shared servers; 429 and 504 mean busy, not broken. Try again shortly.'
+    `No mirror returned data:\n  ${failures.join('\n  ')}\n\n` +
+      'These are free shared servers, and 429/504/"no elements" usually mean busy\n' +
+      'rather than broken — the same query often works a minute later. If every\n' +
+      'mirror says "no elements" repeatedly, the area may genuinely have none.'
   );
 }
 
@@ -340,6 +448,7 @@ async function main() {
   const outFile = flag('--out');
   const sqlFile = flag('--sql');
   const owner = flag('--owner') ?? 'sam_86';
+  const geocode = rest.includes('--geocode');
 
   if (!CATEGORIES[slug] || !AREAS[areaKey]) {
     console.error(
@@ -359,19 +468,6 @@ async function main() {
   const payload = await queryOverpass(query);
   const elements = payload.elements ?? [];
 
-  // A busy Overpass mirror sometimes answers 200 with an empty result rather
-  // than an error, which is indistinguishable from "this area really has none"
-  // — and would quietly produce an empty import that looks like it worked.
-  // Seen in practice: the same query returned 99 elements and then 0 a minute
-  // later. Treat empty as suspect and make the caller decide.
-  if (elements.length === 0) {
-    console.error(
-      '\nOverpass returned no elements at all.\n' +
-        'That usually means a busy mirror, not an empty area — the same query can\n' +
-        'return results a minute later. Re-run before believing it.'
-    );
-    process.exit(1);
-  }
 
   const named = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
 
@@ -389,15 +485,27 @@ async function main() {
    * enough to be worth opening, not a complete map — the rest is what the
    * people using it are for.
    */
-  const addressed = named.filter((r) => r.address);
-  const { kept: rows, dropped } = dedupe(addressed);
-  const unnamed = elements.length - named.length;
-  const noAddress = named.length - addressed.length;
-
+  const unplaceable = elements.length - named.length;
+  const needing = named.filter((r) => !r.address || !r.name).length;
   console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-  console.log(`  ${unnamed} skipped (no name or no point)`);
-  console.log(`  ${noAddress} skipped (no address in OSM)`);
-  console.log(`  ${dropped.length} skipped (duplicate within this batch)`);
+  console.log(`  ${unplaceable} skipped (no usable point)`);
+
+  if (needing > 0) {
+    if (!geocode) {
+      console.log(`  ${needing} lack an address or a name in OSM`);
+      console.log(`\n  Pass --geocode to fill those in from their coordinates.`);
+      console.log(`  That is one request a second to Nominatim, so about ${Math.ceil((needing * 1.1) / 60)} min.`);
+    } else {
+      console.log(`  ${needing} need lookup — about ${Math.ceil((needing * 1.1) / 60)} min at 1 req/sec`);
+      await geocodeMissing(named, (n) => console.log(`    ${n}/${needing}…`));
+    }
+  }
+
+  const addressed = named.filter((r) => r.address && r.name);
+  const { kept: rows, dropped } = dedupe(addressed);
+
+  console.log(`  ${named.length - addressed.length} skipped (still no address)`);
+  console.log(`  ${dropped.length} merged (same name within 100 m)`);
   console.log(`  ${rows.length} importable`);
   console.log(`  batch id: ${batch}\n`);
 
