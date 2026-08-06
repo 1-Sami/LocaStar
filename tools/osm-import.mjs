@@ -98,6 +98,22 @@ function buildQuery(filters, bbox) {
   return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout geom tags;`;
 }
 
+/**
+ * How close two rows with the same derived name must be to be treated as one.
+ *
+ * 30 m, down from 100. These names are derived from the street, not the place —
+ * two genuinely separate courts on the same long road would otherwise collapse
+ * into one and the second would silently disappear. At 100 m the Stockholm run
+ * merged two courts on Edsbergs torg that were 74 m apart and had unrelated OSM
+ * ids, which looked like two real courts in one square rather than one facility
+ * mapped twice.
+ *
+ * 30 m still catches the real case this exists for: one mapper drawing two
+ * halves of a double court in a single session, which shows up as consecutive
+ * OSM ids a few metres apart.
+ */
+const MERGE_RADIUS_M = 30;
+
 /** Metres between two points. Haversine, mean Earth radius. */
 function metresBetween(a, b) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -136,8 +152,11 @@ function dedupe(rows) {
   const kept = [];
   const dropped = [];
   for (const row of ordered) {
-    const twin = kept.find((k) => k.name === row.name && metresBetween(k, row) < 100);
-    if (twin) dropped.push(row);
+    const twin = kept.find((k) => k.name === row.name && metresBetween(k, row) < MERGE_RADIUS_M);
+    // Record what it merged into and how far apart they were. A merge silently
+    // removes a real place from the map if the guess is wrong, so it has to be
+    // checkable rather than just counted.
+    if (twin) dropped.push({ row, into: twin, metres: metresBetween(twin, row) });
     else kept.push(row);
   }
   return { kept, dropped };
@@ -507,6 +526,15 @@ async function main() {
   console.log(`  ${named.length - addressed.length} skipped (still no address)`);
   console.log(`  ${dropped.length} merged (same name within 100 m)`);
   console.log(`  ${rows.length} importable`);
+
+  if (dropped.length > 0) {
+    console.log(`\n  Merged — each of these was dropped in favour of the one kept (< ${MERGE_RADIUS_M} m):`);
+    for (const d of dropped) {
+      console.log(`    ${d.row.name}  (${d.metres.toFixed(0)} m apart)`);
+      console.log(`      dropped: https://www.openstreetmap.org/${d.row.osm}`);
+      console.log(`      kept   : https://www.openstreetmap.org/${d.into.osm}`);
+    }
+  }
   console.log(`  batch id: ${batch}\n`);
 
   for (const row of rows.slice(0, 15)) {

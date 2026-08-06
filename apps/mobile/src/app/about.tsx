@@ -1,6 +1,6 @@
 import * as Updates from 'expo-updates';
 import { Link } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LocaStarLogo } from '@/components/locastar-logo';
@@ -136,6 +136,21 @@ export default function AboutScreen() {
             </Link>
           </View>
 
+          {/* Attribution is a condition of the ODbL licence the imported
+              locations arrive under, not a courtesy. It has to be somewhere a
+              user can reach from the data itself, and the About screen is the
+              place OpenStreetMap's own guidance names for an app. Removing this
+              line puts the imported data out of licence. */}
+          <Pressable onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.attribution}>
+              Some locations include data from{' '}
+              <ThemedText type="small" style={styles.attributionLink}>
+                © OpenStreetMap contributors
+              </ThemedText>
+              , used under the Open Database License.
+            </ThemedText>
+          </Pressable>
+
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
             Application AB · Version v{APP_RELEASE}
           </ThemedText>
@@ -196,6 +211,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  attribution: {
+    textAlign: 'center',
+    marginTop: Spacing.two,
+  },
+  attributionLink: {
+    textDecorationLine: 'underline',
   },
   version: {
     textAlign: 'center',
