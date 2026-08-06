@@ -785,7 +785,7 @@ export default function LocationDetailScreen() {
             <View style={styles.actionButtonsRow}>
               <Pressable
                 style={styles.directionsButton}
-                onPress={() => openDirections(location.address ?? location.name)}>
+                onPress={() => openDirections({ lat: location.lat, lng: location.lng }, location.name)}>
                 <Ionicons name="navigate-outline" size={18} color={DIRECTIONS_TEXT} />
                 <ThemedText type="smallBold" style={styles.directionsButtonText}>
                   Directions

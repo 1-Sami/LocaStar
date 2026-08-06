@@ -1,4 +1,4 @@
-import { fetchProfile, isModeratorRole } from '@locastar/shared';
+import { fetchProfile, isModeratorRole, type UserRole } from '@locastar/shared';
 import { File, Paths } from 'expo-file-system';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
@@ -16,6 +16,12 @@ type ProfileContextValue = {
    * that lied about this would still be refused by the database.
    */
   isModerator: boolean;
+  /**
+   * The exact tier, for the few places where superuser and admin differ. Same
+   * caveat as `isModerator`: a display hint only, never the thing that permits
+   * anything.
+   */
+  role: UserRole;
   refreshProfile: () => void;
 };
 
@@ -24,6 +30,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   localAvatarUri: null,
   username: null,
   isModerator: false,
+  role: 'user',
   refreshProfile: () => {},
 });
 
@@ -46,6 +53,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [role, setRole] = useState<UserRole>('user');
 
   const refreshProfile = useCallback(() => {
     if (!session) {
@@ -53,6 +61,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setLocalAvatarUri(null);
       setUsername(null);
       setIsModerator(false);
+      setRole('user');
       return;
     }
     fetchProfile(supabase, session.user.id)
@@ -60,6 +69,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setAvatarUrl(profile.avatar_url);
         setUsername(profile.username ?? profile.display_name);
         setIsModerator(isModeratorRole(profile.role));
+        setRole(profile.role);
 
         if (!profile.avatar_url || Platform.OS === 'web') {
           setLocalAvatarUri(null);
@@ -76,7 +86,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProfileContext.Provider
-      value={{ avatarUrl, localAvatarUri, username, isModerator, refreshProfile }}>
+      value={{ avatarUrl, localAvatarUri, username, isModerator, role, refreshProfile }}>
       {children}
     </ProfileContext.Provider>
   );

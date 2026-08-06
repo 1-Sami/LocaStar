@@ -45,7 +45,7 @@ export function FavoriteCard({
         <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
           {location.name}
         </ThemedText>
-        <Pressable onPress={() => openDirections(location.address ?? location.name)} hitSlop={4}>
+        <Pressable onPress={() => openDirections(location.coords, location.name)} hitSlop={4}>
           <ThemedText type="small" themeColor="textSecondary">
             Directions
           </ThemedText>

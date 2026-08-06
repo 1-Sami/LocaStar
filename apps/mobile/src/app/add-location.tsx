@@ -31,6 +31,7 @@ import { useDiscardWarning } from '@/hooks/use-discard-warning';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
+import { useSharedProfile } from '@/lib/profile-context';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
@@ -106,6 +107,13 @@ export default function AddLocationScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const { coords } = useUserLocation();
+  const { role } = useSharedProfile();
+
+  // Admins seed places nobody has photographed yet — an imported court, an
+  // activity announced before there is anything to shoot. Everyone else still
+  // brings a picture: an unphotographed listing from a stranger is the one we
+  // can't tell apart from an invented one.
+  const isAdmin = role === 'admin';
 
   const isActivity = kind === 'activity';
   const noun = isActivity ? 'activity' : 'location';
@@ -345,7 +353,7 @@ export default function AddLocationScreen() {
         addressLine1.trim() &&
         addressLine2.trim() &&
         categoryIds.length > 0 &&
-        hasPhoto &&
+        (hasPhoto || isAdmin) &&
         pinCoords &&
         emailValid &&
         otherCategoryValid &&
@@ -485,7 +493,7 @@ export default function AddLocationScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="smallBold" style={styles.photoLabel}>
-            *Mandatory: at least 1 picture
+            {isAdmin ? 'Pictures (optional for admins)' : '*Mandatory: at least 1 picture'}
           </ThemedText>
 
           <PhotoPicker uris={photoUris} onChange={setPhotoUris} />

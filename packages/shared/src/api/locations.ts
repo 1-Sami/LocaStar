@@ -48,6 +48,15 @@ export type NearbyLocation = {
   available_winter: boolean;
   /** Storage path of the location's first photo, null if it has none. */
   cover_photo_path: string | null;
+  /**
+   * The location's own coordinates, for routing.
+   *
+   * Named result_* rather than lat/lng because those are the RPC's parameter
+   * names, and a returned column sharing a parameter name is the ambiguity that
+   * broke every distance in migration 0077.
+   */
+  result_lat: number;
+  result_lng: number;
 };
 
 export type NearbyLocationsParams = {

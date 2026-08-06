@@ -164,7 +164,7 @@ export function LocationCard({
             </View>
             <Pressable
               style={styles.directionsButton}
-              onPress={() => openDirections(location.address ?? location.name)}
+              onPress={() => openDirections(location.coords, location.name)}
               hitSlop={8}>
               <ThemedText type="smallBold" style={styles.directionsText}>
                 Direction
