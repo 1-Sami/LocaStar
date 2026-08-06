@@ -56,7 +56,12 @@ const CATEGORIES = {
   // guessed at, because "we thought it was free" is a bad reason for a wasted trip.
   'museums-free': { filters: ['["tourism"="museum"]["fee"="no"]'] },
   playgrounds: { filters: ['["leisure"="playground"]'] },
-  'gyms-outside': { filters: ['["leisure"="fitness_station"]'] },
+  'gyms-outside': { filters: ['["leisure"="fitness_station"]', '["leisure"="fitness_centre"]["outdoor"="yes"]'] },
+  // Pitches carry the sport on the pitch itself. Both spellings of football
+  // exist in OSM: soccer is the tag, football is sometimes used loosely, so
+  // this stays on soccer to avoid dragging in American football and rugby.
+  basketball: { filters: ['["sport"="basketball"]'] },
+  football: { filters: ['["sport"="soccer"]'] },
   'dog-parks': { filters: ['["leisure"="dog_park"]'] },
   skatepark: { filters: ['["leisure"="skatepark"]', '["sport"="skateboard"]'] },
 };
@@ -74,9 +79,12 @@ function buildQuery(filters, bbox) {
   const parts = filters
     .flatMap((f) => [`node${f}(${bbox});`, `way${f}(${bbox});`, `relation${f}(${bbox});`])
     .join('\n  ');
-  // `out center` gives ways and relations a single representative point, which
-  // is what a map pin needs — without it they come back as raw geometry.
-  return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout center tags;`;
+  // `out geom` rather than `out center`. Overpass's "center" is the middle of
+  // the bounding box, which it documents as possibly falling outside the object
+  // — for an L-shaped building or a pitch on an odd plot, the pin lands off the
+  // thing it is supposed to mark. With the real vertex list we can compute a
+  // proper centroid instead.
+  return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout geom tags;`;
 }
 
 /** Metres between two points. Haversine, mean Earth radius. */
@@ -106,9 +114,17 @@ function metresBetween(a, b) {
  * often enough not to matter — a moderator can merge what slips through.
  */
 function dedupe(rows) {
+  // Nodes first, so when the same place exists as both a point and a building
+  // outline the point wins. A node was placed by hand, usually at the door; a
+  // computed polygon centre is the middle of the roof at best.
+  const ordered = [...rows].sort((a, b) => {
+    const rank = (r) => (r.osm.startsWith('node/') ? 0 : 1);
+    return rank(a) - rank(b);
+  });
+
   const kept = [];
   const dropped = [];
-  for (const row of rows) {
+  for (const row of ordered) {
     const twin = kept.find((k) => k.name === row.name && metresBetween(k, row) < 100);
     if (twin) dropped.push(row);
     else kept.push(row);
@@ -205,9 +221,50 @@ commit;
 
 /** OSM puts the point on the element for nodes and under `center` for ways/relations. */
 function coordsOf(el) {
+  // A node is a single hand-placed point — nothing to compute.
   if (typeof el.lat === 'number' && typeof el.lon === 'number') return { lat: el.lat, lng: el.lon };
+
+  // A way carries its vertices under `geometry` with `out geom`.
+  const ring = (el.geometry ?? []).filter((p) => p && typeof p.lat === 'number');
+  if (ring.length > 0) return centroidOf(ring);
+
+  // A relation's members each carry their own geometry; pool them.
+  const memberPoints = (el.members ?? []).flatMap((m) =>
+    (m.geometry ?? []).filter((p) => p && typeof p.lat === 'number')
+  );
+  if (memberPoints.length > 0) return centroidOf(memberPoints);
+
+  // Last resort: the bounding-box centre, which is what we used to use for
+  // everything and is exactly the thing producing off pins.
   if (el.center) return { lat: el.center.lat, lng: el.center.lon };
   return null;
+}
+
+/**
+ * Area-weighted centroid of a closed ring, falling back to the mean vertex.
+ *
+ * The shoelace centroid sits inside a convex shape and is a far better pin than
+ * the bounding-box centre for anything long or L-shaped. A degenerate ring —
+ * three collinear points, or a line rather than an area — has zero area, and
+ * the formula divides by it, so that case falls back to the average.
+ */
+function centroidOf(points) {
+  let twiceArea = 0;
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const cross = a.lon * b.lat - b.lon * a.lat;
+    twiceArea += cross;
+    x += (a.lon + b.lon) * cross;
+    y += (a.lat + b.lat) * cross;
+  }
+  if (Math.abs(twiceArea) > 1e-12) {
+    return { lat: y / (3 * twiceArea), lng: x / (3 * twiceArea) };
+  }
+  const mean = points.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lon }), { lat: 0, lng: 0 });
+  return { lat: mean.lat / points.length, lng: mean.lng / points.length };
 }
 
 /**
