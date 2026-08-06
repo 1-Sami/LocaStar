@@ -104,10 +104,15 @@ export const CategoryColors: Record<string, string> = {
   paintball: '#6B2E4A',
   'track-and-field-stadium': '#8A5A2E',
 
+  // Indoor
+  bowling: '#4A2E5C',
+
   // Culture & other
   festival: '#5C1B3A',
   'historical-ruins-places': '#5C4A5C',
   'public-art': '#6B3A6B',
+  library: '#3A4A6B',
+  'museums-free': '#5C3A6B',
 
   // "Others" is the catch-all, so reading as unclassified is correct.
   other: '#33363B',
