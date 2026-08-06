@@ -521,9 +521,16 @@ ${values}
     'public',
     ${sqlText(batch)}
   from candidates c
+  -- Same name, within 100 m, AND in this category. The category clause is not
+  -- decoration: most of these names are the street the thing sits on, so a
+  -- tennis court and a grill site on the same road collide by name. Without it
+  -- the tennis court on C 631 in Uppsala was silently dropped as a duplicate of
+  -- a barbecue spot 95 m away.
   where not exists (
     select 1 from locations l
+    join location_categories lc on lc.location_id = l.id
     where l.name = c.name::text
+      and lc.category_id = (select id from cat)
       and ST_DWithin(
         l.geom,
         ST_MakePoint(c.lng::double precision, c.lat::double precision)::geography,
@@ -676,14 +683,21 @@ async function geocodeMissing(rows, onProgress) {
         // would write on an envelope.
         const town = (a.city ?? a.town ?? a.municipality ?? '').replace(/\s+kommun$/i, '') || null;
 
+        // Nominatim sometimes hands back a bare number as the road — a forest
+        // track or an unnamed service road. Taken at face value that produced a
+        // location called "8" at "8, 906 22 Umeå" and another called "9", which
+        // are not places. A road has to contain a letter somewhere to be worth
+        // printing; "C 631" and "E 706" are real Swedish designations and pass.
+        const road = a.road && /[A-Za-zÅÄÖåäö]/.test(a.road) ? a.road : null;
+
         if (!row.address) {
-          const street = [a.road, a.house_number].filter(Boolean).join(' ');
+          const street = [road, a.house_number].filter(Boolean).join(' ');
           const locality = [a.postcode, town].filter(Boolean).join(' ');
           row.address = [street, locality].filter(Boolean).join(', ') || null;
           row.city = row.city ?? town;
         }
         // Street, then area, then town — most specific first.
-        if (!row.name) row.name = a.road ?? area ?? town ?? null;
+        if (!row.name) row.name = road ?? area ?? town ?? null;
       }
     } catch {
       // Leave the row bare; the address filter below drops it.
