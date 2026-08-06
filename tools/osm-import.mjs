@@ -171,13 +171,30 @@ async function main() {
   const payload = await queryOverpass(query);
   const elements = payload.elements ?? [];
 
-  const rows = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
-  const skipped = elements.length - rows.length;
-  const withAddress = rows.filter((r) => r.address).length;
+  const named = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
+
+  /*
+   * Only rows that already carry an address are kept.
+   *
+   * Roughly two thirds of OSM entries have a name and a point and nothing
+   * else, and importing those would mean either inventing addresses or
+   * shipping thousands of locations that the edit screen — which requires an
+   * address — cannot save without one being made up. Reverse-geocoding the gap
+   * is out too: Nominatim allows about one request a second, so ten thousand
+   * rows is three hours and outside its bulk-use policy.
+   *
+   * Losing two thirds is the right trade. The aim is a starting point good
+   * enough to be worth opening, not a complete map — the rest is what the
+   * people using it are for.
+   */
+  const rows = named.filter((r) => r.address);
+  const unnamed = elements.length - named.length;
+  const noAddress = named.length - rows.length;
 
   console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-  console.log(`  ${rows.length} usable (named, with a point) — ${skipped} skipped`);
-  console.log(`  ${withAddress} of ${rows.length} have an address`);
+  console.log(`  ${unnamed} skipped (no name or no point)`);
+  console.log(`  ${noAddress} skipped (no address in OSM)`);
+  console.log(`  ${rows.length} importable`);
   console.log(`  batch id: ${batch}\n`);
 
   for (const row of rows.slice(0, 15)) {
