@@ -128,6 +128,7 @@ export default function HomeScreen() {
   const { bucketListIds, toggleBucketList } = useSaves();
 
   const [nearby, setNearby] = useState<NearbyLocation[]>([]);
+  const [nearbyActivities, setNearbyActivities] = useState<NearbyLocation[]>([]);
   const [publicLists, setPublicLists] = useState<PublicList[]>([]);
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
 
@@ -160,6 +161,36 @@ export default function HomeScreen() {
         })
         .catch(() => {
           if (!cancelled) setNearby([]);
+        });
+
+      /*
+       * Activities get their own query, deliberately not sliced out of the one
+       * above.
+       *
+       * They used to be, and the 200-row cap quietly ate them: once the import
+       * took the table past eight hundred rows, the nearest 200 to central
+       * Stockholm reached only 12 km, so a festival in Eskilstuna at 88 km was
+       * gone before the kind filter ever ran. Distance is the wrong axis here —
+       * people will drive an hour and a half to a festival and not five minutes
+       * to a boule court, so activities cannot be made to compete with courts
+       * for slots in a proximity query.
+       *
+       * Cheap despite the high cap: there are only a handful of activities in
+       * the country, because every one of them is somebody typing it in by hand.
+       */
+      fetchNearbyLocations(supabase, {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        radiusM: HOME_RADIUS_M,
+        sort: 'distance',
+        kind: 'activity',
+        maxResults: 200,
+      })
+        .then((rows) => {
+          if (!cancelled) setNearbyActivities(rows);
+        })
+        .catch(() => {
+          if (!cancelled) setNearbyActivities([]);
         });
     }
 
@@ -221,7 +252,7 @@ export default function HomeScreen() {
     if (section) router.push({ pathname: '/favorites', params: { section } });
   };
 
-  const activities = nearby.filter((l) => l.kind === 'activity').slice(0, 10);
+  const activities = nearbyActivities.slice(0, 10);
   const boosted = nearby.filter((l) => l.is_boosted).slice(0, 10);
   const mostLiked = [...nearby]
     .sort((a, b) => b.avg_rating - a.avg_rating || b.review_count - a.review_count)

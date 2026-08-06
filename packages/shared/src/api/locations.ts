@@ -72,6 +72,16 @@ export type NearbyLocationsParams = {
    * was no cap at all, so every search returned the entire table.
    */
   maxResults?: number;
+  /**
+   * Restrict to places or to activities. Null means both, which is what every
+   * caller but Home's activities row wants.
+   *
+   * It exists because distance is the wrong axis for an activity: people drive
+   * an hour and a half to a festival and not five minutes to a boule court, so
+   * activities cannot be left to compete with courts for slots in a capped
+   * proximity query. See migration 0086.
+   */
+  kind?: "place" | "activity" | null;
 };
 
 export async function fetchNearbyLocations(
@@ -87,6 +97,7 @@ export async function fetchNearbyLocations(
     sort: params.sort ?? "distance",
     season_filter: params.season ?? null,
     max_results: params.maxResults ?? 100,
+    kind_filter: params.kind ?? null,
   });
   if (error) throw error;
   return (data ?? []) as NearbyLocation[];
