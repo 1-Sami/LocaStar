@@ -79,6 +79,130 @@ function buildQuery(filters, bbox) {
   return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout center tags;`;
 }
 
+/** Metres between two points. Haversine, mean Earth radius. */
+function metresBetween(a, b) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat));
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Drops rows that duplicate another row *in the same batch*.
+ *
+ * OSM frequently holds the same place twice — once as a node and once as the
+ * building way — a few metres apart. Stockholm's libraries contain exactly
+ * that: two "Vällingby bibliotek" at the same coordinates to five decimals.
+ *
+ * The SQL has a not-exists guard, but it cannot catch these: the whole insert
+ * is one statement, so every row's subquery sees the table as it was before any
+ * of them landed. They have to be removed here instead.
+ *
+ * Keeps the first of each pair, which is the one with more tags filled in
+ * often enough not to matter — a moderator can merge what slips through.
+ */
+function dedupe(rows) {
+  const kept = [];
+  const dropped = [];
+  for (const row of rows) {
+    const twin = kept.find((k) => k.name === row.name && metresBetween(k, row) < 100);
+    if (twin) dropped.push(row);
+    else kept.push(row);
+  }
+  return { kept, dropped };
+}
+
+/** A SQL string literal, or a typed NULL. Names contain apostrophes — S:t Erik. */
+function sqlText(value) {
+  if (value === null || value === undefined || value === '') return 'null::text';
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+/**
+ * The INSERT, as SQL rather than a database connection.
+ *
+ * Deliberately not a script that talks to Supabase directly: doing that needs
+ * the service_role key, which bypasses RLS entirely and would have to be handed
+ * around to get there. Emitting SQL means the credential never leaves the
+ * dashboard, and — more usefully — the exact statement can be read before it
+ * runs. A bulk insert into a live table is worth reading first.
+ *
+ * Two guards are built in:
+ *
+ *   - the whole thing is one transaction, so a failure half way leaves nothing
+ *     behind;
+ *   - each row is skipped if a location of the same name already exists within
+ *     100 m. That makes the file safe to run twice, and stops an import
+ *     stamping a duplicate on top of somewhere a real person already added.
+ *
+ * created_by is looked up by username rather than pasted as a uuid, so the file
+ * says who owns these rows in a form you can check.
+ */
+function buildSql(rows, categorySlug, batch, ownerUsername) {
+  const values = rows
+    .map(
+      (r) =>
+        `    (${sqlText(r.name)}, ${sqlText(r.address)}, ${sqlText(r.city)}, ` +
+        `${r.lng}, ${r.lat}, ${sqlText(r.website)}, ${sqlText(r.phone)})`
+    )
+    .join(',\n');
+
+  return `-- ${rows.length} x ${categorySlug}, batch ${batch}
+-- Source: OpenStreetMap contributors (ODbL). Attribution is a licence condition.
+--
+-- Undo this entire batch with:
+--   delete from locations where import_batch = '${batch}';
+
+begin;
+
+with owner as (
+  select id from profiles where username = ${sqlText(ownerUsername)}
+), cat as (
+  select id from categories where slug = ${sqlText(categorySlug)}
+), candidates (name, address, city, lng, lat, website, phone) as (
+  values
+${values}
+), inserted as (
+  insert into locations
+    (kind, name, address, city, country, geom, created_by,
+     creator_visible, status, visibility, import_batch)
+  select
+    'place',
+    c.name::text,
+    c.address::text,
+    c.city::text,
+    'Sweden',
+    ST_MakePoint(c.lng::double precision, c.lat::double precision)::geography,
+    (select id from owner),
+    -- No byline: nobody added these by hand, and claiming otherwise would be
+    -- a lie on five thousand pages.
+    false,
+    'active',
+    'public',
+    ${sqlText(batch)}
+  from candidates c
+  where not exists (
+    select 1 from locations l
+    where l.name = c.name::text
+      and ST_DWithin(
+        l.geom,
+        ST_MakePoint(c.lng::double precision, c.lat::double precision)::geography,
+        100
+      )
+  )
+  returning id
+)
+insert into location_categories (location_id, category_id)
+select inserted.id, (select id from cat) from inserted;
+
+commit;
+`;
+}
+
 /** OSM puts the point on the element for nodes and under `center` for ways/relations. */
 function coordsOf(el) {
   if (typeof el.lat === 'number' && typeof el.lon === 'number') return { lat: el.lat, lng: el.lon };
@@ -152,11 +276,18 @@ async function queryOverpass(query) {
 
 async function main() {
   const [slug, areaKey, ...rest] = process.argv.slice(2);
-  const outIndex = rest.indexOf('--out');
-  const outFile = outIndex >= 0 ? rest[outIndex + 1] : null;
+  const flag = (name) => {
+    const i = rest.indexOf(name);
+    return i >= 0 ? rest[i + 1] : null;
+  };
+  const outFile = flag('--out');
+  const sqlFile = flag('--sql');
+  const owner = flag('--owner') ?? 'sam_86';
 
   if (!CATEGORIES[slug] || !AREAS[areaKey]) {
-    console.error('Usage: node tools/osm-import.mjs <category> <area> [--out file.json]\n');
+    console.error(
+      'Usage: node tools/osm-import.mjs <category> <area> [--out file.json] [--sql file.sql] [--owner username]\n'
+    );
     console.error('  categories:', Object.keys(CATEGORIES).join(', '));
     console.error('  areas     :', Object.keys(AREAS).join(', '));
     process.exit(1);
@@ -170,6 +301,20 @@ async function main() {
   const started = Date.now();
   const payload = await queryOverpass(query);
   const elements = payload.elements ?? [];
+
+  // A busy Overpass mirror sometimes answers 200 with an empty result rather
+  // than an error, which is indistinguishable from "this area really has none"
+  // — and would quietly produce an empty import that looks like it worked.
+  // Seen in practice: the same query returned 99 elements and then 0 a minute
+  // later. Treat empty as suspect and make the caller decide.
+  if (elements.length === 0) {
+    console.error(
+      '\nOverpass returned no elements at all.\n' +
+        'That usually means a busy mirror, not an empty area — the same query can\n' +
+        'return results a minute later. Re-run before believing it.'
+    );
+    process.exit(1);
+  }
 
   const named = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
 
@@ -187,13 +332,15 @@ async function main() {
    * enough to be worth opening, not a complete map — the rest is what the
    * people using it are for.
    */
-  const rows = named.filter((r) => r.address);
+  const addressed = named.filter((r) => r.address);
+  const { kept: rows, dropped } = dedupe(addressed);
   const unnamed = elements.length - named.length;
-  const noAddress = named.length - rows.length;
+  const noAddress = named.length - addressed.length;
 
   console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   console.log(`  ${unnamed} skipped (no name or no point)`);
   console.log(`  ${noAddress} skipped (no address in OSM)`);
+  console.log(`  ${dropped.length} skipped (duplicate within this batch)`);
   console.log(`  ${rows.length} importable`);
   console.log(`  batch id: ${batch}\n`);
 
@@ -206,10 +353,24 @@ async function main() {
 
   if (outFile) {
     writeFileSync(outFile, JSON.stringify({ batch, categorySlug: slug, rows }, null, 2));
-    console.log(`\nWrote ${rows.length} rows to ${outFile}. Nothing has been inserted.`);
-  } else {
-    console.log('\nDry run — nothing written. Pass --out <file> to save the rows.');
+    console.log(`\nWrote ${rows.length} rows to ${outFile}`);
   }
+
+  if (sqlFile) {
+    if (rows.length === 0) {
+      console.log('\nNothing importable — no SQL written.');
+    } else {
+      writeFileSync(sqlFile, buildSql(rows, slug, batch, owner));
+      console.log(`\nWrote SQL for ${rows.length} rows to ${sqlFile}`);
+      console.log(`  owner: ${owner}   (created_by, with no visible byline)`);
+      console.log(`  undo : delete from locations where import_batch = '${batch}';`);
+    }
+  }
+
+  if (!outFile && !sqlFile) {
+    console.log('\nDry run — nothing written. --out <file> for JSON, --sql <file> for the insert.');
+  }
+  console.log('\nStill inserted nothing. Running the SQL is a separate, deliberate step.');
 }
 
 main().catch((error) => {
