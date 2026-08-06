@@ -68,27 +68,80 @@ const CATEGORIES = {
   'museums-free': { filters: ['["tourism"="museum"]["fee"="no"]'] },
   playgrounds: { filters: ['["leisure"="playground"]'] },
   'gyms-outside': { filters: ['["leisure"="fitness_station"]', '["leisure"="fitness_centre"]["outdoor"="yes"]'] },
-  // Pitches carry the sport on the pitch itself. Both spellings of football
-  // exist in OSM: soccer is the tag, football is sometimes used loosely, so
-  // this stays on soccer to avoid dragging in American football and rugby.
-  basketball: { filters: ['["sport"="basketball"]'] },
-  football: { filters: ['["sport"="soccer"]'] },
+  // leisure=pitch AND the sport, not the sport alone. sport=* is tagged on
+  // anything to do with the game, so filtering on it by itself imported the IFK
+  // Göteborg club shop, the Malmö FF shop and the Uppland football association's
+  // office as "football courts". A pitch is the thing you can actually go and
+  // play on.
+  basketball: { filters: ['["leisure"="pitch"]["sport"="basketball"]'] },
+  // soccer, not football: OSM uses football loosely and it would drag in
+  // American football and rugby.
+  football: { filters: ['["leisure"="pitch"]["sport"="soccer"]'] },
   'dog-parks': { filters: ['["leisure"="dog_park"]'] },
   skatepark: { filters: ['["leisure"="skatepark"]', '["sport"="skateboard"]'] },
 };
 
-/** Bounding boxes as Overpass wants them: south,west,north,east. */
+/**
+ * Bounding boxes as Overpass wants them: south,west,north,east.
+ *
+ * `sweden` covers the whole country and is deliberately a poor choice for a
+ * capped run: farthest-point selection maximises distance, so a national bbox
+ * spends the budget on Kiruna, Gotland and the far south while barely touching
+ * the places most people live. Name the cities instead.
+ */
 const AREAS = {
   stockholm: { bbox: '59.20,17.75,59.50,18.30', label: 'Stockholm' },
-  eskilstuna: { bbox: '59.30,16.40,59.45,16.65', label: 'Eskilstuna' },
-  gothenburg: { bbox: '57.60,11.80,57.80,12.10', label: 'Gothenburg' },
+  gothenburg: { bbox: '57.60,11.80,57.80,12.10', label: 'Göteborg' },
   malmo: { bbox: '55.53,12.90,55.65,13.10', label: 'Malmö' },
+  uppsala: { bbox: '59.79,17.55,59.92,17.75', label: 'Uppsala' },
+  vasteras: { bbox: '59.57,16.45,59.66,16.62', label: 'Västerås' },
+  orebro: { bbox: '59.22,15.13,59.32,15.30', label: 'Örebro' },
+  linkoping: { bbox: '58.35,15.53,58.45,15.68', label: 'Linköping' },
+  helsingborg: { bbox: '56.00,12.66,56.10,12.78', label: 'Helsingborg' },
+  jonkoping: { bbox: '57.72,14.10,57.82,14.25', label: 'Jönköping' },
+  norrkoping: { bbox: '58.55,16.10,58.63,16.25', label: 'Norrköping' },
+  lund: { bbox: '55.68,13.15,55.75,13.25', label: 'Lund' },
+  umea: { bbox: '63.78,20.20,63.86,20.35', label: 'Umeå' },
+  gavle: { bbox: '60.63,17.10,60.72,17.22', label: 'Gävle' },
+  boras: { bbox: '57.70,12.90,57.76,13.00', label: 'Borås' },
+  sodertalje: { bbox: '59.17,17.58,59.24,17.68', label: 'Södertälje' },
+  eskilstuna: { bbox: '59.30,16.40,59.45,16.65', label: 'Eskilstuna' },
+  karlstad: { bbox: '59.35,13.45,59.42,13.55', label: 'Karlstad' },
+  vaxjo: { bbox: '56.85,14.75,56.92,14.85', label: 'Växjö' },
+  sundsvall: { bbox: '62.37,17.25,62.42,17.36', label: 'Sundsvall' },
+  lulea: { bbox: '65.55,22.10,65.65,22.25', label: 'Luleå' },
   sweden: { bbox: '55.00,10.50,69.10,24.20', label: 'Sweden' },
 };
 
-function buildQuery(filters, bbox) {
-  const parts = filters
-    .flatMap((f) => [`node${f}(${bbox});`, `way${f}(${bbox});`, `relation${f}(${bbox});`])
+/** A sensible national spread: the big three plus a reach up and down the country. */
+const NATIONWIDE = [
+  'stockholm',
+  'gothenburg',
+  'malmo',
+  'uppsala',
+  'orebro',
+  'linkoping',
+  'umea',
+  'gavle',
+  'vaxjo',
+  'lulea',
+];
+
+/**
+ * One query covering every requested area.
+ *
+ * Overpass takes a union, so ten cities is one request rather than ten. That
+ * matters more than it sounds: each round trip to a busy free server can take
+ * minutes, and ten sequential ones turned a job into a coffee break. Rows are
+ * assigned back to their city afterwards by checking which box contains them,
+ * which the coordinates already answer.
+ */
+function buildQuery(filters, bboxes) {
+  const boxes = Array.isArray(bboxes) ? bboxes : [bboxes];
+  const parts = boxes
+    .flatMap((bbox) =>
+      filters.flatMap((f) => [`node${f}(${bbox});`, `way${f}(${bbox});`, `relation${f}(${bbox});`])
+    )
     .join('\n  ');
   // `out geom` rather than `out center`. Overpass's "center" is the middle of
   // the bounding box, which it documents as possibly falling outside the object
@@ -463,8 +516,28 @@ async function geocodeMissing(rows, onProgress) {
  * A genuinely empty area therefore costs one extra request. That is a fair
  * price for never mistaking a broken mirror for a fact.
  */
-async function queryOverpass(query) {
+async function queryOverpass(query, { attempts = 4 } = {}) {
   const failures = [];
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    if (attempt > 1) {
+      // Overpass throttles per IP and stays throttled for a while. Backing off
+      // 20s, 40s, 80s costs a couple of minutes on a bad day and turns a failed
+      // run into a slow one — which for a job this size is the better trade.
+      const wait = 10_000 * 2 ** (attempt - 1);
+      console.log(`  busy — waiting ${wait / 1000}s before retry ${attempt - 1}/${attempts - 1}`);
+      await sleep(wait);
+    }
+    const result = await tryMirrors(query, failures);
+    if (result) return result;
+  }
+  throw new Error(
+    `No mirror returned data after ${attempts} attempts:\n  ${failures.slice(-4).join('\n  ')}\n\n` +
+      'These are free shared servers and throttle per IP. If a big run just\n' +
+      'finished, give it ten minutes rather than retrying immediately.'
+  );
+}
+
+async function tryMirrors(query, failures) {
   for (const url of OVERPASS_MIRRORS) {
     const host = new URL(url).host;
     try {
@@ -497,12 +570,8 @@ async function queryOverpass(query) {
       failures.push(`${host} -> ${error.message}`);
     }
   }
-  throw new Error(
-    `No mirror returned data:\n  ${failures.join('\n  ')}\n\n` +
-      'These are free shared servers, and 429/504/"no elements" usually mean busy\n' +
-      'rather than broken — the same query often works a minute later. If every\n' +
-      'mirror says "no elements" repeatedly, the area may genuinely have none.'
-  );
+  // Null rather than throwing: the caller decides whether to back off and retry.
+  return null;
 }
 
 async function main() {
@@ -517,27 +586,61 @@ async function main() {
   const geocode = rest.includes('--geocode');
   const maxRows = Number(flag('--max') ?? DEFAULT_MAX_ROWS);
 
-  if (!CATEGORIES[slug] || !AREAS[areaKey]) {
+  // "nationwide", or a comma-separated list, or one area.
+  const areaKeys =
+    areaKey === 'nationwide' ? NATIONWIDE : (areaKey ?? '').split(',').filter(Boolean);
+
+  if (!CATEGORIES[slug] || areaKeys.length === 0 || areaKeys.some((k) => !AREAS[k])) {
     console.error(
-      'Usage: node tools/osm-import.mjs <category> <area> [--geocode] [--max n]\n' +
-        '                                 [--out file.json] [--sql file.sql] [--owner username]\n'
+      'Usage: node tools/osm-import.mjs <category> <area[,area...]|nationwide>\n' +
+        '                                 [--geocode] [--max n] [--out f.json] [--sql f.sql] [--owner user]\n'
     );
     console.error('  categories:', Object.keys(CATEGORIES).join(', '));
     console.error('  areas     :', Object.keys(AREAS).join(', '));
+    console.error('  nationwide:', NATIONWIDE.join(', '));
     process.exit(1);
   }
 
-  const area = AREAS[areaKey];
-  const batch = `osm-${areaKey}-${slug}-${new Date().toISOString().slice(0, 10)}`;
-  const query = buildQuery(CATEGORIES[slug].filters, area.bbox);
+  const areaLabel = areaKey === 'nationwide' ? 'nationwide' : areaKeys.join('+');
+  const batch = `osm-${areaLabel}-${slug}-${new Date().toISOString().slice(0, 10)}`;
 
-  console.log(`Overpass: ${slug} in ${area.label}`);
+  /*
+   * The cap is divided evenly between the areas, not applied to the pool.
+   *
+   * Selecting across a combined pool would hand the whole budget to whichever
+   * cities sit furthest apart — farthest-point selection rewards distance, so
+   * Luleå and Malmö would crowd out everywhere between them. An even share
+   * guarantees every named city gets some, and the spread still applies within
+   * each one.
+   */
+  const perArea = Math.max(1, Math.floor(maxRows / areaKeys.length));
   const started = Date.now();
-  const payload = await queryOverpass(query);
-  const elements = payload.elements ?? [];
 
+  console.log(`Overpass: ${slug} across ${areaKeys.length} areas, ${perArea} each`);
+  const elements =
+    (await queryOverpass(buildQuery(CATEGORIES[slug].filters, areaKeys.map((k) => AREAS[k].bbox))))
+      .elements ?? [];
+  console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s\n`);
 
-  const named = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
+  const allRows = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
+
+  // Bucket by the box each row falls in, then spread within each city. Doing it
+  // per city rather than over the pool is the point: farthest-point selection
+  // rewards distance, so across a combined pool Luleå and Malmö would crowd out
+  // everywhere in between.
+  const named = [];
+  for (const key of areaKeys) {
+    const [south, west, north, east] = AREAS[key].bbox.split(',').map(Number);
+    const inside = allRows.filter(
+      (r) => r.lat >= south && r.lat <= north && r.lng >= west && r.lng <= east
+    );
+    const picked = pickSpread(inside, perArea);
+    named.push(...picked);
+    console.log(
+      `  ${AREAS[key].label.padEnd(14)}${String(inside.length).padStart(5)} found → ${picked.length} picked`
+    );
+  }
+  console.log();
 
   /*
    * Only rows that already carry an address are kept.
@@ -553,17 +656,11 @@ async function main() {
    * enough to be worth opening, not a complete map — the rest is what the
    * people using it are for.
    */
-  const unplaceable = elements.length - named.length;
-  console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-  console.log(`  ${unplaceable} skipped (no usable point)`);
+  console.log(`  ${named.length} selected (${perArea} per area, spread within each)`);
 
-  // Deliberately a new binding rather than mutating `named` in place: when the
-  // count is under the cap pickSpread returns the very same array, so emptying
-  // `named` first would empty the source it is about to be refilled from.
+  // Already capped per area above; this is only the belt-and-braces trim when
+  // the even split leaves a remainder.
   const candidates = pickSpread(named, maxRows);
-  if (candidates.length < named.length) {
-    console.log(`  ${named.length - candidates.length} set aside (cap ${maxRows}, spread across the area)`);
-  }
 
   const needing = candidates.filter((r) => !r.address || !r.name).length;
   if (needing > 0) {
