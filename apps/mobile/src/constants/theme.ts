@@ -76,6 +76,8 @@ export const CategoryColors: Record<string, string> = {
   skatepark: '#4A3F5C',
   'motocross-atv-tracks': '#5C3A1E',
   'race-tracks-vehicle': '#3A3F4A',
+  'rc-race-track': '#4A5568',
+  'horse-track': '#6B4A2E',
 
   // Nature & trails
   'bike-trails': '#2E4A1F',
@@ -101,6 +103,7 @@ export const CategoryColors: Record<string, string> = {
   parkour: '#4A3A5C',
   'obstacle-course': '#5C2E4A',
   'archery-ranges': '#4A5C5C',
+  'shooting-range': '#3F4A52',
   paintball: '#6B2E4A',
   'track-and-field-stadium': '#8A5A2E',
 

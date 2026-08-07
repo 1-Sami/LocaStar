@@ -165,6 +165,16 @@ const CATEGORIES = {
     filters: ['["attraction"="high_ropes"]', '["tourism"="theme_park"]', '["sport"="climbing_adventure"]'],
   },
   'race-tracks-vehicle': { filters: ['["highway"="raceway"]', '["leisure"="track"]["sport"="motor"]'] },
+  // Radio-controlled cars, split out of race-tracks-vehicle. A field for models
+  // and a circuit you drive on are not the same errand, and Västerorts RC
+  // Sportklubb turning up under motorsport was how that showed.
+  'rc-race-track': { filters: ['["sport"="rc_car"]', '["leisure"="track"]["sport"="rc_car"]'] },
+  // Racing and trotting tracks, not riding schools — "track" is the word.
+  'horse-track': { filters: ['["sport"="horse_racing"]', '["leisure"="track"]["sport"="equestrian"]'] },
+  // Split out of archery-ranges, which had quietly become every kind of range.
+  // Requires a leisure tag for the same reason archery does: without it,
+  // sport=shooting matches gun shops.
+  'shooting-range': { filters: ['["sport"="shooting"]["leisure"]'] },
   outdoor: { filters: ['["leisure"="recreation_ground"]'] },
 
   /*

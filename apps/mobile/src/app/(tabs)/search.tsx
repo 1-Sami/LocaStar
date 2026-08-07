@@ -38,6 +38,16 @@ const SEARCH_RADIUS_M = 20_000_000;
  */
 const PAGE_SIZE = 50;
 
+/*
+ * Ceiling on the refresh-in-place query.
+ *
+ * Returning to the tab re-asks for as many rows as are already shown so the
+ * scroll position survives. Somebody who has scrolled a very long way should
+ * not turn that into a thousand-row request every time they glance at a
+ * location and come back; past this they get the top of the list again.
+ */
+const MAX_REFRESH_ROWS = 300;
+
 const SORT_OPTIONS = [
   { key: 'distance', label: 'Distance' },
   { key: 'rating', label: 'Highest rated' },
@@ -81,6 +91,25 @@ export default function SearchScreen() {
    */
   const searchGeneration = useRef(0);
 
+  /*
+   * How many rows are on screen, and which search produced them.
+   *
+   * Coming back from a location used to dump you at the top of page one. The
+   * focus refresh below re-ran the query, the query always asked for one page,
+   * and fifty rows replaced the four hundred someone had scrolled through — so
+   * the list jumped to the start and the scrolling was wasted.
+   *
+   * Refreshing is still right (a location added since the app opened has to
+   * appear), so instead of shrinking the list the refresh asks for as many rows
+   * as are already shown. Same content, same length, same scroll position, just
+   * up to date. Refs rather than state because the effect reads them: putting
+   * results.length in its dependencies would make every appended page trigger
+   * another fetch.
+   */
+  const loadedCount = useRef(0);
+  const lastFilterKey = useRef<string | null>(null);
+  const loadingMoreRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
       setRefreshKey((key) => key + 1);
@@ -99,6 +128,15 @@ export default function SearchScreen() {
     searchGeneration.current += 1;
     const trimmed = query.trim();
 
+    // A changed filter starts over at one page; anything else — coming back to
+    // the tab, a location added elsewhere — keeps what is already on screen.
+    const filterKey = JSON.stringify([trimmed, [...activeSlugs].sort(), sortBy, activeSeason]);
+    const isRefresh = lastFilterKey.current === filterKey;
+    lastFilterKey.current = filterKey;
+    const wanted = isRefresh
+      ? Math.min(Math.max(PAGE_SIZE, loadedCount.current), MAX_REFRESH_ROWS)
+      : PAGE_SIZE;
+
     const timeout = setTimeout(() => {
       setLoading(true);
       fetchNearbyLocations(supabase, {
@@ -109,11 +147,12 @@ export default function SearchScreen() {
         searchQuery: trimmed.length > 0 ? trimmed : null,
         sort: sortBy,
         season: activeSeason,
-        maxResults: PAGE_SIZE,
+        maxResults: wanted,
       })
         .then((result) => {
           if (cancelled) return;
           setResults(result);
+          loadedCount.current = result.length;
           // total_count is on every row and identical across them; with no rows
           // there is nothing to read it from, and the answer is zero anyway.
           setTotalCount(result[0]?.total_count ?? 0);
@@ -121,6 +160,7 @@ export default function SearchScreen() {
         .catch(() => {
           if (cancelled) return;
           setResults([]);
+          loadedCount.current = 0;
           setTotalCount(0);
         })
         .finally(() => {
@@ -149,9 +189,16 @@ export default function SearchScreen() {
    * order. Before it the rating sort left every unrated row tied, and measured
    * against live data consecutive pages shared four rows while four others
    * became unreachable.
+   *
+   * The in-flight guard is a ref, not the loadingMore state. onEndReached fires
+   * several times in the same frame as the list settles, and a state update is
+   * not visible to the calls that follow it — so three of them all saw
+   * loadingMore === false, all fetched offset 50, and the same fifty rows were
+   * appended three times. A ref changes on the spot.
    */
   const loadMore = useCallback(() => {
-    if (!coords || loading || loadingMore || !hasMore) return;
+    if (!coords || loading || loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     const generation = searchGeneration.current;
     const trimmed = query.trim();
@@ -169,13 +216,23 @@ export default function SearchScreen() {
       .then((next) => {
         // Belongs to a search the user has since moved on from.
         if (generation !== searchGeneration.current) return;
-        setResults((current) => [...current, ...next]);
+        setResults((current) => {
+          const grown = [...current, ...next];
+          loadedCount.current = grown.length;
+          return grown;
+        });
       })
       .catch(() => {
         // Leave what is already shown; the next scroll retries.
       })
-      .finally(() => setLoadingMore(false));
-  }, [coords, loading, loadingMore, hasMore, query, activeSlugs, sortBy, activeSeason, results.length]);
+      .finally(() => {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      });
+    // loadingMore is deliberately absent: the guard is loadingMoreRef, and
+    // depending on the state as well would rebuild this callback on every page
+    // for no benefit.
+  }, [coords, loading, hasMore, query, activeSlugs, sortBy, activeSeason, results.length]);
 
   const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
   const visibleCategories = trimmedCategoryQuery
@@ -287,7 +344,11 @@ export default function SearchScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<Text style={styles.emptyText}>No matches.</Text>}
             onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
+            // A screen and a half of runway. At 0.5 the fetch only started once
+            // the last card was nearly in view, so every fifty rows ended in a
+            // visible stall on a spinner; starting earlier means the next page
+            // is usually there before you reach it.
+            onEndReachedThreshold={1.5}
             ListFooterComponent={
               loadingMore ? (
                 <ActivityIndicator style={styles.footerLoader} color={SearchPalette.accent} />
