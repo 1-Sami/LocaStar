@@ -254,7 +254,8 @@ export default function SearchScreen() {
               setActiveSlugs([]);
               setActiveSeason(null);
             }}>
-            <Text style={styles.resetFiltersText}>Reset filter</Text>
+            <Text style={styles.resetFiltersX}>×</Text>
+            <Text style={styles.resetFiltersText}>RESET FILTERS</Text>
           </Pressable>
         )}
 
@@ -500,15 +501,43 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
+  /*
+   * Built to the same pill as CategoryChip — height 34, radius 10, 1.5 border,
+   * × then an uppercase label — so it sits in the same visual family as the
+   * chips it clears rather than looking like a stray link under them.
+   *
+   * Red rather than a category colour: it undoes a selection, and it must not
+   * be mistaken for one more filter to add.
+   */
   resetFiltersButton: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginHorizontal: Spacing.three,
+    // Clear of the filter row: at Spacing.one the two crowded each other and
+    // read as a single control.
+    marginTop: Spacing.three,
     paddingHorizontal: Spacing.three,
-    marginTop: Spacing.one,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2564A',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  resetFiltersX: {
+    fontFamily: MONO_FONT,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#E2564A',
+    includeFontPadding: false,
   },
   resetFiltersText: {
     fontFamily: MONO_FONT,
     fontSize: 12,
-    color: SearchPalette.textMuted,
+    letterSpacing: 0.3,
+    color: '#E2564A',
+    includeFontPadding: false,
   },
   metaRow: {
     flexDirection: 'row',

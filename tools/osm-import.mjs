@@ -134,11 +134,16 @@ const CATEGORIES = {
   'picknick-parks': { filters: ['["tourism"="picnic_site"]'] },
   camping: { filters: ['["tourism"="camp_site"]'] },
   'disc-golf-frisbee': { filters: ['["leisure"="disc_golf_course"]'] },
-  // Ruins, castles and dig sites. historic=memorial and =monument are left out:
-  // a plaque on a wall is not somewhere to go and spend an afternoon.
-  'historical-ruins-places': {
-    filters: ['["historic"="ruins"]', '["historic"="castle"]', '["historic"="archaeological_site"]'],
-  },
+  paintball: { filters: ['["sport"="paintball"]'] },
+  /*
+   * historical-ruins-places is deliberately absent.
+   *
+   * historic=ruins / castle / archaeological_site imported 31 rows and a spot
+   * check of four found four wrong — not ruins at all, or an unmarked patch of
+   * woodland where a dig once was. OSM tags the archaeological *record*, not
+   * somewhere worth travelling to, and the two are not the same thing. The
+   * batch was deleted. This category is for people who have actually been.
+   */
   // Outdoor pools only. A pool with no location tag is assumed outdoor, which
   // is the common case in Sweden; explicit indoor ones are excluded.
   swimming: {
@@ -503,9 +508,14 @@ with owner as (
   values
 ${values}
 ), inserted as (
+  -- website and phone are in this list because they were once missing from it.
+  -- The candidates CTE has always carried both, and the insert quietly dropped
+  -- them: 142 websites were read out of OSM across the first thousand rows and
+  -- one reached the database. Nothing errored — the columns simply were not
+  -- named, so they took their defaults.
   insert into locations
     (kind, name, address, city, country, geom, created_by,
-     creator_visible, status, visibility, import_batch)
+     creator_visible, status, visibility, import_batch, website, phone)
   select
     'place',
     c.name::text,
@@ -519,7 +529,9 @@ ${values}
     false,
     'active',
     'public',
-    ${sqlText(batch)}
+    ${sqlText(batch)},
+    c.website::text,
+    c.phone::text
   from candidates c
   -- Same name, within 100 m, AND in this category. The category clause is not
   -- decoration: most of these names are the street the thing sits on, so a
