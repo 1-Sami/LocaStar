@@ -1,5 +1,6 @@
 import {
   ALWAYS_OPEN,
+  addLocationPhoto,
   fetchCategories,
   fetchLocationById,
   fetchLocationCategoryIds,
@@ -18,12 +19,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
+import { PhotoPicker } from '@/components/photo-picker';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
 
@@ -80,6 +83,27 @@ export default function EditLocationScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  /*
+   * Photos a moderator is adding to this location.
+   *
+   * Only moderators get this. The bulk import brought in a thousand places with
+   * no picture at all — an outdoor gym, a court, a nature reserve — and until
+   * now the only way to give one a photo was to be the person who created it,
+   * inside a 24-hour window that has long since closed on every imported row.
+   *
+   * These are additions, not a replacement: existing photos are managed from
+   * the location's own gallery, and nothing here removes them.
+   */
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
+  /*
+   * How many of them already went up.
+   *
+   * Saving can fail halfway — the location updates, the third upload times out.
+   * Without this, tapping save again re-uploads the first two and attaches them
+   * to the location a second time. Same reasoning as the create form.
+   */
+  const uploadedPhotoCount = useRef(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -229,6 +253,28 @@ export default function EditLocationScreen() {
         availableWinter,
       });
       await setLocationCategories(supabase, id, categoryIds);
+
+      if (photoUris.length > 0) {
+        // location_photos.user_id has to be the caller's own id — the insert
+        // policy checks auth.uid() = user_id before it checks is_moderator().
+        // Throwing rather than skipping: silently dropping the photos would
+        // report a save that did not happen.
+        if (!session) throw new Error('Signed out before the photos could be uploaded.');
+
+        // Resume where a previous attempt stopped rather than starting over, so
+        // a retry cannot attach the same picture twice.
+        for (let index = uploadedPhotoCount.current; index < photoUris.length; index += 1) {
+          const path = `locations/${id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+          await uploadImageToMedia(path, photoUris[index]);
+          await addLocationPhoto(supabase, id, session.user.id, path);
+          uploadedPhotoCount.current = index + 1;
+        }
+        // Attached now, so clear the tray — leaving them selected invites a
+        // second save that would add them all again.
+        setPhotoUris([]);
+        uploadedPhotoCount.current = 0;
+      }
+
       setSaved(true);
     } catch {
       setError('Something went wrong saving your changes. Try again.');
@@ -459,6 +505,31 @@ export default function EditLocationScreen() {
             </View>
           </View>
 
+          {/*
+            Moderators only. Everyone else adds photos when they create a place
+            or when they review one — this exists for the thousand imported
+            locations that arrived with no picture and no creator left inside
+            the edit window to give them one.
+          */}
+          {isModerator && (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" style={styles.photoLabel}>
+                Add photos
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.photoHint}>
+                Added to this {kind === 'activity' ? 'activity' : 'location'} when you save. Photos
+                already on it are managed from its gallery.
+              </ThemedText>
+              <PhotoPicker
+                uris={photoUris}
+                onChange={(next) => {
+                  setPhotoUris(next);
+                  setSaved(false);
+                }}
+              />
+            </View>
+          )}
+
           {error && (
             <ThemedText type="small" style={styles.errorText}>
               {error}
@@ -594,6 +665,12 @@ const styles = StyleSheet.create({
   },
   savedText: {
     color: '#4CD37A',
+  },
+  photoLabel: {
+    marginBottom: Spacing.one,
+  },
+  photoHint: {
+    marginBottom: Spacing.two,
   },
   saveButton: {
     height: 48,
