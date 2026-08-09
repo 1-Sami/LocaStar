@@ -1,0 +1,23 @@
+-- register_device_token was executable by `anon`, which 0091 believed it had
+-- prevented.
+--
+-- 0091 ends with:
+--
+--     revoke all on function public.register_device_token(text, text) from public;
+--     grant execute on function public.register_device_token(text, text) to authenticated;
+--
+-- which looks airtight and is not. Supabase ships ALTER DEFAULT PRIVILEGES
+-- granting EXECUTE on new functions to anon, authenticated and service_role
+-- explicitly. `revoke ... from public` removes only the implicit PUBLIC grant;
+-- the explicit per-role ones survive it untouched. The security advisor is what
+-- caught it — proacl still read `anon=X/postgres`.
+--
+-- Not exploitable: the function raises when auth.uid() is null, which is the
+-- case for every anonymous caller, so the worst an anon call could do was get
+-- an error. This is defence in depth, and a note that the same pattern is
+-- almost certainly wrong wherever else it appears in this schema — the advisor
+-- lists 35 functions reachable by anon, most of them legitimately so
+-- (nearby_locations is meant to be), but the list is worth a read rather than
+-- an assumption.
+
+revoke execute on function public.register_device_token(text, text) from anon;
