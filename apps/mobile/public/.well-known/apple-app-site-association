@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["75BRLHUC62.se.locastar.app"],
+        "components": [
+          {
+            "/": "/auth/*",
+            "comment": "Confirmation and password-reset links open in the app rather than Safari"
+          }
+        ]
+      }
+    ]
+  }
+}

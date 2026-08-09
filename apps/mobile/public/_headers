@@ -1,0 +1,9 @@
+# Cloudflare Pages headers. Expo copies public/ into dist/, so this lands at the
+# site root where Pages looks for it.
+#
+# apple-app-site-association has no file extension, so Pages guesses a content
+# type and gets it wrong. Apple fetches the file itself and rejects anything
+# that is not application/json — the only symptom is that universal links
+# silently keep opening Safari, with nothing logged anywhere.
+/.well-known/apple-app-site-association
+  Content-Type: application/json

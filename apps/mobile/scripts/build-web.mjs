@@ -96,6 +96,26 @@ if (!existsSync(assetLinks)) {
 }
 console.log('> .well-known/assetlinks.json present');
 
+// The iOS half of the same claim. Apple fetches this file directly and will not
+// accept it unless it is served as application/json — which is what public/_headers
+// is for, since the file deliberately has no extension. Same failure mode as
+// above: auth links quietly open Safari and nothing is logged.
+const aasa = join(dist, '.well-known', 'apple-app-site-association');
+if (!existsSync(aasa)) {
+  throw new Error(
+    'dist/.well-known/apple-app-site-association is missing. iOS universal links ' +
+      'will fail and auth email links will open Safari instead of the app. ' +
+      'Check that apps/mobile/public/.well-known/apple-app-site-association still exists.'
+  );
+}
+if (!existsSync(join(dist, '_headers'))) {
+  throw new Error(
+    'dist/_headers is missing, so apple-app-site-association will be served with ' +
+      'the wrong content type and Apple will reject it. Check apps/mobile/public/_headers.'
+  );
+}
+console.log('> .well-known/apple-app-site-association present, _headers present');
+
 // Cloudflare's "404-page" handling looks for 404.html; Expo Router names its
 // not-found page +not-found.html. Copy it so an unknown URL lands on the app's
 // own page instead of a bare Cloudflare error.
