@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "about": "Om",
+    "accountInfo": "Kontouppgifter",
+    "addLocation": "Lägg till",
+    "blockedUsers": "Blockerade användare",
+    "changePassword": "Byt lösenord",
+    "deleteAccount": "Radera konto",
+    "editLocation": "Redigera plats",
+    "friends": "Vänner",
+    "language": "Språk",
+    "list": "Lista",
+    "logIn": "Logga in",
+    "moderationLog": "Modereringslogg",
+    "myContributions": "Mina bidrag",
+    "myLists": "Mina listor",
+    "myReviews": "Mina recensioner",
+    "notifications": "Aviseringar",
+    "peopleAndBans": "Användare och avstängningar",
+    "privacyPolicy": "Integritetspolicy",
+    "profilePicture": "Profilbild",
+    "reports": "Anmälningar",
+    "resetPassword": "Återställ lösenord",
+    "saved": "Sparat",
+    "settings": "Inställningar",
+    "signUp": "Skapa konto",
+    "termsOfService": "Användarvillkor",
+    "theme": "Tema",
+    "writeReview": "Skriv en recension"
+  },
+  "common": {
+    "cancel": "Avbryt",
+    "delete": "Radera",
+    "retry": "Försök igen",
+    "save": "Spara",
+    "somethingWentWrong": "Något gick fel. Försök igen."
+  },
+  "language": {
+    "title": "Språk",
+    "description": "Välj vilket språk LocaStar ska använda. Följer du systemet ändras det när du ändrar i telefonen.",
+    "system": "Följ systemet",
+    "systemDetail": "Just nu {{language}}",
+    "en": "English",
+    "sv": "Svenska"
+  }
+}

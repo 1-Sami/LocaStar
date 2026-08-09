@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "about": "About",
+    "accountInfo": "Account info",
+    "addLocation": "Add",
+    "blockedUsers": "Blocked users",
+    "changePassword": "Change password",
+    "deleteAccount": "Delete account",
+    "editLocation": "Edit location",
+    "friends": "Friends",
+    "language": "Language",
+    "list": "List",
+    "logIn": "Log in",
+    "moderationLog": "Moderation log",
+    "myContributions": "My contributions",
+    "myLists": "My lists",
+    "myReviews": "My reviews",
+    "notifications": "Notifications",
+    "peopleAndBans": "People & bans",
+    "privacyPolicy": "Privacy Policy",
+    "profilePicture": "Profile picture",
+    "reports": "Reports",
+    "resetPassword": "Reset password",
+    "saved": "Saved",
+    "settings": "Settings",
+    "signUp": "Sign up",
+    "termsOfService": "Terms of Service",
+    "theme": "Theme",
+    "writeReview": "Write a review"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "retry": "Try again",
+    "save": "Save",
+    "somethingWentWrong": "Something went wrong. Try again."
+  },
+  "language": {
+    "title": "Language",
+    "description": "Choose the language LocaStar uses. Following the system means it changes when your phone does.",
+    "system": "Follow the system",
+    "systemDetail": "Currently {{language}}",
+    "en": "English",
+    "sv": "Svenska"
+  }
+}

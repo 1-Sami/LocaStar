@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,18 +7,22 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
-const rows: { label: string; href: string }[] = [
-  { label: 'Change password', href: '/settings/password' },
-  { label: 'Account info', href: '/settings/account' },
-  { label: 'Theme', href: '/settings/theme' },
-  { label: 'Notifications', href: '/settings/notifications' },
-  { label: 'Blocked users', href: '/settings/blocked' },
-  { label: 'Privacy Policy', href: '/legal/privacy' },
-  { label: 'Terms of Service', href: '/legal/terms' },
+// Translation keys, not labels — the row order is fixed here and the words come
+// from the catalogue at render time so they follow a language change.
+const rows: { key: string; href: string }[] = [
+  { key: 'nav.changePassword', href: '/settings/password' },
+  { key: 'nav.accountInfo', href: '/settings/account' },
+  { key: 'nav.language', href: '/settings/language' },
+  { key: 'nav.theme', href: '/settings/theme' },
+  { key: 'nav.notifications', href: '/settings/notifications' },
+  { key: 'nav.blockedUsers', href: '/settings/blocked' },
+  { key: 'nav.privacyPolicy', href: '/legal/privacy' },
+  { key: 'nav.termsOfService', href: '/legal/terms' },
 ];
 
 export default function SettingsMenuScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <ThemedView style={styles.container}>
@@ -26,7 +31,7 @@ export default function SettingsMenuScreen() {
           {rows.map((row) => (
             <Pressable key={row.href} onPress={() => router.push(row.href as never)}>
               <ThemedView type="backgroundElement" style={styles.menuItem}>
-                <ThemedText type="default">{row.label}</ThemedText>
+                <ThemedText type="default">{t(row.key)}</ThemedText>
                 <ThemedText themeColor="textSecondary">›</ThemedText>
               </ThemedView>
             </Pressable>
@@ -36,7 +41,7 @@ export default function SettingsMenuScreen() {
             style={styles.deleteAccountButton}
             onPress={() => router.push('/settings/delete-account' as never)}>
             <ThemedText type="smallBold" style={styles.deleteAccountText}>
-              Delete account
+              {t('nav.deleteAccount')}
             </ThemedText>
           </Pressable>
         </ScrollView>
