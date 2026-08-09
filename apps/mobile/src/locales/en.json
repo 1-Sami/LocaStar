@@ -35,6 +35,22 @@
     "save": "Save",
     "somethingWentWrong": "Something went wrong. Try again."
   },
+  "auth": {
+    "backToLogIn": "Back to log in",
+    "checkYourEmail": "Check your email",
+    "email": "Email",
+    "forgotPassword": "Forgot password?",
+    "logIn": "Log in",
+    "loggingIn": "Logging in…",
+    "noAccount": "Don't have an account?",
+    "password": "Password",
+    "resetLinkSent": "If an account exists for {{email}}, we've sent a link to reset your password.",
+    "resetPassword": "Reset password",
+    "resetPasswordIntro": "Enter your email and we'll send you a link to reset your password.",
+    "sendResetLink": "Send reset link",
+    "sending": "Sending…",
+    "signUp": "Sign up"
+  },
   "language": {
     "title": "Language",
     "description": "Choose the language LocaStar uses. Following the system means it changes when your phone does.",

@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +38,13 @@ export default function ForgotPasswordScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle">Check your email</ThemedText>
+          <ThemedText type="subtitle">{t('auth.checkYourEmail')}</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            If an account exists for {email}, we've sent a link to reset your password.
+            {t('auth.resetLinkSent', { email })}
           </ThemedText>
           <Pressable style={[styles.submitButton, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
             <ThemedText type="smallBold" style={styles.submitButtonText}>
-              Back to log in
+              {t('auth.backToLogIn')}
             </ThemedText>
           </Pressable>
         </SafeAreaView>
@@ -53,15 +55,15 @@ export default function ForgotPasswordScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle">Reset password</ThemedText>
+        <ThemedText type="subtitle">{t('auth.resetPassword')}</ThemedText>
         <ThemedText type="default" themeColor="textSecondary">
-          Enter your email and we'll send you a link to reset your password.
+          {t('auth.resetPasswordIntro')}
         </ThemedText>
 
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t('auth.email')}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -83,7 +85,7 @@ export default function ForgotPasswordScreen() {
             (submitting || !email.trim()) && styles.submitButtonDisabled,
           ]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
-            {submitting ? 'Sending…' : 'Send reset link'}
+            {submitting ? t('auth.sending') : t('auth.sendResetLink')}
           </ThemedText>
         </Pressable>
       </SafeAreaView>

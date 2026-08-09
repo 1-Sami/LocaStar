@@ -35,6 +35,22 @@
     "save": "Spara",
     "somethingWentWrong": "Något gick fel. Försök igen."
   },
+  "auth": {
+    "backToLogIn": "Tillbaka till inloggning",
+    "checkYourEmail": "Kolla din e-post",
+    "email": "E-post",
+    "forgotPassword": "Glömt lösenordet?",
+    "logIn": "Logga in",
+    "loggingIn": "Loggar in…",
+    "noAccount": "Har du inget konto?",
+    "password": "Lösenord",
+    "resetLinkSent": "Om det finns ett konto för {{email}} har vi skickat en länk för att återställa lösenordet.",
+    "resetPassword": "Återställ lösenord",
+    "resetPasswordIntro": "Ange din e-post så skickar vi en länk för att återställa lösenordet.",
+    "sendResetLink": "Skicka återställningslänk",
+    "sending": "Skickar…",
+    "signUp": "Skapa konto"
+  },
   "language": {
     "title": "Språk",
     "description": "Välj vilket språk LocaStar ska använda. Följer du systemet ändras det när du ändrar i telefonen.",

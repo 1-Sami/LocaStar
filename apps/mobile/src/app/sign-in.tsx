@@ -1,5 +1,6 @@
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +19,7 @@ export default function SignInScreen() {
   const { signInWithPassword } = useAuth();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const onSubmit = async () => {
     setSubmitting(true);
@@ -34,12 +36,12 @@ export default function SignInScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle">Log in</ThemedText>
+        <ThemedText type="subtitle">{t('auth.logIn')}</ThemedText>
 
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t('auth.email')}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -48,13 +50,13 @@ export default function SignInScreen() {
         <PasswordInput
           value={password}
           onChangeText={setPassword}
-          placeholder="Password"
+          placeholder={t('auth.password')}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
 
         <Link href="/forgot-password" style={styles.forgotPasswordLink}>
-          <ThemedText type="linkPrimary">Forgot password?</ThemedText>
+          <ThemedText type="linkPrimary">{t('auth.forgotPassword')}</ThemedText>
         </Link>
 
         {error && (
@@ -68,16 +70,16 @@ export default function SignInScreen() {
           disabled={submitting || !email || !password}
           style={[styles.submitButton, { backgroundColor: theme.primary }]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
-            {submitting ? 'Logging in...' : 'Log in'}
+            {submitting ? t('auth.loggingIn') : t('auth.logIn')}
           </ThemedText>
         </Pressable>
 
         <View style={styles.switchRow}>
           <ThemedText type="small" themeColor="textSecondary">
-            Don&apos;t have an account?
+            {t('auth.noAccount')}
           </ThemedText>
           <Link href="/sign-up" replace>
-            <ThemedText type="linkPrimary">Sign up</ThemedText>
+            <ThemedText type="linkPrimary">{t('auth.signUp')}</ThemedText>
           </Link>
         </View>
       </SafeAreaView>
