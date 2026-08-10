@@ -1,5 +1,6 @@
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,6 +32,7 @@ export default function SignUpScreen() {
   const { signUpWithPassword } = useAuth();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   // Only complain once they've actually started typing, so the form doesn't
   // greet them with errors for fields they haven't filled in yet.
@@ -70,10 +72,9 @@ export default function SignUpScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle">Check your email</ThemedText>
+          <ThemedText type="subtitle">{t('auth.checkYourEmail')}</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            We sent a confirmation link to {email}. Follow it to finish creating your account,
-            then come back and log in.
+            {t('auth.confirmationSent', { email })}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>
@@ -83,12 +84,12 @@ export default function SignUpScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle">Sign up</ThemedText>
+        <ThemedText type="subtitle">{t('auth.signUp')}</ThemedText>
 
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t('auth.email')}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -97,21 +98,21 @@ export default function SignUpScreen() {
 
         {showEmailProblem && (
           <ThemedText type="small" style={styles.error}>
-            That doesn&apos;t look like an email address.
+            {t('auth.emailInvalid')}
           </ThemedText>
         )}
 
         <TextInput
           value={username}
           onChangeText={setUsername}
-          placeholder="Username"
+          placeholder={t('auth.username')}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
         <ThemedText type="small" themeColor="textSecondary">
-          This is the name shown next to your reviews and the places you add. You can change it later.
+          {t('auth.usernameHint')}
         </ThemedText>
 
         {showUsernameProblem && (
@@ -123,7 +124,7 @@ export default function SignUpScreen() {
         <PasswordInput
           value={password}
           onChangeText={setPassword}
-          placeholder="Password"
+          placeholder={t('auth.password')}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
@@ -137,14 +138,14 @@ export default function SignUpScreen() {
         <PasswordInput
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          placeholder="Repeat password"
+          placeholder={t('auth.repeatPassword')}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
 
         {passwordsMismatch && (
           <ThemedText type="small" style={styles.error}>
-            The two passwords don&apos;t match.
+            {t('auth.passwordsDontMatch')}
           </ThemedText>
         )}
 
@@ -159,28 +160,33 @@ export default function SignUpScreen() {
           disabled={submitting || !canSubmit}
           style={[styles.submitButton, { backgroundColor: theme.primary }]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
-            {submitting ? 'Signing up...' : 'Sign up'}
+            {submitting ? t('auth.signingUp') : t('auth.signUp')}
           </ThemedText>
         </Pressable>
 
+        {/* Split into three keys rather than one, because two links sit inside
+            the sentence. Swedish needs "våra ... och vår ..." where English has
+            "our ... and ...", so the joining words have to be translatable
+            separately — a single string with placeholders could not carry the
+            links. */}
         <ThemedText type="small" themeColor="textSecondary" style={styles.consentText}>
-          By signing up you agree to our{' '}
+          {t('auth.consentBefore')}
           <Link href={'/legal/terms' as never}>
-            <ThemedText type="linkPrimary">Terms of Service</ThemedText>
-          </Link>{' '}
-          and{' '}
-          <Link href={'/legal/privacy' as never}>
-            <ThemedText type="linkPrimary">Privacy Policy</ThemedText>
+            <ThemedText type="linkPrimary">{t('nav.termsOfService')}</ThemedText>
           </Link>
-          .
+          {t('auth.consentBetween')}
+          <Link href={'/legal/privacy' as never}>
+            <ThemedText type="linkPrimary">{t('nav.privacyPolicy')}</ThemedText>
+          </Link>
+          {t('auth.consentAfter')}
         </ThemedText>
 
         <View style={styles.switchRow}>
           <ThemedText type="small" themeColor="textSecondary">
-            Already have an account?
+            {t('auth.alreadyHaveAccount')}
           </ThemedText>
           <Link href="/sign-in" replace>
-            <ThemedText type="linkPrimary">Log in</ThemedText>
+            <ThemedText type="linkPrimary">{t('auth.logIn')}</ThemedText>
           </Link>
         </View>
       </SafeAreaView>

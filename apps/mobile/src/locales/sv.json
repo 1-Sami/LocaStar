@@ -49,7 +49,18 @@
     "resetPasswordIntro": "Ange din e-post så skickar vi en länk för att återställa lösenordet.",
     "sendResetLink": "Skicka återställningslänk",
     "sending": "Skickar…",
-    "signUp": "Skapa konto"
+    "signUp": "Skapa konto",
+    "alreadyHaveAccount": "Har du redan ett konto?",
+    "confirmationSent": "Vi har skickat en bekräftelselänk till {{email}}. Följ den för att slutföra registreringen och logga sedan in.",
+    "consentAfter": ".",
+    "consentBefore": "Genom att skapa ett konto godkänner du våra ",
+    "consentBetween": " och vår ",
+    "emailInvalid": "Det ser inte ut som en e-postadress.",
+    "passwordsDontMatch": "Lösenorden stämmer inte överens.",
+    "repeatPassword": "Upprepa lösenord",
+    "signingUp": "Skapar konto…",
+    "username": "Användarnamn",
+    "usernameHint": "Det här namnet visas vid dina recensioner och de platser du lägger till. Du kan ändra det senare."
   },
   "language": {
     "title": "Språk",

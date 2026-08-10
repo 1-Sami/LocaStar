@@ -49,7 +49,18 @@
     "resetPasswordIntro": "Enter your email and we'll send you a link to reset your password.",
     "sendResetLink": "Send reset link",
     "sending": "Sending…",
-    "signUp": "Sign up"
+    "signUp": "Sign up",
+    "alreadyHaveAccount": "Already have an account?",
+    "confirmationSent": "We sent a confirmation link to {{email}}. Follow it to finish creating your account, then come back and log in.",
+    "consentAfter": ".",
+    "consentBefore": "By signing up you agree to our ",
+    "consentBetween": " and ",
+    "emailInvalid": "That doesn't look like an email address.",
+    "passwordsDontMatch": "The two passwords don't match.",
+    "repeatPassword": "Repeat password",
+    "signingUp": "Signing up…",
+    "username": "Username",
+    "usernameHint": "This is the name shown next to your reviews and the places you add. You can change it later."
   },
   "language": {
     "title": "Language",
