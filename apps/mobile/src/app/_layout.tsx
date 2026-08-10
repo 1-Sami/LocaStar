@@ -54,6 +54,9 @@ function ThemedNavigation() {
           <Stack.Screen name="about" options={{ headerTitle: () => <ScreenTitle label={t('nav.about')} /> }} />
           <Stack.Screen name="legal/privacy" options={{ title: t('nav.privacyPolicy') }} />
           <Stack.Screen name="legal/terms" options={{ title: t('nav.termsOfService') }} />
+          {/* Reachable in the app, but its real job is being a public URL: Google
+              Play requires one on the Data safety form and shows it on the listing. */}
+          <Stack.Screen name="legal/delete-account" options={{ title: t('nav.deleteAccount') }} />
           <Stack.Screen name="admin-reports" options={{ headerTitle: () => <ScreenTitle label={t('nav.reports')} /> }} />
           <Stack.Screen name="admin-users" options={{ headerTitle: () => <ScreenTitle label={t('nav.peopleAndBans')} /> }} />
           <Stack.Screen name="admin-audit" options={{ headerTitle: () => <ScreenTitle label={t('nav.moderationLog')} /> }} />
