@@ -24,9 +24,25 @@ import { fileURLToPath } from 'node:url';
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const releaseFile = resolve(appRoot, 'src/constants/release.ts');
 
-// The EAS branch the built app subscribes to. Publishing to any other branch
-// succeeds loudly and reaches nobody.
-const BRANCH = 'preview';
+/*
+ * Every branch that has a build subscribed to it. Publishing to any other
+ * branch succeeds loudly and reaches nobody.
+ *
+ * There are two now. `preview` is the internal build on the owner's own phone;
+ * `production` was created by the first Play build and is what the closed-test
+ * testers are running. A bundle is compatible with both, because runtimeVersion
+ * follows app.json's `version` and both builds were cut at 1.0.0 — so the same
+ * update is published to each rather than making the release script ask a
+ * question nobody will remember to answer correctly.
+ *
+ * The failure this prevents is silent: publish to `preview` alone and the fix
+ * looks shipped, the dashboard agrees, and not one tester ever receives it.
+ *
+ * When a build is cut against a new app.json `version`, its runtimeVersion
+ * changes and it stops matching updates built for the old one. At that point
+ * this list needs revisiting, not extending.
+ */
+const BRANCHES = ['preview', 'production'];
 // Must be an environment that actually holds the Supabase keys, or the bundle
 // ships without them and the app starts up unable to talk to anything.
 const ENVIRONMENT = 'production';
@@ -54,11 +70,11 @@ console.log(`APP_RELEASE ${match[1]}.${match[2]}.${match[3]} → ${next}`);
 
 const message = process.argv.slice(3).join(' ').trim();
 
-const args = [
+const argsFor = (branch) => [
   'eas-cli@latest',
   'update',
   '--branch',
-  BRANCH,
+  branch,
   '--environment',
   ENVIRONMENT,
   '--message',
@@ -74,16 +90,31 @@ const args = [
 const onWindows = process.platform === 'win32';
 const quote = (arg) => (/[\s"&|<>^]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg);
 
-try {
-  if (onWindows) {
-    execSync(['npx.cmd', ...args.map(quote)].join(' '), { cwd: appRoot, stdio: 'inherit' });
-  } else {
-    execFileSync('npx', args, { cwd: appRoot, stdio: 'inherit' });
+for (const branch of BRANCHES) {
+  console.log(`\n> publishing v${next} to "${branch}"`);
+  const args = argsFor(branch);
+  try {
+    if (onWindows) {
+      execSync(['npx.cmd', ...args.map(quote)].join(' '), { cwd: appRoot, stdio: 'inherit' });
+    } else {
+      execFileSync('npx', args, { cwd: appRoot, stdio: 'inherit' });
+    }
+  } catch {
+    // Put the bump back on any failure, including a later branch. A half
+    // published release is worth reporting as a failure and retrying whole:
+    // republishing a branch that already has this version is harmless, whereas
+    // leaving the constant bumped would have the About screen claim a version
+    // some devices cannot get.
+    writeFileSync(releaseFile, original);
+    console.error(
+      `\nPublish to "${branch}" failed. APP_RELEASE put back to ${match[1]}.${match[2]}.${match[3]}.` +
+        (branch === BRANCHES[0] ? '' : `\nEarlier branches may already have v${next} — run again to finish.`)
+    );
+    process.exit(1);
   }
-} catch {
-  writeFileSync(releaseFile, original);
-  console.error(`\nPublish failed. APP_RELEASE put back to ${match[1]}.${match[2]}.${match[3]}.`);
-  process.exit(1);
 }
 
-console.log(`\nPublished v${next}. Commit src/constants/release.ts so the repo agrees with what is live.`);
+console.log(
+  `\nPublished v${next} to ${BRANCHES.join(' and ')}. ` +
+    'Commit src/constants/release.ts so the repo agrees with what is live.'
+);
