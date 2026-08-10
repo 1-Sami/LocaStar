@@ -29,6 +29,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDiscardWarning } from '@/hooks/use-discard-warning';
 import { useUserLocation } from '@/hooks/use-user-location';
+import { endOfLocalDay, startOfLocalDay } from '@/lib/activity-dates';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
@@ -323,26 +324,36 @@ export default function AddLocationScreen() {
   let publishAtIso: string | null = null;
 
   if (isActivity) {
-    startsAtIso = startDate ? startDate.toISOString() : null;
+    // Pinned to the edges of the chosen day. The pickers are date-only, so the
+    // time of day a raw Date carries is whatever the clock said while the form
+    // was open — and an hourly cron deletes activities past expires_at, which
+    // is how a festival disappeared at 19:12 on its last day. See lib/activity-dates.
+    startsAtIso = startDate ? startOfLocalDay(startDate).toISOString() : null;
 
     if (endDate && startDate) {
-      if (endDate.getTime() < startDate.getTime()) {
+      // Compared as whole days for the same reason: two dates picked as "today"
+      // and "today" differ only by the seconds between the two taps.
+      const startDay = startOfLocalDay(startDate).getTime();
+      const endDay = startOfLocalDay(endDate).getTime();
+      if (endDay < startDay) {
         dateError = 'The end date must be after the start date.';
       } else {
-        const daysOut = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+        const daysOut = (endDay - startDay) / (1000 * 60 * 60 * 24);
         if (daysOut > MAX_ACTIVITY_DAYS) {
           dateError = `Activities can only run for up to ${MAX_ACTIVITY_DAYS} days — choose an earlier end date.`;
         } else {
-          expiresAtIso = endDate.toISOString();
+          expiresAtIso = endOfLocalDay(endDate).toISOString();
         }
       }
     }
 
     if (!dateError && publishDate) {
-      if (endDate && publishDate.getTime() > endDate.getTime()) {
+      if (endDate && startOfLocalDay(publishDate).getTime() > startOfLocalDay(endDate).getTime()) {
         dateError = "The publish date can't be after the end date.";
       } else {
-        publishAtIso = publishDate.toISOString();
+        // Start of day: publishing should happen from the beginning of the
+        // chosen date, not from whenever the form happened to be open.
+        publishAtIso = startOfLocalDay(publishDate).toISOString();
       }
     }
   }

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PasswordInput } from '@/components/password-input';
@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { APP_SCHEME_URL } from '@/lib/auth-redirect';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordScreen() {
@@ -96,13 +97,27 @@ export default function ResetPasswordScreen() {
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle">Password updated</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            Your password has been changed. You're now logged in.
+            Your password has been changed. You&apos;re now logged in.
           </ThemedText>
+          {/*
+            Reset links are read wherever mail is read, so this page is usually
+            reached in a browser — and `router.replace('/')` there meant the
+            website's home page. The reset worked and the person was simply left
+            on the website wondering what had happened. /auth/confirmed already
+            solved this; the same handoff belongs here.
+
+            Not fired automatically, for the reason given there: on a desktop, or
+            a phone without the app installed, an unhandled scheme throws a
+            browser error dialog. A button press is a choice.
+          */}
           <Pressable
             style={[styles.submitButton, { backgroundColor: theme.primary }]}
-            onPress={() => router.replace('/')}>
+            onPress={() => {
+              if (Platform.OS === 'web') window.location.href = APP_SCHEME_URL;
+              else router.replace('/');
+            }}>
             <ThemedText type="smallBold" style={styles.submitButtonText}>
-              Continue
+              {Platform.OS === 'web' ? 'Open LocaStar' : 'Continue'}
             </ThemedText>
           </Pressable>
         </SafeAreaView>
@@ -172,7 +187,7 @@ export default function ResetPasswordScreen() {
 
         {mismatch && (
           <ThemedText type="small" style={styles.error}>
-            Passwords don't match.
+            Passwords don&apos;t match.
           </ThemedText>
         )}
         {error && (
