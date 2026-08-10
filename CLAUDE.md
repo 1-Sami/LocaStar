@@ -26,20 +26,31 @@ npm run typecheck        # both workspaces — run this after every change
 npm run lint             # ESLint via expo lint
 cd apps/mobile && npm run release            # bump APP_RELEASE + publish OTA
 cd apps/mobile && npm run release -- minor   # or major
-cd apps/mobile && npm run build:web          # static export for Cloudflare
+cd apps/mobile && npm run build:web          # static export into apps/mobile/dist
+npx wrangler@latest deploy                   # from the repo root — publishes that dist
 ```
 
 ## The one thing that catches everyone
 
-**`git push` updates the website. It does not update the app.**
+**`git push` updates neither the website nor the app.** There are three
+pipelines from the same source, and pushing drives none of them:
 
-They are separate pipelines from the same source:
-
-- `git push` → Cloudflare rebuilds `locastar.se`
+- `git push` → GitHub only. Nothing deploys.
+- `npm run build:web` + `npx wrangler deploy` → `locastar.se`
 - `npm run release` → EAS publishes a JS bundle to phones
 
-A fix that is committed, pushed, and live on the website can be completely
-absent from the app. Say which one you did.
+`wrangler.jsonc` serves `./apps/mobile/dist`, and that directory is
+gitignored — so there is nothing in the repo for anything to build from. The
+site only changes when somebody exports and deploys it by hand.
+
+This file used to say pushing rebuilt the website, and that cost an afternoon:
+three files added during the day were live in the repo, absent from the site,
+and nobody had reason to look. `/legal/delete-account` 404'd while Google Play
+was waiting for it, and `apple-app-site-association` 404'd too — which would
+have made iOS universal links fail silently long after the app shipped.
+
+A fix that is committed and pushed can be absent from *both* the website and
+the app. Say which of the three you actually did.
 
 **Over-the-air updates only replace JavaScript and assets.** Anything that adds
 a *native module* needs a new binary — and publishing JS that imports a native
