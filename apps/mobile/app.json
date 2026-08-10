@@ -73,6 +73,13 @@
           "cameraPermission": "LocaStar uses your camera so you can take pictures for locations and reviews."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/splash-icon.png",
+          "color": "#125F6F"
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {
