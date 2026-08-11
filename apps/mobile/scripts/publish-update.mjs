@@ -28,21 +28,18 @@ const releaseFile = resolve(appRoot, 'src/constants/release.ts');
  * Every branch that has a build subscribed to it. Publishing to any other
  * branch succeeds loudly and reaches nobody.
  *
- * There are two now. `preview` is the internal build on the owner's own phone;
- * `production` was created by the first Play build and is what the closed-test
- * testers are running. A bundle is compatible with both, because runtimeVersion
- * follows app.json's `version` and both builds were cut at 1.0.0 — so the same
- * update is published to each rather than making the release script ask a
- * question nobody will remember to answer correctly.
+ * `preview` was deliberately dropped once the owner moved onto the Play build.
+ * The last preview binary predates expo-notifications, so any bundle importing
+ * it would crash that build on launch — and a crash on launch blocks every
+ * further update, because the app never lives long enough to fetch one. Rather
+ * than keep two binaries in step for one device, there is now one: the same
+ * build the testers run, which also means a bug the owner hits is a bug they
+ * hit.
  *
- * The failure this prevents is silent: publish to `preview` alone and the fix
- * looks shipped, the dashboard agrees, and not one tester ever receives it.
- *
- * When a build is cut against a new app.json `version`, its runtimeVersion
- * changes and it stops matching updates built for the old one. At that point
- * this list needs revisiting, not extending.
+ * Adding a branch back means first checking the build behind it contains every
+ * native module the bundle imports. That is the whole hazard.
  */
-const BRANCHES = ['preview', 'production'];
+const BRANCHES = ['production'];
 // Must be an environment that actually holds the Supabase keys, or the bundle
 // ships without them and the app starts up unable to talk to anything.
 const ENVIRONMENT = 'production';
