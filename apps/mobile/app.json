@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "se.locastar.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#125F6F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

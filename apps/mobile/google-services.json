@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "766615198733",
+    "project_id": "locastar-3329d",
+    "storage_bucket": "locastar-3329d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:766615198733:android:b4823a0803b2adb0ed4944",
+        "android_client_info": {
+          "package_name": "se.locastar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeMPZTsJt8Fpth9HPsydgljHFCbgZuQ08"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
