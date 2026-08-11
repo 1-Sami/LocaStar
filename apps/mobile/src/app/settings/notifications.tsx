@@ -16,6 +16,11 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
 const rows: { key: keyof NotificationPreferences; label: string; description: string }[] = [
+  {
+    key: 'reminders',
+    label: 'Activity reminders',
+    description: 'The day before an activity you saved starts',
+  },
   { key: 'reviews', label: 'Reviews', description: 'Replies and likes on your reviews' },
   { key: 'shares', label: 'Shares', description: 'When someone shares a place with you' },
   { key: 'marketing', label: 'News & offers', description: 'Product updates and promotions' },

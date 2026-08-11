@@ -111,13 +111,21 @@ export type NotificationPreferences = {
   reviews: boolean;
   shares: boolean;
   marketing: boolean;
+  /** "An activity you saved starts tomorrow." See migration 0093. */
+  reminders: boolean;
 };
 
-/** Marketing stays off unless it is actively opted into. */
+/**
+ * Marketing stays off unless it is actively opted into. Reminders are on,
+ * because they are only ever sent about an activity the person deliberately
+ * favourited or saved — that is delivering something they asked for, where
+ * marketing would be deciding for them.
+ */
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   reviews: true,
   shares: true,
   marketing: false,
+  reminders: true,
 };
 
 /**
