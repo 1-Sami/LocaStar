@@ -39,7 +39,7 @@
     "alreadyHaveAccount": "Har du redan ett konto?",
     "backToLogIn": "Tillbaka till inloggning",
     "checkYourEmail": "Kolla din e-post",
-    "confirmationSent": "Vi har skickat en bekräftelselänk till {{email}}. Följ den för att slutföra registreringen och logga sedan in.",
+    "confirmationSent": "Vi har skickat en bekräftelselänk till {{email}}. Det kan ta några minuter innan den kommer fram — kolla skräppost och fliken Kampanjer om du inte ser den. Följ länken för att slutföra registreringen och logga sedan in.",
     "consentAfter": ".",
     "consentBefore": "Genom att skapa ett konto godkänner du våra ",
     "consentBetween": " och vår ",
