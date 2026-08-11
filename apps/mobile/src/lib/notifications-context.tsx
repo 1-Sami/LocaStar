@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { AppState } from 'react-native';
 
 import { useAuth } from '@/lib/auth-context';
-import { registerForPushNotifications, unregisterPushNotifications } from '@/lib/push-registration';
+import { registerForPushNotifications } from '@/lib/push-registration';
 import { supabase } from '@/lib/supabase';
 
 // Often enough that a notification feels prompt, rare enough that it's just a
@@ -54,40 +54,30 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [refreshUnreadCount, session]);
 
   /*
-   * Register this device for push once somebody is signed in, and forget it
-   * when they sign out.
+   * Register this device for push once somebody is signed in.
    *
-   * Forgetting matters more than it looks. The Expo token belongs to the
-   * install, not the account — so without this, someone signing out on a shared
-   * phone would keep receiving their reminders on it while the next person
-   * holds it. register_device_token would eventually reassign the row when the
-   * new person signs in, but "eventually" is not good enough for something that
-   * puts words on a lock screen.
+   * Keyed on the user id, not the session. onAuthStateChange hands back a new
+   * session *object* on every token refresh — hourly, and on every return to
+   * the foreground — so depending on the session re-ran this constantly. That
+   * was survivable on its own; what was not is that the cleanup deleted the
+   * token row, so the table sat empty between a refresh and the write that
+   * followed it. Reminders are sent on a schedule, while the app is closed and
+   * nothing is around to put the row back.
+   *
+   * Forgetting the device now happens in signOut, which is the only moment it
+   * is actually wanted: the Expo token belongs to the install rather than the
+   * account, so leaving it behind means the next person to hold a shared phone
+   * gets somebody else's reminders on the lock screen.
    *
    * Deliberately fire-and-forget: registerForPushNotifications swallows its own
-   * failures and returns null. Push is an extra, and nothing about finding a
-   * basketball court should depend on it working.
+   * failures. Push is an extra, and nothing about finding a basketball court
+   * should depend on it working.
    */
+  const userId = session?.user.id ?? null;
   useEffect(() => {
-    if (!session) return;
-    let token: string | null = null;
-    let cancelled = false;
-
-    registerForPushNotifications().then((result) => {
-      if (cancelled && result) {
-        // Signed out while the permission prompt was open — clean up rather
-        // than leave the row behind pointing at someone who has left.
-        unregisterPushNotifications(result);
-        return;
-      }
-      token = result;
-    });
-
-    return () => {
-      cancelled = true;
-      if (token) unregisterPushNotifications(token);
-    };
-  }, [session]);
+    if (!userId) return;
+    registerForPushNotifications();
+  }, [userId]);
 
   return (
     <NotificationsContext.Provider value={{ unreadCount, refreshUnreadCount }}>

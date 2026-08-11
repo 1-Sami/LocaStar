@@ -70,5 +70,9 @@
     "systemDetail": "Just nu {{language}}",
     "en": "English",
     "sv": "Svenska"
+  },
+  "notifications": {
+    "channelName": "Påminnelser",
+    "channelDescription": "Påminnelser om aktiviteter du sparat"
   }
 }

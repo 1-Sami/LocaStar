@@ -10,6 +10,7 @@ import {
 import { AppState } from 'react-native';
 
 import { authRedirectTo } from '@/lib/auth-redirect';
+import { unregisterPushNotifications } from '@/lib/push-registration';
 import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -96,6 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Forget this device before dropping the session, not after. Deleting the
+    // row is the one write its owner may do directly, and that policy needs
+    // them to still be signed in — afterwards there is no auth left to do it
+    // with, and the row would outlive the account that owns it.
+    await unregisterPushNotifications();
     await supabase.auth.signOut();
   };
 

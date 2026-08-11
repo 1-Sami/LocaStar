@@ -70,5 +70,9 @@
     "systemDetail": "Currently {{language}}",
     "en": "English",
     "sv": "Svenska"
+  },
+  "notifications": {
+    "channelName": "Reminders",
+    "channelDescription": "Reminders about activities you saved"
   }
 }
