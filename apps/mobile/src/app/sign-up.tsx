@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { passwordProblem } from '@/constants/auth';
+import { emailTypoSuggestion, passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { usernameProblem } from '@/lib/username';
@@ -44,8 +44,16 @@ export default function SignUpScreen() {
   const showUsernameProblem = trimmedUsername.length > 0 && usernameIssue !== null;
   const emailLooksValid = EMAIL_PATTERN.test(email.trim());
   const showEmailProblem = email.trim().length > 0 && !emailLooksValid;
+  // A domain that cannot exist blocks submitting rather than just warning. The
+  // account would be created and the confirmation mail would hard bounce, which
+  // leaves someone locked out with nothing on screen to explain it.
+  const typoSuggestion = emailLooksValid ? emailTypoSuggestion(email) : null;
   const canSubmit =
-    emailLooksValid && usernameIssue === null && problem === null && password === confirmPassword;
+    emailLooksValid &&
+    typoSuggestion === null &&
+    usernameIssue === null &&
+    problem === null &&
+    password === confirmPassword;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -100,6 +108,16 @@ export default function SignUpScreen() {
           <ThemedText type="small" style={styles.error}>
             {t('auth.emailInvalid')}
           </ThemedText>
+        )}
+
+        {/* Tappable, because retyping the whole address to fix one letter is
+            how people give up. */}
+        {typoSuggestion && (
+          <Pressable onPress={() => setEmail(typoSuggestion)}>
+            <ThemedText type="small" style={styles.error}>
+              {t('auth.emailTypo', { suggestion: typoSuggestion })}
+            </ThemedText>
+          </Pressable>
         )}
 
         <TextInput
