@@ -10,7 +10,10 @@
     "ios": {
       "bundleIdentifier": "se.locastar.app",
       "supportsTablet": false,
-      "associatedDomains": ["applinks:locastar.se"]
+      "associatedDomains": ["applinks:locastar.se"],
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "se.locastar.app",
