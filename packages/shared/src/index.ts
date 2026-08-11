@@ -70,6 +70,8 @@ export type { Review, ReviewInput, ReviewPhoto, ReviewReportInput } from "./api/
 export { fetchBlockedUsers, blockUser, unblockUser } from "./api/blocks";
 export type { BlockedUser } from "./api/blocks";
 
+export { registerDeviceToken, forgetDeviceToken } from "./api/devices";
+
 export {
   fetchProfileStats,
   fetchMyReviews,
