@@ -7,13 +7,16 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useThemeMode } from '@/lib/theme-mode-context';
 
-const options: { value: ThemePreference; label: string }[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'Match system' },
+import { useTranslation } from 'react-i18next';
+
+const options: { value: ThemePreference; labelKey: string }[] = [
+  { value: 'light', labelKey: 'settings.themeLight' },
+  { value: 'dark', labelKey: 'settings.themeDark' },
+  { value: 'system', labelKey: 'settings.themeSystem' },
 ];
 
 export default function ThemeScreen() {
+  const { t } = useTranslation();
   const { mode, setMode } = useThemeMode();
 
   return (
@@ -23,7 +26,7 @@ export default function ThemeScreen() {
           {options.map((option) => (
             <Pressable key={option.value} onPress={() => setMode(option.value)}>
               <ThemedView type="backgroundElement" style={styles.row}>
-                <ThemedText type="default">{option.label}</ThemedText>
+                <ThemedText type="default">{t(option.labelKey)}</ThemedText>
                 <ThemedText type="default">{mode === option.value ? '✓' : ''}</ThemedText>
               </ThemedView>
             </Pressable>

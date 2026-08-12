@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ import { verifyCurrentPassword } from '@/lib/reauth';
 import { supabase } from '@/lib/supabase';
 
 export default function ChangePasswordScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { session } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -38,7 +40,7 @@ export default function ChangePasswordScreen() {
     // login from the last 24 hours before it will accept a new password.
     const confirmed = await verifyCurrentPassword(session?.user.email ?? '', currentPassword);
     if (!confirmed) {
-      setError('That password is incorrect.');
+      setError(t('settings.wrongPassword'));
       setSaving(false);
       return;
     }
@@ -68,7 +70,7 @@ export default function ChangePasswordScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
           <ThemedText type="small" themeColor="textSecondary">
-            Confirm your current password, then choose a new one.
+            {t('settings.passwordIntro')}
           </ThemedText>
 
           <PasswordInput
@@ -78,7 +80,7 @@ export default function ChangePasswordScreen() {
               setSaved(false);
               setError(null);
             }}
-            placeholder="Current password"
+            placeholder={t('settings.currentPassword')}
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
@@ -89,7 +91,7 @@ export default function ChangePasswordScreen() {
               setPassword(text);
               setSaved(false);
             }}
-            placeholder="New password"
+            placeholder={t('settings.newPassword')}
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
@@ -104,14 +106,14 @@ export default function ChangePasswordScreen() {
               setConfirmPassword(text);
               setSaved(false);
             }}
-            placeholder="Confirm new password"
+            placeholder={t('settings.confirmNewPassword')}
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
 
           {mismatch && (
             <ThemedText type="small" style={styles.errorText}>
-              Passwords don't match.
+              {t('settings.passwordsDontMatch')}
             </ThemedText>
           )}
           {error && (
@@ -121,7 +123,7 @@ export default function ChangePasswordScreen() {
           )}
           {saved && !error && (
             <ThemedText type="small" style={styles.savedText}>
-              Password updated.
+              {t('settings.passwordUpdated')}
             </ThemedText>
           )}
 

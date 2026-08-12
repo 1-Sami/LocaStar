@@ -6,6 +6,7 @@ import {
 } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,20 +16,21 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
-const rows: { key: keyof NotificationPreferences; label: string; description: string }[] = [
+const rows: { key: keyof NotificationPreferences; labelKey: string; descriptionKey: string }[] = [
   {
     key: 'reminders',
-    label: 'Activity reminders',
-    description: 'The day before an activity you saved starts',
+    labelKey: 'settings.notifRemindersLabel',
+    descriptionKey: 'settings.notifRemindersDesc',
   },
-  { key: 'reviews', label: 'Reviews', description: 'Replies and likes on your reviews' },
-  { key: 'shares', label: 'Shares', description: 'When someone shares a place with you' },
-  { key: 'marketing', label: 'News & offers', description: 'Product updates and promotions' },
+  { key: 'reviews', labelKey: 'settings.notifReviewsLabel', descriptionKey: 'settings.notifReviewsDesc' },
+  { key: 'shares', labelKey: 'settings.notifSharesLabel', descriptionKey: 'settings.notifSharesDesc' },
+  { key: 'marketing', labelKey: 'settings.notifMarketingLabel', descriptionKey: 'settings.notifMarketingDesc' },
 ];
 
 const DEFAULT_PREFERENCES: NotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES;
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
@@ -80,9 +82,9 @@ export default function NotificationsScreen() {
           {rows.map((row) => (
             <ThemedView key={row.key} type="backgroundElement" style={styles.row}>
               <View style={styles.rowText}>
-                <ThemedText type="default">{row.label}</ThemedText>
+                <ThemedText type="default">{t(row.labelKey)}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {row.description}
+                  {t(row.descriptionKey)}
                 </ThemedText>
               </View>
               <Switch
