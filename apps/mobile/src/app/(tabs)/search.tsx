@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   FlatList,
@@ -48,9 +49,12 @@ const PAGE_SIZE = 50;
  */
 const MAX_REFRESH_ROWS = 300;
 
+// Key and label kept apart: the key is compared and stored, the label is only
+// ever displayed. Sharing one string between the two is what broke the Profile
+// menu the moment it was translated.
 const SORT_OPTIONS = [
-  { key: 'distance', label: 'Distance' },
-  { key: 'rating', label: 'Highest rated' },
+  { key: 'distance', labelKey: 'search.sortDistance' },
+  { key: 'rating', labelKey: 'search.sortRating' },
 ] as const;
 
 // Pink → silver → green sheen for the "Filter" chip's border.
@@ -64,6 +68,7 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const router = useRouter();
+  const { t } = useTranslation();
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
 
@@ -175,7 +180,7 @@ export default function SearchScreen() {
   }, [coords, query, activeSlugs, sortBy, activeSeason, refreshKey]);
 
   const cards = results.map(nearbyLocationToCard);
-  const sortLabel = SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? 'Sort';
+  const sortLabelKey = SORT_OPTIONS.find((o) => o.key === sortBy)?.labelKey ?? 'search.sortBy';
   const hasMore = results.length < totalCount;
 
   /*
@@ -249,7 +254,7 @@ export default function SearchScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.exploreHeader}>
-          <Text style={styles.exploreTitle}>Explore</Text>
+          <Text style={styles.exploreTitle}>{t('search.title')}</Text>
         </View>
 
         <View style={styles.searchBar}>
@@ -257,7 +262,7 @@ export default function SearchScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="SEARCH PLACES"
+            placeholder={t('search.placeholder')}
             placeholderTextColor={SearchPalette.textMuted}
             style={styles.searchInput}
           />
@@ -267,7 +272,7 @@ export default function SearchScreen() {
             <Pressable
               onPress={() => setQuery('')}
               hitSlop={10}
-              accessibilityLabel="Clear search"
+              accessibilityLabel={t('search.clear')}
               style={styles.searchClear}>
               <Ionicons name="close-circle" size={18} color={SearchPalette.textMuted} />
             </Pressable>
@@ -290,7 +295,7 @@ export default function SearchScreen() {
                 style={styles.filterButtonGradient}>
                 <View style={styles.filterButton}>
                   <Ionicons name="options-sharp" size={15} color={SearchPalette.text} />
-                  <Text style={styles.filterButtonText}>FILTER</Text>
+                  <Text style={styles.filterButtonText}>{t('search.filter')}</Text>
                 </View>
               </LinearGradient>
             </Pressable>
@@ -312,7 +317,7 @@ export default function SearchScreen() {
               setActiveSeason(null);
             }}>
             <Text style={styles.resetFiltersX}>×</Text>
-            <Text style={styles.resetFiltersText}>RESET FILTERS</Text>
+            <Text style={styles.resetFiltersText}>{t('search.resetFilters')}</Text>
           </Pressable>
         )}
 
@@ -321,10 +326,10 @@ export default function SearchScreen() {
               its length meant printing the page size — "100 RESULTS" whether
               there were a hundred or eight hundred. */}
           <Text style={styles.resultsCountText}>
-            {loading ? 'SEARCHING…' : `${totalCount} RESULT${totalCount === 1 ? '' : 'S'}`}
+            {loading ? t('search.searching') : t('search.results', { count: totalCount })}
           </Text>
           <Pressable style={styles.sortButton} onPress={() => setSortMenuVisible(true)}>
-            <Text style={styles.sortButtonText}>{sortLabel.toUpperCase()}</Text>
+            <Text style={styles.sortButtonText}>{t(sortLabelKey).toUpperCase()}</Text>
             <Ionicons name="swap-vertical-sharp" size={14} color={SearchPalette.text} />
           </Pressable>
         </View>
@@ -342,7 +347,7 @@ export default function SearchScreen() {
             data={cards}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={<Text style={styles.emptyText}>No matches.</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>{t('search.noMatches')}</Text>}
             onEndReached={loadMore}
             // A screen and a half of runway. At 0.5 the fetch only started once
             // the last card was nearly in view, so every fifty rows ended in a
@@ -355,7 +360,7 @@ export default function SearchScreen() {
               ) : hasMore ? null : cards.length > PAGE_SIZE ? (
                 // Only worth saying once there was actually more than one page
                 // to get through; on a short list it is noise.
-                <Text style={styles.listEndText}>THAT&apos;S ALL {totalCount}</Text>
+                <Text style={styles.listEndText}>{t('search.thatsAll', { count: totalCount })}</Text>
               ) : null
             }
             renderItem={({ item }) => (
@@ -385,16 +390,16 @@ export default function SearchScreen() {
               a Pressable would make every tap inside it dismiss the sheet. */}
           <Pressable style={StyleSheet.absoluteFill} onPress={closePicker} />
           <Pressable style={styles.modalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Filter</Text>
+            <Text style={styles.modalTitle}>{t('search.filterTitle')}</Text>
 
-            <Text style={styles.modalSectionLabel}>SEASON</Text>
+            <Text style={styles.modalSectionLabel}>{t('search.season')}</Text>
             <View style={styles.modalSeasonRow}>
               <Pressable
                 style={[styles.modalSeasonChip, activeSeason === 'summer' && styles.modalSeasonChipActive]}
                 onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
                 <Text
                   style={[styles.modalSeasonChipText, activeSeason === 'summer' && styles.modalSeasonChipTextActive]}>
-                  ☀ Summer
+                  ☀ {t('search.summer')}
                 </Text>
               </Pressable>
               <Pressable
@@ -402,18 +407,18 @@ export default function SearchScreen() {
                 onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
                 <Text
                   style={[styles.modalSeasonChipText, activeSeason === 'winter' && styles.modalSeasonChipTextActive]}>
-                  ❄ Winter
+                  ❄ {t('search.winter')}
                 </Text>
               </Pressable>
             </View>
 
-            <Text style={styles.modalSectionLabel}>ACTIVITIES</Text>
+            <Text style={styles.modalSectionLabel}>{t('search.activities')}</Text>
             <View style={styles.categorySearchBar}>
               <Ionicons name="search-sharp" size={15} color={SearchPalette.textMuted} />
               <TextInput
                 value={categoryQuery}
                 onChangeText={setCategoryQuery}
-                placeholder="Search activities"
+                placeholder={t('search.searchActivities')}
                 placeholderTextColor={SearchPalette.textMuted}
                 style={styles.categorySearchInput}
                 autoCorrect={false}
@@ -427,7 +432,7 @@ export default function SearchScreen() {
             </View>
             <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
               {visibleCategories.length === 0 ? (
-                <Text style={styles.modalEmptyText}>No activities match that search.</Text>
+                <Text style={styles.modalEmptyText}>{t('search.noActivitiesMatch')}</Text>
               ) : (
                 visibleCategories.map((category) => {
                   const active = activeSlugs.includes(category.slug);
@@ -454,7 +459,7 @@ export default function SearchScreen() {
       <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Sort by</Text>
+            <Text style={styles.modalTitle}>{t('search.sortBy')}</Text>
             {SORT_OPTIONS.map((option) => (
               <Pressable
                 key={option.key}
@@ -463,7 +468,7 @@ export default function SearchScreen() {
                   setSortBy(option.key);
                   setSortMenuVisible(false);
                 }}>
-                <Text style={styles.modalRowText}>{option.label}</Text>
+                <Text style={styles.modalRowText}>{t(option.labelKey)}</Text>
                 {sortBy === option.key && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
               </Pressable>
             ))}

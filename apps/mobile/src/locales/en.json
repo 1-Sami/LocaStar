@@ -128,6 +128,82 @@
     "statBucketList": "Saved for later",
     "statShared": "Shared",
     "statReviews": "Reviews",
-    "statAdded": "Added"
+    "statAdded": "Added",
+    "statLists": "My lists",
+    "statActivities": "Activities"
+  },
+  "search": {
+    "title": "Explore",
+    "placeholder": "SEARCH PLACES",
+    "clear": "Clear search",
+    "filter": "FILTER",
+    "resetFilters": "RESET FILTERS",
+    "searching": "SEARCHING…",
+    "results_one": "{{count}} RESULT",
+    "results_other": "{{count}} RESULTS",
+    "noMatches": "No matches.",
+    "thatsAll": "THAT’S ALL {{count}}",
+    "filterTitle": "Filter",
+    "season": "SEASON",
+    "summer": "Summer",
+    "winter": "Winter",
+    "activities": "ACTIVITIES",
+    "searchActivities": "Search activities",
+    "noActivitiesMatch": "No activities match that search.",
+    "sortBy": "Sort by",
+    "sortDistance": "Distance",
+    "sortRating": "Highest rated"
+  },
+  "home": {
+    "tagline": "EXPLORE. MAP. SHARE.",
+    "showMore": "Show more",
+    "statsTitle": "Your activity at a glance",
+    "ctaTitle": "Create an account and do more:",
+    "activities": "Activities",
+    "activitiesEmpty": "No activities nearby yet.",
+    "boosted": "Boosted / Paid placement",
+    "boostedEmpty": "Nothing boosted yet.",
+    "sharedLists": "Community shared lists",
+    "sharedListsEmpty": "No public lists yet.",
+    "mostLiked": "Most liked places",
+    "mostLikedEmpty": "Nothing to show yet.",
+    "summer": "List of summer activities",
+    "summerEmpty": "No summer activities added yet.",
+    "winter": "List of winter activities",
+    "winterEmpty": "No winter activities added yet.",
+    "cta": {
+      "favorites": {
+        "line1": "Save",
+        "line2": "Favorites"
+      },
+      "review": {
+        "line1": "Leave a",
+        "line2": "review"
+      },
+      "trip": {
+        "line1": "Plan a",
+        "line2": "trip"
+      },
+      "activity": {
+        "line1": "Create a private",
+        "line2": "activity"
+      },
+      "share": {
+        "line1": "Share with",
+        "line2": "friends"
+      },
+      "location": {
+        "line1": "Add a",
+        "line2": "location"
+      },
+      "list": {
+        "line1": "Create a",
+        "line2": "list"
+      },
+      "more": {
+        "line1": "AND",
+        "line2": "MORE"
+      }
+    }
   }
 }

@@ -9,6 +9,7 @@ import {
 } from '@locastar/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -46,34 +47,55 @@ const EMPTY_STATS: ProfileStats = {
   activities: 0,
 };
 
-const STAT_SECTIONS: Record<string, string> = {
-  Favorites: 'favorites',
-  'Saved for later': 'bucketList',
-  Shared: 'shared',
-};
+/*
+ * Stat tiles carry an id, not their label. See the note in profile.tsx: the
+ * label used to be the identifier, so translating it would have left every
+ * tile's tap doing nothing.
+ *
+ * Home shows seven tiles to Profile's five; the five they share reuse the same
+ * profile.stat* keys rather than being translated twice.
+ */
+type StatId = 'favorites' | 'bucketList' | 'shared' | 'reviews' | 'added' | 'lists' | 'activities';
 
-function statTiles(stats: ProfileStats) {
+function statTiles(stats: ProfileStats): { id: StatId; value: number; color: string }[] {
   return [
-    { label: 'Favorites', value: stats.favorites, color: '#E8A93B' },
-    { label: 'Saved for later', value: stats.bucketList, color: '#4C8FE8' },
-    { label: 'Shared', value: stats.shared, color: '#B0B4BA' },
-    { label: 'Reviews', value: stats.reviews, color: '#4CD37A' },
-    { label: 'Added', value: stats.added, color: '#C34CE8' },
-    { label: 'My lists', value: stats.lists, color: '#2BA3A3' },
-    { label: 'Activities', value: stats.activities, color: '#F2545B' },
+    { id: 'favorites', value: stats.favorites, color: '#E8A93B' },
+    { id: 'bucketList', value: stats.bucketList, color: '#4C8FE8' },
+    { id: 'shared', value: stats.shared, color: '#B0B4BA' },
+    { id: 'reviews', value: stats.reviews, color: '#4CD37A' },
+    { id: 'added', value: stats.added, color: '#C34CE8' },
+    { id: 'lists', value: stats.lists, color: '#2BA3A3' },
+    { id: 'activities', value: stats.activities, color: '#F2545B' },
   ];
 }
 
+const STAT_LABELS: Record<StatId, string> = {
+  favorites: 'profile.statFavorites',
+  bucketList: 'profile.statBucketList',
+  shared: 'profile.statShared',
+  reviews: 'profile.statReviews',
+  added: 'profile.statAdded',
+  lists: 'profile.statLists',
+  activities: 'profile.statActivities',
+};
+
+/** The three that open the Saved screen at a particular section. */
+const STAT_SECTIONS: Partial<Record<StatId, string>> = {
+  favorites: 'favorites',
+  bucketList: 'bucketList',
+  shared: 'shared',
+};
+
 const CTA_TILES = [
-  { line1: 'Save', line2: 'Favorites', color: '#2F7BB0' },
-  { line1: 'Leave a', line2: 'review', color: '#3B4A1E' },
-  { line1: 'Plan a', line2: 'trip', color: '#E2791F' },
-  { line1: 'Create a private', line2: 'activity', color: '#A64BD6' },
-  { line1: 'Share with', line2: 'friends', color: '#7C2E3A' },
-  { line1: 'Add a', line2: 'location', color: '#1AA15C' },
-  { line1: 'Create a', line2: 'list', color: '#55738F' },
-  { line1: 'AND', line2: 'MORE', color: '#2B2E6B' },
-];
+  { id: 'favorites', color: '#2F7BB0' },
+  { id: 'review', color: '#3B4A1E' },
+  { id: 'trip', color: '#E2791F' },
+  { id: 'activity', color: '#A64BD6' },
+  { id: 'share', color: '#7C2E3A' },
+  { id: 'location', color: '#1AA15C' },
+  { id: 'list', color: '#55738F' },
+  { id: 'more', color: '#2B2E6B' },
+] as const;
 
 function HomeSection<T>({
   title,
@@ -92,6 +114,7 @@ function HomeSection<T>({
   emptyText: string;
   cardWidth?: number;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
@@ -100,7 +123,7 @@ function HomeSection<T>({
         </ThemedText>
         <Pressable onPress={onShowMore} hitSlop={8}>
           <ThemedText type="small" themeColor="textSecondary">
-            Show more
+            {t('home.showMore')}
           </ThemedText>
         </Pressable>
       </View>
@@ -124,6 +147,7 @@ function HomeSection<T>({
 export default function HomeScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const { coords } = useUserLocation();
   const { bucketListIds, toggleBucketList } = useSaves();
 
@@ -235,20 +259,20 @@ export default function HomeScreen() {
     setListLiked(supabase, list.id, session.user.id, nextLiked).catch(() => reload());
   };
 
-  const handleStatPress = (label: string) => {
-    if (label === 'Reviews') {
+  const handleStatPress = (id: StatId) => {
+    if (id === 'reviews') {
       router.push('/my-reviews');
       return;
     }
-    if (label === 'Added' || label === 'Activities') {
+    if (id === 'added' || id === 'activities') {
       router.push('/my-locations' as never);
       return;
     }
-    if (label === 'My lists') {
+    if (id === 'lists') {
       router.push('/lists' as never);
       return;
     }
-    const section = STAT_SECTIONS[label];
+    const section = STAT_SECTIONS[id];
     if (section) router.push({ pathname: '/favorites', params: { section } });
   };
 
@@ -288,35 +312,35 @@ export default function HomeScreen() {
             <View style={styles.headerText}>
               <ThemedText style={styles.logo}>LOCASTAR</ThemedText>
               <ThemedText themeColor="accent" style={styles.tagline}>
-                EXPLORE. MAP. SHARE.
+                {t('home.tagline')}
               </ThemedText>
             </View>
           </View>
 
           <HomeSection
-            title="Activitys"
+            title={t('home.activities')}
             onShowMore={() => router.push('/search')}
             items={activities}
             keyExtractor={(item) => item.id}
             cardWidth={108}
             renderItem={renderLocationCard}
-            emptyText="No activities nearby yet."
+            emptyText={t('home.activitiesEmpty')}
           />
 
           {SHOW_BOOSTED_SECTION && (
             <HomeSection
-              title="Boosted / Paid placement"
+              title={t('home.boosted')}
               onShowMore={() => router.push('/search')}
               items={boosted}
               keyExtractor={(item) => item.id}
               cardWidth={108}
               renderItem={renderBoostedCard}
-              emptyText="Nothing boosted yet."
+              emptyText={t('home.boostedEmpty')}
             />
           )}
 
           <HomeSection
-            title="Community shared lists"
+            title={t('home.sharedLists')}
             onShowMore={() => router.push('/community')}
             items={publicLists}
             keyExtractor={(item) => item.id}
@@ -334,21 +358,21 @@ export default function HomeScreen() {
                 onToggleLike={() => handleToggleListLike(item)}
               />
             )}
-            emptyText="No public lists yet."
+            emptyText={t('home.sharedListsEmpty')}
           />
 
           <View style={styles.statsSection}>
             {session ? (
               <>
                 <ThemedText type="smallBold" style={styles.statsTitle}>
-                  Your activity at a glance
+                  {t('home.statsTitle')}
                 </ThemedText>
                 <View style={styles.tileGrid}>
                   {statTiles(stats).map((tile) => (
-                    <Pressable key={tile.label} style={styles.statTile} onPress={() => handleStatPress(tile.label)}>
+                    <Pressable key={tile.id} style={styles.statTile} onPress={() => handleStatPress(tile.id)}>
                       <ThemedText style={[styles.statValue, { color: tile.color }]}>{tile.value}</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel} numberOfLines={1}>
-                        {tile.label}
+                        {t(STAT_LABELS[tile.id])}
                       </ThemedText>
                     </Pressable>
                   ))}
@@ -357,21 +381,21 @@ export default function HomeScreen() {
             ) : (
               <>
                 <ThemedText type="smallBold" style={styles.statsTitle}>
-                  Create an account and do more:
+                  {t('home.ctaTitle')}
                 </ThemedText>
                 <View style={styles.ctaGrid}>
                   {[CTA_TILES.slice(0, 4), CTA_TILES.slice(4, 8)].map((row, rowIndex) => (
                     <View key={rowIndex} style={styles.ctaRow}>
                       {row.map((tile) => (
                         <Pressable
-                          key={`${tile.line1} ${tile.line2}`}
+                          key={tile.id}
                           style={[styles.ctaTile, { backgroundColor: tile.color }]}
                           onPress={() => router.push('/sign-in')}>
                           <ThemedText type="smallBold" style={styles.ctaTileText}>
-                            {tile.line1}
+                            {t(`home.cta.${tile.id}.line1`)}
                           </ThemedText>
                           <ThemedText type="smallBold" style={styles.ctaTileText}>
-                            {tile.line2}
+                            {t(`home.cta.${tile.id}.line2`)}
                           </ThemedText>
                         </Pressable>
                       ))}
@@ -383,33 +407,33 @@ export default function HomeScreen() {
           </View>
 
           <HomeSection
-            title="Most liked places"
+            title={t('home.mostLiked')}
             onShowMore={() => router.push({ pathname: '/search', params: { sort: 'rating' } })}
             items={mostLiked}
             keyExtractor={(item) => item.id}
             cardWidth={108}
             renderItem={renderLocationCard}
-            emptyText="Nothing to show yet."
+            emptyText={t('home.mostLikedEmpty')}
           />
 
           <HomeSection
-            title="List of summer activities"
+            title={t('home.summer')}
             onShowMore={() => router.push({ pathname: '/search', params: { season: 'summer' } })}
             items={summerActivities}
             keyExtractor={(item) => item.id}
             cardWidth={108}
             renderItem={renderLocationCard}
-            emptyText="No summer activities added yet."
+            emptyText={t('home.summerEmpty')}
           />
 
           <HomeSection
-            title="List of winter activities"
+            title={t('home.winter')}
             onShowMore={() => router.push({ pathname: '/search', params: { season: 'winter' } })}
             items={winterActivities}
             keyExtractor={(item) => item.id}
             cardWidth={108}
             renderItem={renderLocationCard}
-            emptyText="No winter activities added yet."
+            emptyText={t('home.winterEmpty')}
           />
         </ScrollView>
       </SafeAreaView>

@@ -128,6 +128,82 @@
     "statBucketList": "Sparat till senare",
     "statShared": "Delat",
     "statReviews": "Recensioner",
-    "statAdded": "Tillagt"
+    "statAdded": "Tillagt",
+    "statLists": "Mina listor",
+    "statActivities": "Aktiviteter"
+  },
+  "search": {
+    "title": "Utforska",
+    "placeholder": "SÖK PLATSER",
+    "clear": "Rensa sökningen",
+    "filter": "FILTER",
+    "resetFilters": "RENSA FILTER",
+    "searching": "SÖKER…",
+    "results_one": "{{count}} RESULTAT",
+    "results_other": "{{count}} RESULTAT",
+    "noMatches": "Inga träffar.",
+    "thatsAll": "DET VAR ALLA {{count}}",
+    "filterTitle": "Filter",
+    "season": "SÄSONG",
+    "summer": "Sommar",
+    "winter": "Vinter",
+    "activities": "AKTIVITETER",
+    "searchActivities": "Sök aktiviteter",
+    "noActivitiesMatch": "Inga aktiviteter matchar sökningen.",
+    "sortBy": "Sortera efter",
+    "sortDistance": "Avstånd",
+    "sortRating": "Högst betyg"
+  },
+  "home": {
+    "tagline": "UTFORSKA. KARTLÄGG. DELA.",
+    "showMore": "Visa fler",
+    "statsTitle": "Din aktivitet i korthet",
+    "ctaTitle": "Skapa ett konto och gör mer:",
+    "activities": "Aktiviteter",
+    "activitiesEmpty": "Inga aktiviteter i närheten än.",
+    "boosted": "Utvald / Betald placering",
+    "boostedEmpty": "Inget utvalt än.",
+    "sharedLists": "Listor delade av andra",
+    "sharedListsEmpty": "Inga publika listor än.",
+    "mostLiked": "Mest omtyckta platser",
+    "mostLikedEmpty": "Inget att visa än.",
+    "summer": "Sommaraktiviteter",
+    "summerEmpty": "Inga sommaraktiviteter tillagda än.",
+    "winter": "Vinteraktiviteter",
+    "winterEmpty": "Inga vinteraktiviteter tillagda än.",
+    "cta": {
+      "favorites": {
+        "line1": "Spara",
+        "line2": "favoriter"
+      },
+      "review": {
+        "line1": "Skriv en",
+        "line2": "recension"
+      },
+      "trip": {
+        "line1": "Planera en",
+        "line2": "utflykt"
+      },
+      "activity": {
+        "line1": "Skapa en privat",
+        "line2": "aktivitet"
+      },
+      "share": {
+        "line1": "Dela med",
+        "line2": "vänner"
+      },
+      "location": {
+        "line1": "Lägg till en",
+        "line2": "plats"
+      },
+      "list": {
+        "line1": "Skapa en",
+        "line2": "lista"
+      },
+      "more": {
+        "line1": "OCH",
+        "line2": "MER"
+      }
+    }
   }
 }
