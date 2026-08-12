@@ -13,6 +13,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { loadStoredLanguage } from '@/lib/i18n';
 import { NotificationsProvider } from '@/lib/notifications-context';
 import { ProfileProvider } from '@/lib/profile-context';
+import { useNotificationTaps } from '@/lib/use-notification-taps';
 import { ThemeModeProvider, useThemeMode } from '@/lib/theme-mode-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -22,6 +23,9 @@ function ThemedNavigation() {
   // Titles come from the catalogue, so a language change has to re-render this
   // component — that is what useTranslation subscribes it to.
   const { t } = useTranslation();
+  // Here rather than in RootLayout: it needs a router to push onto, and the
+  // navigation tree only exists from this component down.
+  useNotificationTaps();
   return (
     <ThemeProvider value={resolvedScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
