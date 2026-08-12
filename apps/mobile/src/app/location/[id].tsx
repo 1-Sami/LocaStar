@@ -28,6 +28,8 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -55,15 +57,9 @@ const TEAL = '#2BA3A3';
 const TEAL_TINT = 'rgba(43,163,163,0.15)';
 const DIRECTIONS_TEXT = '#0B3D2E';
 
-const HOURS_DAYS: { key: DayKey; label: string }[] = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-];
+// Monday-first for display. The names come from days.<key> rather than living
+// here, so the hours editor on the add/edit forms uses the same seven.
+const HOURS_DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 // Sunday-first to match Date#getDay()'s 0-6 range.
 const DAY_ORDER: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -72,11 +68,21 @@ function getTodayKey(): DayKey {
   return DAY_ORDER[new Date().getDay()];
 }
 
-function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabel: string; secondaryLabel: string } {
+/*
+ * Takes `t` rather than returning keys for the caller to resolve.
+ *
+ * The alternative — handing back a key plus interpolation params — spreads one
+ * decision across two files and still needs the caller to know that the
+ * "opens on a later day" case has a day name to translate as well as a time.
+ */
+function computeHoursStatus(
+  hours: OpeningHours,
+  t: TFunction
+): { isOpen: boolean; primaryLabel: string; secondaryLabel: string } {
   // Seven full days is always-open, and the generic path would describe it as
   // "Open now · Closes 24:00" — technically derived from the data, and useless.
   if (isAlwaysOpen(hours)) {
-    return { isOpen: true, primaryLabel: 'Open 24 hours', secondaryLabel: 'Every day' };
+    return { isOpen: true, primaryLabel: t('location.open24'), secondaryLabel: t('location.everyDay') };
   }
 
   const now = new Date();
@@ -88,7 +94,11 @@ function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabe
     const [oh, om] = todayEntry.open.split(':').map(Number);
     const [ch, cm] = todayEntry.close.split(':').map(Number);
     if (nowMinutes >= oh * 60 + om && nowMinutes < ch * 60 + cm) {
-      return { isOpen: true, primaryLabel: 'Open now', secondaryLabel: `Closes ${todayEntry.close}` };
+      return {
+        isOpen: true,
+        primaryLabel: t('location.openNow'),
+        secondaryLabel: t('location.closesAt', { time: todayEntry.close }),
+      };
     }
   }
 
@@ -99,14 +109,25 @@ function computeHoursStatus(hours: OpeningHours): { isOpen: boolean; primaryLabe
     if (!entry) continue;
     const [oh, om] = entry.open.split(':').map(Number);
     if (i === 0 && nowMinutes < oh * 60 + om) {
-      return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: `Opens ${entry.open}` };
+      return {
+        isOpen: false,
+        primaryLabel: t('location.closed'),
+        secondaryLabel: t('location.opensAt', { time: entry.open }),
+      };
     }
     if (i > 0) {
-      const dayLabel = HOURS_DAYS.find((d) => d.key === key)?.label ?? key;
-      return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: `Opens ${dayLabel} ${entry.open}` };
+      return {
+        isOpen: false,
+        primaryLabel: t('location.closed'),
+        secondaryLabel: t('location.opensDayAt', { day: t(`days.${key}`), time: entry.open }),
+      };
     }
   }
-  return { isOpen: false, primaryLabel: 'Closed', secondaryLabel: 'Hours unavailable' };
+  return {
+    isOpen: false,
+    primaryLabel: t('location.closed'),
+    secondaryLabel: t('location.hoursUnavailable'),
+  };
 }
 
 /**
@@ -139,11 +160,11 @@ function openUrl(url: string): void {
  */
 const CREATOR_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-function formatWindowLeft(ms: number): string {
+function formatWindowLeft(ms: number, t: TFunction): string {
   const hours = Math.floor(ms / 3_600_000);
-  if (hours >= 1) return `${hours} more ${hours === 1 ? 'hour' : 'hours'}`;
+  if (hours >= 1) return t('location.durationHours', { count: hours });
   const minutes = Math.max(1, Math.round(ms / 60_000));
-  return `${minutes} more ${minutes === 1 ? 'minute' : 'minutes'}`;
+  return t('location.durationMinutes', { count: minutes });
 }
 
 function formatActivityDate(iso: string): string {
@@ -162,9 +183,9 @@ function avatarColorFor(id: string): string {
 const DESCRIPTION_LINES = 6;
 
 const REVIEW_SORT_OPTIONS = [
-  { key: 'newest', label: 'Newest' },
-  { key: 'highest', label: 'Highest rated' },
-  { key: 'lowest', label: 'Lowest rated' },
+  { key: 'newest', labelKey: 'location.sortNewest' },
+  { key: 'highest', labelKey: 'location.sortHighest' },
+  { key: 'lowest', labelKey: 'location.sortLowest' },
 ] as const;
 type ReviewSort = (typeof REVIEW_SORT_OPTIONS)[number]['key'];
 
@@ -172,6 +193,7 @@ export default function LocationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const { session } = useAuth();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
   const { isModerator } = useSharedProfile();
@@ -353,9 +375,9 @@ export default function LocationDetailScreen() {
   const handleDeletePhoto = async () => {
     if (!viewerPhoto?.photoId || !id) return;
     const confirmed = await confirmAsync(
-      'Delete this photo?',
-      'It is removed from this place for everyone, and the deletion is recorded in the moderation log. This cannot be undone.',
-      'Delete'
+      t('location.deletePhotoTitle'),
+      t('location.deletePhotoBody'),
+      t('common.delete')
     );
     if (!confirmed) return;
     try {
@@ -375,9 +397,9 @@ export default function LocationDetailScreen() {
   const handleMakeCover = async () => {
     if (!viewerPhoto?.photoId || !id) return;
     const confirmed = await confirmAsync(
-      'Make this the cover photo?',
-      'This picture will lead the gallery and appear on this place wherever it is listed.',
-      'Make cover'
+      t('location.makeCoverTitle'),
+      t('location.makeCoverBody'),
+      t('location.makeCoverAction')
     );
     if (!confirmed) return;
     try {
@@ -403,7 +425,7 @@ export default function LocationDetailScreen() {
   const canShare = location.visibility !== 'private' || session?.user.id === location.created_by;
   const canCopyLink = location.visibility !== 'private';
   const hasHours = !location.hours_not_applicable && location.hours && Object.keys(location.hours).length > 0;
-  const hoursStatus = hasHours ? computeHoursStatus(location.hours!) : null;
+  const hoursStatus = hasHours ? computeHoursStatus(location.hours!, t) : null;
   const todayKey = getTodayKey();
 
   const sortedReviews = [...reviews].sort((a, b) => {
@@ -431,9 +453,9 @@ export default function LocationDetailScreen() {
 
   const handleDeleteOwnReview = async (reviewId: string) => {
     const confirmed = await confirmAsync(
-      'Delete your review?',
-      "Your rating and any photos on it go too, and the place's average is recalculated. This can't be undone.",
-      'Delete'
+      t('location.deleteReviewTitle'),
+      t('location.deleteReviewBody'),
+      t('common.delete')
     );
     if (!confirmed) return;
 
@@ -460,9 +482,9 @@ export default function LocationDetailScreen() {
    */
   const handleRemoveReview = async (reviewId: string) => {
     const confirmed = await confirmAsync(
-      'Remove this review?',
-      'It stops being visible to everyone immediately, and the removal is recorded in the moderation log. It can be restored from there.',
-      'Remove'
+      t('location.removeReviewTitle'),
+      t('location.removeReviewBody'),
+      t('location.removeAction')
     );
     if (!confirmed) return;
 
@@ -529,9 +551,11 @@ export default function LocationDetailScreen() {
 
   const handleDeleteLocation = async () => {
     const confirmed = await confirmAsync(
-      `Delete this ${location.kind}?`,
-      `This permanently deletes "${location.name}" and everything tied to it — reviews, photos, saves, and shares, including anything the people you invited added. This can't be undone.`,
-      'Delete'
+      location.kind === 'activity'
+        ? t('location.deleteActivityTitle')
+        : t('location.deletePlaceTitle'),
+      t('location.deleteLocationBody', { name: location.name }),
+      t('common.delete')
     );
     if (!confirmed) return;
     await deleteLocation(supabase, location.id);
@@ -540,9 +564,9 @@ export default function LocationDetailScreen() {
 
   const handleRemoveCreatorCredit = async () => {
     const confirmed = await confirmAsync(
-      'Remove your name as creator?',
-      'Your username will no longer show as "Added by" on this listing. This can\'t be undone.',
-      'Remove'
+      t('location.removeCreatorTitle'),
+      t('location.removeCreatorBody'),
+      t('location.removeAction')
     );
     if (!confirmed) return;
     await setLocationCreatorVisible(supabase, location.id, false);
@@ -766,7 +790,7 @@ export default function LocationDetailScreen() {
                 Edit link vanish overnight with no explanation. */}
             {withinCreatorWindow && !isModerator && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.statusLine}>
-                You added this — you can edit it for {formatWindowLeft(creatorWindowLeftMs)}.
+                {t('location.creatorWindow', { time: formatWindowLeft(creatorWindowLeftMs, t) })}
               </ThemedText>
             )}
 
@@ -794,7 +818,7 @@ export default function LocationDetailScreen() {
               <Pressable
                 style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
                 onPress={() => toggleBucketList(location.id)}
-                accessibilityLabel="Want to go">
+                accessibilityLabel={t('location.wantToGo')}>
                 <Ionicons
                   name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
                   size={22}
@@ -804,7 +828,7 @@ export default function LocationDetailScreen() {
               <Pressable
                 style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
                 onPress={() => toggleFavorite(location.id)}
-                accessibilityLabel="Favorite">
+                accessibilityLabel={t('location.favorite')}>
                 <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.squareActionIcon}>
                   {isFavorite ? '♥' : '♡'}
                 </ThemedText>
@@ -832,7 +856,7 @@ export default function LocationDetailScreen() {
                 {descriptionTruncated && (
                   <Pressable onPress={() => setDescriptionExpanded((open) => !open)} hitSlop={8}>
                     <ThemedText type="smallBold" style={styles.readMoreText}>
-                      {descriptionExpanded ? 'Show less' : 'Read more…'}
+                      {descriptionExpanded ? t('location.showLess') : t('location.readMore')}
                     </ThemedText>
                   </Pressable>
                 )}
@@ -869,15 +893,15 @@ export default function LocationDetailScreen() {
                   {hoursExpanded && (
                     <View style={styles.hoursExpandedList}>
                       {HOURS_DAYS.map((day) => {
-                        const entry = location.hours?.[day.key];
-                        const isToday = day.key === todayKey;
+                        const entry = location.hours?.[day];
+                        const isToday = day === todayKey;
                         return (
-                          <View key={day.key} style={styles.hoursDisplayRow}>
+                          <View key={day} style={styles.hoursDisplayRow}>
                             <ThemedText type="small" themeColor={isToday ? undefined : 'textSecondary'}>
-                              {day.label}
+                              {t(`days.${day}`)}
                             </ThemedText>
                             <ThemedText type="small" themeColor={entry && isToday ? undefined : 'textSecondary'}>
-                              {entry ? `${entry.open} – ${entry.close}` : 'Closed'}
+                              {entry ? `${entry.open} – ${entry.close}` : t('location.closed')}
                             </ThemedText>
                           </View>
                         );
@@ -896,7 +920,7 @@ export default function LocationDetailScreen() {
               </ThemedText>
               <Pressable style={styles.writeReviewButton} onPress={handleWriteReview}>
                 <ThemedText type="smallBold" style={styles.writeReviewButtonText}>
-                  {myReview ? 'Edit your review' : 'Write a review'}
+                  {myReview ? t('location.editReview') : t('location.writeReview')}
                 </ThemedText>
               </Pressable>
             </View>
@@ -938,7 +962,7 @@ export default function LocationDetailScreen() {
                   onPress={() => setSortMenuVisible(true)}>
                   <Ionicons name="swap-vertical-outline" size={13} color={theme.textSecondary} />
                   <ThemedText type="small" themeColor="textSecondary">
-                    {REVIEW_SORT_OPTIONS.find((o) => o.key === reviewSort)?.label}
+                    {t(REVIEW_SORT_OPTIONS.find((o) => o.key === reviewSort)?.labelKey ?? 'location.sortNewest')}
                   </ThemedText>
                 </Pressable>
               </>
@@ -1061,24 +1085,26 @@ export default function LocationDetailScreen() {
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <Pressable style={styles.menuRow} onPress={handleOpenAddToList}>
               <MaterialCommunityIcons name="folder-marker-outline" size={20} color={theme.text} />
-              <ThemedText type="default">Add to list</ThemedText>
+              <ThemedText type="default">{t('location.addToList')}</ThemedText>
             </Pressable>
             {canShare && (
               <Pressable style={styles.menuRow} onPress={handleOpenShare}>
                 <Ionicons name="share-outline" size={18} color={theme.text} />
-                <ThemedText type="default">Share</ThemedText>
+                <ThemedText type="default">{t('location.share')}</ThemedText>
               </Pressable>
             )}
             {canCopyLink && (
               <Pressable style={styles.menuRow} onPress={handleCopyLink}>
                 <Ionicons name={linkCopied ? 'checkmark' : 'link-outline'} size={18} color={theme.text} />
-                <ThemedText type="default">{linkCopied ? 'Link copied!' : 'Copy link'}</ThemedText>
+                <ThemedText type="default">
+                  {linkCopied ? t('location.linkCopied') : t('location.copyLink')}
+                </ThemedText>
               </Pressable>
             )}
             {canClaim && (
               <Pressable style={styles.menuRow} onPress={handleOpenClaim}>
                 <Ionicons name="storefront-outline" size={18} color={theme.text} />
-                <ThemedText type="default">Claim this business</ThemedText>
+                <ThemedText type="default">{t('location.claimBusiness')}</ThemedText>
               </Pressable>
             )}
             <Pressable style={styles.menuRow} onPress={handleOpenLocationReport}>
@@ -1105,7 +1131,7 @@ export default function LocationDetailScreen() {
                   setReviewSort(option.key);
                   setSortMenuVisible(false);
                 }}>
-                <ThemedText type="default">{option.label}</ThemedText>
+                <ThemedText type="default">{t(option.labelKey)}</ThemedText>
                 <ThemedText type="default">{reviewSort === option.key ? '✓' : ''}</ThemedText>
               </Pressable>
             ))}
@@ -1115,8 +1141,8 @@ export default function LocationDetailScreen() {
 
       <ReportModal
         visible={locationReportVisible}
-        title="Report this location"
-        confirmationText="Our team will review this location."
+        title={t('location.reportLocationTitle')}
+        confirmationText={t('location.reportLocationConfirm')}
         onClose={() => setLocationReportVisible(false)}
         onSubmit={async (reason, details) => {
           if (!session) return;
@@ -1131,8 +1157,8 @@ export default function LocationDetailScreen() {
 
       <ReportModal
         visible={reportingReviewId !== null}
-        title="Report this review"
-        confirmationText="Our team will review this review."
+        title={t('location.reportReviewTitle')}
+        confirmationText={t('location.reportReviewConfirm')}
         onClose={() => setReportingReviewId(null)}
         onSubmit={async (reason, details) => {
           if (!session || !reportingReviewId) return;
