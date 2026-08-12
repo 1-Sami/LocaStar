@@ -20,6 +20,7 @@ import {
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -36,11 +37,11 @@ import { supabase } from '@/lib/supabase';
 
 type Tab = 'locations' | 'reviews' | 'claims';
 
-const RESOLUTION_LABELS: Record<ResolutionAction, string> = {
-  dismissed: 'Dismissed',
-  warned: 'Warned the author',
-  hidden: 'Hidden',
-  removed: 'Removed',
+const RESOLUTION_LABEL_KEYS: Record<ResolutionAction, string> = {
+  dismissed: 'admin.resolvedDismissed',
+  warned: 'admin.resolvedWarned',
+  hidden: 'admin.resolvedHidden',
+  removed: 'admin.resolvedRemoved',
 };
 
 /**
@@ -48,24 +49,24 @@ const RESOLUTION_LABELS: Record<ResolutionAction, string> = {
  * have no action stored, so fall back to inferring it from the content's
  * current status — which is what the screen used to do for everything.
  */
-function resolutionLabel(action: ResolutionAction | null, inferred: string): string {
-  return action ? RESOLUTION_LABELS[action] : inferred;
+function resolutionLabel(action: ResolutionAction | null, inferred: string, t: TFunction): string {
+  return action ? t(RESOLUTION_LABEL_KEYS[action]) : inferred;
 }
 
-function inferredLocationLabel(report: LocationReport): string {
-  if (report.locationStatus === 'flagged') return 'Hidden';
-  if (report.locationStatus === 'removed') return 'Removed';
-  return 'Dismissed';
+function inferredLocationLabel(report: LocationReport, t: TFunction): string {
+  if (report.locationStatus === 'flagged') return t('admin.resolvedHidden');
+  if (report.locationStatus === 'removed') return t('admin.resolvedRemoved');
+  return t('admin.resolvedDismissed');
 }
 
-function inferredReviewLabel(report: ReviewReport): string {
-  if (report.reviewStatus === 'hidden') return 'Hidden';
-  if (report.reviewStatus === 'removed') return 'Removed';
-  return 'Dismissed';
+function inferredReviewLabel(report: ReviewReport, t: TFunction): string {
+  if (report.reviewStatus === 'hidden') return t('admin.resolvedHidden');
+  if (report.reviewStatus === 'removed') return t('admin.resolvedRemoved');
+  return t('admin.resolvedDismissed');
 }
 
-function claimActionLabel(claim: BusinessClaim): string {
-  return claim.status === 'approved' ? 'Approved' : 'Rejected';
+function claimActionLabel(claim: BusinessClaim, t: TFunction): string {
+  return claim.status === 'approved' ? t('admin.resolvedApproved') : t('admin.resolvedRejected');
 }
 
 /** A decision waiting on the moderator to type a reason and confirm it. */
@@ -116,7 +117,7 @@ export default function AdminReportsScreen() {
       // A moderation action failing quietly is the worst case here: the
       // moderator would assume it went through and move on.
       console.error('Moderation action failed', err);
-      setActionError("That didn't go through. Nothing was changed — try again.");
+      setActionError(t('admin.actionFailed'));
     } finally {
       setBusyId(null);
     }
@@ -169,10 +170,13 @@ export default function AdminReportsScreen() {
   const askDismissLocation = (report: LocationReport) =>
     setPending({
       reportId: report.id,
-      title: 'Dismiss this report?',
-      consequence: `The report is closed and "${report.locationName}" stays visible to everyone. ${report.locationCreatorName} is not told anything.`,
-      noteLabel: 'Why are you dismissing it?',
-      confirmLabel: 'Dismiss report',
+      title: t('admin.dismissReportTitle'),
+      consequence: t('admin.dismissLocationBody', {
+        location: report.locationName,
+        creator: report.locationCreatorName,
+      }),
+      noteLabel: t('admin.whyDismissing'),
+      confirmLabel: t('admin.dismissReport'),
       destructive: false,
       run: async (note) => {
         if (!session) return;
@@ -188,10 +192,10 @@ export default function AdminReportsScreen() {
   const askWarnLocationAuthor = (report: LocationReport) =>
     setPending({
       reportId: report.id,
-      title: `Warn ${report.locationCreatorName}?`,
-      consequence: `They added "${report.locationName}". They'll see your reason on their profile. The location stays visible — hide or remove it separately if it should come down.`,
-      noteLabel: 'What should they be told? (they will read this)',
-      confirmLabel: 'Send warning',
+      title: t('admin.warnPerson', { name: report.locationCreatorName }),
+      consequence: t('admin.warnLocationBody', { location: report.locationName }),
+      noteLabel: t('admin.warningNote'),
+      confirmLabel: t('admin.sendWarning'),
       destructive: false,
       run: async (note) => {
         if (!session || !report.locationCreatorId) return;
@@ -209,10 +213,10 @@ export default function AdminReportsScreen() {
   const askHideLocation = (report: LocationReport) =>
     setPending({
       reportId: report.id,
-      title: 'Hide this location?',
-      consequence: `"${report.locationName}" disappears from search, the map and everyone's lists, but is not deleted — you can restore it later. Use this when you're not sure yet.`,
-      noteLabel: 'Why are you hiding it?',
-      confirmLabel: 'Hide it',
+      title: t('admin.hideLocationTitle'),
+      consequence: t('admin.hideLocationBody', { location: report.locationName }),
+      noteLabel: t('admin.whyHiding'),
+      confirmLabel: t('admin.hideIt'),
       destructive: false,
       run: async (note) => {
         if (!session) return;
@@ -224,10 +228,10 @@ export default function AdminReportsScreen() {
   const askRemoveLocation = (report: LocationReport) =>
     setPending({
       reportId: report.id,
-      title: 'Remove this location?',
-      consequence: `"${report.locationName}" is taken down for everyone, along with its reviews and photos. Use this when the place is fake, unlawful or clearly wrong.`,
-      noteLabel: 'Why are you removing it?',
-      confirmLabel: 'Remove',
+      title: t('admin.removeLocationTitle'),
+      consequence: t('admin.removeLocationBody', { location: report.locationName }),
+      noteLabel: t('admin.whyRemoving'),
+      confirmLabel: t('common.remove'),
       destructive: true,
       run: async (note) => {
         if (!session) return;
@@ -241,10 +245,10 @@ export default function AdminReportsScreen() {
   const askDismissReview = (report: ReviewReport) =>
     setPending({
       reportId: report.id,
-      title: 'Dismiss this report?',
-      consequence: `The report is closed and the review by ${report.reviewAuthorName} stays visible. They are not told anything.`,
-      noteLabel: 'Why are you dismissing it?',
-      confirmLabel: 'Dismiss report',
+      title: t('admin.dismissReportTitle'),
+      consequence: t('admin.dismissReviewBody', { author: report.reviewAuthorName }),
+      noteLabel: t('admin.whyDismissing'),
+      confirmLabel: t('admin.dismissReport'),
       destructive: false,
       run: async (note) => {
         if (!session) return;
@@ -255,10 +259,10 @@ export default function AdminReportsScreen() {
   const askWarnReviewAuthor = (report: ReviewReport) =>
     setPending({
       reportId: report.id,
-      title: `Warn ${report.reviewAuthorName}?`,
-      consequence: `They wrote the reported review on "${report.locationName}". They'll see your reason on their profile. The review stays visible — hide or remove it separately if it should come down.`,
-      noteLabel: 'What should they be told? (they will read this)',
-      confirmLabel: 'Send warning',
+      title: t('admin.warnPerson', { name: report.reviewAuthorName }),
+      consequence: t('admin.warnReviewBody', { location: report.locationName }),
+      noteLabel: t('admin.warningNote'),
+      confirmLabel: t('admin.sendWarning'),
       destructive: false,
       run: async (note) => {
         if (!session || !report.reviewAuthorId) return;
@@ -276,10 +280,13 @@ export default function AdminReportsScreen() {
   const askHideReview = (report: ReviewReport) =>
     setPending({
       reportId: report.id,
-      title: 'Hide this review?',
-      consequence: `The review by ${report.reviewAuthorName} disappears from "${report.locationName}" and stops counting toward its rating. It is not deleted — you can restore it later.`,
-      noteLabel: 'Why are you hiding it?',
-      confirmLabel: 'Hide it',
+      title: t('admin.hideReviewTitle'),
+      consequence: t('admin.hideReviewBody', {
+        author: report.reviewAuthorName,
+        location: report.locationName,
+      }),
+      noteLabel: t('admin.whyHiding'),
+      confirmLabel: t('admin.hideIt'),
       destructive: false,
       run: async (note) => {
         if (!session) return;
@@ -291,10 +298,13 @@ export default function AdminReportsScreen() {
   const askRemoveReview = (report: ReviewReport) =>
     setPending({
       reportId: report.id,
-      title: 'Remove this review?',
-      consequence: `The review by ${report.reviewAuthorName} is taken down for good and stops counting toward the rating of "${report.locationName}".`,
-      noteLabel: 'Why are you removing it?',
-      confirmLabel: 'Remove',
+      title: t('admin.removeReviewTitle'),
+      consequence: t('admin.removeReviewBody', {
+        author: report.reviewAuthorName,
+        location: report.locationName,
+      }),
+      noteLabel: t('admin.whyRemoving'),
+      confirmLabel: t('common.remove'),
       destructive: true,
       run: async (note) => {
         if (!session) return;
@@ -311,10 +321,13 @@ export default function AdminReportsScreen() {
   const askApproveClaim = (claim: BusinessClaim) =>
     setPending({
       reportId: claim.id,
-      title: 'Approve this claim?',
-      consequence: `"${claim.locationName}" will be marked as verified and owned by ${claim.claimantName}. They'll be able to edit its details.`,
-      noteLabel: 'What verified their ownership?',
-      confirmLabel: 'Approve',
+      title: t('admin.approveClaimTitle'),
+      consequence: t('admin.approveClaimBody', {
+        location: claim.locationName,
+        claimant: claim.claimantName,
+      }),
+      noteLabel: t('admin.approveClaimNote'),
+      confirmLabel: t('admin.approve'),
       destructive: false,
       run: async (note) => {
         await verifyLocationOwner(supabase, claim.locationId, claim.claimantId);
@@ -325,10 +338,13 @@ export default function AdminReportsScreen() {
   const askRejectClaim = (claim: BusinessClaim) =>
     setPending({
       reportId: claim.id,
-      title: 'Reject this claim?',
-      consequence: `The claim on "${claim.locationName}" by ${claim.claimantName} is rejected. The listing is unchanged and stays unverified.`,
-      noteLabel: 'Why are you rejecting it?',
-      confirmLabel: 'Reject',
+      title: t('admin.rejectClaimTitle'),
+      consequence: t('admin.rejectClaimBody', {
+        location: claim.locationName,
+        claimant: claim.claimantName,
+      }),
+      noteLabel: t('admin.rejectClaimNote'),
+      confirmLabel: t('admin.reject'),
       destructive: true,
       run: async (note) => {
         await resolveBusinessClaim(supabase, claim.id, 'rejected', note);
@@ -603,7 +619,7 @@ export default function AdminReportsScreen() {
                       <ThemedText type="smallBold">{report.locationName}</ThemedText>
                     </Pressable>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {resolutionLabel(report.resolutionAction, inferredReviewLabel(report))} · By{' '}
+                      {resolutionLabel(report.resolutionAction, inferredReviewLabel(report, t), t)} · By{' '}
                       {report.reviewAuthorName}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -630,7 +646,7 @@ export default function AdminReportsScreen() {
                       <ThemedText type="smallBold">{report.locationName}</ThemedText>
                     </Pressable>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {resolutionLabel(report.resolutionAction, inferredLocationLabel(report))} · Reported by{' '}
+                      {resolutionLabel(report.resolutionAction, inferredLocationLabel(report, t), t)} · Reported by{' '}
                       {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default" style={styles.reason}>
@@ -656,7 +672,7 @@ export default function AdminReportsScreen() {
                       <ThemedText type="smallBold">{claim.locationName}</ThemedText>
                     </Pressable>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {claimActionLabel(claim)} · Claimed by {claim.claimantName} ·{' '}
+                      {claimActionLabel(claim, t)} · Claimed by {claim.claimantName} ·{' '}
                       {new Date(claim.createdAt).toLocaleDateString()}
                     </ThemedText>
                     {claim.verificationNotes && (
