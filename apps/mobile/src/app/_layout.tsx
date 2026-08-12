@@ -41,12 +41,12 @@ function ThemedNavigation() {
           <Stack.Screen name="auth/confirmed" options={{ headerShown: false }} />
           <Stack.Screen name="location/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="write-review" options={{ presentation: 'modal', title: t('nav.writeReview') }} />
-          <Stack.Screen name="favorites" options={{ headerTitle: () => <ScreenTitle label={t('nav.saved')} /> }} />
-          <Stack.Screen name="my-reviews" options={{ headerTitle: () => <ScreenTitle label={t('nav.myReviews')} /> }} />
-          <Stack.Screen name="my-locations" options={{ headerTitle: () => <ScreenTitle label={t('nav.myContributions')} /> }} />
+          <Stack.Screen name="favorites" options={{ headerTitle: () => <ScreenTitle titleKey="saved" /> }} />
+          <Stack.Screen name="my-reviews" options={{ headerTitle: () => <ScreenTitle titleKey="myReviews" /> }} />
+          <Stack.Screen name="my-locations" options={{ headerTitle: () => <ScreenTitle titleKey="myContributions" /> }} />
           <Stack.Screen name="add-location" options={{ presentation: 'modal' }} />
           <Stack.Screen name="edit-location" options={{ presentation: 'modal', title: t('nav.editLocation') }} />
-          <Stack.Screen name="settings/index" options={{ headerTitle: () => <ScreenTitle label={t('nav.settings')} /> }} />
+          <Stack.Screen name="settings/index" options={{ headerTitle: () => <ScreenTitle titleKey="settings" /> }} />
           <Stack.Screen name="settings/profile-picture" options={{ title: t('nav.profilePicture') }} />
           <Stack.Screen name="settings/password" options={{ title: t('nav.changePassword') }} />
           <Stack.Screen name="settings/account" options={{ title: t('nav.accountInfo') }} />
@@ -55,19 +55,19 @@ function ThemedNavigation() {
           <Stack.Screen name="settings/notifications" options={{ title: t('nav.notifications') }} />
           <Stack.Screen name="settings/blocked" options={{ title: t('nav.blockedUsers') }} />
           <Stack.Screen name="settings/delete-account" options={{ title: t('nav.deleteAccount') }} />
-          <Stack.Screen name="about" options={{ headerTitle: () => <ScreenTitle label={t('nav.about')} /> }} />
+          <Stack.Screen name="about" options={{ headerTitle: () => <ScreenTitle titleKey="about" /> }} />
           <Stack.Screen name="legal/privacy" options={{ title: t('nav.privacyPolicy') }} />
           <Stack.Screen name="legal/terms" options={{ title: t('nav.termsOfService') }} />
           {/* Reachable in the app, but its real job is being a public URL: Google
               Play requires one on the Data safety form and shows it on the listing. */}
           <Stack.Screen name="legal/delete-account" options={{ title: t('nav.deleteAccount') }} />
-          <Stack.Screen name="admin-reports" options={{ headerTitle: () => <ScreenTitle label={t('nav.reports')} /> }} />
-          <Stack.Screen name="admin-users" options={{ headerTitle: () => <ScreenTitle label={t('nav.peopleAndBans')} /> }} />
-          <Stack.Screen name="admin-audit" options={{ headerTitle: () => <ScreenTitle label={t('nav.moderationLog')} /> }} />
-          <Stack.Screen name="lists/index" options={{ headerTitle: () => <ScreenTitle label={t('nav.myLists')} /> }} />
+          <Stack.Screen name="admin-reports" options={{ headerTitle: () => <ScreenTitle titleKey="reports" /> }} />
+          <Stack.Screen name="admin-users" options={{ headerTitle: () => <ScreenTitle titleKey="peopleAndBans" /> }} />
+          <Stack.Screen name="admin-audit" options={{ headerTitle: () => <ScreenTitle titleKey="moderationLog" /> }} />
+          <Stack.Screen name="lists/index" options={{ headerTitle: () => <ScreenTitle titleKey="myLists" /> }} />
           <Stack.Screen name="lists/[id]" options={{ title: t('nav.list') }} />
-          <Stack.Screen name="friends" options={{ headerTitle: () => <ScreenTitle label={t('nav.friends')} /> }} />
-          <Stack.Screen name="notifications" options={{ headerTitle: () => <ScreenTitle label={t('nav.notifications')} /> }} />
+          <Stack.Screen name="friends" options={{ headerTitle: () => <ScreenTitle titleKey="friends" /> }} />
+          <Stack.Screen name="notifications" options={{ headerTitle: () => <ScreenTitle titleKey="notifications" /> }} />
         </Stack>
         <UpdateBanner />
       </View>

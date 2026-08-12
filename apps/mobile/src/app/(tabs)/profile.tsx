@@ -15,13 +15,14 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MENU_ICONS } from '@/constants/menu-icons';
+import { MENU_ICONS, type MenuId } from '@/constants/menu-icons';
 import { SUPPORT_EMAIL } from '@/constants/support';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -44,55 +45,74 @@ const STAT_TILE_WIDTH = 59;
 const STAT_TILE_GAP = 10;
 const MENU_ROW_WIDTH = (91 * 3 + STAT_TILE_GAP * 2) * 0.8;
 
-function statTiles(stats: ProfileStats) {
+/*
+ * Stat tiles and menu rows are identified by id and *labelled* by translation.
+ *
+ * They used to be the same string: the label was the array element, the routing
+ * compared against it, and MENU_ICONS was keyed by it. That works exactly until
+ * the labels are translated, at which point every comparison misses and the
+ * menu silently stops navigating anywhere. Nothing throws — the row just does
+ * nothing when tapped.
+ */
+type StatId = 'favorites' | 'bucketList' | 'shared' | 'reviews' | 'added';
+
+function statTiles(stats: ProfileStats): { id: StatId; value: number; color: string }[] {
   return [
-    { label: 'Favorites', value: stats.favorites, color: '#E8A93B' },
-    { label: 'Saved for later', value: stats.bucketList, color: '#4C8FE8' },
-    { label: 'Shared', value: stats.shared, color: '#B0B4BA' },
-    { label: 'Reviews', value: stats.reviews, color: '#4CD37A' },
-    { label: 'Added', value: stats.added, color: '#C34CE8' },
+    { id: 'favorites', value: stats.favorites, color: '#E8A93B' },
+    { id: 'bucketList', value: stats.bucketList, color: '#4C8FE8' },
+    { id: 'shared', value: stats.shared, color: '#B0B4BA' },
+    { id: 'reviews', value: stats.reviews, color: '#4CD37A' },
+    { id: 'added', value: stats.added, color: '#C34CE8' },
   ];
 }
 
-const STAT_SECTIONS: Record<string, string> = {
-  Favorites: 'favorites',
-  'Saved for later': 'bucketList',
-  Shared: 'shared',
+const STAT_LABELS: Record<StatId, string> = {
+  favorites: 'profile.statFavorites',
+  bucketList: 'profile.statBucketList',
+  shared: 'profile.statShared',
+  reviews: 'profile.statReviews',
+  added: 'profile.statAdded',
+};
+
+/** The three that open the Saved screen at a particular section. */
+const STAT_SECTIONS: Partial<Record<StatId, string>> = {
+  favorites: 'favorites',
+  bucketList: 'bucketList',
+  shared: 'shared',
 };
 
 // "My reviews" is deliberately absent: the Reviews stat tile directly above
 // already goes there, and two controls a centimetre apart leading to the same
 // screen reads as a mistake rather than a convenience.
-const PRIMARY_MENU_ITEMS = ['My lists', 'Friends', 'Add location', 'Add activity'];
-const SECONDARY_MENU_ITEMS = ['Settings', 'About'];
+const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends', 'addLocation', 'addActivity'];
+const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
 // Kept in their own group so moderation tools don't sit flush against About.
-const MODERATOR_MENU_ITEMS = ['Reports', 'People & bans', 'Moderation log'];
+const MODERATOR_MENU_ITEMS: MenuId[] = ['reports', 'peopleAndBans', 'moderationLog'];
 
 function MenuRow({
   item,
   badgeCount,
   onPress,
 }: {
-  item: string;
+  item: MenuId;
   badgeCount?: number;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const iconConfig = MENU_ICONS[item];
   return (
     <Pressable onPress={onPress}>
       <ThemedView type="backgroundElement" style={styles.menuItem}>
         <View style={styles.menuItemLeft}>
-          {iconConfig && (
-            <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
-              {iconConfig.family === 'material' ? (
-                <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
-              ) : (
-                <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
-              )}
-            </View>
-          )}
+          <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
+            {iconConfig.family === 'material' ? (
+              <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
+            ) : (
+              <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
+            )}
+          </View>
           <ThemedText type="default" style={styles.menuItemText}>
-            {item}
+            {t(`menu.${item}`)}
           </ThemedText>
           {badgeCount !== undefined && badgeCount > 0 && (
             <View style={styles.reportsBadge}>
@@ -114,6 +134,7 @@ export default function ProfileScreen() {
   const { session, signOut } = useAuth();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const { unreadCount } = useNotificationsBadge();
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -181,32 +202,36 @@ export default function ProfileScreen() {
   );
 
   const handleSignOut = async () => {
-    const confirmed = await confirmAsync('Log out?', 'You’ll need to log in again to access your account.', 'Log out');
+    const confirmed = await confirmAsync(
+      t('profile.logOutConfirmTitle'),
+      t('profile.logOutConfirmBody'),
+      t('common.logOut')
+    );
     if (confirmed) signOut();
   };
 
-  const handleMenuPress = (item: string) => {
-    if (item === 'My lists') router.push('/lists' as never);
-    if (item === 'Friends') router.push('/friends' as never);
-    if (item === 'Add location') router.push({ pathname: '/add-location', params: { kind: 'place' } });
-    if (item === 'Add activity') router.push({ pathname: '/add-location', params: { kind: 'activity' } });
-    if (item === 'Settings') router.push('/settings' as never);
-    if (item === 'About') router.push('/about');
-    if (item === 'Reports') router.push('/admin-reports');
-    if (item === 'People & bans') router.push('/admin-users' as never);
-    if (item === 'Moderation log') router.push('/admin-audit' as never);
+  const handleMenuPress = (item: MenuId) => {
+    if (item === 'myLists') router.push('/lists' as never);
+    if (item === 'friends') router.push('/friends' as never);
+    if (item === 'addLocation') router.push({ pathname: '/add-location', params: { kind: 'place' } });
+    if (item === 'addActivity') router.push({ pathname: '/add-location', params: { kind: 'activity' } });
+    if (item === 'settings') router.push('/settings' as never);
+    if (item === 'about') router.push('/about');
+    if (item === 'reports') router.push('/admin-reports');
+    if (item === 'peopleAndBans') router.push('/admin-users' as never);
+    if (item === 'moderationLog') router.push('/admin-audit' as never);
   };
 
-  const handleStatPress = (label: string) => {
-    if (label === 'Reviews') {
+  const handleStatPress = (id: StatId) => {
+    if (id === 'reviews') {
       router.push('/my-reviews');
       return;
     }
-    if (label === 'Added') {
+    if (id === 'added') {
       router.push('/my-locations' as never);
       return;
     }
-    const section = STAT_SECTIONS[label];
+    const section = STAT_SECTIONS[id];
     if (section) {
       router.push({ pathname: '/favorites', params: { section } });
     }
@@ -217,24 +242,24 @@ export default function ProfileScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <ThemedText type="subtitle" style={styles.header}>
-            Profile
+            {t('profile.title')}
           </ThemedText>
           <View style={styles.loggedOutPrompt}>
             <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
-              Log in to save favorites, write reviews, and add your own locations.
+              {t('profile.loggedOutPrompt')}
             </ThemedText>
             <Pressable style={styles.primaryButton} onPress={() => router.push('/sign-in')}>
               <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                Log in
+                {t('common.logIn')}
               </ThemedText>
             </Pressable>
             <Pressable onPress={() => router.push('/sign-up')}>
-              <ThemedText type="linkPrimary">Create an account</ThemedText>
+              <ThemedText type="linkPrimary">{t('common.createAccount')}</ThemedText>
             </Pressable>
           </View>
           {/* Available logged out too — it explains what the app is for. */}
           <View style={[styles.menu, styles.loggedOutMenu]}>
-            <MenuRow item="About" onPress={() => router.push('/about')} />
+            <MenuRow item="about" onPress={() => router.push('/about')} />
           </View>
         </SafeAreaView>
       </ThemedView>
@@ -265,7 +290,7 @@ export default function ProfileScreen() {
                 <View style={[styles.roleBadge, myRole === 'admin' && styles.adminBadge]}>
                   <Ionicons name="shield-checkmark" size={11} color="#1A1400" />
                   <ThemedText type="small" style={styles.roleBadgeText}>
-                    {myRole === 'admin' ? 'Admin' : 'Superuser'}
+                    {myRole === 'admin' ? t('profile.roleAdmin') : t('profile.roleSuperuser')}
                   </ThemedText>
                 </View>
               )}
@@ -274,7 +299,7 @@ export default function ProfileScreen() {
               {session.user.email}
             </ThemedText>
             <Pressable onPress={handleSignOut}>
-              <ThemedText style={styles.logOutText}>LOG OUT</ThemedText>
+              <ThemedText style={styles.logOutText}>{t('profile.logOut')}</ThemedText>
             </Pressable>
           </View>
         </View>
@@ -284,20 +309,20 @@ export default function ProfileScreen() {
             <View style={styles.banNoticeHeader}>
               <Ionicons name="alert-circle" size={18} color="#ffffff" />
               <ThemedText type="smallBold" style={styles.banNoticeTitle}>
-                Your account is restricted
+                {t('profile.banTitle')}
               </ThemedText>
             </View>
             <ThemedText type="small" style={styles.banNoticeText}>
               {myBan.expiresAt
-                ? `Until ${new Date(myBan.expiresAt).toLocaleDateString()}, you can browse but not post reviews, add locations, or share.`
-                : 'You can browse but not post reviews, add locations, or share.'}
+                ? t('profile.banUntil', { date: new Date(myBan.expiresAt).toLocaleDateString() })
+                : t('profile.banIndefinite')}
             </ThemedText>
             <ThemedText type="small" style={styles.banNoticeText}>
-              Reason: {myBan.reason}
+              {t('profile.banReason', { reason: myBan.reason })}
             </ThemedText>
             <Pressable onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Ban appeal`)}>
               <ThemedText type="smallBold" style={styles.banAppealLink}>
-                Appeal this decision
+                {t('profile.banAppeal')}
               </ThemedText>
             </Pressable>
           </View>
@@ -308,7 +333,7 @@ export default function ProfileScreen() {
             <View style={styles.banNoticeHeader}>
               <Ionicons name="warning" size={18} color="#1A1400" />
               <ThemedText type="smallBold" style={styles.warningNoticeText}>
-                Warning from a moderator
+                {t('profile.warningTitle')}
               </ThemedText>
             </View>
             <ThemedText type="small" style={styles.warningNoticeText}>
@@ -328,7 +353,7 @@ export default function ProfileScreen() {
                 });
               }}>
               <ThemedText type="smallBold" style={styles.warningDismiss}>
-                Got it
+                {t('profile.warningDismiss')}
               </ThemedText>
             </Pressable>
           </View>
@@ -342,17 +367,17 @@ export default function ProfileScreen() {
         >
           {statTiles(stats).map((stat) => {
             const clickable =
-              stat.label === 'Reviews' || stat.label === 'Added' || Boolean(STAT_SECTIONS[stat.label]);
+              stat.id === 'reviews' || stat.id === 'added' || Boolean(STAT_SECTIONS[stat.id]);
             return (
               <Pressable
-                key={stat.label}
+                key={stat.id}
                 style={styles.statTile}
                 disabled={!clickable}
-                onPress={() => handleStatPress(stat.label)}
+                onPress={() => handleStatPress(stat.id)}
               >
                 <ThemedText style={[styles.statValue, { color: stat.color }]}>{stat.value}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel} numberOfLines={1}>
-                  {stat.label}
+                  {t(STAT_LABELS[stat.id])}
                 </ThemedText>
               </Pressable>
             );
@@ -364,7 +389,7 @@ export default function ProfileScreen() {
             <MenuRow
               key={item}
               item={item}
-              badgeCount={item === 'Friends' ? pendingFriendRequests : undefined}
+              badgeCount={item === 'friends' ? pendingFriendRequests : undefined}
               onPress={() => handleMenuPress(item)}
             />
           ))}
@@ -382,7 +407,7 @@ export default function ProfileScreen() {
               <MenuRow
                 key={item}
                 item={item}
-                badgeCount={item === 'Reports' ? openReportsCount : undefined}
+                badgeCount={item === 'reports' ? openReportsCount : undefined}
                 onPress={() => handleMenuPress(item)}
               />
             ))}

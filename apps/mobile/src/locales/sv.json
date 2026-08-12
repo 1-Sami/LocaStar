@@ -35,7 +35,8 @@
     "save": "Spara",
     "somethingWentWrong": "Något gick fel. Försök igen.",
     "logIn": "Logga in",
-    "createAccount": "Skapa ett konto"
+    "createAccount": "Skapa ett konto",
+    "logOut": "Logga ut"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -92,5 +93,41 @@
     "placeBody": "En plan, ett spår, ett gym, ett badställe — något som alltid finns där.",
     "activityTitle": "En aktivitet",
     "activityBody": "En festival, en match, en träff — något som händer ett visst datum."
+  },
+  "menu": {
+    "myLists": "Mina listor",
+    "friends": "Vänner",
+    "addLocation": "Lägg till plats",
+    "addActivity": "Lägg till aktivitet",
+    "settings": "Inställningar",
+    "about": "Om",
+    "reports": "Anmälningar",
+    "peopleAndBans": "Användare och avstängningar",
+    "moderationLog": "Modereringslogg",
+    "saved": "Sparat",
+    "myReviews": "Mina recensioner",
+    "myContributions": "Mina bidrag",
+    "notifications": "Aviseringar"
+  },
+  "profile": {
+    "title": "Profil",
+    "loggedOutPrompt": "Logga in för att spara favoriter, skriva recensioner och lägga till egna platser.",
+    "logOut": "LOGGA UT",
+    "logOutConfirmTitle": "Logga ut?",
+    "logOutConfirmBody": "Du behöver logga in igen för att komma åt ditt konto.",
+    "roleAdmin": "Admin",
+    "roleSuperuser": "Superanvändare",
+    "banTitle": "Ditt konto är begränsat",
+    "banUntil": "Till {{date}} kan du titta runt men inte skriva recensioner, lägga till platser eller dela.",
+    "banIndefinite": "Du kan titta runt men inte skriva recensioner, lägga till platser eller dela.",
+    "banReason": "Anledning: {{reason}}",
+    "banAppeal": "Överklaga beslutet",
+    "warningTitle": "Varning från en moderator",
+    "warningDismiss": "Uppfattat",
+    "statFavorites": "Favoriter",
+    "statBucketList": "Sparat till senare",
+    "statShared": "Delat",
+    "statReviews": "Recensioner",
+    "statAdded": "Tillagt"
   }
 }

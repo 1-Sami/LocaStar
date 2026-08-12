@@ -60,11 +60,6 @@ const DUPLICATE_RADIUS_M = 200;
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 const MAX_ACTIVITY_DAYS = 120;
 
-const HEADER_CONFIG = {
-  place: { icon: 'add-circle-outline' as const, color: '#C34CE8', label: 'Add location' },
-  activity: { icon: 'time-outline' as const, color: '#E8A93B', label: 'Add activity' },
-};
-
 const DISCLAIMER = {
   place:
     'Locations go live as soon as you submit them, and are moderated afterwards. Anyone can report a location that is misleading, unlawful, or in the wrong place, and reported locations are reviewed and can be hidden or removed. Adding locations in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.',
@@ -118,7 +113,9 @@ export default function AddLocationScreen() {
 
   const isActivity = kind === 'activity';
   const noun = isActivity ? 'activity' : 'location';
-  const headerConfig = isActivity ? HEADER_CONFIG.activity : HEADER_CONFIG.place;
+  // The icon and colour used to be repeated here alongside the label. They were
+  // already in MENU_ICONS under the same two ids, and nothing read the copies.
+  const headerKey = isActivity ? 'addActivity' : 'addLocation';
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
@@ -452,7 +449,7 @@ export default function AddLocationScreen() {
       <ThemedView style={styles.container}>
         <Stack.Screen
         options={{
-          headerTitle: () => <ScreenTitle label={headerConfig.label} />,
+          headerTitle: () => <ScreenTitle titleKey={headerKey} />,
           headerLeft: () => <HeaderBackButton onPress={onBack} />,
           // A half-filled form should not be dismissable by a stray swipe.
           gestureEnabled: !hasStarted,
@@ -495,7 +492,7 @@ export default function AddLocationScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
-          headerTitle: () => <ScreenTitle label={headerConfig.label} />,
+          headerTitle: () => <ScreenTitle titleKey={headerKey} />,
           headerLeft: () => <HeaderBackButton onPress={onBack} />,
           // A half-filled form should not be dismissable by a stray swipe.
           gestureEnabled: !hasStarted,

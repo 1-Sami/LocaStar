@@ -35,7 +35,8 @@
     "save": "Save",
     "somethingWentWrong": "Something went wrong. Try again.",
     "logIn": "Log in",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "logOut": "Log out"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -92,5 +93,41 @@
     "placeBody": "A court, a trail, a gym, a swimming spot — somewhere that is always there.",
     "activityTitle": "An activity",
     "activityBody": "A festival, a match, a meet-up — something happening on a date."
+  },
+  "menu": {
+    "myLists": "My lists",
+    "friends": "Friends",
+    "addLocation": "Add location",
+    "addActivity": "Add activity",
+    "settings": "Settings",
+    "about": "About",
+    "reports": "Reports",
+    "peopleAndBans": "People & bans",
+    "moderationLog": "Moderation log",
+    "saved": "Saved",
+    "myReviews": "My reviews",
+    "myContributions": "My contributions",
+    "notifications": "Notifications"
+  },
+  "profile": {
+    "title": "Profile",
+    "loggedOutPrompt": "Log in to save favorites, write reviews, and add your own locations.",
+    "logOut": "LOG OUT",
+    "logOutConfirmTitle": "Log out?",
+    "logOutConfirmBody": "You’ll need to log in again to access your account.",
+    "roleAdmin": "Admin",
+    "roleSuperuser": "Superuser",
+    "banTitle": "Your account is restricted",
+    "banUntil": "Until {{date}}, you can browse but not post reviews, add locations, or share.",
+    "banIndefinite": "You can browse but not post reviews, add locations, or share.",
+    "banReason": "Reason: {{reason}}",
+    "banAppeal": "Appeal this decision",
+    "warningTitle": "Warning from a moderator",
+    "warningDismiss": "Got it",
+    "statFavorites": "Favorites",
+    "statBucketList": "Saved for later",
+    "statShared": "Shared",
+    "statReviews": "Reviews",
+    "statAdded": "Added"
   }
 }
