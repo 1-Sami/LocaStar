@@ -8,6 +8,7 @@ import { LocaStarLogo } from '@/components/locastar-logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { APP_RELEASE } from '@/constants/release';
+import { SUPPORT_EMAIL } from '@/constants/support';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 /** One "Bold lead-in. Rest of the sentence." row in the features list. */
@@ -110,6 +111,25 @@ export default function AboutScreen() {
             </ThemedText>
           </View>
 
+          {/* This screen is what locastar.se/about serves, and that URL is the
+              App Store / Play support link. Both stores check that the page
+              visibly offers a way to reach a human, so the address has to be
+              here in the open — the legal pages carrying it is not enough. */}
+          <View style={styles.section}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              {t('about.supportTitle')}
+            </ThemedText>
+            <Pressable onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}>
+              <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
+                {t('about.supportPrefix')}
+                <ThemedText type="default" style={styles.supportLink}>
+                  {SUPPORT_EMAIL}
+                </ThemedText>
+                {t('about.supportSuffix')}
+              </ThemedText>
+            </Pressable>
+          </View>
+
           <View style={styles.legalRow}>
             <Link href={'/legal/privacy' as never}>
               <ThemedText type="linkPrimary">{t('nav.privacyPolicy')}</ThemedText>
@@ -191,6 +211,10 @@ const styles = StyleSheet.create({
   },
   featureLead: {
     fontWeight: '700',
+  },
+  supportLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   legalRow: {
     flexDirection: 'row',
