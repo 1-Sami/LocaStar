@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -98,6 +99,7 @@ function YesNoRow({
 }
 
 export default function AddLocationScreen() {
+  const { t } = useTranslation();
   const { kind } = useLocalSearchParams<{ kind: LocationKind }>();
   const router = useRouter();
   const theme = useTheme();
@@ -112,7 +114,15 @@ export default function AddLocationScreen() {
   const isAdmin = role === 'admin';
 
   const isActivity = kind === 'activity';
-  const noun = isActivity ? 'activity' : 'location';
+  /*
+   * Which half of every kind-specific message to use.
+   *
+   * Sentences mentioning a place or an activity are written out in full for
+   * both, rather than dropping a noun into a slot: Swedish attaches the
+   * definite article to the noun itself — platsen, aktiviteten — so no single
+   * word can be substituted and still leave a grammatical sentence.
+   */
+  const kindKey = isActivity ? 'activity' : 'place';
   // The icon and colour used to be repeated here alongside the label. They were
   // already in MENU_ICONS under the same two ids, and nothing read the copies.
   const headerKey = isActivity ? 'addActivity' : 'addLocation';
@@ -174,7 +184,7 @@ export default function AddLocationScreen() {
 
   const { onBack } = useDiscardWarning(
     hasStarted,
-    `Your ${noun} hasn't been submitted yet. Everything you've filled in will be lost.`
+    t(`addLocation.discardWarning.${kindKey}`)
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -333,11 +343,11 @@ export default function AddLocationScreen() {
       const startDay = startOfLocalDay(startDate).getTime();
       const endDay = startOfLocalDay(endDate).getTime();
       if (endDay < startDay) {
-        dateError = 'The end date must be after the start date.';
+        dateError = t('addLocation.endBeforeStart');
       } else {
         const daysOut = (endDay - startDay) / (1000 * 60 * 60 * 24);
         if (daysOut > MAX_ACTIVITY_DAYS) {
-          dateError = `Activities can only run for up to ${MAX_ACTIVITY_DAYS} days — choose an earlier end date.`;
+          dateError = t('addLocation.tooLong', { days: MAX_ACTIVITY_DAYS });
         } else {
           expiresAtIso = endOfLocalDay(endDate).toISOString();
         }
@@ -346,7 +356,7 @@ export default function AddLocationScreen() {
 
     if (!dateError && publishDate) {
       if (endDate && startOfLocalDay(publishDate).getTime() > startOfLocalDay(endDate).getTime()) {
-        dateError = "The publish date can't be after the end date.";
+        dateError = t('addLocation.publishAfterEnd');
       } else {
         // Start of day: publishing should happen from the beginning of the
         // chosen date, not from whenever the form happened to be open.
@@ -428,15 +438,15 @@ export default function AddLocationScreen() {
 
       setSubmitted(true);
     } catch (err) {
-      console.error(`Failed to submit ${noun}`, err);
+      console.error(`Failed to submit ${kindKey}`, err);
       setError(
         createdLocationId.current
           ? // Already saved, so a restriction isn't what stopped this — the
             // photos are the only outstanding part.
-            `Your ${noun} was saved, but its photos didn't finish uploading. Tap submit again to retry — that won't create a second ${noun}.`
+            t(`addLocation.photoRetry.${kindKey}`)
           : await writeFailureMessage(
               session.user.id,
-              `Something went wrong submitting your ${noun}. Try again.`
+              t(`addLocation.submitError.${kindKey}`)
             )
       );
     } finally {
@@ -458,7 +468,7 @@ export default function AddLocationScreen() {
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <View style={styles.confirmation}>
             <ThemedText type="subtitle" style={styles.confirmationTitle}>
-              Thanks!
+              {t('addLocation.thanks')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
               {/* There is no approval queue: the insert policy requires
@@ -468,18 +478,17 @@ export default function AddLocationScreen() {
                   both the database and the disclaimer on the form itself, and
                   left people waiting for an email that was never coming. */}
               {publishAtIso
-                ? `Your ${noun} is saved and will go live on ${new Date(publishAtIso).toLocaleDateString()}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.`
-                : `Your ${noun} is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.`}
+                ? t(`addLocation.scheduled.${kindKey}`, { date: new Date(publishAtIso).toLocaleDateString() })
+                : t(`addLocation.liveNow.${kindKey}`)}
             </ThemedText>
             {claimFailed && (
               <ThemedText type="small" style={[styles.errorText, styles.centerText]}>
-                Your {noun} was saved, but we couldn&apos;t register your ownership claim. Open the {noun} and
-                use &ldquo;Claim this business&rdquo; to try again.
+                {t(`addLocation.claimFailed.${kindKey}`)}
               </ThemedText>
             )}
             <Pressable style={styles.submitButton} onPress={() => router.back()}>
               <ThemedText type="smallBold" style={styles.submitButtonText}>
-                Done
+                {t('form.done')}
               </ThemedText>
             </Pressable>
           </View>
@@ -515,7 +524,7 @@ export default function AddLocationScreen() {
           />
 
           <ThemedText type="smallBold" style={styles.mapLabel}>
-            *Pin the exact location
+            {t('form.pinExact')}
           </ThemedText>
           {pinCoords ? (
             <MapPinPicker
@@ -526,12 +535,12 @@ export default function AddLocationScreen() {
           ) : (
             <View style={styles.mapLoading}>
               <ThemedText type="small" themeColor="textSecondary">
-                Finding your location…
+                {t('form.findingLocation')}
               </ThemedText>
             </View>
           )}
           <ThemedText type="small" themeColor="textSecondary">
-            Tap or drag the pin to set exactly where this {noun} is.
+            {t(`addLocation.tapDragPin.${kindKey}`)}
           </ThemedText>
 
           {nearbyExisting.length > 0 && (
@@ -539,12 +548,11 @@ export default function AddLocationScreen() {
               <View style={styles.duplicateHeader}>
                 <Ionicons name="information-circle-outline" size={18} color="#E8A93B" />
                 <ThemedText type="smallBold" style={styles.duplicateTitle}>
-                  Already on the map here
+                  {t('addLocation.alreadyHere')}
                 </ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary">
-                If one of these is the same place, open it and add a review instead — that keeps all the
-                ratings and photos together.
+                {t('addLocation.alreadyHereBody')}
               </ThemedText>
               {nearbyExisting.map((existing) => (
                 <Pressable
@@ -556,7 +564,8 @@ export default function AddLocationScreen() {
                       {existing.name}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                      {existing.category_label ?? 'Other'} · {Math.round(existing.distance_m)} m away
+                      {existing.category_label ?? t('form.otherCategory')} ·{' '}
+                      {t('addLocation.metresAway', { metres: Math.round(existing.distance_m) })}
                     </ThemedText>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
@@ -596,9 +605,7 @@ export default function AddLocationScreen() {
               wrong until someone searches nearby and finds it. */}
           {addressPinFailed && (
             <ThemedText type="small" style={styles.addressWarning}>
-              We couldn&apos;t find that address on the map, so the pin hasn&apos;t moved. Check the
-              spelling, or drag the pin to the right spot yourself — the pin is what decides where
-              this place actually is.
+              {t('addLocation.geocodeFailed')}
             </ThemedText>
           )}
 
@@ -613,22 +620,22 @@ export default function AddLocationScreen() {
             <TextInput
               value={otherCategoryDetail}
               onChangeText={setOtherCategoryDetail}
-              placeholder={`*What kind of ${noun} is this?`}
+              placeholder={t(`addLocation.whatKind.${kindKey}`)}
               placeholderTextColor={LIGHT_PLACEHOLDER}
               style={[styles.input, styles.lightInput]}
             />
           )}
 
           <View style={styles.seasonRow}>
-            <ThemedText type="default">When is this {noun} available? (optional)</ThemedText>
+            <ThemedText type="default">{t(`addLocation.whenAvailable.${kindKey}`)}</ThemedText>
             <View style={styles.seasonOptions}>
               <Pressable style={styles.seasonOption} onPress={() => setAvailableSummer((v) => !v)}>
                 <View style={[styles.checkbox, availableSummer && styles.checkboxChecked]} />
-                <ThemedText type="small">☀ Summer</ThemedText>
+                <ThemedText type="small">☀ {t('search.summer')}</ThemedText>
               </Pressable>
               <Pressable style={styles.seasonOption} onPress={() => setAvailableWinter((v) => !v)}>
                 <View style={[styles.checkbox, availableWinter && styles.checkboxChecked]} />
-                <ThemedText type="small">❄ Winter</ThemedText>
+                <ThemedText type="small">❄ {t('search.winter')}</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -636,7 +643,7 @@ export default function AddLocationScreen() {
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="Additional information (optional)"
+            placeholder={t('form.additionalInfo')}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput, styles.bodyInput]}
             multiline
@@ -655,7 +662,7 @@ export default function AddLocationScreen() {
               <TextInput
                 value={email}
                 onChangeText={setEmail}
-                placeholder="Contact email (optional)"
+                placeholder={t('form.contactEmailPlaceholder')}
                 placeholderTextColor={LIGHT_PLACEHOLDER}
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -667,7 +674,7 @@ export default function AddLocationScreen() {
               <TextInput
                 value={website}
                 onChangeText={setWebsite}
-                placeholder="Website (optional)"
+                placeholder={t('form.websitePlaceholder')}
                 placeholderTextColor={LIGHT_PLACEHOLDER}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -680,7 +687,7 @@ export default function AddLocationScreen() {
               <TextInput
                 value={website}
                 onChangeText={setWebsite}
-                placeholder="Website (optional)"
+                placeholder={t('form.websitePlaceholder')}
                 placeholderTextColor={LIGHT_PLACEHOLDER}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -690,7 +697,7 @@ export default function AddLocationScreen() {
               <TextInput
                 value={phone}
                 onChangeText={setPhone}
-                placeholder="Phone number (optional)"
+                placeholder={t('form.phonePlaceholder')}
                 placeholderTextColor={LIGHT_PLACEHOLDER}
                 keyboardType="phone-pad"
                 style={[styles.input, styles.lightInput]}
@@ -701,30 +708,29 @@ export default function AddLocationScreen() {
           {isActivity && (
             <>
               <YesNoRow
-                label="*Should this activity be public or private? Private is only visible to people you share it with (e.g. a party or wedding)."
+                label={t('addLocation.publicOrPrivate')}
                 value={isPrivate}
                 onChange={setIsPrivate}
-                yesLabel="PRIVATE"
-                noLabel="PUBLIC"
+                yesLabel={t('addLocation.private')}
+                noLabel={t('addLocation.public')}
               />
 
-              <DateField label="*Start date" value={startDate} onChange={setStartDate} placeholder="When does it start?" />
+              <DateField label={t('addLocation.startDate')} value={startDate} onChange={setStartDate} placeholder={t('addLocation.startDatePlaceholder')} />
               <DateField
-                label="*End date"
+                label={t('addLocation.endDate')}
                 value={endDate}
                 onChange={setEndDate}
                 minimumDate={startDate ?? undefined}
-                placeholder="When does it end?"
+                placeholder={t('addLocation.endDatePlaceholder')}
               />
               <DateField
-                label="Publish date (optional)"
+                label={t('addLocation.publishDate')}
                 value={publishDate}
                 onChange={setPublishDate}
-                placeholder="Publish immediately once approved"
+                placeholder={t('addLocation.publishDatePlaceholder')}
               />
               <ThemedText type="small" themeColor="textSecondary" style={styles.publishHint}>
-                Leave the publish date blank to make this activity visible as soon as it's approved — or pick a
-                later date to schedule when it should go live.
+                {t('addLocation.publishDateHint')}
               </ThemedText>
               {dateError && (
                 <ThemedText type="small" style={styles.errorText}>
@@ -735,12 +741,12 @@ export default function AddLocationScreen() {
           )}
 
           <YesNoRow
-            label="*Do you want to be visible as the creator?"
+            label={t('addLocation.visibleAsCreator')}
             value={visibleAsCreator}
             onChange={setVisibleAsCreator}
           />
 
-          <YesNoRow label={`*Are you the owner of the ${noun}?`} value={isOwner} onChange={setIsOwner} />
+          <YesNoRow label={t(`addLocation.areYouOwner.${kindKey}`)} value={isOwner} onChange={setIsOwner} />
 
           {error && (
             <ThemedText type="small" style={styles.errorText}>
@@ -753,12 +759,12 @@ export default function AddLocationScreen() {
             disabled={!canSubmit}
             onPress={handleSubmit}>
             <ThemedText type="smallBold" style={styles.submitButtonText}>
-              {submitting ? 'Submitting…' : `Submit ${noun}`}
+              {submitting ? t('addLocation.submitting') : t(`addLocation.submitButton.${kindKey}`)}
             </ThemedText>
           </Pressable>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
-            {isActivity ? DISCLAIMER.activity : DISCLAIMER.place}
+            {isActivity ? t('addLocation.disclaimerActivity') : t('addLocation.disclaimerPlace')}
           </ThemedText>
         </ScrollView>
       </SafeAreaView>
@@ -770,7 +776,7 @@ export default function AddLocationScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Categories
+              {t('form.categories')}
             </ThemedText>
 
             <View style={[styles.categorySearchBar, { borderColor: theme.backgroundSelected }]}>
@@ -778,7 +784,7 @@ export default function AddLocationScreen() {
               <TextInput
                 value={categoryQuery}
                 onChangeText={setCategoryQuery}
-                placeholder="Search categories"
+                placeholder={t('form.searchCategories')}
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.categorySearchInput, { color: theme.text }]}
                 autoCorrect={false}
@@ -796,7 +802,7 @@ export default function AddLocationScreen() {
             <ScrollView keyboardShouldPersistTaps="handled">
               {visibleCategories.length === 0 ? (
                 <ThemedText type="default" themeColor="textSecondary" style={styles.modalEmptyText}>
-                  No categories match that search.
+                  {t('form.noCategoriesMatch')}
                 </ThemedText>
               ) : (
                 visibleCategories.map((category) => (
@@ -809,7 +815,7 @@ export default function AddLocationScreen() {
             </ScrollView>
             <Pressable style={styles.doneButton} onPress={() => setPickerVisible(false)}>
               <ThemedText type="smallBold" style={styles.submitButtonText}>
-                Done
+                {t('form.done')}
               </ThemedText>
             </Pressable>
           </ThemedView>

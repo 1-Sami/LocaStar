@@ -283,5 +283,113 @@
     "deletePlaceTitle": "Delete this place?",
     "deleteActivityTitle": "Delete this activity?",
     "deleteLocationBody": "This permanently deletes “{{name}}” and everything tied to it — reviews, photos, saves, and shares, including anything the people you invited added. This can’t be undone."
+  },
+  "form": {
+    "nameLabel": "Name/Title",
+    "namePlaceholder": "Name",
+    "nameRequired": "A name is required — this is what people see and search for.",
+    "activity": "Activity",
+    "street": "Street",
+    "streetPlaceholder": "Street name and number",
+    "area": "Area",
+    "areaPlaceholder": "Post code and city",
+    "lookingUpAddress": "Looking up address…",
+    "dragPin": "Drag the pin if it is in the wrong spot.",
+    "pinExact": "*Pin the exact location",
+    "findingLocation": "Finding your location…",
+    "description": "Description",
+    "descriptionPlaceholder": "Description (optional)",
+    "website": "Website",
+    "websitePlaceholder": "Website (optional)",
+    "contactEmail": "Contact email",
+    "contactEmailPlaceholder": "Contact email (optional)",
+    "emailInvalid": "That doesn’t look like an email address. Leave it empty if you’d rather not give one.",
+    "phone": "Phone number",
+    "phonePlaceholder": "Phone number (optional)",
+    "whenToVisit": "When to visit the location. (Optional)",
+    "addPhotos": "Add photos",
+    "categories": "Categories",
+    "searchCategories": "Search categories",
+    "noCategoriesMatch": "No categories match that search.",
+    "additionalInfo": "Additional information (optional)",
+    "otherCategory": "Other",
+    "done": "Done"
+  },
+  "addLocation": {
+    "disclaimerPlace": "Locations go live as soon as you submit them, and are moderated afterwards. Anyone can report a location that is misleading, unlawful, or in the wrong place, and reported locations are reviewed and can be hidden or removed. Adding locations in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.",
+    "disclaimerActivity": "Any activity that is unlawful or not created by its rightful owner will result in a block on creating future activities. All activities must follow the rules — violations may result in a ban and could lead to legal action from the rightful owner.",
+    "alreadyHere": "Already on the map here",
+    "alreadyHereBody": "If one of these is the same place, open it and add a review instead — that keeps all the ratings and photos together.",
+    "metresAway": "{{metres}} m away",
+    "geocodeFailed": "We couldn’t find that address on the map, so the pin hasn’t moved. Check the spelling, or drag the pin to the right spot yourself — the pin is what decides where this place actually is.",
+    "whatKind": {
+      "place": "*What kind of place is this?",
+      "activity": "*What kind of activity is this?"
+    },
+    "areYouOwner": {
+      "place": "*Are you the owner of the place?",
+      "activity": "*Are you the owner of the activity?"
+    },
+    "publicOrPrivate": "*Should this activity be public or private? Private is only visible to people you share it with (e.g. a party or wedding).",
+    "private": "PRIVATE",
+    "public": "PUBLIC",
+    "startDate": "*Start date",
+    "startDatePlaceholder": "When does it start?",
+    "endDate": "*End date",
+    "endDatePlaceholder": "When does it end?",
+    "publishDate": "Publish date (optional)",
+    "publishDatePlaceholder": "Publish immediately once approved",
+    "publishDateHint": "Leave the publish date blank to make this activity visible as soon as it’s approved — or pick a later date to schedule when it should go live.",
+    "visibleAsCreator": "*Do you want to be visible as the creator?",
+    "endBeforeStart": "The end date must be after the start date.",
+    "tooLong": "Activities can only run for up to {{days}} days — choose an earlier end date.",
+    "publishAfterEnd": "The publish date can’t be after the end date.",
+    "thanks": "Thanks!",
+    "liveNow": {
+      "place": "Your place is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.",
+      "activity": "Your activity is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules."
+    },
+    "scheduled": {
+      "place": "Your place is saved and will go live on {{date}}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.",
+      "activity": "Your activity is saved and will go live on {{date}}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules."
+    },
+    "claimFailed": {
+      "place": "Your place was saved, but we couldn’t register your ownership claim. Open the place and use “Claim this business” to try again.",
+      "activity": "Your activity was saved, but we couldn’t register your ownership claim. Open the activity and use “Claim this business” to try again."
+    },
+    "discardWarning": {
+      "place": "Your place hasn’t been submitted yet. Everything you’ve filled in will be lost.",
+      "activity": "Your activity hasn’t been submitted yet. Everything you’ve filled in will be lost."
+    },
+    "photoRetry": {
+      "place": "Your place was saved, but its photos didn’t finish uploading. Tap submit again to retry — that won’t create a second place.",
+      "activity": "Your activity was saved, but its photos didn’t finish uploading. Tap submit again to retry — that won’t create a second activity."
+    },
+    "submitError": {
+      "place": "Something went wrong submitting your place. Try again.",
+      "activity": "Something went wrong submitting your activity. Try again."
+    },
+    "tapDragPin": {
+      "place": "Tap or drag the pin to set exactly where this place is.",
+      "activity": "Tap or drag the pin to set exactly where this activity is."
+    },
+    "whenAvailable": {
+      "place": "When is this place available? (optional)",
+      "activity": "When is this activity available? (optional)"
+    },
+    "submitButton": {
+      "place": "Submit place",
+      "activity": "Submit activity"
+    },
+    "submitting": "Submitting…"
+  },
+  "editLocation": {
+    "saveError": "Something went wrong saving your changes. Try again.",
+    "windowExpired": "The 24 hours you had to correct this have passed, so changes can no longer be saved. Report the location or contact support if something on it is wrong.",
+    "geocodeFailed": "We couldn’t find that address on the map, so the pin hasn’t moved. Drag it to the right spot instead — the pin is what decides where this place is.",
+    "uploadSignedOut": "Signed out before the photos could be uploaded.",
+    "saved": "Saved.",
+    "saving": "Saving…",
+    "saveChanges": "Save changes"
   }
 }

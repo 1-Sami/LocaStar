@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,6 +49,7 @@ function FieldLabel({ children, required }: { children: string; required?: boole
 }
 
 export default function EditLocationScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
 
@@ -259,7 +261,7 @@ export default function EditLocationScreen() {
         // policy checks auth.uid() = user_id before it checks is_moderator().
         // Throwing rather than skipping: silently dropping the photos would
         // report a save that did not happen.
-        if (!session) throw new Error('Signed out before the photos could be uploaded.');
+        if (!session) throw new Error(t('editLocation.uploadSignedOut'));
 
         // Resume where a previous attempt stopped rather than starting over, so
         // a retry cannot attach the same picture twice.
@@ -277,7 +279,7 @@ export default function EditLocationScreen() {
 
       setSaved(true);
     } catch {
-      setError('Something went wrong saving your changes. Try again.');
+      setError(t('editLocation.saveError'));
     } finally {
       setSubmitting(false);
     }
@@ -299,32 +301,31 @@ export default function EditLocationScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {editWindowClosed && (
             <ThemedText type="small" style={styles.addressWarning}>
-              The 24 hours you had to correct this have passed, so changes can no longer be saved.
-              Report the location or contact support if something on it is wrong.
+              {t('editLocation.windowExpired')}
             </ThemedText>
           )}
 
           <View style={styles.field}>
-            <FieldLabel required>Name/Title</FieldLabel>
+            <FieldLabel required>{t('form.nameLabel')}</FieldLabel>
             <TextInput
               value={name}
               onChangeText={(text) => {
                 setName(text);
                 setSaved(false);
               }}
-              placeholder="Name"
+              placeholder={t('form.namePlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
             />
             {missingName && (
               <ThemedText type="small" style={styles.addressWarning}>
-                A name is required — this is what people see and search for.
+                {t('form.nameRequired')}
               </ThemedText>
             )}
           </View>
 
           <View style={styles.field}>
-            <FieldLabel>Activity</FieldLabel>
+            <FieldLabel>{t('form.activity')}</FieldLabel>
             <Pressable
               style={[styles.input, styles.categoryInput, { borderColor: theme.fieldBorder }]}
               onPress={() => setPickerVisible(true)}>
@@ -340,7 +341,7 @@ export default function EditLocationScreen() {
           </View>
 
           <View style={styles.field}>
-            <FieldLabel required>Street</FieldLabel>
+            <FieldLabel required>{t('form.street')}</FieldLabel>
             <TextInput
               value={addressLine1}
               onChangeText={(text) => {
@@ -350,14 +351,14 @@ export default function EditLocationScreen() {
                 setSaved(false);
               }}
               onBlur={handleAddressBlur}
-              placeholder="Street name and number"
+              placeholder={t('form.streetPlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
             />
           </View>
 
           <View style={styles.field}>
-            <FieldLabel required>Area</FieldLabel>
+            <FieldLabel required>{t('form.area')}</FieldLabel>
             <TextInput
               value={addressLine2}
               onChangeText={(text) => {
@@ -367,7 +368,7 @@ export default function EditLocationScreen() {
                 setSaved(false);
               }}
               onBlur={handleAddressBlur}
-              placeholder="Post code and city"
+              placeholder={t('form.areaPlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
             />
@@ -375,8 +376,7 @@ export default function EditLocationScreen() {
 
           {addressPinFailed && (
             <ThemedText type="small" style={styles.addressWarning}>
-              We couldn&apos;t find that address on the map, so the pin hasn&apos;t moved. Drag it to
-              the right spot instead — the pin is what decides where this place is.
+              {t('editLocation.geocodeFailed')}
             </ThemedText>
           )}
 
@@ -385,7 +385,7 @@ export default function EditLocationScreen() {
               which is exactly how a playground in Eskilstuna ended up filed
               eighteen metres from a gym in Norsborg. */}
           <ThemedText type="small" themeColor="textSecondary" style={styles.section}>
-            {geocoding ? 'Looking up address…' : 'Drag the pin if it is in the wrong spot.'}
+            {geocoding ? t('form.lookingUpAddress') : t('form.dragPin')}
           </ThemedText>
           {pinCoords && (
             <View style={styles.mapWrapper}>
@@ -398,14 +398,14 @@ export default function EditLocationScreen() {
           )}
 
           <View style={styles.field}>
-            <FieldLabel>Description</FieldLabel>
+            <FieldLabel>{t('form.description')}</FieldLabel>
             <TextInput
               value={description}
               onChangeText={(text) => {
                 setDescription(text);
                 setSaved(false);
               }}
-              placeholder="Description (optional)"
+              placeholder={t('form.descriptionPlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, styles.bodyInput, { color: theme.text, borderColor: theme.fieldBorder }]}
               multiline
@@ -413,14 +413,14 @@ export default function EditLocationScreen() {
           </View>
 
           <View style={styles.field}>
-            <FieldLabel>Website</FieldLabel>
+            <FieldLabel>{t('form.website')}</FieldLabel>
             <TextInput
               value={website}
               onChangeText={(text) => {
                 setWebsite(text);
                 setSaved(false);
               }}
-              placeholder="Website (optional)"
+              placeholder={t('form.websitePlaceholder')}
               placeholderTextColor={theme.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -433,14 +433,14 @@ export default function EditLocationScreen() {
               activity has an organiser to email, a place has a number to ring. */}
           {kind === 'activity' ? (
             <View style={styles.field}>
-              <FieldLabel>Contact email</FieldLabel>
+              <FieldLabel>{t('form.contactEmail')}</FieldLabel>
               <TextInput
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
                   setSaved(false);
                 }}
-                placeholder="Contact email (optional)"
+                placeholder={t('form.contactEmailPlaceholder')}
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -449,21 +449,20 @@ export default function EditLocationScreen() {
               />
               {!emailValid && (
                 <ThemedText type="small" style={styles.addressWarning}>
-                  That doesn&apos;t look like an email address. Leave it empty if you&apos;d rather not
-                  give one.
+                  {t('form.emailInvalid')}
                 </ThemedText>
               )}
             </View>
           ) : (
             <View style={styles.field}>
-              <FieldLabel>Phone number</FieldLabel>
+              <FieldLabel>{t('form.phone')}</FieldLabel>
               <TextInput
                 value={phone}
                 onChangeText={(text) => {
                   setPhone(text);
                   setSaved(false);
                 }}
-                placeholder="Phone number (optional)"
+                placeholder={t('form.phonePlaceholder')}
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="phone-pad"
                 style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
@@ -482,7 +481,7 @@ export default function EditLocationScreen() {
           </View>
 
           <View style={[styles.seasonRow, styles.section]}>
-            <ThemedText type="default">When to visit the location. (Optional)</ThemedText>
+            <ThemedText type="default">{t('form.whenToVisit')}</ThemedText>
             <View style={styles.seasonOptions}>
               <Pressable
                 style={styles.seasonOption}
@@ -491,7 +490,7 @@ export default function EditLocationScreen() {
                   setSaved(false);
                 }}>
                 <View style={[styles.checkbox, availableSummer && styles.checkboxChecked]} />
-                <ThemedText type="small">☀ Summer</ThemedText>
+                <ThemedText type="small">☀ {t('search.summer')}</ThemedText>
               </Pressable>
               <Pressable
                 style={styles.seasonOption}
@@ -500,7 +499,7 @@ export default function EditLocationScreen() {
                   setSaved(false);
                 }}>
                 <View style={[styles.checkbox, availableWinter && styles.checkboxChecked]} />
-                <ThemedText type="small">❄ Winter</ThemedText>
+                <ThemedText type="small">❄ {t('search.winter')}</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -514,7 +513,7 @@ export default function EditLocationScreen() {
           {isModerator && (
             <View style={styles.section}>
               <ThemedText type="smallBold" style={styles.photoLabel}>
-                Add photos
+                {t('form.addPhotos')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.photoHint}>
                 Added to this {kind === 'activity' ? 'activity' : 'location'} when you save. Photos
@@ -537,7 +536,7 @@ export default function EditLocationScreen() {
           )}
           {saved && !error && (
             <ThemedText type="small" style={styles.savedText}>
-              Saved.
+              {t('editLocation.saved')}
             </ThemedText>
           )}
 
@@ -546,7 +545,7 @@ export default function EditLocationScreen() {
             disabled={!canSave || submitting}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveButtonText}>
-              {submitting ? 'Saving…' : 'Save changes'}
+              {submitting ? t('editLocation.saving') : t('editLocation.saveChanges')}
             </ThemedText>
           </Pressable>
         </ScrollView>
@@ -557,7 +556,7 @@ export default function EditLocationScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Categories
+              {t('form.categories')}
             </ThemedText>
             <ScrollView>
               {categories.map((category) => (
@@ -569,7 +568,7 @@ export default function EditLocationScreen() {
             </ScrollView>
             <Pressable style={styles.doneButton} onPress={() => setPickerVisible(false)}>
               <ThemedText type="smallBold" style={styles.saveButtonText}>
-                Done
+                {t('form.done')}
               </ThemedText>
             </Pressable>
           </ThemedView>

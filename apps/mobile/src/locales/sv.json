@@ -283,5 +283,113 @@
     "deletePlaceTitle": "Radera den här platsen?",
     "deleteActivityTitle": "Radera den här aktiviteten?",
     "deleteLocationBody": "Detta raderar ”{{name}}” permanent, tillsammans med allt som hör till den — recensioner, foton, sparningar och delningar, inklusive det personerna du bjudit in har lagt till. Det går inte att ångra."
+  },
+  "form": {
+    "nameLabel": "Namn/Titel",
+    "namePlaceholder": "Namn",
+    "nameRequired": "Ett namn krävs — det är det folk ser och söker på.",
+    "activity": "Aktivitet",
+    "street": "Gata",
+    "streetPlaceholder": "Gatunamn och nummer",
+    "area": "Område",
+    "areaPlaceholder": "Postnummer och ort",
+    "lookingUpAddress": "Slår upp adressen…",
+    "dragPin": "Dra i nålen om den hamnat fel.",
+    "pinExact": "*Sätt ut exakt plats",
+    "findingLocation": "Hittar din position…",
+    "description": "Beskrivning",
+    "descriptionPlaceholder": "Beskrivning (valfritt)",
+    "website": "Webbplats",
+    "websitePlaceholder": "Webbplats (valfritt)",
+    "contactEmail": "Kontaktmejl",
+    "contactEmailPlaceholder": "Kontaktmejl (valfritt)",
+    "emailInvalid": "Det ser inte ut som en mejladress. Lämna fältet tomt om du hellre avstår.",
+    "phone": "Telefonnummer",
+    "phonePlaceholder": "Telefonnummer (valfritt)",
+    "whenToVisit": "När platsen passar att besöka. (Valfritt)",
+    "addPhotos": "Lägg till foton",
+    "categories": "Kategorier",
+    "searchCategories": "Sök kategorier",
+    "noCategoriesMatch": "Inga kategorier matchar sökningen.",
+    "additionalInfo": "Ytterligare information (valfritt)",
+    "otherCategory": "Övrigt",
+    "done": "Klar"
+  },
+  "addLocation": {
+    "disclaimerPlace": "Platser publiceras direkt när du skickar in dem och modereras i efterhand. Vem som helst kan anmäla en plats som är vilseledande, olaglig eller felplacerad, och anmälda platser granskas och kan döljas eller tas bort. Att lägga till platser i strid med reglerna ger en varning — upprepade felaktiga inlägg gör att ditt konto blockeras från att skapa nya platser.",
+    "disclaimerActivity": "Aktiviteter som är olagliga eller inte skapade av rättmätig ägare leder till blockering från att skapa framtida aktiviteter. Alla aktiviteter måste följa reglerna — överträdelser kan leda till avstängning och till rättsliga åtgärder från den rättmätiga ägaren.",
+    "alreadyHere": "Redan på kartan här",
+    "alreadyHereBody": "Om någon av dem är samma ställe, öppna den och skriv en recension i stället — då hålls alla betyg och foton samlade.",
+    "metresAway": "{{metres}} m bort",
+    "geocodeFailed": "Vi hittade inte adressen på kartan, så nålen har inte flyttats. Kontrollera stavningen, eller dra nålen till rätt ställe själv — det är nålen som avgör var platsen faktiskt ligger.",
+    "whatKind": {
+      "place": "*Vad för slags plats är det här?",
+      "activity": "*Vad för slags aktivitet är det här?"
+    },
+    "areYouOwner": {
+      "place": "*Är du ägare till platsen?",
+      "activity": "*Är du ägare till aktiviteten?"
+    },
+    "publicOrPrivate": "*Ska aktiviteten vara publik eller privat? En privat aktivitet syns bara för dem du delar den med (t.ex. en fest eller ett bröllop).",
+    "private": "PRIVAT",
+    "public": "PUBLIK",
+    "startDate": "*Startdatum",
+    "startDatePlaceholder": "När börjar det?",
+    "endDate": "*Slutdatum",
+    "endDatePlaceholder": "När slutar det?",
+    "publishDate": "Publiceringsdatum (valfritt)",
+    "publishDatePlaceholder": "Publicera direkt när den godkänts",
+    "publishDateHint": "Lämna publiceringsdatumet tomt så syns aktiviteten så snart den godkänts — eller välj ett senare datum för att schemalägga när den ska gå live.",
+    "visibleAsCreator": "*Vill du synas som skapare?",
+    "endBeforeStart": "Slutdatumet måste vara efter startdatumet.",
+    "tooLong": "Aktiviteter kan pågå i högst {{days}} dagar — välj ett tidigare slutdatum.",
+    "publishAfterEnd": "Publiceringsdatumet kan inte ligga efter slutdatumet.",
+    "thanks": "Tack!",
+    "liveNow": {
+      "place": "Din plats är publicerad. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna.",
+      "activity": "Din aktivitet är publicerad. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna."
+    },
+    "scheduled": {
+      "place": "Din plats är sparad och publiceras den {{date}}. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna.",
+      "activity": "Din aktivitet är sparad och publiceras den {{date}}. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna."
+    },
+    "claimFailed": {
+      "place": "Din plats sparades, men vi kunde inte registrera ditt ägaranspråk. Öppna platsen och använd ”Gör anspråk på verksamheten” för att försöka igen.",
+      "activity": "Din aktivitet sparades, men vi kunde inte registrera ditt ägaranspråk. Öppna aktiviteten och använd ”Gör anspråk på verksamheten” för att försöka igen."
+    },
+    "discardWarning": {
+      "place": "Din plats är inte inskickad än. Allt du fyllt i går förlorat.",
+      "activity": "Din aktivitet är inte inskickad än. Allt du fyllt i går förlorat."
+    },
+    "photoRetry": {
+      "place": "Din plats sparades, men fotona blev inte färdiguppladdade. Tryck på skicka igen för att försöka på nytt — det skapar ingen andra plats.",
+      "activity": "Din aktivitet sparades, men fotona blev inte färdiguppladdade. Tryck på skicka igen för att försöka på nytt — det skapar ingen andra aktivitet."
+    },
+    "submitError": {
+      "place": "Något gick fel när platsen skickades in. Försök igen.",
+      "activity": "Något gick fel när aktiviteten skickades in. Försök igen."
+    },
+    "tapDragPin": {
+      "place": "Tryck eller dra i nålen för att sätta exakt var platsen ligger.",
+      "activity": "Tryck eller dra i nålen för att sätta exakt var aktiviteten är."
+    },
+    "whenAvailable": {
+      "place": "När är platsen tillgänglig? (valfritt)",
+      "activity": "När är aktiviteten tillgänglig? (valfritt)"
+    },
+    "submitButton": {
+      "place": "Skicka in plats",
+      "activity": "Skicka in aktivitet"
+    },
+    "submitting": "Skickar…"
+  },
+  "editLocation": {
+    "saveError": "Något gick fel när ändringarna sparades. Försök igen.",
+    "windowExpired": "De 24 timmar du hade på dig att rätta detta har passerat, så ändringar kan inte längre sparas. Anmäl platsen eller kontakta supporten om något är fel.",
+    "geocodeFailed": "Vi hittade inte adressen på kartan, så nålen har inte flyttats. Dra den till rätt ställe i stället — det är nålen som avgör var platsen ligger.",
+    "uploadSignedOut": "Du loggades ut innan fotona hann laddas upp.",
+    "saved": "Sparat.",
+    "saving": "Sparar…",
+    "saveChanges": "Spara ändringar"
   }
 }
