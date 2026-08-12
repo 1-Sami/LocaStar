@@ -37,7 +37,8 @@
     "logIn": "Logga in",
     "createAccount": "Skapa ett konto",
     "logOut": "Logga ut",
-    "remove": "Ta bort"
+    "remove": "Ta bort",
+    "somePerson": "Den här personen"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -443,5 +444,51 @@
     "choosePhoto": "Välj en bild",
     "removing": "Tar bort…",
     "removePhoto": "Ta bort bild"
+  },
+  "lists": {
+    "newListButton": "+ Ny lista",
+    "empty": "Inga listor än. Skapa en för att börja samla platser du gillar.",
+    "newListTitle": "Ny lista",
+    "namePlaceholder": "Listnamn",
+    "descriptionPlaceholder": "Beskrivning (valfritt)",
+    "publicList": "Publik lista"
+  },
+  "saved": {
+    "favorites": "Favoriter",
+    "favoritesEmpty": "Inget sparat än — tryck på hjärtat på en plats för att börja spara favoriter.",
+    "bucketList": "Sparat till senare",
+    "savedLists": "Sparade listor",
+    "shared": "Delat",
+    "sharedEmpty": "Inget delat än — dela en plats eller lista så dyker den upp här.",
+    "loggedOut": "Logga in för att se dina favoriter, din önskelista och delade platser.",
+    "removeShareTitle": "Ta bort den här delade platsen?",
+    "removeShareBody": "Den tas bort från delningen för både dig och den andra personen.",
+    "stopSharingListTitle": "Sluta dela den här listan?",
+    "removeSharedListTitle": "Ta bort den här delade listan?",
+    "stopSharingListBody": "{{audience}} kommer inte längre att kunna se ”{{name}}”. Din lista raderas inte.",
+    "removeSharedListBody": "Den tas bort från dina delade. Listan påverkas inte för ägaren.",
+    "stopSharing": "Sluta dela",
+    "themPlaceholder": "dem",
+    "peopleCount_one": "{{count}} person",
+    "peopleCount_other": "{{count}} personer",
+    "bucketListEmpty": "Inget sparat än — tryck på bokmärket på en plats för att spara det du planerar."
+  },
+  "friends": {
+    "blockTitle": "Blockera {{name}}?",
+    "blockBody": "{{name}} kommer inte längre att kunna skicka vänförfrågningar till dig eller dela platser och listor med dig. Personen får inte veta att den blivit blockerad. Du kan ångra det under Inställningar › Blockerade användare.",
+    "block": "Blockera",
+    "removeTitle": "Ta bort den här vännen?",
+    "removeBody": "{{name}} tas bort från din vänlista.",
+    "addFriend": "+ Lägg till vän",
+    "requests": "Förfrågningar",
+    "sentRequests": "Skickade förfrågningar",
+    "empty": "Inga vänner än. Sök efter någon för att lägga till dem.",
+    "addAFriend": "Lägg till en vän",
+    "blockNamed": "Blockera {{name}}"
+  },
+  "resetPassword": {
+    "invalidLink": "Återställningslänken är ogiltig eller har gått ut. Begär en ny.",
+    "updatedTitle": "Lösenordet är uppdaterat",
+    "updatedBody": "Ditt lösenord har ändrats. Du är nu inloggad."
   }
 }

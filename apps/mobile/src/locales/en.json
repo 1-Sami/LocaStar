@@ -37,7 +37,8 @@
     "logIn": "Log in",
     "createAccount": "Create an account",
     "logOut": "Log out",
-    "remove": "Remove"
+    "remove": "Remove",
+    "somePerson": "This person"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -443,5 +444,51 @@
     "choosePhoto": "Choose a photo",
     "removing": "Removing…",
     "removePhoto": "Remove photo"
+  },
+  "lists": {
+    "newListButton": "+ New list",
+    "empty": "No lists yet. Create one to start organizing places you love.",
+    "newListTitle": "New list",
+    "namePlaceholder": "List name",
+    "descriptionPlaceholder": "Description (optional)",
+    "publicList": "Public list"
+  },
+  "saved": {
+    "favorites": "Favorites",
+    "favoritesEmpty": "Nothing saved yet — tap the heart on a location to start saving your favorites.",
+    "bucketList": "Saved for later",
+    "savedLists": "Saved lists",
+    "shared": "Shared",
+    "sharedEmpty": "Nothing shared yet — share a location or list to see it here.",
+    "loggedOut": "Log in to see your favorites, bucket list, and shared places.",
+    "removeShareTitle": "Remove this shared location?",
+    "removeShareBody": "This removes it from the shared list for both you and the other person.",
+    "stopSharingListTitle": "Stop sharing this list?",
+    "removeSharedListTitle": "Remove this shared list?",
+    "stopSharingListBody": "{{audience}} will no longer be able to see “{{name}}”. Your list itself is not deleted.",
+    "removeSharedListBody": "This removes it from your Shared list. The list itself is not affected for its owner.",
+    "stopSharing": "Stop sharing",
+    "themPlaceholder": "them",
+    "peopleCount_one": "{{count}} person",
+    "peopleCount_other": "{{count}} people",
+    "bucketListEmpty": "Nothing saved yet — tap the bookmark on a location to start saving your planned trips."
+  },
+  "friends": {
+    "blockTitle": "Block {{name}}?",
+    "blockBody": "{{name}} will no longer be able to send you friend requests, or share locations and lists with you. They are not told they have been blocked. You can undo this in Settings › Blocked users.",
+    "block": "Block",
+    "removeTitle": "Remove this friend?",
+    "removeBody": "{{name}} will be removed from your friends list.",
+    "addFriend": "+ Add friend",
+    "requests": "Requests",
+    "sentRequests": "Sent requests",
+    "empty": "No friends yet. Search for someone to add them.",
+    "addAFriend": "Add a friend",
+    "blockNamed": "Block {{name}}"
+  },
+  "resetPassword": {
+    "invalidLink": "This reset link is invalid or has expired. Request a new one.",
+    "updatedTitle": "Password updated",
+    "updatedBody": "Your password has been changed. You’re now logged in."
   }
 }

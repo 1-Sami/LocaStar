@@ -1,6 +1,7 @@
 import { createList, fetchLists, fetchProfile, setListLiked, type LocationList } from '@locastar/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 export default function MyListsScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const router = useRouter();
   const theme = useTheme();
@@ -89,13 +91,13 @@ export default function MyListsScreen() {
           <ScrollView contentContainerStyle={styles.content}>
             <Pressable style={styles.newListButton} onPress={() => setCreateVisible(true)}>
               <ThemedText type="smallBold" style={styles.newListButtonText}>
-                + New list
+                {t('lists.newListButton')}
               </ThemedText>
             </Pressable>
 
             {lists.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-                No lists yet. Create one to start organizing places you love.
+                {t('lists.empty')}
               </ThemedText>
             ) : (
               lists.map((list) => (
@@ -122,26 +124,26 @@ export default function MyListsScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setCreateVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              New list
+              {t('lists.newListTitle')}
             </ThemedText>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="List name"
+              placeholder={t('lists.namePlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
             />
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="Description (optional)"
+              placeholder={t('lists.descriptionPlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, styles.descriptionInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
               multiline
             />
             <View style={styles.visibilityRow}>
               <View style={styles.visibilityRowText}>
-                <ThemedText type="default">Public list</ThemedText>
+                <ThemedText type="default">{t('lists.publicList')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {isPublic ? 'Anyone with access can view this list.' : 'Only you can see this list.'}
                 </ThemedText>

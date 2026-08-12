@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   type LayoutChangeEvent,
@@ -124,12 +125,13 @@ function FavoritesSection({
   onOpen: (id: string) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.section} onLayout={onLayout}>
-      <SectionBadge label="Favorites" count={items.length} backgroundColor="#E8A93B" textColor="#1A1400" />
+      <SectionBadge label={t('saved.favorites')} count={items.length} backgroundColor="#E8A93B" textColor="#1A1400" />
       {items.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary" style={styles.sectionEmptyText}>
-          Nothing saved yet — tap the heart on a location to start saving your favorites.
+          {t('saved.favoritesEmpty')}
         </ThemedText>
       ) : (
         <View style={styles.favoritesGrid}>
@@ -151,6 +153,7 @@ function FavoritesSection({
 }
 
 export default function FavoritesScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const router = useRouter();
   const { section: sectionParam } = useLocalSearchParams<{ section?: string }>();
@@ -242,9 +245,9 @@ export default function FavoritesScreen() {
     const share = shares[index];
     if (!share) return;
     const confirmed = await confirmAsync(
-      'Remove this shared location?',
-      'This removes it from the shared list for both you and the other person.',
-      'Remove'
+      t('saved.removeShareTitle'),
+      t('saved.removeShareBody'),
+      t('common.remove')
     );
     if (!confirmed) return;
     setShares((current) => current.filter((_item, i) => i !== index));
@@ -255,18 +258,20 @@ export default function FavoritesScreen() {
     router.push({ pathname: '/lists/[id]', params: { id: list.id, name: list.name, shared: '1' } });
 
   const handleDeleteSharedList = async (list: SharedList) => {
-    const otherParty = list.otherPartyUsername ?? list.otherPartyDisplayName ?? 'them';
+    const otherParty = list.otherPartyUsername ?? list.otherPartyDisplayName ?? t('saved.themPlaceholder');
     // A sent card stands for every recipient, so say how many lose access and
     // revoke all of them — pulling a single share would leave the others able
     // to see a list that has disappeared from this screen.
     const audience =
-      list.recipientCount > 1 ? `${list.recipientCount} people` : otherParty;
+      list.recipientCount > 1
+        ? t('saved.peopleCount', { count: list.recipientCount })
+        : otherParty;
     const confirmed = await confirmAsync(
-      list.direction === 'sent' ? 'Stop sharing this list?' : 'Remove this shared list?',
+      list.direction === 'sent' ? t('saved.stopSharingListTitle') : t('saved.removeSharedListTitle'),
       list.direction === 'sent'
-        ? `${audience} will no longer be able to see "${list.name}". Your list itself is not deleted.`
-        : 'This removes it from your Shared list. The list itself is not affected for its owner.',
-      list.direction === 'sent' ? 'Stop sharing' : 'Remove'
+        ? t('saved.stopSharingListBody', { audience, name: list.name })
+        : t('saved.removeSharedListBody'),
+      list.direction === 'sent' ? t('saved.stopSharing') : t('common.remove')
     );
     if (!confirmed) return;
     setSharedLists((current) => current.filter((l) => l.shareId !== list.shareId));
@@ -284,11 +289,11 @@ export default function FavoritesScreen() {
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <View style={styles.loggedOutPrompt}>
             <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
-              Log in to see your favorites, bucket list, and shared places.
+              {t('saved.loggedOut')}
             </ThemedText>
             <Pressable style={styles.primaryButton} onPress={() => router.push('/sign-in')}>
               <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                Log in
+                {t('common.logIn')}
               </ThemedText>
             </Pressable>
           </View>
@@ -328,7 +333,7 @@ export default function FavoritesScreen() {
               onLayout={handleSectionLayout('favorites')}
             />
             <FullSection
-              title="Saved for later"
+              title={t('saved.bucketList')}
               badgeColor="#4C8FE8"
               items={bucketList}
               favoriteIds={favoriteIds}
@@ -337,12 +342,12 @@ export default function FavoritesScreen() {
               onToggleBucketList={handleToggleBucketList}
               onOpen={handleOpen}
               onLayout={handleSectionLayout('bucketList')}
-              emptyMessage="Nothing saved yet — tap the bookmark on a location to start saving your planned trips."
+              emptyMessage={t('saved.bucketListEmpty')}
             />
 
             {savedLists.length > 0 && (
               <View style={styles.section} onLayout={handleSectionLayout('savedLists')}>
-                <SectionBadge label="Saved lists" count={savedLists.length} backgroundColor="#2BA3A3" />
+                <SectionBadge label={t('saved.savedLists')} count={savedLists.length} backgroundColor="#2BA3A3" />
                 <View style={styles.savedListsGrid}>
                   {savedLists.map((list) => (
                     <View key={list.id} style={styles.savedListSlot}>
@@ -363,10 +368,10 @@ export default function FavoritesScreen() {
               </View>
             )}
             <View style={styles.section} onLayout={handleSectionLayout('shared')}>
-              <SectionBadge label="Shared" count={sharedCards.length + sharedLists.length} backgroundColor="#B0B4BA" />
+              <SectionBadge label={t('saved.shared')} count={sharedCards.length + sharedLists.length} backgroundColor="#B0B4BA" />
               {sharedCards.length === 0 && sharedLists.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.sectionEmptyText}>
-                  Nothing shared yet — share a location or list to see it here.
+                  {t('saved.sharedEmpty')}
                 </ThemedText>
               ) : (
                 <View style={styles.sectionList}>

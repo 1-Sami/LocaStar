@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -45,6 +46,7 @@ function FriendRow({
 }
 
 export default function FriendsScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const [friendships, setFriendships] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,11 +100,11 @@ export default function FriendsScreen() {
   // uncertainty.
   const handleBlock = async (friend: Friend) => {
     if (!session) return;
-    const name = friend.username ?? friend.displayName ?? 'This person';
+    const name = friend.username ?? friend.displayName ?? t('common.somePerson');
     const confirmed = await confirmAsync(
-      `Block ${name}?`,
-      `${name} will no longer be able to send you friend requests, or share locations and lists with you. They are not told they have been blocked. You can undo this in Settings › Blocked users.`,
-      'Block'
+      t('friends.blockTitle', { name }),
+      t('friends.blockBody', { name }),
+      t('friends.block')
     );
     if (!confirmed) return;
 
@@ -118,9 +120,11 @@ export default function FriendsScreen() {
 
   const handleRemove = async (friend: Friend) => {
     const confirmed = await confirmAsync(
-      'Remove this friend?',
-      `${friend.username ?? friend.displayName ?? 'This person'} will be removed from your friends list.`,
-      'Remove'
+      t('friends.removeTitle'),
+      t('friends.removeBody', {
+        name: friend.username ?? friend.displayName ?? t('common.somePerson'),
+      }),
+      t('common.remove')
     );
     if (!confirmed) return;
     setBusyId(friend.friendshipId);
@@ -155,14 +159,14 @@ export default function FriendsScreen() {
           <ScrollView contentContainerStyle={styles.content}>
             <Pressable style={styles.addButton} onPress={() => setAddVisible(true)}>
               <ThemedText type="smallBold" style={styles.addButtonText}>
-                + Add friend
+                {t('friends.addFriend')}
               </ThemedText>
             </Pressable>
 
             {incomingRequests.length > 0 && (
               <View style={styles.section}>
                 <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-                  Requests
+                  {t('friends.requests')}
                 </ThemedText>
                 {incomingRequests.map((friend) => (
                   <FriendRow key={friend.friendshipId} friend={friend}>
@@ -185,7 +189,9 @@ export default function FriendsScreen() {
                         style={[styles.iconButton, styles.blockButton]}
                         disabled={busyId === friend.friendshipId}
                         onPress={() => handleBlock(friend)}
-                        accessibilityLabel={`Block ${friend.username ?? friend.displayName ?? 'this person'}`}
+                        accessibilityLabel={t('friends.blockNamed', {
+                          name: friend.username ?? friend.displayName ?? t('common.somePerson'),
+                        })}
                         hitSlop={8}>
                         <Ionicons name="ban" size={18} color="#ffffff" />
                       </Pressable>
@@ -201,7 +207,7 @@ export default function FriendsScreen() {
               </ThemedText>
               {friends.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  No friends yet. Search for someone to add them.
+                  {t('friends.empty')}
                 </ThemedText>
               ) : (
                 friends.map((friend) => (
@@ -217,7 +223,7 @@ export default function FriendsScreen() {
             {outgoingRequests.length > 0 && (
               <View style={styles.section}>
                 <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-                  Sent requests
+                  {t('friends.sentRequests')}
                 </ThemedText>
                 {outgoingRequests.map((friend) => (
                   <FriendRow key={friend.friendshipId} friend={friend}>
@@ -226,7 +232,7 @@ export default function FriendsScreen() {
                       onPress={() => handleCancelRequest(friend)}
                       hitSlop={8}>
                       <ThemedText type="small" themeColor="textSecondary">
-                        Cancel
+                        {t('common.cancel')}
                       </ThemedText>
                     </Pressable>
                   </FriendRow>
@@ -241,7 +247,7 @@ export default function FriendsScreen() {
         visible={addVisible}
         onClose={() => setAddVisible(false)}
         onShare={handleSendRequest}
-        title="Add a friend"
+        title={t('friends.addAFriend')}
         successMessage={(name) => `A friend request was sent to ${name}.`}
         errorMessage="Something went wrong sending the friend request. Try again."
         showNote={false}
