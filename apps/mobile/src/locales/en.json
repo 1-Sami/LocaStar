@@ -33,7 +33,9 @@
     "delete": "Delete",
     "retry": "Try again",
     "save": "Save",
-    "somethingWentWrong": "Something went wrong. Try again."
+    "somethingWentWrong": "Something went wrong. Try again.",
+    "logIn": "Log in",
+    "createAccount": "Create an account"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -74,5 +76,21 @@
   "notifications": {
     "channelName": "Reminders",
     "channelDescription": "Reminders about activities you saved"
+  },
+  "tabs": {
+    "home": "Home",
+    "search": "Search",
+    "add": "Add",
+    "community": "Community",
+    "profile": "Profile"
+  },
+  "add": {
+    "title": "Add to the map",
+    "intro": "LocaStar is only as good as what people put in it. If you know somewhere worth going, add it — the next person looking will be glad you did.",
+    "signedOut": "You need an account to add to the map.",
+    "placeTitle": "A place",
+    "placeBody": "A court, a trail, a gym, a swimming spot — somewhere that is always there.",
+    "activityTitle": "An activity",
+    "activityBody": "A festival, a match, a meet-up — something happening on a date."
   }
 }
