@@ -1,5 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ import { removeAvatarFile } from '@/lib/media-upload';
 import { supabase } from '@/lib/supabase';
 
 export default function DeleteAccountScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { session, signOut } = useAuth();
   const [deleting, setDeleting] = useState(false);
@@ -22,9 +24,9 @@ export default function DeleteAccountScreen() {
 
   const handleDelete = async () => {
     const confirmed = await confirmAsync(
-      'Delete your account?',
-      'This permanently deletes your profile, favorites, lists and friends. Reviews, photos and places you added stay in the app with your name removed. This cannot be undone.',
-      'Delete account'
+      t('settings.deleteAccountTitle'),
+      t('settings.deleteAccountConfirmBody'),
+      t('settings.deleteAccountAction')
     );
     if (!confirmed) return;
 
@@ -56,18 +58,18 @@ export default function DeleteAccountScreen() {
       await signOut();
       router.replace('/');
     } catch {
-      setError('Something went wrong deleting your account. Try again.');
+      setError(t('settings.deleteAccountError'));
       setDeleting(false);
     }
   };
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Delete account' }} />
+      <Stack.Screen options={{ title: t('settings.deleteAccountAction') }} />
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
           <ThemedText type="subtitle" style={styles.title}>
-            Delete your account
+            {t('settings.deleteAccountHeading')}
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
             {t('settings.deleteAccountBody')}
@@ -78,8 +80,7 @@ export default function DeleteAccountScreen() {
             you. If you want something you posted deleted rather than unlinked, email {SUPPORT_EMAIL}.
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            We&apos;ll send a confirmation to your email address so you know it happened — and so you
-            can tell us if it wasn&apos;t you.
+            {t('settings.deleteAccountEmailNote')}
           </ThemedText>
 
           {error && (
@@ -96,7 +97,7 @@ export default function DeleteAccountScreen() {
               <ActivityIndicator color="#ffffff" />
             ) : (
               <ThemedText type="smallBold" style={styles.deleteButtonText}>
-                Delete my account
+                {t('settings.deleteAccountButton')}
               </ThemedText>
             )}
           </Pressable>
