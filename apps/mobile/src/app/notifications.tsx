@@ -171,6 +171,15 @@ export default function NotificationsScreen() {
                           You can now share places and lists with each other.
                         </ThemedText>
                       </>
+                    ) : notification.type === 'activity_reminder' ? (
+                      <>
+                        <ThemedText type="default" style={styles.noteText}>
+                          {notification.payload.location_name ?? 'An activity'} starts tomorrow
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          You saved this. Tap to see the details.
+                        </ThemedText>
+                      </>
                     ) : (
                       <>
                         <ThemedText type="default" style={styles.noteText}>

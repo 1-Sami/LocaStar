@@ -23,6 +23,16 @@ export type FriendNotificationPayload = {
   sender_name: string;
 };
 
+/**
+ * Written by claim_activity_reminders alongside the push, so the reminder
+ * survives being swiped away or arriving on a phone you don't pick up.
+ */
+export type ActivityReminderNotificationPayload = {
+  location_id: string;
+  location_name: string | null;
+  starts_at: string;
+};
+
 export type Notification =
   | {
       id: string;
@@ -56,6 +66,13 @@ export type Notification =
       id: string;
       type: "friend_accepted";
       payload: FriendNotificationPayload;
+      readAt: string | null;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      type: "activity_reminder";
+      payload: ActivityReminderNotificationPayload;
       readAt: string | null;
       createdAt: string;
     };

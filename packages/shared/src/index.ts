@@ -140,6 +140,7 @@ export type {
   Notification,
   ShareNotificationPayload,
   RoleGrantedNotificationPayload,
+  ActivityReminderNotificationPayload,
 } from "./api/notifications";
 
 export {
