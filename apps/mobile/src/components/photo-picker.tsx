@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uris: string[]) => void }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [sourceMenuVisible, setSourceMenuVisible] = useState(false);
 
@@ -69,7 +71,7 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
           {index === 0 && (
             <View style={styles.coverBadge}>
               <ThemedText type="small" style={styles.coverBadgeText}>
-                COVER
+                {t('components.cover')}
               </ThemedText>
             </View>
           )}
@@ -110,7 +112,7 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
 
       {uris.length > 1 && (
         <ThemedText type="small" themeColor="textSecondary" style={styles.reorderHint}>
-          The first photo is the one people see on search results — use the arrows to reorder.
+          {t('components.firstPhotoHint')}
         </ThemedText>
       )}
 
@@ -122,15 +124,15 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
         <Pressable style={styles.modalBackdrop} onPress={() => setSourceMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Add a photo
+              {t('components.addAPhoto')}
             </ThemedText>
             <Pressable style={styles.modalRow} onPress={() => closeMenuThen(handleTakePhoto)}>
               <Ionicons name="camera-outline" size={22} color={theme.text} />
-              <ThemedText type="default">Take a photo</ThemedText>
+              <ThemedText type='default'>{t('components.takePhoto')}</ThemedText>
             </Pressable>
             <Pressable style={styles.modalRow} onPress={() => closeMenuThen(handleChooseFromLibrary)}>
               <Ionicons name="images-outline" size={22} color={theme.text} />
-              <ThemedText type="default">Choose from library</ThemedText>
+              <ThemedText type='default'>{t('components.chooseFromLibrary')}</ThemedText>
             </Pressable>
           </ThemedView>
         </Pressable>

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { LocationPhoto } from '@/components/location-photo';
@@ -22,6 +23,7 @@ export function FavoriteCard({
   onToggleBucketList: () => void;
   onPress?: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrapper}>
@@ -47,7 +49,7 @@ export function FavoriteCard({
         </ThemedText>
         <Pressable onPress={() => openDirections(location.coords, location.name)} hitSlop={4}>
           <ThemedText type="small" themeColor="textSecondary">
-            Directions
+            {t('components.directions')}
           </ThemedText>
         </Pressable>
       </View>

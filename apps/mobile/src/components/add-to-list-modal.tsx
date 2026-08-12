@@ -7,6 +7,7 @@ import {
   type LocationList,
 } from '@locastar/shared';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { SheetRoot } from '@/components/sheet-root';
@@ -27,6 +28,7 @@ export function AddToListModal({
   locationId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [lists, setLists] = useState<LocationList[]>([]);
   const [memberListIds, setMemberListIds] = useState<Set<string>>(new Set());
@@ -107,12 +109,12 @@ export function AddToListModal({
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <ThemedView type="backgroundElement" style={styles.modalContent}>
           <ThemedText type="subtitle" style={styles.modalTitle}>
-            Add to list
+            {t('components.addToList')}
           </ThemedText>
 
           {!loading && lists.length === 0 && (
             <ThemedText type="small" themeColor="textSecondary">
-              You don't have any lists yet — create one below.
+              {t('components.noListsYet')}
             </ThemedText>
           )}
 
@@ -131,7 +133,7 @@ export function AddToListModal({
             <TextInput
               value={newListName}
               onChangeText={setNewListName}
-              placeholder="New list name"
+              placeholder={t('components.newListName')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
             />
@@ -140,13 +142,13 @@ export function AddToListModal({
               disabled={!newListName.trim() || creating}
               onPress={handleCreateAndAdd}>
               <ThemedText type="smallBold" style={styles.createButtonText}>
-                {creating ? '…' : 'Add'}
+                {creating ? '…' : t('components.addAction')}
               </ThemedText>
             </Pressable>
           </View>
 
           <Pressable style={styles.doneButton} onPress={onClose}>
-            <ThemedText type="smallBold">Done</ThemedText>
+            <ThemedText type='smallBold'>{t('form.done')}</ThemedText>
           </Pressable>
         </ThemedView>
       </SheetRoot>

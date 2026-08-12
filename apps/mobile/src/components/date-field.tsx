@@ -1,5 +1,6 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -22,6 +23,7 @@ export function DateField({
   minimumDate?: Date;
   placeholder?: string;
 }) {
+  const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
 
   const handleChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -43,7 +45,7 @@ export function DateField({
         {value && (
           <Pressable style={styles.clearButton} onPress={() => onChange(null)} hitSlop={8}>
             <ThemedText type="small" style={styles.clearText}>
-              Clear
+              {t('components.clear')}
             </ThemedText>
           </Pressable>
         )}

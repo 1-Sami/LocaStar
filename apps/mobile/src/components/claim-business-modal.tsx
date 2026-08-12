@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, TextInput } from 'react-native';
 
 import { SheetRoot } from '@/components/sheet-root';
@@ -24,6 +25,7 @@ export function ClaimBusinessModal({
   onClose: () => void;
   onSubmit: (verificationNotes: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { session } = useAuth();
   const [notes, setNotes] = useState('');
@@ -69,21 +71,21 @@ export function ClaimBusinessModal({
           {submitted ? (
             <>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                Claim submitted
+                {t('components.claimSubmitted')}
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary">
-                Our team will review your claim and get back to you.
+                {t('components.claimSubmittedBody')}
               </ThemedText>
               <Pressable style={styles.submitButton} onPress={handleClose}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
-                  Done
+                  {t('form.done')}
                 </ThemedText>
               </Pressable>
             </>
           ) : (
             <>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                Claim this business
+                {t('components.claimTitle')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Tell us how you're connected to this business (e.g. your role, phone number, or
@@ -92,7 +94,7 @@ export function ClaimBusinessModal({
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Verification details (required)"
+                placeholder={t('components.verificationDetails')}
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
                 multiline
@@ -113,7 +115,7 @@ export function ClaimBusinessModal({
                 disabled={!isValid || submitting}
                 onPress={handleSubmit}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
-                  {submitting ? 'Submitting…' : 'Submit claim'}
+                  {submitting ? t('components.submitting') : t('components.submitClaim')}
                 </ThemedText>
               </Pressable>
             </>

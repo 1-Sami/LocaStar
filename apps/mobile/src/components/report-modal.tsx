@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, TextInput } from 'react-native';
 
 import { SheetRoot } from '@/components/sheet-root';
@@ -9,13 +10,20 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { writeFailureMessage } from '@/lib/restriction';
 
-const REPORT_REASONS = [
-  'Spam',
-  'Inappropriate content',
-  "Doesn't exist / permanently closed",
-  'Incorrect information',
-  'Duplicate of another listing',
-  'Other',
+/*
+ * The `value` is what gets stored on the report and read by moderators; the
+ * label is only ever displayed. Translating the stored value would mean a
+ * Swedish reporter files "Skräppost" and an English one files "Spam" for the
+ * same thing, leaving the moderation queue in two languages and any future
+ * grouping by reason broken.
+ */
+const REPORT_REASONS: { value: string; labelKey: string }[] = [
+  { value: 'Spam', labelKey: 'components.reasonSpam' },
+  { value: 'Inappropriate content', labelKey: 'components.reasonInappropriate' },
+  { value: "Doesn't exist / permanently closed", labelKey: 'components.reasonClosed' },
+  { value: 'Incorrect information', labelKey: 'components.reasonIncorrect' },
+  { value: 'Duplicate of another listing', labelKey: 'components.reasonDuplicate' },
+  { value: 'Other', labelKey: 'components.reasonOther' },
 ];
 
 export function ReportModal({
@@ -31,6 +39,7 @@ export function ReportModal({
   onClose: () => void;
   onSubmit: (reason: string, details: string | null) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { session } = useAuth();
   const [reason, setReason] = useState<string | null>(null);
@@ -76,14 +85,14 @@ export function ReportModal({
           {submitted ? (
             <>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                Thanks for letting us know
+                {t('components.reportThanks')}
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary">
                 {confirmationText}
               </ThemedText>
               <Pressable style={styles.submitButton} onPress={handleClose}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
-                  Done
+                  {t('form.done')}
                 </ThemedText>
               </Pressable>
             </>
@@ -93,15 +102,15 @@ export function ReportModal({
                 {title}
               </ThemedText>
               {REPORT_REASONS.map((r) => (
-                <Pressable key={r} style={styles.modalRow} onPress={() => setReason(r)}>
-                  <ThemedText type="default">{r}</ThemedText>
-                  <ThemedText type="default">{reason === r ? '✓' : ''}</ThemedText>
+                <Pressable key={r.value} style={styles.modalRow} onPress={() => setReason(r.value)}>
+                  <ThemedText type="default">{t(r.labelKey)}</ThemedText>
+                  <ThemedText type="default">{reason === r.value ? '✓' : ''}</ThemedText>
                 </Pressable>
               ))}
               <TextInput
                 value={details}
                 onChangeText={setDetails}
-                placeholder="*Explain why you're reporting this"
+                placeholder={t('components.reportPlaceholder')}
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
                 multiline
@@ -116,7 +125,7 @@ export function ReportModal({
                 disabled={!isValid || submitting}
                 onPress={handleSubmit}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
-                  {submitting ? 'Submitting…' : 'Submit report'}
+                  {submitting ? t('components.submitting') : t('components.submitReport')}
                 </ThemedText>
               </Pressable>
             </>

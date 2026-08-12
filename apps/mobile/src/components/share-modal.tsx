@@ -1,5 +1,6 @@
 import { searchShareCandidates, type ShareCandidate } from '@locastar/shared';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
@@ -17,7 +18,7 @@ export function ShareModal({
   onClose,
   onShare,
   title = 'Share this location',
-  successNoun = 'in their Favorites',
+  successNoun,
   successMessage,
   errorMessage = 'Something went wrong sharing this location. Try again.',
   showNote = true,
@@ -31,6 +32,7 @@ export function ShareModal({
   errorMessage?: string;
   showNote?: boolean;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
@@ -95,16 +97,19 @@ export function ShareModal({
           {submitted ? (
             <>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                Shared!
+                {t('components.shared')}
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary">
                 {successMessage
                   ? successMessage(selected?.username ?? selected?.displayName ?? 'They')
-                  : `${selected?.username ?? selected?.displayName ?? 'They'} will see it ${successNoun}.`}
+                  : t('components.sharedBody', {
+                      name: selected?.username ?? selected?.displayName ?? t('components.theyFallback'),
+                      where: successNoun ?? t('components.inTheirFavorites'),
+                    })}
               </ThemedText>
               <Pressable style={styles.submitButton} onPress={handleClose}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
-                  Done
+                  {t('form.done')}
                 </ThemedText>
               </Pressable>
             </>
@@ -122,7 +127,7 @@ export function ShareModal({
                   </ThemedText>
                   <Pressable onPress={() => setSelected(null)} hitSlop={8}>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Change
+                      {t('components.change')}
                     </ThemedText>
                   </Pressable>
                 </View>
@@ -131,7 +136,7 @@ export function ShareModal({
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
-                    placeholder="Search by username or email"
+                    placeholder={t('components.searchByUsername')}
                     placeholderTextColor={theme.textSecondary}
                     autoCapitalize="none"
                     style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -153,7 +158,7 @@ export function ShareModal({
                   ))}
                   {query.trim().length >= 2 && results.length === 0 && (
                     <ThemedText type="small" themeColor="textSecondary">
-                      No users found.
+                      {t('components.noUsersFound')}
                     </ThemedText>
                   )}
                 </>
@@ -163,7 +168,7 @@ export function ShareModal({
                 <TextInput
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Add a note (optional)"
+                  placeholder={t('components.addNote')}
                   placeholderTextColor={theme.textSecondary}
                   style={[styles.input, styles.noteInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
                   multiline
@@ -181,7 +186,7 @@ export function ShareModal({
                 disabled={!selected || submitting}
                 onPress={handleSubmit}>
                 <ThemedText type="smallBold" style={styles.submitButtonText}>
-                  {submitting ? 'Sharing…' : 'Share'}
+                  {submitting ? t('components.sharing') : t('components.shareAction')}
                 </ThemedText>
               </Pressable>
             </>

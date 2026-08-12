@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { SheetRoot } from '@/components/sheet-root';
@@ -34,6 +35,7 @@ export function ModerationActionModal({
   onCancel: () => void;
   onConfirm: (note: string) => void;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [note, setNote] = useState('');
 
@@ -62,7 +64,7 @@ export function ModerationActionModal({
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="Explain the decision"
+            placeholder={t('components.explainDecision')}
             placeholderTextColor={theme.textSecondary}
             multiline
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -70,7 +72,7 @@ export function ModerationActionModal({
 
           <View style={styles.buttonRow}>
             <Pressable style={[styles.button, styles.cancelButton]} onPress={onCancel} disabled={submitting}>
-              <ThemedText type="smallBold">Cancel</ThemedText>
+              <ThemedText type="smallBold">{t('common.cancel')}</ThemedText>
             </Pressable>
             <Pressable
               style={[
@@ -81,7 +83,7 @@ export function ModerationActionModal({
               disabled={!canConfirm}
               onPress={() => onConfirm(note.trim())}>
               <ThemedText type="smallBold" style={styles.confirmButtonText}>
-                {submitting ? 'Working…' : confirmLabel}
+                {submitting ? t('components.working') : confirmLabel}
               </ThemedText>
             </Pressable>
           </View>

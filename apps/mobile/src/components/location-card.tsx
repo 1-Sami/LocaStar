@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { LocationPhoto } from '@/components/location-photo';
@@ -74,6 +75,7 @@ export function LocationCard({
   onToggleBucketList: () => void;
   onPress?: () => void;
 }) {
+  const { t } = useTranslation();
   const categoryColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
   const { street, area } = addressLines(location);
   const distance = formatDistance(location.distanceM);
@@ -167,7 +169,7 @@ export function LocationCard({
               onPress={() => openDirections(location.coords, location.name)}
               hitSlop={8}>
               <ThemedText type="smallBold" style={styles.directionsText}>
-                Direction
+                {t('components.directions')}
               </ThemedText>
               <Ionicons name="arrow-forward" size={14} color={SearchPalette.text} />
             </Pressable>

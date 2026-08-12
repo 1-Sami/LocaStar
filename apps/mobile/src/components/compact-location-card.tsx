@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { LocationPhoto } from '@/components/location-photo';
@@ -23,6 +24,7 @@ export function CompactLocationCard({
   onPress?: () => void;
   showBoostedBadge?: boolean;
 }) {
+  const { t } = useTranslation();
   const cardColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
 
   return (
@@ -37,7 +39,7 @@ export function CompactLocationCard({
         {showBoostedBadge && (
           <View style={styles.boostedBadge}>
             <ThemedText type="small" style={[styles.whiteText, styles.badgeText]} numberOfLines={1}>
-              ★ Boosted
+              {t('components.boosted')}
             </ThemedText>
           </View>
         )}

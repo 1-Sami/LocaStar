@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 
 import { Spacing } from '@/constants/theme';
@@ -12,9 +13,10 @@ import { useTheme } from '@/hooks/use-theme';
  * the arrow on Android.
  */
 export function HeaderBackButton({ onPress }: { onPress: () => void }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} hitSlop={12} style={styles.button} accessibilityLabel="Go back">
+    <Pressable onPress={onPress} hitSlop={12} style={styles.button} accessibilityLabel={t('components.goBack')}>
       <Ionicons
         name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'}
         size={24}

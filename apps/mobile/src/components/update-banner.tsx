@@ -4,6 +4,7 @@ import * as Updates from 'expo-updates';
 // compiler both recognise a hook by its bare `use` prefix.
 import { useUpdates } from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -29,6 +30,7 @@ const RECHECK_AFTER_MS = 30 * 60 * 1000;
  * answer can matter.
  */
 export function UpdateBanner() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { isUpdatePending, isRestarting } = useUpdates();
   const [restartFailed, setRestartFailed] = useState(false);
@@ -73,9 +75,9 @@ export function UpdateBanner() {
     <View style={[styles.bar, { backgroundColor: theme.backgroundElement, borderTopColor: theme.backgroundSelected }]}>
       <Ionicons name="arrow-down-circle" size={20} color={theme.primary} />
       <View style={styles.textColumn}>
-        <ThemedText type="smallBold">A new version is ready</ThemedText>
+        <ThemedText type='smallBold'>{t('components.updateReady')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {restartFailed ? 'Restart failed — close and reopen the app.' : 'Restart to get the latest fixes.'}
+          {restartFailed ? t('components.restartFailed') : t('components.restartHint')}
         </ThemedText>
       </View>
       <Pressable
@@ -86,7 +88,7 @@ export function UpdateBanner() {
           <ActivityIndicator size="small" color={theme.background} />
         ) : (
           <ThemedText type="smallBold" style={{ color: theme.background }}>
-            Restart
+            {t('components.restart')}
           </ThemedText>
         )}
       </Pressable>

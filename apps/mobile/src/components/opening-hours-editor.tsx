@@ -1,4 +1,5 @@
 import { ALWAYS_OPEN, isAlwaysOpen, type DayKey, type OpeningHours } from '@locastar/shared';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -6,15 +7,8 @@ import { Spacing } from '@/constants/theme';
 
 const LIGHT_PLACEHOLDER = '#6B6B6B';
 
-const DAYS: { key: DayKey; label: string }[] = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-];
+// Names come from days.* so this and the location screen cannot disagree.
+const DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 export function OpeningHoursEditor({
   hours,
@@ -23,6 +17,7 @@ export function OpeningHoursEditor({
   hours: OpeningHours;
   onChange: (next: OpeningHours) => void;
 }) {
+  const { t } = useTranslation();
   const toggleDay = (day: DayKey) => {
     const next = { ...hours };
     if (next[day]) {
@@ -38,7 +33,7 @@ export function OpeningHoursEditor({
   return (
     <View style={styles.hoursCard}>
       <ThemedText type="smallBold" style={styles.hoursCardTitle}>
-        Open hours (optional)
+        {t('components.openHours')}
       </ThemedText>
 
       {/* A public park or an outdoor gym is genuinely always open. Without
@@ -47,27 +42,27 @@ export function OpeningHoursEditor({
       <Pressable style={styles.alwaysOpenRow} onPress={() => onChange(alwaysOpen ? {} : ALWAYS_OPEN)}>
         <View style={[styles.lightCheckbox, alwaysOpen && styles.checkboxChecked]} />
         <ThemedText type="small" style={styles.hoursDayLabel}>
-          Open 24/7
+          {t('components.openAlways')}
         </ThemedText>
       </Pressable>
 
       {!alwaysOpen &&
         DAYS.map((day) => {
-        const entry = hours[day.key];
+        const entry = hours[day];
         const isOpen = Boolean(entry);
         return (
-          <View key={day.key} style={styles.hoursRow}>
-            <Pressable style={styles.hoursDayToggle} onPress={() => toggleDay(day.key)}>
+          <View key={day} style={styles.hoursRow}>
+            <Pressable style={styles.hoursDayToggle} onPress={() => toggleDay(day)}>
               <View style={[styles.lightCheckbox, isOpen && styles.checkboxChecked]} />
               <ThemedText type="small" style={styles.hoursDayLabel}>
-                {day.label}
+                {t(`days.${day}`)}
               </ThemedText>
             </Pressable>
             {isOpen && (
               <View style={styles.hoursTimeRow}>
                 <TextInput
                   value={entry?.open}
-                  onChangeText={(text) => onChange({ ...hours, [day.key]: { open: text, close: entry?.close ?? '17:00' } })}
+                  onChangeText={(text) => onChange({ ...hours, [day]: { open: text, close: entry?.close ?? '17:00' } })}
                   placeholder="09:00"
                   placeholderTextColor={LIGHT_PLACEHOLDER}
                   style={[styles.input, styles.hoursTimeInput]}
@@ -77,7 +72,7 @@ export function OpeningHoursEditor({
                 </ThemedText>
                 <TextInput
                   value={entry?.close}
-                  onChangeText={(text) => onChange({ ...hours, [day.key]: { open: entry?.open ?? '09:00', close: text } })}
+                  onChangeText={(text) => onChange({ ...hours, [day]: { open: entry?.open ?? '09:00', close: text } })}
                   placeholder="17:00"
                   placeholderTextColor={LIGHT_PLACEHOLDER}
                   style={[styles.input, styles.hoursTimeInput]}
