@@ -1,6 +1,7 @@
 import { fetchMyReviews, type MyReview } from '@locastar/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +13,7 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
 export default function MyReviewsScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const router = useRouter();
   const [reviews, setReviews] = useState<MyReview[]>([]);
@@ -48,7 +50,7 @@ export default function MyReviewsScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : reviews.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-            You haven't written any reviews yet.
+            {t('myContributions.noReviews')}
           </ThemedText>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>

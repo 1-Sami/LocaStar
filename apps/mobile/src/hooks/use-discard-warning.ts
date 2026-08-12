@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BackHandler } from 'react-native';
 
 import { confirmAsync } from '@/lib/confirm';
@@ -19,11 +20,12 @@ import { confirmAsync } from '@/lib/confirm';
  */
 export function useDiscardWarning(hasChanges: boolean, message: string) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const confirmLeave = useCallback(async () => {
     if (!hasChanges) return true;
-    return confirmAsync('Discard this?', message, 'Discard');
-  }, [hasChanges, message]);
+    return confirmAsync(t('common.discardTitle'), message, t('common.discard'));
+  }, [hasChanges, message, t]);
 
   const onBack = useCallback(async () => {
     if (await confirmLeave()) router.back();

@@ -129,7 +129,7 @@ export default function ChangePasswordScreen() {
 
           <Pressable style={[styles.saveButton, !canSave && styles.saveButtonDisabled]} disabled={!canSave} onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveButtonText}>
-              {saving ? 'Saving…' : 'Save password'}
+              {saving ? t('settings.saving') : t('settings.savePassword')}
             </ThemedText>
           </Pressable>
         </View>

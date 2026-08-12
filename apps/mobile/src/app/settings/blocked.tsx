@@ -74,8 +74,7 @@ export default function BlockedUsersScreen() {
           ) : (
             <>
               <ThemedText type="small" themeColor="textSecondary">
-                Blocked people can&apos;t send you friend requests or share locations and lists with
-                you. They aren&apos;t told they&apos;ve been blocked.
+                {t('settings.blockedHint')}
               </ThemedText>
               {blocked.map((entry) => (
                 <ThemedView key={entry.blockId} type="backgroundElement" style={styles.row}>

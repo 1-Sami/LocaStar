@@ -107,7 +107,7 @@ export default function ProfilePictureScreen() {
         if (removeError) {
           console.error('Avatar file delete failed', removeError);
           setError(
-            "Your picture was removed from your profile, but the file couldn't be deleted. Try removing it again."
+            t('settings.avatarFileDeleteFailed')
           );
         }
       }

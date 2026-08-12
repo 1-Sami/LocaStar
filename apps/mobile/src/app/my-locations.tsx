@@ -2,6 +2,7 @@ import { fetchMyAddedLocations, type MyAddedLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -46,6 +47,7 @@ function hasEnded(location: MyAddedLocation): boolean {
 }
 
 export default function MyLocationsScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const router = useRouter();
   const [locations, setLocations] = useState<MyAddedLocation[]>([]);
@@ -82,7 +84,7 @@ export default function MyLocationsScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : locations.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-            You haven&apos;t added any locations or activities yet.
+            {t('myContributions.noLocations')}
           </ThemedText>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -122,7 +124,7 @@ export default function MyLocationsScreen() {
                     </ThemedText>
                     {ended && (
                       <ThemedText type="small" style={styles.endedText}>
-                        Ended
+                        {t('myContributions.ended')}
                       </ThemedText>
                     )}
                   </View>

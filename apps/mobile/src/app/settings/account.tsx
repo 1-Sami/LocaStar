@@ -140,7 +140,7 @@ export default function AccountInfoScreen() {
                   setUsername(text);
                   setSaved(false);
                 }}
-                placeholder="username"
+                placeholder={t('settings.username').toLowerCase()}
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="none"
                 style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
@@ -195,14 +195,14 @@ export default function AccountInfoScreen() {
           {saved && !error && (
             <ThemedText type="small" style={styles.savedText}>
               {emailChangePending
-                ? 'Saved. Confirm from both your old and new inbox — the change only takes effect once both are done. After that, log in with the new address.'
-                : 'Saved.'}
+                ? t('settings.accountSavedEmailPending')
+                : t('settings.accountSaved')}
             </ThemedText>
           )}
 
           <Pressable style={[styles.saveButton, saving && styles.saveButtonDisabled]} disabled={saving} onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveButtonText}>
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? t('settings.saving') : t('settings.saveChanges')}
             </ThemedText>
           </Pressable>
         </ScrollView>

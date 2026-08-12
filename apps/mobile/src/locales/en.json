@@ -38,7 +38,13 @@
     "createAccount": "Create an account",
     "logOut": "Log out",
     "remove": "Remove",
-    "somePerson": "This person"
+    "somePerson": "This person",
+    "edit": "Edit",
+    "report": "Report",
+    "private": "Private",
+    "sort": "Sort",
+    "discardTitle": "Discard this?",
+    "discard": "Discard"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -284,7 +290,15 @@
     "creatorWindow": "You added this — you can edit it for {{time}} more.",
     "deletePlaceTitle": "Delete this place?",
     "deleteActivityTitle": "Delete this activity?",
-    "deleteLocationBody": "This permanently deletes “{{name}}” and everything tied to it — reviews, photos, saves, and shares, including anything the people you invited added. This can’t be undone."
+    "deleteLocationBody": "This permanently deletes “{{name}}” and everything tied to it — reviews, photos, saves, and shares, including anything the people you invited added. This can’t be undone.",
+    "notFound": "This location couldn’t be found.",
+    "claimPending": "Claim pending review",
+    "hoursNotSpecified": "Hours not specified",
+    "reviews": "Reviews",
+    "noReviews": "No reviews yet — be the first to write one!",
+    "sortReviews": "Sort reviews",
+    "makeCoverPhoto": "Make cover photo",
+    "deletePhoto": "Delete photo"
   },
   "form": {
     "nameLabel": "Name/Title",
@@ -443,7 +457,13 @@
     "changePhoto": "Change photo",
     "choosePhoto": "Choose a photo",
     "removing": "Removing…",
-    "removePhoto": "Remove photo"
+    "removePhoto": "Remove photo",
+    "avatarFileDeleteFailed": "Your picture was removed from your profile, but the file couldn’t be deleted. Try removing it again.",
+    "accountSaved": "Saved.",
+    "accountSavedEmailPending": "Saved. Confirm from both your old and new inbox — the change only takes effect once both are done. After that, log in with the new address.",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "savePassword": "Save password"
   },
   "lists": {
     "newListButton": "+ New list",
@@ -702,5 +722,17 @@
     "accountSaveFailed": "Something went wrong saving your account info. Try again.",
     "claimFailed": "Something went wrong submitting your claim. Try again.",
     "reportFailed": "Something went wrong submitting your report. Try again."
+  },
+  "community": {
+    "empty": "No public lists yet.",
+    "sortBy": "Sort by",
+    "sortNewest": "Latest added",
+    "sortMostLiked": "Most liked",
+    "sortLeastLiked": "Least liked"
+  },
+  "myContributions": {
+    "noLocations": "You haven’t added any locations or activities yet.",
+    "ended": "Ended",
+    "noReviews": "You haven’t written any reviews yet."
   }
 }

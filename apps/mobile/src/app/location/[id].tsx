@@ -319,7 +319,7 @@ export default function LocationDetailScreen() {
             <Ionicons name="arrow-back" size={22} color={theme.text} />
           </Pressable>
           <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
-            This location couldn't be found.
+            {t('location.notFound')}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>
@@ -685,7 +685,7 @@ export default function LocationDetailScreen() {
                   <View style={styles.privateBadge}>
                     <Ionicons name="lock-closed" size={11} color="#1A1400" />
                     <ThemedText type="small" style={styles.privateBadgeText}>
-                      Private
+                      {t('common.private')}
                     </ThemedText>
                   </View>
                 )}
@@ -693,7 +693,7 @@ export default function LocationDetailScreen() {
               {canEditLocation && (
                 <Pressable onPress={() => router.push({ pathname: '/edit-location', params: { id: location.id } })}>
                   <ThemedText type="linkPrimary" style={styles.editLink}>
-                    Edit
+                    {t('common.edit')}
                   </ThemedText>
                 </Pressable>
               )}
@@ -779,7 +779,7 @@ export default function LocationDetailScreen() {
                 {session?.user.id === location.created_by && (
                   <Pressable onPress={handleRemoveCreatorCredit} hitSlop={8}>
                     <ThemedText type="small" style={styles.removeCreditText}>
-                      Delete
+                      {t('common.delete')}
                     </ThemedText>
                   </Pressable>
                 )}
@@ -801,7 +801,7 @@ export default function LocationDetailScreen() {
             ) : (
               myClaim?.status === 'pending' && (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.statusLine}>
-                  Claim pending review
+                  {t('location.claimPending')}
                 </ThemedText>
               )
             )}
@@ -812,7 +812,7 @@ export default function LocationDetailScreen() {
                 onPress={() => openDirections({ lat: location.lat, lng: location.lng }, location.name)}>
                 <Ionicons name="navigate-outline" size={18} color={DIRECTIONS_TEXT} />
                 <ThemedText type="smallBold" style={styles.directionsButtonText}>
-                  Directions
+                  {t('components.directions')}
                 </ThemedText>
               </Pressable>
               <Pressable
@@ -867,7 +867,7 @@ export default function LocationDetailScreen() {
               <View style={[styles.infoCard, styles.hoursNaCard, { borderColor: theme.backgroundSelected }]}>
                 <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
                 <ThemedText type="default" themeColor="textSecondary">
-                  Hours not specified
+                  {t('location.hoursNotSpecified')}
                 </ThemedText>
               </View>
             ) : (
@@ -916,7 +916,7 @@ export default function LocationDetailScreen() {
 
             <View style={styles.reviewsHeaderRow}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Reviews
+                {t('location.reviews')}
               </ThemedText>
               <Pressable style={styles.writeReviewButton} onPress={handleWriteReview}>
                 <ThemedText type="smallBold" style={styles.writeReviewButtonText}>
@@ -970,7 +970,7 @@ export default function LocationDetailScreen() {
 
             {reviews.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyReviews}>
-                No reviews yet — be the first to write one!
+                {t('location.noReviews')}
               </ThemedText>
             ) : (
               <View style={styles.reviewList}>
@@ -1110,7 +1110,7 @@ export default function LocationDetailScreen() {
             <Pressable style={styles.menuRow} onPress={handleOpenLocationReport}>
               <Ionicons name="flag-outline" size={18} color="#E05252" />
               <ThemedText type="default" style={styles.menuReportText}>
-                Report
+                {t('common.report')}
               </ThemedText>
             </Pressable>
           </ThemedView>
@@ -1121,7 +1121,7 @@ export default function LocationDetailScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Sort reviews
+              {t('location.sortReviews')}
             </ThemedText>
             {REVIEW_SORT_OPTIONS.map((option) => (
               <Pressable
@@ -1273,7 +1273,7 @@ export default function LocationDetailScreen() {
                 <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
                   <Ionicons name="star" size={14} color="#000000" />
                   <ThemedText type="smallBold" style={styles.makeCoverText}>
-                    Make cover photo
+                    {t('location.makeCoverPhoto')}
                   </ThemedText>
                 </Pressable>
               )}
@@ -1281,7 +1281,7 @@ export default function LocationDetailScreen() {
                 <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
                   <Ionicons name="trash-outline" size={14} color="#ffffff" />
                   <ThemedText type="smallBold" style={styles.deletePhotoText}>
-                    Delete photo
+                    {t('location.deletePhoto')}
                   </ThemedText>
                 </Pressable>
               )}

@@ -303,7 +303,7 @@ export default function ListDetailScreen() {
                 <View style={styles.actionsRow}>
                   <Pressable style={styles.shareListButton} onPress={() => setShareVisible(true)}>
                     <ThemedText type="small" style={styles.shareListButtonText}>
-                      Share this list
+                      {t('listDetail.shareTitle')}
                     </ThemedText>
                   </Pressable>
 

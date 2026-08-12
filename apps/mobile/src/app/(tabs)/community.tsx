@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,13 +19,14 @@ import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
-const SORT_OPTIONS: { key: PublicListSort; label: string }[] = [
-  { key: 'newest', label: 'Latest added' },
-  { key: 'most_liked', label: 'Most liked' },
-  { key: 'least_liked', label: 'Least liked' },
+const SORT_OPTIONS: { key: PublicListSort; labelKey: string }[] = [
+  { key: 'newest', labelKey: 'community.sortNewest' },
+  { key: 'most_liked', labelKey: 'community.sortMostLiked' },
+  { key: 'least_liked', labelKey: 'community.sortLeastLiked' },
 ];
 
 export default function CommunityScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const router = useRouter();
   const theme = useTheme();
@@ -83,7 +85,7 @@ export default function CommunityScreen() {
             onPress={() => setSortMenuVisible(true)}>
             <Ionicons name="swap-vertical" size={14} color={theme.text} />
             <ThemedText type="small">
-              {SORT_OPTIONS.find((option) => option.key === sort)?.label ?? 'Sort'}
+              {t(SORT_OPTIONS.find((option) => option.key === sort)?.labelKey ?? 'common.sort')}
             </ThemedText>
           </Pressable>
         </View>
@@ -94,7 +96,7 @@ export default function CommunityScreen() {
           <ScrollView contentContainerStyle={styles.content}>
             {lists.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-                No public lists yet.
+                {t('community.empty')}
               </ThemedText>
             ) : (
               lists.map((list) => (
@@ -125,7 +127,7 @@ export default function CommunityScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Sort by
+              {t('community.sortBy')}
             </ThemedText>
             {SORT_OPTIONS.map((option) => (
               <Pressable
@@ -135,7 +137,7 @@ export default function CommunityScreen() {
                   setSort(option.key);
                   setSortMenuVisible(false);
                 }}>
-                <ThemedText type="default">{option.label}</ThemedText>
+                <ThemedText type="default">{t(option.labelKey)}</ThemedText>
                 {sort === option.key && <Ionicons name="checkmark" size={18} color={theme.primary} />}
               </Pressable>
             ))}

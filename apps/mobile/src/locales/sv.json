@@ -38,7 +38,13 @@
     "createAccount": "Skapa ett konto",
     "logOut": "Logga ut",
     "remove": "Ta bort",
-    "somePerson": "Den här personen"
+    "somePerson": "Den här personen",
+    "edit": "Redigera",
+    "report": "Anmäl",
+    "private": "Privat",
+    "sort": "Sortera",
+    "discardTitle": "Kasta bort det här?",
+    "discard": "Kasta bort"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -284,7 +290,15 @@
     "creatorWindow": "Du lade till den här — du kan redigera den i {{time}} till.",
     "deletePlaceTitle": "Radera den här platsen?",
     "deleteActivityTitle": "Radera den här aktiviteten?",
-    "deleteLocationBody": "Detta raderar ”{{name}}” permanent, tillsammans med allt som hör till den — recensioner, foton, sparningar och delningar, inklusive det personerna du bjudit in har lagt till. Det går inte att ångra."
+    "deleteLocationBody": "Detta raderar ”{{name}}” permanent, tillsammans med allt som hör till den — recensioner, foton, sparningar och delningar, inklusive det personerna du bjudit in har lagt till. Det går inte att ångra.",
+    "notFound": "Platsen kunde inte hittas.",
+    "claimPending": "Anspråket granskas",
+    "hoursNotSpecified": "Öppettider saknas",
+    "reviews": "Recensioner",
+    "noReviews": "Inga recensioner än — bli först med att skriva en!",
+    "sortReviews": "Sortera recensioner",
+    "makeCoverPhoto": "Gör till omslagsbild",
+    "deletePhoto": "Radera foto"
   },
   "form": {
     "nameLabel": "Namn/Titel",
@@ -443,7 +457,13 @@
     "changePhoto": "Byt bild",
     "choosePhoto": "Välj en bild",
     "removing": "Tar bort…",
-    "removePhoto": "Ta bort bild"
+    "removePhoto": "Ta bort bild",
+    "avatarFileDeleteFailed": "Din bild togs bort från profilen, men filen kunde inte raderas. Försök ta bort den igen.",
+    "accountSaved": "Sparat.",
+    "accountSavedEmailPending": "Sparat. Bekräfta från både din gamla och din nya inkorg — ändringen träder i kraft först när båda är klara. Därefter loggar du in med den nya adressen.",
+    "saving": "Sparar…",
+    "saveChanges": "Spara ändringar",
+    "savePassword": "Spara lösenord"
   },
   "lists": {
     "newListButton": "+ Ny lista",
@@ -702,5 +722,17 @@
     "accountSaveFailed": "Något gick fel när kontouppgifterna sparades. Försök igen.",
     "claimFailed": "Något gick fel när anspråket skickades. Försök igen.",
     "reportFailed": "Något gick fel när anmälan skickades. Försök igen."
+  },
+  "community": {
+    "empty": "Inga publika listor än.",
+    "sortBy": "Sortera efter",
+    "sortNewest": "Senast tillagda",
+    "sortMostLiked": "Mest omtyckta",
+    "sortLeastLiked": "Minst omtyckta"
+  },
+  "myContributions": {
+    "noLocations": "Du har inte lagt till några platser eller aktiviteter än.",
+    "ended": "Avslutad",
+    "noReviews": "Du har inte skrivit några recensioner än."
   }
 }
