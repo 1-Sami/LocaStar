@@ -78,8 +78,8 @@ export default function PrivacyPolicyScreen() {
         <LegalText>
           Locations and activities you add, your reviews, your username and profile picture, and any list
           you mark as public are visible to other people using LocaStar. Private activities and private
-          lists are visible only to you and to anyone you share them with. Your email address, home
-          address, saved places and favourites are never shown to other users.
+          lists are visible only to you and to anyone you share them with. Your email address, saved
+          places and favourites are never shown to other users.
         </LegalText>
       </LegalSection>
 
