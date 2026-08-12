@@ -413,7 +413,7 @@
     "currentPasswordHint": "Required to change the email on your account.",
     "emailChangeHint": "You’ll need to confirm from both your old and new inbox, and after that you log in with the new address. Only use an address you control.",
     "homeAddress": "Home address",
-    "homeAddressHint": "Used as a default starting point for nearby searches.",
+    "homeAddressHint": "Only visible to you.",
     "passwordIntro": "Confirm your current password, then choose a new one.",
     "newPassword": "New password",
     "confirmNewPassword": "Confirm new password",

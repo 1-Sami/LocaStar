@@ -1,6 +1,7 @@
 import { fetchMyPrivateProfile, fetchProfile, updateProfile } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +18,7 @@ import { usernameProblem } from '@/lib/username';
 import { supabase } from '@/lib/supabase';
 
 export default function AccountInfoScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const theme = useTheme();
 
@@ -75,7 +77,7 @@ export default function AccountInfoScreen() {
     }
 
     if (emailChanged && !currentPassword) {
-      setError('Enter your current password to change your email.');
+      setError(t('settings.accountReauth'));
       return;
     }
 
@@ -84,7 +86,7 @@ export default function AccountInfoScreen() {
     if (emailChanged) {
       const confirmed = await verifyCurrentPassword(session.user.email ?? '', currentPassword);
       if (!confirmed) {
-        setError('That password is incorrect.');
+        setError(t('settings.wrongPassword'));
         setSaving(false);
         return;
       }
@@ -135,7 +137,7 @@ export default function AccountInfoScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedView type="backgroundElement" style={styles.card}>
             <View style={styles.field}>
-              <ThemedText type="smallBold">Username</ThemedText>
+              <ThemedText type="smallBold">{t('settings.username')}</ThemedText>
               <TextInput
                 value={username}
                 onChangeText={(text) => {
@@ -150,14 +152,14 @@ export default function AccountInfoScreen() {
             </View>
 
             <View style={styles.field}>
-              <ThemedText type="smallBold">Email</ThemedText>
+              <ThemedText type="smallBold">{t('settings.email')}</ThemedText>
               <TextInput
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
                   setSaved(false);
                 }}
-                placeholder="you@example.com"
+                placeholder={t('settings.emailPlaceholder')}
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -167,41 +169,40 @@ export default function AccountInfoScreen() {
 
             {emailChanged && (
               <View style={styles.field}>
-                <ThemedText type="smallBold">Current password</ThemedText>
+                <ThemedText type="smallBold">{t('settings.currentPassword')}</ThemedText>
                 <PasswordInput
                   value={currentPassword}
                   onChangeText={(text) => {
                     setCurrentPassword(text);
                     setSaved(false);
                   }}
-                  placeholder="Current password"
+                  placeholder={t('settings.currentPassword')}
                   placeholderTextColor={theme.textSecondary}
                   style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
                 />
                 <ThemedText type="small" themeColor="textSecondary">
-                  Required to change the email on your account.
+                  {t('settings.currentPasswordHint')}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  You&apos;ll need to confirm from both your old and new inbox, and after that you
-                  log in with the new address. Only use an address you control.
+                  {t('settings.emailChangeHint')}
                 </ThemedText>
               </View>
             )}
 
             <View style={styles.field}>
-              <ThemedText type="smallBold">Home address</ThemedText>
+              <ThemedText type="smallBold">{t('settings.homeAddress')}</ThemedText>
               <TextInput
                 value={address}
                 onChangeText={(text) => {
                   setAddress(text);
                   setSaved(false);
                 }}
-                placeholder="Home address"
+                placeholder={t('settings.homeAddress')}
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
               />
               <ThemedText type="small" themeColor="textSecondary">
-                Used as a default starting point for nearby searches.
+                {t('settings.homeAddressHint')}
               </ThemedText>
             </View>
           </ThemedView>

@@ -413,7 +413,7 @@
     "currentPasswordHint": "Krävs för att byta mejladress på kontot.",
     "emailChangeHint": "Du behöver bekräfta från både din gamla och din nya inkorg, och därefter loggar du in med den nya adressen. Använd bara en adress du har kontroll över.",
     "homeAddress": "Hemadress",
-    "homeAddressHint": "Används som utgångspunkt för sökningar i närheten.",
+    "homeAddressHint": "Syns bara för dig.",
     "passwordIntro": "Bekräfta ditt nuvarande lösenord och välj sedan ett nytt.",
     "newPassword": "Nytt lösenord",
     "confirmNewPassword": "Bekräfta nytt lösenord",
