@@ -1,5 +1,6 @@
 import * as Updates from 'expo-updates';
 import { Link } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,12 +23,13 @@ function Feature({ lead, children }: { lead: string; children: string }) {
 }
 
 export default function AboutScreen() {
+  const { t } = useTranslation();
   // APP_RELEASE moves with every published update, so "which version am I on?"
   // has a real answer. The line underneath is for us rather than for users:
   // when someone reports a bug, the update id says exactly which bundle they
   // were running, which beats guessing whether they already have the fix.
   const buildLabel = Updates.isEmbeddedLaunch
-    ? 'Original install — no updates applied yet'
+    ? t('about.originalInstall')
     : `Update ${Updates.updateId?.slice(0, 8) ?? 'unknown'}` +
       (Updates.createdAt ? ` · ${Updates.createdAt.toISOString().slice(0, 16).replace('T', ' ')}` : '');
 
@@ -41,98 +43,82 @@ export default function AboutScreen() {
               LocaStar
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.tagline}>
-              EXPLORE. MAP. SHARE.
+              {t('home.tagline')}
             </ThemedText>
           </View>
 
           <View style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
-              It started with a basketball
+              {t('about.ballTitle')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              Every time I found myself in a new part of town with a ball under my arm, I hit the same
-              question: where do I actually go and play?
+              {t('about.ball1')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              The answer was usually out there somewhere. I'd scan the map for nearby schools and parks,
-              guess which ones might have a court, then hope it was open, decent, and worth the trip.
-              Sometimes that worked. Often I'd walk twenty minutes to find a bent rim and no net.
+              {t('about.ball2')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              That's the whole reason LocaStar exists.
+              {t('about.ball3')}
             </ThemedText>
           </View>
 
           <View style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
-              The places between the listings
+              {t('about.gapTitle')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              Map apps are built around businesses, and they're very good at it. Activities are just
-              harder to pin down — a basketball court isn't a listing of its own, it's tucked inside a
-              school or a park. Finding one means guessing which places might have it, then checking them
-              one by one.
+              {t('about.gap1')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              So that knowledge stays scattered. A little on a forum, a little in a group chat, and most
-              of it in the heads of people who already live there. If you're new to an area — or just new
-              to that side of town — it may as well not exist.
+              {t('about.gap2')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              So we built LocaStar around that gap: one map of things to actually go and do, described by
-              the people who have been there.
+              {t('about.gap3')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              LocaStar starts from the activity instead. You look for a court, a slope, a trail or a
-              festival, and you get the spot itself: what it's like, who's been there, and how to get to
-              it.
+              {t('about.gap4')}
             </ThemedText>
           </View>
 
           <View style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
-              What you can do here
+              {t('about.doTitle')}
             </ThemedText>
-            <Feature lead="Find places worth going to.">
-              Search by activity or browse what's near you, with ratings, photos and directions from
-              people who actually showed up.
+            <Feature lead={t('about.findLead')}>
+              {t('about.findBody')}
             </Feature>
-            <Feature lead="Save and organise.">
-              Keep favourites, build a "want to go" list, and group places into lists you can keep private
-              or share with everyone.
+            <Feature lead={t('about.saveLead')}>
+              {t('about.saveBody')}
             </Feature>
-            <Feature lead="Plan something private.">
-              Organising a party, a wedding, or a film shoot? Create it as a private activity and share it
-              only with the people you invite.
+            <Feature lead={t('about.privateLead')}>
+              {t('about.privateBody')}
             </Feature>
-            <Feature lead="Leave something behind.">
-              Add a rating, a photo, or a spot nobody has listed yet.
+            <Feature lead={t('about.contributeLead')}>
+              {t('about.contributeBody')}
             </Feature>
           </View>
 
           <View style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
-              The map grows with you
+              {t('about.growTitle')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              LocaStar is young, and we'd rather say so than pretend otherwise: some areas are already
-              full, others are nearly empty. It gets better every time someone adds a place they know.
+              {t('about.grow1')}
             </ThemedText>
             <ThemedText type="default" themeColor="textSecondary" style={styles.paragraph}>
-              So if you know the good court, the quiet trail, or the slope that's worth the drive — add
-              it. The next person turning up with a ball under their arm will be glad you did.
+              {t('about.grow2')}
             </ThemedText>
           </View>
 
           <View style={styles.legalRow}>
             <Link href={'/legal/privacy' as never}>
-              <ThemedText type="linkPrimary">Privacy Policy</ThemedText>
+              <ThemedText type="linkPrimary">{t('nav.privacyPolicy')}</ThemedText>
             </Link>
             <ThemedText type="small" themeColor="textSecondary">
               ·
             </ThemedText>
             <Link href={'/legal/terms' as never}>
-              <ThemedText type="linkPrimary">Terms of Service</ThemedText>
+              <ThemedText type="linkPrimary">{t('nav.termsOfService')}</ThemedText>
             </Link>
           </View>
 
@@ -143,11 +129,11 @@ export default function AboutScreen() {
               line puts the imported data out of licence. */}
           <Pressable onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.attribution}>
-              Some locations include data from{' '}
+              {t('about.attributionPrefix')}
               <ThemedText type="small" style={styles.attributionLink}>
-                © OpenStreetMap contributors
+                {t('about.attributionLink')}
               </ThemedText>
-              , used under the Open Database License.
+              {t('about.attributionSuffix')}
             </ThemedText>
           </Pressable>
 
