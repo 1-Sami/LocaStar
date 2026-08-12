@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { categoryLabelFromName } from '@/lib/categories';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -109,7 +111,9 @@ export default function MyLocationsScreen() {
                   <View style={styles.metaRow}>
                     <ThemedText type="small" themeColor="textSecondary">
                       {isActivity ? 'Activity' : 'Location'}
-                      {location.category_label ? ` · ${location.category_label}` : ''}
+                      {location.category_label
+                        ? ` · ${categoryLabelFromName(t, location.category_label)}`
+                        : ''}
                     </ThemedText>
                   </View>
                   {runs && (

@@ -34,7 +34,16 @@ export function ScreenTitle({ titleKey }: { titleKey: MenuId }) {
       ) : (
         <Ionicons name={config.icon} size={20} color={config.color} />
       )}
-      <ThemedText type="subtitle" style={[styles.title, { color: config.color }]}>
+      {/* Shrink and ellipsise rather than being cut off mid-word. A header is
+          only given so much room, and Swedish runs longer than English — "People
+          & bans" is thirteen characters, "Användare och avstängningar" is
+          twenty-seven, and it was arriving on screen as "Användare &". */}
+      <ThemedText
+        type="subtitle"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={[styles.title, { color: config.color }]}>
         {t(`menu.${titleKey}`)}
       </ThemedText>
     </View>
@@ -46,6 +55,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
+    // Without this the row keeps its natural width and the header clips it;
+    // shrinking lets the title use whatever space the back button leaves.
+    flexShrink: 1,
   },
   title: {
     fontSize: 18,

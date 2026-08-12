@@ -204,7 +204,7 @@ export default function FriendsScreen() {
 
             <View style={styles.section}>
               <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-                Friends ({friends.length})
+                {t('friends.friendsCount', { count: friends.length })}
               </ThemedText>
               {friends.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>

@@ -33,6 +33,7 @@ import { useUserLocation } from '@/hooks/use-user-location';
 import { endOfLocalDay, startOfLocalDay } from '@/lib/activity-dates';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
+import { categoryLabel, categoryLabelFromName } from '@/lib/categories';
 import { useSharedProfile } from '@/lib/profile-context';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
@@ -295,7 +296,7 @@ export default function AddLocationScreen() {
 
   const selectedCategoryLabel = categories
     .filter((c) => categoryIds.includes(c.id))
-    .map((c) => c.name)
+    .map((c) => categoryLabel(t, c.slug, c.name))
     .join(', ');
   const hasOtherCategory = categories.some((c) => categoryIds.includes(c.id) && c.slug === 'other');
 
@@ -304,7 +305,9 @@ export default function AddLocationScreen() {
   const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
   const visibleCategories = trimmedCategoryQuery
     ? categories.filter(
-        (c) => c.name.toLowerCase().includes(trimmedCategoryQuery) || categoryIds.includes(c.id)
+        (c) =>
+          categoryLabel(t, c.slug, c.name).toLowerCase().includes(trimmedCategoryQuery) ||
+          categoryIds.includes(c.id)
       )
     : categories;
 
@@ -505,7 +508,7 @@ export default function AddLocationScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="smallBold" style={styles.photoLabel}>
-            {isAdmin ? 'Pictures (optional for admins)' : '*Mandatory: at least 1 picture'}
+            {isAdmin ? t('form.picturesAdmin') : t('form.picturesRequired')}
           </ThemedText>
 
           <PhotoPicker uris={photoUris} onChange={setPhotoUris} />
@@ -513,7 +516,7 @@ export default function AddLocationScreen() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder={isActivity ? '*Name of activity' : '*Name of location'}
+            placeholder={isActivity ? t('form.nameOfActivity') : t('form.nameOfLocation')}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
           />
@@ -559,7 +562,10 @@ export default function AddLocationScreen() {
                       {existing.name}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                      {existing.category_label ?? t('form.otherCategory')} ·{' '}
+                      {existing.category_label
+                        ? categoryLabelFromName(t, existing.category_label)
+                        : t('form.otherCategory')}{' '}
+                      ·{' '}
                       {t('addLocation.metresAway', { metres: Math.round(existing.distance_m) })}
                     </ThemedText>
                   </View>
@@ -606,7 +612,7 @@ export default function AddLocationScreen() {
 
           <Pressable style={[styles.input, styles.lightInput, styles.categoryInput]} onPress={() => setPickerVisible(true)}>
             <ThemedText type="default" style={[styles.categoryInputText, !selectedCategoryLabel && styles.lightPlaceholderText]} numberOfLines={1}>
-              {selectedCategoryLabel || '*Location type/Category'}
+              {selectedCategoryLabel || t('form.categoryPlaceholder')}
             </ThemedText>
             <Ionicons name="chevron-down" size={16} color="#000000" />
           </Pressable>
@@ -802,7 +808,7 @@ export default function AddLocationScreen() {
               ) : (
                 visibleCategories.map((category) => (
                   <Pressable key={category.id} style={styles.modalRow} onPress={() => toggleCategory(category.id)}>
-                    <ThemedText type="default">{category.name}</ThemedText>
+                    <ThemedText type="default">{categoryLabel(t, category.slug, category.name)}</ThemedText>
                     <ThemedText type="default">{categoryIds.includes(category.id) ? '✓' : ''}</ThemedText>
                   </Pressable>
                 ))

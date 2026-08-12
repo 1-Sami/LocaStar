@@ -36,10 +36,10 @@ const DURATIONS: { days: number | null }[] = [
   { days: null },
 ];
 
-function roleLabel(role: UserRole): string {
-  if (role === 'admin') return 'Admin';
-  if (role === 'superuser') return 'Superuser';
-  return 'User';
+function roleLabel(role: UserRole, t: TFunction): string {
+  if (role === 'admin') return t('admin.roleAdmin');
+  if (role === 'superuser') return t('admin.roleSuperuser');
+  return t('admin.roleUser');
 }
 
 function banExpiryLabel(ban: UserBan, t: TFunction): string {
@@ -239,7 +239,7 @@ export default function AdminUsersScreen() {
                         )}
                         <View style={[styles.badge, user.role !== 'user' && styles.roleBadge]}>
                           <ThemedText type="small" style={user.role !== 'user' ? styles.badgeTextLight : undefined}>
-                            {roleLabel(user.role)}
+                            {roleLabel(user.role, t)}
                           </ThemedText>
                         </View>
                       </View>
@@ -253,7 +253,9 @@ export default function AdminUsersScreen() {
                             disabled={busy}
                             onPress={() => handleRoleChange(user, user.role === 'superuser' ? 'user' : 'superuser')}>
                             <ThemedText type="small">
-                              {user.role === 'superuser' ? 'Remove Superuser' : 'Make Superuser'}
+                              {user.role === 'superuser'
+                                ? t('admin.removeSuperuser')
+                                : t('admin.makeSuperuser')}
                             </ThemedText>
                           </Pressable>
                         )}

@@ -46,6 +46,7 @@ import { useSaves } from '@/hooks/use-saves';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
+import { categoryLabelFromName } from '@/lib/categories';
 import { confirmAsync } from '@/lib/confirm';
 import { useSharedProfile } from '@/lib/profile-context';
 import { openDirections } from '@/lib/directions';
@@ -668,7 +669,7 @@ export default function LocationDetailScreen() {
                 {location.category_label && (
                   <View style={styles.categoryPill}>
                     <ThemedText type="small" style={styles.categoryPillText}>
-                      {location.category_label}
+                      {categoryLabelFromName(t, location.category_label)}
                     </ThemedText>
                   </View>
                 )}

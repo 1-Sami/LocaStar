@@ -368,7 +368,7 @@ export default function AdminReportsScreen() {
               setTab('locations');
               setHandledExpanded(false);
             }}>
-            <ThemedText type="smallBold">Locations ({openLocationReports.length})</ThemedText>
+            <ThemedText type="smallBold">{t('admin.tabLocations', { count: openLocationReports.length })}</ThemedText>
           </Pressable>
           <Pressable
             style={[styles.tab, tab === 'reviews' && styles.tabActive]}
@@ -376,7 +376,7 @@ export default function AdminReportsScreen() {
               setTab('reviews');
               setHandledExpanded(false);
             }}>
-            <ThemedText type="smallBold">Reviews ({openReviewReports.length})</ThemedText>
+            <ThemedText type="smallBold">{t('admin.tabReviews', { count: openReviewReports.length })}</ThemedText>
           </Pressable>
           {isAdmin && (
             <Pressable
@@ -385,7 +385,7 @@ export default function AdminReportsScreen() {
                 setTab('claims');
                 setHandledExpanded(false);
               }}>
-              <ThemedText type="smallBold">Claims ({openClaims.length})</ThemedText>
+              <ThemedText type="smallBold">{t('admin.tabClaims', { count: openClaims.length })}</ThemedText>
             </Pressable>
           )}
         </View>
@@ -436,7 +436,7 @@ export default function AdminReportsScreen() {
 
             {openReports.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-                {loadFailed ? 'Reports could not be loaded.' : 'No open reports. All caught up.'}
+                {loadFailed ? t('admin.reportsLoadFailed') : t('admin.noOpenReports')}
               </ThemedText>
             ) : activeTab === 'locations' ? (
               openLocationReports.map((report) => {

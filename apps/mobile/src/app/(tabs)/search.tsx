@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
+import { categoryLabel } from '@/lib/categories';
 import { LocationCard } from '@/components/location-card';
 import { BottomTabInset, Fonts, MaxContentWidth, SearchPalette, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
@@ -241,7 +242,9 @@ export default function SearchScreen() {
 
   const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
   const visibleCategories = trimmedCategoryQuery
-    ? categories.filter((c) => c.name.toLowerCase().includes(trimmedCategoryQuery))
+    ? categories.filter((c) =>
+        categoryLabel(t, c.slug, c.name).toLowerCase().includes(trimmedCategoryQuery)
+      )
     : categories;
 
   // Reset the search each time the picker closes so it reopens showing everything.
@@ -302,7 +305,7 @@ export default function SearchScreen() {
           }
           renderItem={({ item }) => (
             <CategoryChip
-              label={item.name}
+              label={categoryLabel(t, item.slug, item.name)}
               categorySlug={item.slug}
               onRemove={() => setActiveSlugs((current) => current.filter((s) => s !== item.slug))}
             />
@@ -445,7 +448,7 @@ export default function SearchScreen() {
                           active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
                         )
                       }>
-                      <Text style={styles.modalRowText}>{category.name}</Text>
+                      <Text style={styles.modalRowText}>{categoryLabel(t, category.slug, category.name)}</Text>
                       {active && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
                     </Pressable>
                   );
