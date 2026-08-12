@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,6 +28,7 @@ import { APP_SCHEME_URL } from '@/lib/auth-redirect';
  * itself when the app comes back to the foreground.
  */
 export default function ConfirmedScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { refreshSession } = useAuth();
@@ -55,7 +57,7 @@ export default function ConfirmedScreen() {
           <LocaStarLogo size={72} />
 
           <ThemedText type="subtitle" style={styles.centered}>
-            Your email is confirmed
+            {t('authConfirmed.title')}
           </ThemedText>
 
           <ThemedText type="default" themeColor="textSecondary" style={styles.centered}>
@@ -74,8 +76,7 @@ export default function ConfirmedScreen() {
 
           {Platform.OS === 'web' && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              Nothing happens? You can just close this page and open the app yourself — your
-              account is confirmed either way.
+              {t('authConfirmed.fallback')}
             </ThemedText>
           )}
         </View>

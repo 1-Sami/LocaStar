@@ -489,7 +489,12 @@
   "resetPassword": {
     "invalidLink": "This reset link is invalid or has expired. Request a new one.",
     "updatedTitle": "Password updated",
-    "updatedBody": "Your password has been changed. You’re now logged in."
+    "updatedBody": "Your password has been changed. You’re now logged in.",
+    "verifying": "Verifying link…",
+    "linkExpired": "Link expired",
+    "requestNewLink": "Request a new link",
+    "setNewPassword": "Set a new password",
+    "chooseNew": "Choose a new password."
   },
   "about": {
     "ballTitle": "It started with a basketball",
@@ -517,5 +522,37 @@
     "attributionLink": "© OpenStreetMap contributors",
     "attributionSuffix": ", used under the Open Database License.",
     "originalInstall": "Original install — no updates applied yet"
+  },
+  "authConfirmed": {
+    "title": "Your email is confirmed",
+    "fallback": "Nothing happens? You can just close this page and open the app yourself — your account is confirmed either way."
+  },
+  "review": {
+    "titlePlaceholder": "Title (optional)",
+    "bodyPlaceholder": "Share details about your visit (optional)",
+    "addPhotos": "Add photos (optional)",
+    "submitting": "Submitting…",
+    "submit": "Submit review",
+    "reviewing": "Reviewing {{name}}",
+    "submitError": "Something went wrong submitting your review. Try again."
+  },
+  "listDetail": {
+    "removeTitle": "Remove from list?",
+    "removeBody": "This place will be removed from this list.",
+    "deleteTitle": "Delete this list?",
+    "deleteBody": "This permanently deletes the list and removes all its places. This can’t be undone.",
+    "moderatorDeleteTitle": "Delete this list as a moderator?",
+    "moderatorDeleteBody": "This permanently deletes someone else’s list. The action is recorded in the moderation log. This can’t be undone.",
+    "moderatorDeleteLabel": "Delete this list as a moderator",
+    "renameError": "Something went wrong renaming the list. Try again.",
+    "empty": "No places in this list yet. Add one from a location’s page.",
+    "removeFromList": "Remove from list",
+    "shareTitle": "Share this list",
+    "shareSuccessNoun": "in their Lists",
+    "sharedWith": "Shared with:",
+    "renameTitle": "Rename list",
+    "namePlaceholder": "List name",
+    "created": "Created {{date}}",
+    "updatedSuffix": " · Updated {{date}}"
   }
 }

@@ -489,7 +489,12 @@
   "resetPassword": {
     "invalidLink": "Återställningslänken är ogiltig eller har gått ut. Begär en ny.",
     "updatedTitle": "Lösenordet är uppdaterat",
-    "updatedBody": "Ditt lösenord har ändrats. Du är nu inloggad."
+    "updatedBody": "Ditt lösenord har ändrats. Du är nu inloggad.",
+    "verifying": "Verifierar länken…",
+    "linkExpired": "Länken har gått ut",
+    "requestNewLink": "Begär en ny länk",
+    "setNewPassword": "Välj ett nytt lösenord",
+    "chooseNew": "Välj ett nytt lösenord."
   },
   "about": {
     "ballTitle": "Det började med en basketboll",
@@ -517,5 +522,37 @@
     "attributionLink": "© OpenStreetMap contributors",
     "attributionSuffix": ", som används under Open Database License.",
     "originalInstall": "Originalinstallation — inga uppdateringar tillagda än"
+  },
+  "authConfirmed": {
+    "title": "Din mejladress är bekräftad",
+    "fallback": "Händer inget? Du kan stänga den här sidan och öppna appen själv — ditt konto är bekräftat ändå."
+  },
+  "review": {
+    "titlePlaceholder": "Rubrik (valfritt)",
+    "bodyPlaceholder": "Berätta om ditt besök (valfritt)",
+    "addPhotos": "Lägg till foton (valfritt)",
+    "submitting": "Skickar…",
+    "submit": "Skicka recension",
+    "reviewing": "Recenserar {{name}}",
+    "submitError": "Något gick fel när recensionen skickades. Försök igen."
+  },
+  "listDetail": {
+    "removeTitle": "Ta bort från listan?",
+    "removeBody": "Platsen tas bort från den här listan.",
+    "deleteTitle": "Radera den här listan?",
+    "deleteBody": "Detta raderar listan permanent och tar bort alla dess platser. Det går inte att ångra.",
+    "moderatorDeleteTitle": "Radera listan som moderator?",
+    "moderatorDeleteBody": "Detta raderar permanent någon annans lista. Åtgärden loggas i modereringsloggen. Det går inte att ångra.",
+    "moderatorDeleteLabel": "Radera listan som moderator",
+    "renameError": "Något gick fel när listan skulle byta namn. Försök igen.",
+    "empty": "Inga platser i listan än. Lägg till en från en plats sida.",
+    "removeFromList": "Ta bort från listan",
+    "shareTitle": "Dela den här listan",
+    "shareSuccessNoun": "i sina listor",
+    "sharedWith": "Delad med:",
+    "renameTitle": "Byt namn på listan",
+    "namePlaceholder": "Listnamn",
+    "created": "Skapad {{date}}",
+    "updatedSuffix": " · Uppdaterad {{date}}"
   }
 }

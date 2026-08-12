@@ -8,6 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +36,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (rating: num
 }
 
 export default function WriteReviewScreen() {
+  const { t } = useTranslation();
   const { locationId, locationName, reviewId, rating, title, body } = useLocalSearchParams<{
     locationId: string;
     locationName?: string;
@@ -112,7 +114,7 @@ export default function WriteReviewScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          'Something went wrong submitting your review. Try again.'
+          t('review.submitError')
         )
       );
       setSubmitting(false);
@@ -125,7 +127,7 @@ export default function WriteReviewScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {locationName && (
             <ThemedText type="small" themeColor="textSecondary">
-              Reviewing {locationName}
+              {t('review.reviewing', { name: locationName })}
             </ThemedText>
           )}
 
@@ -134,21 +136,21 @@ export default function WriteReviewScreen() {
           <TextInput
             value={titleValue}
             onChangeText={setTitleValue}
-            placeholder="Title (optional)"
+            placeholder={t('review.titlePlaceholder')}
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
           />
           <TextInput
             value={bodyValue}
             onChangeText={setBodyValue}
-            placeholder="Share details about your visit (optional)"
+            placeholder={t('review.bodyPlaceholder')}
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, styles.bodyInput, { color: theme.text, borderColor: theme.backgroundElement }]}
             multiline
           />
 
           <ThemedText type="smallBold" style={styles.photoLabel}>
-            Add photos (optional)
+            {t('review.addPhotos')}
           </ThemedText>
           <PhotoPicker uris={displayUris} onChange={handlePhotosChange} />
 
@@ -163,7 +165,7 @@ export default function WriteReviewScreen() {
             disabled={ratingValue === 0 || submitting}
             onPress={handleSubmit}>
             <ThemedText type="smallBold" style={styles.submitButtonText}>
-              {submitting ? 'Submitting…' : 'Submit review'}
+              {submitting ? t('review.submitting') : t('review.submit')}
             </ThemedText>
           </Pressable>
         </ScrollView>

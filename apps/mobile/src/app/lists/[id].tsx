@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -46,6 +47,7 @@ function sameDay(a: string, b: string): boolean {
 import { supabase } from '@/lib/supabase';
 
 export default function ListDetailScreen() {
+  const { t } = useTranslation();
   const { id, name, shared, isPublic: isPublicParam } = useLocalSearchParams<{
     id: string;
     name?: string;
@@ -119,7 +121,7 @@ export default function ListDetailScreen() {
   );
 
   const handleRemove = async (locationId: string) => {
-    const confirmed = await confirmAsync('Remove from list?', 'This place will be removed from this list.');
+    const confirmed = await confirmAsync(t('listDetail.removeTitle'), t('listDetail.removeBody'));
     if (!confirmed) return;
     setBusyLocationId(locationId);
     try {
@@ -132,8 +134,8 @@ export default function ListDetailScreen() {
 
   const handleDeleteList = async () => {
     const confirmed = await confirmAsync(
-      'Delete this list?',
-      'This permanently deletes the list and removes all its places. This can\'t be undone.'
+      t('listDetail.deleteTitle'),
+      t('listDetail.deleteBody')
     );
     if (!confirmed) return;
     await deleteList(supabase, id);
@@ -144,9 +146,9 @@ export default function ListDetailScreen() {
   // it's recorded in the moderation log by a database trigger either way.
   const handleModeratorDeleteList = async () => {
     const confirmed = await confirmAsync(
-      'Delete this list as a moderator?',
-      "This permanently deletes someone else's list. The action is recorded in the moderation log. This can't be undone.",
-      'Delete'
+      t('listDetail.moderatorDeleteTitle'),
+      t('listDetail.moderatorDeleteBody'),
+      t('common.delete')
     );
     if (!confirmed) return;
     await deleteList(supabase, id);
@@ -187,7 +189,7 @@ export default function ListDetailScreen() {
       setListName(trimmed);
       setRenameVisible(false);
     } catch {
-      setRenameError('Something went wrong renaming the list. Try again.');
+      setRenameError(t('listDetail.renameError'));
     } finally {
       setRenaming(false);
     }
@@ -223,7 +225,7 @@ export default function ListDetailScreen() {
                   <Pressable
                     style={styles.headerDeleteButton}
                     onPress={handleModeratorDeleteList}
-                    accessibilityLabel="Delete this list as a moderator"
+                    accessibilityLabel={t('listDetail.moderatorDeleteLabel')}
                     hitSlop={8}>
                     <Ionicons name="trash-outline" size={16} color="#ffffff" />
                   </Pressable>
@@ -247,17 +249,17 @@ export default function ListDetailScreen() {
                   by {meta.ownerUsername ?? meta.ownerDisplayName ?? DELETED_ACCOUNT_NAME}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  Created {formatListDate(meta.createdAt)}
+                  {t('listDetail.created', { date: formatListDate(meta.createdAt) })}
                   {/* Only worth a second date once it differs — otherwise every
                       untouched list reads "Created X · Updated X". */}
                   {!sameDay(meta.createdAt, meta.updatedAt) &&
-                    ` · Updated ${formatListDate(meta.updatedAt)}`}
+                    t('listDetail.updatedSuffix', { date: formatListDate(meta.updatedAt) })}
                 </ThemedText>
               </View>
             )}
             {items.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-                No places in this list yet. Add one from a location's page.
+                {t('listDetail.empty')}
               </ThemedText>
             ) : (
               items.map((item) => (
@@ -285,7 +287,7 @@ export default function ListDetailScreen() {
                           disabled={busyLocationId === item.locationId}
                           style={styles.removeButton}>
                           <ThemedText type="small" style={styles.removeButtonText}>
-                            Remove from list
+                            {t('listDetail.removeFromList')}
                           </ThemedText>
                         </Pressable>
                       )}
@@ -319,7 +321,7 @@ export default function ListDetailScreen() {
                 {shareRecipients.length > 0 && (
                   <View style={styles.sharedWithSection}>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Shared with:
+                      {t('listDetail.sharedWith')}
                     </ThemedText>
                     {shareRecipients.map((recipient) => (
                       <ThemedText key={recipient.shareId} type="small" themeColor="textSecondary">
@@ -338,8 +340,8 @@ export default function ListDetailScreen() {
         visible={shareVisible}
         onClose={() => setShareVisible(false)}
         onShare={handleShareList}
-        title="Share this list"
-        successNoun="in their Lists"
+        title={t('listDetail.shareTitle')}
+        successNoun={t('listDetail.shareSuccessNoun')}
         showNote={false}
       />
 
@@ -348,12 +350,12 @@ export default function ListDetailScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setRenameVisible(false)} />
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Rename list
+              {t('listDetail.renameTitle')}
             </ThemedText>
             <TextInput
               value={renameInput}
               onChangeText={setRenameInput}
-              placeholder="List name"
+              placeholder={t('listDetail.namePlaceholder')}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
               autoFocus

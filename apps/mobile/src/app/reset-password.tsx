@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ import { APP_SCHEME_URL } from '@/lib/auth-redirect';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code?: string }>();
@@ -29,7 +31,7 @@ export default function ResetPasswordScreen() {
     let cancelled = false;
     const fail = () => {
       if (!cancelled) {
-        setLinkError('This reset link is invalid or has expired. Request a new one.');
+        setLinkError(t('resetPassword.invalidLink'));
         setExchanging(false);
       }
     };
@@ -95,9 +97,9 @@ export default function ResetPasswordScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle">Password updated</ThemedText>
+          <ThemedText type="subtitle">{t('resetPassword.updatedTitle')}</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            Your password has been changed. You&apos;re now logged in.
+            {t('resetPassword.updatedBody')}
           </ThemedText>
           {/*
             Reset links are read wherever mail is read, so this page is usually
@@ -130,7 +132,7 @@ export default function ResetPasswordScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="default" themeColor="textSecondary">
-            Verifying link…
+            {t('resetPassword.verifying')}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>
@@ -141,7 +143,7 @@ export default function ResetPasswordScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle">Link expired</ThemedText>
+          <ThemedText type="subtitle">{t('resetPassword.linkExpired')}</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
             {linkError}
           </ThemedText>
@@ -149,7 +151,7 @@ export default function ResetPasswordScreen() {
             style={[styles.submitButton, { backgroundColor: theme.primary }]}
             onPress={() => router.replace('/forgot-password' as never)}>
             <ThemedText type="smallBold" style={styles.submitButtonText}>
-              Request a new link
+              {t('resetPassword.requestNewLink')}
             </ThemedText>
           </Pressable>
         </SafeAreaView>
@@ -160,15 +162,15 @@ export default function ResetPasswordScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle">Set a new password</ThemedText>
+        <ThemedText type="subtitle">{t('resetPassword.setNewPassword')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Choose a new password.
+          {t('resetPassword.chooseNew')}
         </ThemedText>
 
         <PasswordInput
           value={password}
           onChangeText={setPassword}
-          placeholder="New password"
+          placeholder={t('settings.newPassword')}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
@@ -180,14 +182,14 @@ export default function ResetPasswordScreen() {
         <PasswordInput
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          placeholder="Confirm new password"
+          placeholder={t('settings.confirmNewPassword')}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
         />
 
         {mismatch && (
           <ThemedText type="small" style={styles.error}>
-            Passwords don&apos;t match.
+            {t('settings.passwordsDontMatch')}
           </ThemedText>
         )}
         {error && (
