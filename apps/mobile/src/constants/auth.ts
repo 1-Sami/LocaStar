@@ -9,19 +9,25 @@
 export const MIN_PASSWORD_LENGTH = 8;
 
 /**
- * Null when the password is acceptable, otherwise the reason it isn't — shown
- * as an inline error once the person starts typing, rather than as a rule
- * listed up front.
+ * What is wrong with the password, as something the caller can translate — or
+ * null when it is acceptable. Shown as an inline error once the person starts
+ * typing, rather than as a rule listed up front.
  *
  * Mirrors the server's rules so a rejection surfaces here as plain language
  * instead of coming back from the API as a raw error after submitting.
+ *
+ * Returns a key rather than a sentence because this file has no translator and
+ * should not have one: it is plain logic shared by three screens, and each of
+ * them already has a `t` to hand.
  */
-export function passwordProblem(password: string): string | null {
+export type ValidationProblem = { key: string; params?: Record<string, unknown> };
+
+export function passwordProblem(password: string): ValidationProblem | null {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+    return { key: 'validation.passwordTooShort', params: { count: MIN_PASSWORD_LENGTH } };
   }
   if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-    return 'Use both letters and digits.';
+    return { key: 'validation.passwordNeedsBoth' };
   }
   return null;
 }

@@ -446,7 +446,8 @@ export default function AddLocationScreen() {
             t(`addLocation.photoRetry.${kindKey}`)
           : await writeFailureMessage(
               session.user.id,
-              t(`addLocation.submitError.${kindKey}`)
+              t(`addLocation.submitError.${kindKey}`),
+              t
             )
       );
     } finally {

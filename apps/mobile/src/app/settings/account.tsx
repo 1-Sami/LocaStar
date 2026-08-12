@@ -68,7 +68,7 @@ export default function AccountInfoScreen() {
     // Changing the account email is a takeover vector, so make sure whoever is
     // holding the phone actually knows the password before allowing it.
     if (usernameIssue) {
-      setError(usernameIssue);
+      setError(t(usernameIssue.key, usernameIssue.params));
       return;
     }
 
@@ -108,7 +108,8 @@ export default function AccountInfoScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          'Something went wrong saving your account info. Try again.'
+          t('validation.accountSaveFailed'),
+          t
         )
       );
     } finally {

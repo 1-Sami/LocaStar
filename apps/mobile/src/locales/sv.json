@@ -689,5 +689,18 @@
     "shareAction": "Dela",
     "restartFailed": "Omstarten misslyckades — stäng och öppna appen igen.",
     "restartHint": "Starta om för att få de senaste fixarna."
+  },
+  "validation": {
+    "passwordTooShort": "Använd minst {{count}} tecken.",
+    "passwordNeedsBoth": "Använd både bokstäver och siffror.",
+    "usernameTooShort": "Använd minst {{count}} tecken.",
+    "usernameTooLong": "Använd högst {{count}} tecken.",
+    "usernameFormat": "Använd bokstäver, siffror, punkter, bindestreck eller understreck, och börja med en bokstav eller siffra.",
+    "restrictedUntil": "Ditt konto är begränsat till {{date}}, så det här går inte att publicera. Se din profil för anledningen och hur du överklagar.",
+    "restricted": "Ditt konto är begränsat, så det här går inte att publicera. Se din profil för anledningen och hur du överklagar.",
+    "createListFailed": "Något gick fel när listan skulle skapas. Försök igen.",
+    "accountSaveFailed": "Något gick fel när kontouppgifterna sparades. Försök igen.",
+    "claimFailed": "Något gick fel när anspråket skickades. Försök igen.",
+    "reportFailed": "Något gick fel när anmälan skickades. Försök igen."
   }
 }

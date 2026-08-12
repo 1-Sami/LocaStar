@@ -69,7 +69,8 @@ export function ReportModal({
       setError(
         await writeFailureMessage(
           session?.user.id,
-          'Something went wrong submitting your report. Try again.'
+          t('validation.reportFailed'),
+          t
         )
       );
     } finally {

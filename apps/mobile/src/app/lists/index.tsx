@@ -62,7 +62,7 @@ export default function MyListsScreen() {
       reload();
     } catch {
       setError(
-        await writeFailureMessage(session.user.id, 'Something went wrong creating the list. Try again.')
+        await writeFailureMessage(session.user.id, t('validation.createListFailed'), t)
       );
     } finally {
       setCreating(false);

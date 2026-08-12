@@ -1,3 +1,5 @@
+import type { ValidationProblem } from '@/constants/auth';
+
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 20;
 
@@ -8,16 +10,19 @@ export const USERNAME_MAX_LENGTH = 20;
  */
 const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,19}$/;
 
-/** Null when the handle is acceptable, otherwise the reason it isn't. */
-export function usernameProblem(username: string): string | null {
+/**
+ * What is wrong with the handle, as something the caller can translate — or
+ * null when it is acceptable. See passwordProblem for why this returns a key.
+ */
+export function usernameProblem(username: string): ValidationProblem | null {
   if (username.length < USERNAME_MIN_LENGTH) {
-    return `Use at least ${USERNAME_MIN_LENGTH} characters.`;
+    return { key: 'validation.usernameTooShort', params: { count: USERNAME_MIN_LENGTH } };
   }
   if (username.length > USERNAME_MAX_LENGTH) {
-    return `Use at most ${USERNAME_MAX_LENGTH} characters.`;
+    return { key: 'validation.usernameTooLong', params: { count: USERNAME_MAX_LENGTH } };
   }
   if (!USERNAME_PATTERN.test(username)) {
-    return 'Use letters, digits, dots, dashes or underscores, starting with a letter or digit.';
+    return { key: 'validation.usernameFormat' };
   }
   return null;
 }

@@ -55,7 +55,8 @@ export function ClaimBusinessModal({
       setError(
         await writeFailureMessage(
           session?.user.id,
-          'Something went wrong submitting your claim. Try again.'
+          t('validation.claimFailed'),
+          t
         )
       );
     } finally {

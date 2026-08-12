@@ -114,7 +114,8 @@ export default function WriteReviewScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          t('review.submitError')
+          t('review.submitError'),
+          t
         )
       );
       setSubmitting(false);

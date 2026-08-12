@@ -73,7 +73,8 @@ export default function ProfilePictureScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          t('settings.photoUploadError')
+          t('settings.photoUploadError'),
+          t
         )
       );
     } finally {
@@ -117,7 +118,8 @@ export default function ProfilePictureScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          t('settings.photoRemoveError')
+          t('settings.photoRemoveError'),
+          t
         )
       );
     } finally {

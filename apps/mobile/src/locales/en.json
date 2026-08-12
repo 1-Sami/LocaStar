@@ -689,5 +689,18 @@
     "shareAction": "Share",
     "restartFailed": "Restart failed — close and reopen the app.",
     "restartHint": "Restart to get the latest fixes."
+  },
+  "validation": {
+    "passwordTooShort": "Use at least {{count}} characters.",
+    "passwordNeedsBoth": "Use both letters and digits.",
+    "usernameTooShort": "Use at least {{count}} characters.",
+    "usernameTooLong": "Use at most {{count}} characters.",
+    "usernameFormat": "Use letters, digits, dots, dashes or underscores, starting with a letter or digit.",
+    "restrictedUntil": "Your account is restricted until {{date}}, so this can’t be posted. See your Profile for the reason and how to appeal.",
+    "restricted": "Your account is restricted, so this can’t be posted. See your Profile for the reason and how to appeal.",
+    "createListFailed": "Something went wrong creating the list. Try again.",
+    "accountSaveFailed": "Something went wrong saving your account info. Try again.",
+    "claimFailed": "Something went wrong submitting your claim. Try again.",
+    "reportFailed": "Something went wrong submitting your report. Try again."
   }
 }

@@ -83,7 +83,7 @@ export function ShareModal({
       await onShare(selected.id, note.trim() || null);
       setSubmitted(true);
     } catch {
-      setError(await writeFailureMessage(session?.user.id, errorMessage));
+      setError(await writeFailureMessage(session?.user.id, errorMessage, t));
     } finally {
       setSubmitting(false);
     }

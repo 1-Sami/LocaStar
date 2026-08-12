@@ -135,7 +135,7 @@ export default function SignUpScreen() {
 
         {showUsernameProblem && (
           <ThemedText type="small" style={styles.error}>
-            {usernameIssue}
+            {t(usernameIssue.key, usernameIssue.params)}
           </ThemedText>
         )}
 
@@ -149,7 +149,7 @@ export default function SignUpScreen() {
 
         {showPasswordProblem && (
           <ThemedText type="small" style={styles.error}>
-            {problem}
+            {t(problem.key, problem.params)}
           </ThemedText>
         )}
 

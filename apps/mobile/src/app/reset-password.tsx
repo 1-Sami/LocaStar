@@ -176,7 +176,7 @@ export default function ResetPasswordScreen() {
         />
         {showPasswordProblem && (
           <ThemedText type="small" style={styles.error}>
-            {problem}
+            {t(problem.key, problem.params)}
           </ThemedText>
         )}
         <PasswordInput

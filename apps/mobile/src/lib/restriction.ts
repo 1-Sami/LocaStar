@@ -1,4 +1,5 @@
 import { fetchMyActiveBan } from '@locastar/shared';
+import type { TFunction } from 'i18next';
 
 import { supabase } from '@/lib/supabase';
 
@@ -21,17 +22,22 @@ import { supabase } from '@/lib/supabase';
  * Wording is kept in step with the restriction notice on the Profile tab,
  * which is where the reason and the appeal link live.
  */
-export async function restrictionMessage(userId: string | undefined): Promise<string | null> {
+export async function restrictionMessage(
+  userId: string | undefined,
+  t: TFunction
+): Promise<string | null> {
   if (!userId) return null;
 
   try {
     const ban = await fetchMyActiveBan(supabase, userId);
     if (!ban) return null;
 
-    const until = ban.expiresAt
-      ? ` until ${new Date(ban.expiresAt).toLocaleDateString()}`
-      : '';
-    return `Your account is restricted${until}, so this can't be posted. See your Profile for the reason and how to appeal.`;
+    // Two whole sentences rather than one with an optional clause spliced into
+    // the middle: where "until 3 May" sits in the sentence is not the same in
+    // every language, and a fragment cannot be moved.
+    return ban.expiresAt
+      ? t('validation.restrictedUntil', { date: new Date(ban.expiresAt).toLocaleDateString() })
+      : t('validation.restricted');
   } catch {
     // If the check itself fails, say nothing and let the caller fall back to
     // its own message rather than inventing a reason.
@@ -42,7 +48,8 @@ export async function restrictionMessage(userId: string | undefined): Promise<st
 /** The restriction message when there is one, otherwise the caller's own. */
 export async function writeFailureMessage(
   userId: string | undefined,
-  fallback: string
+  fallback: string,
+  t: TFunction
 ): Promise<string> {
-  return (await restrictionMessage(userId)) ?? fallback;
+  return (await restrictionMessage(userId, t)) ?? fallback;
 }
