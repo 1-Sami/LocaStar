@@ -21,6 +21,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -79,6 +80,7 @@ type PendingDecision = {
 };
 
 export default function AdminReportsScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const theme = useTheme();
   const router = useRouter();
@@ -379,10 +381,10 @@ export default function AdminReportsScreen() {
             {loadFailed && (
               <ThemedView type="backgroundElement" style={styles.loadErrorCard}>
                 <ThemedText type="smallBold" style={styles.loadErrorText}>
-                  Couldn&apos;t load reports
+                  {t('admin.loadFailedTitle')}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  This list may be out of date or incomplete. Pull back and reopen the page to try again.
+                  {t('admin.loadFailedBody')}
                 </ThemedText>
               </ThemedView>
             )}
@@ -396,16 +398,22 @@ export default function AdminReportsScreen() {
             {activeTab !== 'claims' && (
               <ThemedView type="backgroundElement" style={styles.legendCard}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  <ThemedText type="smallBold">Dismiss</ThemedText> — close the report, change nothing.{'\n'}
-                  <ThemedText type="smallBold">Warn</ThemedText> — message the person who posted it; the
-                  content stays up.{'\n'}
-                  Every action asks you for a reason, which is saved to the moderation log.{'\n'}
-                  <ThemedText type="smallBold">Hide</ThemedText> — take it out of the app but keep it, so
-                  you can restore it.{'\n'}
-                  <ThemedText type="smallBold">Remove</ThemedText> — take it down for good.
+                  <ThemedText type="smallBold">{t('admin.legendDismiss')}</ThemedText>
+                  {t('admin.legendDismissBody')}
+                  {'\n'}
+                  <ThemedText type="smallBold">{t('admin.legendWarn')}</ThemedText>
+                  {t('admin.legendWarnBody')}
+                  {'\n'}
+                  {t('admin.legendReason')}
+                  {'\n'}
+                  <ThemedText type="smallBold">{t('admin.legendHide')}</ThemedText>
+                  {t('admin.legendHideBody')}
+                  {'\n'}
+                  <ThemedText type="smallBold">{t('admin.legendRemove')}</ThemedText>
+                  {t('admin.legendRemoveBody')}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  To restrict the person themselves, use People &amp; bans.
+                  {t('admin.legendBans')}
                 </ThemedText>
               </ThemedView>
             )}
@@ -441,14 +449,14 @@ export default function AdminReportsScreen() {
                         style={[styles.actionButton, styles.dismissButton]}
                         disabled={busy}
                         onPress={() => askDismissLocation(report)}>
-                        <ThemedText type="smallBold">Dismiss</ThemedText>
+                        <ThemedText type='smallBold'>{t('admin.legendDismiss')}</ThemedText>
                       </Pressable>
                       {report.locationCreatorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busy}
                           onPress={() => askWarnLocationAuthor(report)}>
-                          <ThemedText type="smallBold">Warn</ThemedText>
+                          <ThemedText type='smallBold'>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
                       <Pressable
@@ -456,7 +464,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => askHideLocation(report)}>
                         <ThemedText type="smallBold" style={styles.flagButtonText}>
-                          Hide
+                          {t('admin.legendHide')}
                         </ThemedText>
                       </Pressable>
                       <Pressable
@@ -464,7 +472,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => askRemoveLocation(report)}>
                         <ThemedText type="smallBold" style={styles.removeButtonText}>
-                          Remove
+                          {t('admin.legendRemove')}
                         </ThemedText>
                       </Pressable>
                     </View>
@@ -506,14 +514,14 @@ export default function AdminReportsScreen() {
                         style={[styles.actionButton, styles.dismissButton]}
                         disabled={busy}
                         onPress={() => askDismissReview(report)}>
-                        <ThemedText type="smallBold">Dismiss</ThemedText>
+                        <ThemedText type='smallBold'>{t('admin.legendDismiss')}</ThemedText>
                       </Pressable>
                       {report.reviewAuthorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busy}
                           onPress={() => askWarnReviewAuthor(report)}>
-                          <ThemedText type="smallBold">Warn</ThemedText>
+                          <ThemedText type='smallBold'>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
                       <Pressable
@@ -521,7 +529,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => askHideReview(report)}>
                         <ThemedText type="smallBold" style={styles.flagButtonText}>
-                          Hide
+                          {t('admin.legendHide')}
                         </ThemedText>
                       </Pressable>
                       <Pressable
@@ -529,7 +537,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => askRemoveReview(report)}>
                         <ThemedText type="smallBold" style={styles.removeButtonText}>
-                          Remove
+                          {t('admin.legendRemove')}
                         </ThemedText>
                       </Pressable>
                     </View>
@@ -560,7 +568,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => askRejectClaim(claim)}>
                         <ThemedText type="smallBold" style={styles.removeButtonText}>
-                          Reject
+                          {t('admin.reject')}
                         </ThemedText>
                       </Pressable>
                       <Pressable
@@ -568,7 +576,7 @@ export default function AdminReportsScreen() {
                         disabled={busy}
                         onPress={() => askApproveClaim(claim)}>
                         <ThemedText type="smallBold" style={styles.flagButtonText}>
-                          Approve
+                          {t('admin.approve')}
                         </ThemedText>
                       </Pressable>
                     </View>
@@ -578,14 +586,14 @@ export default function AdminReportsScreen() {
             )}
 
             <Pressable style={styles.handledHeader} onPress={() => setHandledExpanded((v) => !v)}>
-              <ThemedText type="smallBold">Handled ({handledReports.length})</ThemedText>
+              <ThemedText type="smallBold">{t('admin.handled', { count: handledReports.length })}</ThemedText>
               <Ionicons name={handledExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textSecondary} />
             </Pressable>
 
             {handledExpanded &&
               (handledReports.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Nothing handled yet.
+                  {t('admin.nothingHandled')}
                 </ThemedText>
               ) : activeTab === 'reviews' ? (
                 handledReviewReports.map((report) => (

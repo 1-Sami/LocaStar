@@ -7,6 +7,7 @@ import {
 } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -79,6 +80,7 @@ function detailLines(detail: Record<string, unknown> | null): string[] {
 }
 
 export default function AdminAuditScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const [actions, setActions] = useState<ModerationAction[]>([]);
   const [myRole, setMyRole] = useState<UserRole>('user');
@@ -103,7 +105,7 @@ export default function AdminAuditScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-            You don&apos;t have access to this page.
+            {t('admin.noAccess')}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>
@@ -125,7 +127,7 @@ export default function AdminAuditScreen() {
 
             {actions.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                Nothing logged yet.
+                {t('admin.nothingLogged')}
               </ThemedText>
             ) : (
               actions.map((entry) => (

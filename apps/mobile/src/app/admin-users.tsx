@@ -12,7 +12,9 @@ import {
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,11 +29,11 @@ import { supabase } from '@/lib/supabase';
 
 type Tab = 'people' | 'bans';
 
-const DURATIONS: { label: string; days: number | null }[] = [
-  { label: '7 days', days: 7 },
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
-  { label: 'Lifetime', days: null },
+const DURATIONS: { days: number | null }[] = [
+  { days: 7 },
+  { days: 30 },
+  { days: 90 },
+  { days: null },
 ];
 
 function roleLabel(role: UserRole): string {
@@ -40,12 +42,13 @@ function roleLabel(role: UserRole): string {
   return 'User';
 }
 
-function banExpiryLabel(ban: UserBan): string {
-  if (!ban.expiresAt) return 'Lifetime';
-  return `Until ${new Date(ban.expiresAt).toLocaleDateString()}`;
+function banExpiryLabel(ban: UserBan, t: TFunction): string {
+  if (!ban.expiresAt) return t('admin.lifetime');
+  return t('admin.until', { date: new Date(ban.expiresAt).toLocaleDateString() });
 }
 
 export default function AdminUsersScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const theme = useTheme();
 
@@ -96,7 +99,7 @@ export default function AdminUsersScreen() {
   const handleIssueBan = async () => {
     if (!session || !banTarget) return;
     if (!banReason.trim()) {
-      setBanError('A reason is required — it is recorded in the audit log.');
+      setBanError(t('admin.reasonRequired'));
       return;
     }
     setBusyId(banTarget.id);
@@ -111,7 +114,7 @@ export default function AdminUsersScreen() {
       setBanTarget(null);
       reload();
     } catch {
-      setBanError('Could not issue that ban. Superusers cannot ban other moderators.');
+      setBanError(t('admin.banFailed'));
     } finally {
       setBusyId(null);
     }
@@ -120,11 +123,11 @@ export default function AdminUsersScreen() {
   const handleRoleChange = async (user: ManagedUser, role: UserRole) => {
     const granting = role === 'superuser';
     const confirmed = await confirmAsync(
-      granting ? 'Make this person a Superuser?' : 'Remove Superuser?',
+      granting ? t('admin.grantSuperuserTitle') : t('admin.removeSuperuserTitle'),
       granting
-        ? `${user.name} will be able to handle reports, hide or remove content, and propose bans. Every action they take is logged.`
-        : `${user.name} will lose access to reports and moderation tools.`,
-      granting ? 'Grant' : 'Remove'
+        ? t('admin.grantSuperuserBody', { name: user.name })
+        : t('admin.removeSuperuserBody', { name: user.name }),
+      granting ? t('admin.grant') : t('common.remove')
     );
     if (!confirmed) return;
     setBusyId(user.id);
@@ -138,15 +141,19 @@ export default function AdminUsersScreen() {
 
   const handleReviewBan = async (ban: UserBan, status: 'active' | 'reversed' | 'lifted') => {
     if (!session) return;
-    const labels = { active: 'Confirm this ban?', reversed: 'Reverse this ban?', lifted: 'Lift this ban?' };
+    const labels = {
+      active: t('admin.confirmBanTitle'),
+      reversed: t('admin.reverseBanTitle'),
+      lifted: t('admin.liftBanTitle'),
+    };
     const confirmed = await confirmAsync(
       labels[status],
       status === 'reversed'
-        ? `${ban.userName} will regain full access, and the ban will be marked as reversed.`
+        ? t('admin.reversedBody', { name: ban.userName })
         : status === 'lifted'
-          ? `${ban.userName} will regain full access from now on.`
-          : `${ban.userName} stays restricted. ${banExpiryLabel(ban)}.`,
-      'Confirm'
+          ? t('admin.liftedBody', { name: ban.userName })
+          : t('admin.confirmedBody', { name: ban.userName, expiry: banExpiryLabel(ban, t) }),
+      t('admin.confirm')
     );
     if (!confirmed) return;
     setBusyId(ban.id);
@@ -163,7 +170,7 @@ export default function AdminUsersScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-            You don&apos;t have access to this page.
+            {t('admin.noAccess')}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>
@@ -177,11 +184,12 @@ export default function AdminUsersScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.tabRow}>
           <Pressable style={[styles.tab, tab === 'people' && styles.tabActive]} onPress={() => setTab('people')}>
-            <ThemedText type="smallBold">People</ThemedText>
+            <ThemedText type="smallBold">{t('admin.people')}</ThemedText>
           </Pressable>
           <Pressable style={[styles.tab, tab === 'bans' && styles.tabActive]} onPress={() => setTab('bans')}>
             <ThemedText type="smallBold">
-              Bans{pendingBans.length > 0 ? ` (${pendingBans.length})` : ''}
+              {t('admin.bans')}
+              {pendingBans.length > 0 ? ` (${pendingBans.length})` : ''}
             </ThemedText>
           </Pressable>
         </View>
@@ -195,7 +203,7 @@ export default function AdminUsersScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search by username or name"
+                placeholder={t('admin.searchPeople')}
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="none"
                 style={[styles.searchInput, { color: theme.text }]}
@@ -204,7 +212,7 @@ export default function AdminUsersScreen() {
 
             {people.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                No people match that search.
+                {t('admin.noPeopleMatch')}
               </ThemedText>
             ) : (
               people.map((user) => {
@@ -225,7 +233,7 @@ export default function AdminUsersScreen() {
                         {user.isBanned && (
                           <View style={[styles.badge, styles.bannedBadge]}>
                             <ThemedText type="small" style={styles.badgeTextLight}>
-                              Banned
+                              {t('admin.banned')}
                             </ThemedText>
                           </View>
                         )}
@@ -255,7 +263,7 @@ export default function AdminUsersScreen() {
                             disabled={busy}
                             onPress={() => openBanSheet(user)}>
                             <ThemedText type="small" style={styles.badgeTextLight}>
-                              Ban
+                              {t('admin.ban')}
                             </ThemedText>
                           </Pressable>
                         )}
@@ -270,7 +278,7 @@ export default function AdminUsersScreen() {
           <ScrollView contentContainerStyle={styles.content}>
             {bans.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                No active or pending bans.
+                {t('admin.noBans')}
               </ThemedText>
             ) : (
               bans.map((ban) => {
@@ -287,7 +295,7 @@ export default function AdminUsersScreen() {
                       </View>
                     </View>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {banExpiryLabel(ban)} · by {ban.issuedByName} ·{' '}
+                      {banExpiryLabel(ban, t)} · by {ban.issuedByName} ·{' '}
                       {new Date(ban.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default" style={styles.reason}>
@@ -296,7 +304,7 @@ export default function AdminUsersScreen() {
 
                     {ban.status === 'pending' && !isAdmin && (
                       <ThemedText type="small" themeColor="textSecondary">
-                        Already in effect. An admin has to confirm it.
+                        {t('admin.pendingAdminConfirm')}
                       </ThemedText>
                     )}
 
@@ -308,7 +316,7 @@ export default function AdminUsersScreen() {
                             disabled={busy}
                             onPress={() => handleReviewBan(ban, 'active')}>
                             <ThemedText type="small" style={styles.badgeTextDark}>
-                              Confirm
+                              {t('admin.confirm')}
                             </ThemedText>
                           </Pressable>
                         )}
@@ -316,7 +324,7 @@ export default function AdminUsersScreen() {
                           style={[styles.actionButton, styles.neutralButton]}
                           disabled={busy}
                           onPress={() => handleReviewBan(ban, ban.status === 'pending' ? 'reversed' : 'lifted')}>
-                          <ThemedText type="small">{ban.status === 'pending' ? 'Reverse' : 'Lift'}</ThemedText>
+                          <ThemedText type="small">{ban.status === 'pending' ? t('admin.reverse') : t('admin.lift')}</ThemedText>
                         </Pressable>
                       </View>
                     )}
@@ -338,17 +346,17 @@ export default function AdminUsersScreen() {
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {isAdmin
-                  ? 'Takes effect immediately.'
-                  : 'Takes effect immediately, and stays pending until an admin confirms it.'}
+                  ? t('admin.takesEffectAdmin')
+                  : t('admin.takesEffectSuperuser')}
               </ThemedText>
 
               <ThemedText type="smallBold" style={styles.fieldLabel}>
-                Duration
+                {t('admin.duration')}
               </ThemedText>
               <View style={styles.durationRow}>
                 {DURATIONS.map((option) => (
                   <Pressable
-                    key={option.label}
+                    key={String(option.days)}
                     style={[
                       styles.durationChip,
                       { borderColor: theme.backgroundSelected },
@@ -356,14 +364,16 @@ export default function AdminUsersScreen() {
                     ]}
                     onPress={() => setBanDays(option.days)}>
                     <ThemedText type="small" style={banDays === option.days ? styles.badgeTextDark : undefined}>
-                      {option.label}
+                      {option.days === null
+                        ? t('admin.lifetime')
+                        : t('admin.days', { count: option.days })}
                     </ThemedText>
                   </Pressable>
                 ))}
               </View>
 
               <ThemedText type="smallBold" style={styles.fieldLabel}>
-                Reason
+                {t('admin.reason')}
               </ThemedText>
               <TextInput
                 value={banReason}
@@ -371,7 +381,7 @@ export default function AdminUsersScreen() {
                   setBanReason(text);
                   setBanError(null);
                 }}
-                placeholder="Why is this person being banned?"
+                placeholder={t('admin.reasonPlaceholder')}
                 placeholderTextColor={theme.textSecondary}
                 multiline
                 style={[styles.reasonInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -388,7 +398,7 @@ export default function AdminUsersScreen() {
                 disabled={!banReason.trim() || busyId !== null}
                 onPress={handleIssueBan}>
                 <ThemedText type="smallBold" style={styles.badgeTextLight}>
-                  Ban this person
+                  {t('admin.banThisPerson')}
                 </ThemedText>
               </Pressable>
             </ThemedView>
