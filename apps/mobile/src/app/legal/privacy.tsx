@@ -26,8 +26,7 @@ export default function PrivacyPolicyScreen() {
         </LegalBullet>
         <LegalBullet>
           <LegalText>
-            Profile details — username, display name, profile picture, and optionally a home address you
-            choose to save as a starting point for nearby searches.
+            Profile details — username, display name, and profile picture.
           </LegalText>
         </LegalBullet>
         <LegalBullet>
@@ -96,8 +95,8 @@ export default function PrivacyPolicyScreen() {
       <LegalSection title="How long we keep it">
         <LegalText>
           We keep your account data for as long as your account exists. If you delete your account, we
-          delete your profile, username, profile picture, home address, saved places, favourites, lists
-          and friend connections.
+          delete your profile, username, profile picture, saved places, favourites, lists and friend
+          connections.
         </LegalText>
         <LegalText>
           What you contributed to the map is kept, but is no longer connected to you. Reviews, photos and

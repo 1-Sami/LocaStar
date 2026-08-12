@@ -81,8 +81,8 @@ function emailBody() {
   const text = [
     'Your LocaStar account has been deleted.',
     '',
-    'Your profile, username, picture, home address, favourites, bucket list,',
-    'lists and friends are gone for good. Reviews, photos and places you added',
+    'Your profile, username, picture, favourites, bucket list, lists and',
+    'friends are gone for good. Reviews, photos and places you added',
     'stay in the app with your name removed, so the places other people rely on',
     'keep their ratings — they can no longer be traced back to you.',
     '',
@@ -97,7 +97,7 @@ function emailBody() {
   const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f6f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1b2b2f;line-height:1.55">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px">
     <h1 style="margin:0 0 16px;font-size:20px;color:#125F6F">Your LocaStar account has been deleted</h1>
-    <p style="margin:0 0 14px">Your profile, username, picture, home address, favourites, bucket list, lists and friends are gone for good.</p>
+    <p style="margin:0 0 14px">Your profile, username, picture, favourites, bucket list, lists and friends are gone for good.</p>
     <p style="margin:0 0 14px">Reviews, photos and places you added stay in the app with your name removed, so the places other people rely on keep their ratings. They can no longer be traced back to you.</p>
     <p style="margin:0 0 20px">This cannot be undone, and we cannot restore the account.</p>
     <div style="border-left:3px solid #E05252;padding:2px 0 2px 14px;margin:0 0 20px">

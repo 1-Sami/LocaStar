@@ -53,9 +53,6 @@ export default function DeleteAccountInfoScreen() {
           <LegalText>Your username, display name and profile picture.</LegalText>
         </LegalBullet>
         <LegalBullet>
-          <LegalText>Any home address you saved as a starting point for searches.</LegalText>
-        </LegalBullet>
-        <LegalBullet>
           <LegalText>Your favourites, saved places and lists.</LegalText>
         </LegalBullet>
         <LegalBullet>

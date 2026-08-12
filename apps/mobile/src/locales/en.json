@@ -412,8 +412,6 @@
     "currentPassword": "Current password",
     "currentPasswordHint": "Required to change the email on your account.",
     "emailChangeHint": "You’ll need to confirm from both your old and new inbox, and after that you log in with the new address. Only use an address you control.",
-    "homeAddress": "Home address",
-    "homeAddressHint": "Only visible to you.",
     "passwordIntro": "Confirm your current password, then choose a new one.",
     "newPassword": "New password",
     "confirmNewPassword": "Confirm new password",
@@ -431,7 +429,7 @@
     "deleteAccountAction": "Delete account",
     "deleteAccountError": "Something went wrong deleting your account. Try again.",
     "deleteAccountHeading": "Delete your account",
-    "deleteAccountBody": "This permanently deletes your profile, username, profile picture, home address, favorites, bucket list, shared locations, lists and friends. There is no way to undo this.",
+    "deleteAccountBody": "This permanently deletes your profile, username, profile picture, favorites, bucket list, shared locations, lists and friends. There is no way to undo this.",
     "deleteAccountEmailNote": "We’ll send a confirmation to your email address so you know it happened — and so you can tell us if it wasn’t you.",
     "deleteAccountButton": "Delete my account"
   }

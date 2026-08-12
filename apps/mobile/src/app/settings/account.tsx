@@ -24,7 +24,6 @@ export default function AccountInfoScreen() {
 
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
-  const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -38,13 +37,10 @@ export default function AccountInfoScreen() {
       let cancelled = false;
       setLoading(true);
       setEmail(session.user.email ?? '');
-      // The handle is public, the home address is not — the latter lives
-      // behind a self-scoped RPC because `profiles` is world-readable.
-      Promise.all([fetchProfile(supabase, session.user.id), fetchMyPrivateProfile(supabase)])
-        .then(([profile, priv]) => {
+      fetchProfile(supabase, session.user.id)
+        .then((profile) => {
           if (cancelled) return;
           setUsername(profile.username ?? '');
-          setAddress(priv.home_address ?? '');
         })
         .catch(() => {})
         .finally(() => {
@@ -95,7 +91,6 @@ export default function AccountInfoScreen() {
     try {
       await updateProfile(supabase, session.user.id, {
         username: username.trim() || null,
-        home_address: address.trim() || null,
       });
 
       if (emailChanged) {
@@ -189,22 +184,6 @@ export default function AccountInfoScreen() {
               </View>
             )}
 
-            <View style={styles.field}>
-              <ThemedText type="smallBold">{t('settings.homeAddress')}</ThemedText>
-              <TextInput
-                value={address}
-                onChangeText={(text) => {
-                  setAddress(text);
-                  setSaved(false);
-                }}
-                placeholder={t('settings.homeAddress')}
-                placeholderTextColor={theme.textSecondary}
-                style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
-              />
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('settings.homeAddressHint')}
-              </ThemedText>
-            </View>
           </ThemedView>
 
           {error && (

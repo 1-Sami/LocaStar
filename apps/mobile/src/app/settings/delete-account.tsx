@@ -70,8 +70,7 @@ export default function DeleteAccountScreen() {
             Delete your account
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            This permanently deletes your profile, username, profile picture, home address, favorites,
-            bucket list, shared locations, lists and friends. There is no way to undo this.
+            {t('settings.deleteAccountBody')}
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
             Reviews, photos and places you added stay in the app with your name removed, so the places
