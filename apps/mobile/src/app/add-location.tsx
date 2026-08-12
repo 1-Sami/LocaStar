@@ -61,19 +61,12 @@ const DUPLICATE_RADIUS_M = 200;
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 const MAX_ACTIVITY_DAYS = 120;
 
-const DISCLAIMER = {
-  place:
-    'Locations go live as soon as you submit them, and are moderated afterwards. Anyone can report a location that is misleading, unlawful, or in the wrong place, and reported locations are reviewed and can be hidden or removed. Adding locations in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.',
-  activity:
-    'Any activity that is unlawful or not created by its rightful owner will result in a block on creating future activities. All activities must follow the rules — violations may result in a ban and could lead to legal action from the rightful owner.',
-};
-
 function YesNoRow({
   label,
   value,
   onChange,
-  yesLabel = 'YES',
-  noLabel = 'NO',
+  yesLabel,
+  noLabel,
 }: {
   label: string;
   value: boolean | null;
@@ -81,16 +74,17 @@ function YesNoRow({
   yesLabel?: string;
   noLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.yesNoRow}>
       <ThemedText type="default">{label}</ThemedText>
       <View style={styles.yesNoOptions}>
         <Pressable style={styles.yesNoOption} onPress={() => onChange(true)}>
-          <ThemedText type="small">{yesLabel}</ThemedText>
+          <ThemedText type='small'>{yesLabel ?? t('common.yes')}</ThemedText>
           <View style={[styles.checkbox, value === true && styles.checkboxChecked]} />
         </Pressable>
         <Pressable style={styles.yesNoOption} onPress={() => onChange(false)}>
-          <ThemedText type="small">{noLabel}</ThemedText>
+          <ThemedText type='small'>{noLabel ?? t('common.no')}</ThemedText>
           <View style={[styles.checkbox, value === false && styles.checkboxChecked]} />
         </Pressable>
       </View>

@@ -15,7 +15,7 @@ export function DateField({
   value,
   onChange,
   minimumDate,
-  placeholder = 'Select a date',
+  placeholder,
 }: {
   label: string;
   value: Date | null;
@@ -39,7 +39,7 @@ export function DateField({
       <View style={styles.row}>
         <Pressable style={styles.field} onPress={() => setShowPicker(true)}>
           <ThemedText type="default" style={value ? styles.valueText : styles.placeholderText}>
-            {value ? formatDate(value) : placeholder}
+            {value ? formatDate(value) : (placeholder ?? t('components.selectDate'))}
           </ThemedText>
         </Pressable>
         {value && (

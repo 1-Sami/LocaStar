@@ -29,11 +29,12 @@ function FriendRow({
   friend: Friend;
   children?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
       <Avatar url={friend.avatarUrl} size={40} />
       <View style={styles.rowText}>
-        <ThemedText type="smallBold">{friend.username ?? friend.displayName ?? 'Unnamed user'}</ThemedText>
+        <ThemedText type="smallBold">{friend.username ?? friend.displayName ?? t('settings.unnamedUser')}</ThemedText>
         {friend.username && (
           <ThemedText type="small" themeColor="textSecondary">
             @{friend.username}
@@ -248,8 +249,8 @@ export default function FriendsScreen() {
         onClose={() => setAddVisible(false)}
         onShare={handleSendRequest}
         title={t('friends.addAFriend')}
-        successMessage={(name) => `A friend request was sent to ${name}.`}
-        errorMessage="Something went wrong sending the friend request. Try again."
+        successMessage={(name) => t('friends.requestSent', { name })}
+        errorMessage={t('friends.requestFailed')}
         showNote={false}
       />
     </ThemedView>

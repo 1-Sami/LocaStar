@@ -1,28 +1,17 @@
 {
   "nav": {
-    "about": "Om",
     "accountInfo": "Kontouppgifter",
-    "addLocation": "Lägg till",
     "blockedUsers": "Blockerade användare",
     "changePassword": "Byt lösenord",
     "deleteAccount": "Radera konto",
     "editLocation": "Redigera plats",
-    "friends": "Vänner",
     "language": "Språk",
     "list": "Lista",
     "logIn": "Logga in",
-    "moderationLog": "Händelselogg",
-    "myContributions": "Mina bidrag",
-    "myLists": "Mina listor",
-    "myReviews": "Mina recensioner",
     "notifications": "Aviseringar",
-    "peopleAndBans": "Användare & avstängningar",
     "privacyPolicy": "Integritetspolicy",
     "profilePicture": "Profilbild",
-    "reports": "Anmälningar",
     "resetPassword": "Återställ lösenord",
-    "saved": "Sparat",
-    "settings": "Inställningar",
     "signUp": "Skapa konto",
     "termsOfService": "Användarvillkor",
     "theme": "Tema",
@@ -44,7 +33,9 @@
     "private": "Privat",
     "sort": "Sortera",
     "discardTitle": "Kasta bort det här?",
-    "discard": "Kasta bort"
+    "discard": "Kasta bort",
+    "yes": "JA",
+    "no": "NEJ"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -504,7 +495,9 @@
     "sentRequests": "Skickade förfrågningar",
     "empty": "Inga vänner än. Sök efter någon för att lägga till dem.",
     "addAFriend": "Lägg till en vän",
-    "blockNamed": "Blockera {{name}}"
+    "blockNamed": "Blockera {{name}}",
+    "requestSent": "En vänförfrågan skickades till {{name}}.",
+    "requestFailed": "Något gick fel när vänförfrågan skickades. Försök igen."
   },
   "resetPassword": {
     "invalidLink": "Återställningslänken är ogiltig eller har gått ut. Begär en ny.",
@@ -711,7 +704,10 @@
     "sharing": "Delar…",
     "shareAction": "Dela",
     "restartFailed": "Omstarten misslyckades — stäng och öppna appen igen.",
-    "restartHint": "Starta om för att få de senaste fixarna."
+    "restartHint": "Starta om för att få de senaste fixarna.",
+    "selectDate": "Välj ett datum",
+    "shareLocation": "Dela den här platsen",
+    "shareError": "Något gick fel när platsen skulle delas. Försök igen."
   },
   "validation": {
     "passwordTooShort": "Använd minst {{count}} tecken.",

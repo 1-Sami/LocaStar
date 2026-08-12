@@ -17,10 +17,10 @@ export function ShareModal({
   visible,
   onClose,
   onShare,
-  title = 'Share this location',
+  title,
   successNoun,
   successMessage,
-  errorMessage = 'Something went wrong sharing this location. Try again.',
+  errorMessage,
   showNote = true,
 }: {
   visible: boolean;
@@ -83,7 +83,7 @@ export function ShareModal({
       await onShare(selected.id, note.trim() || null);
       setSubmitted(true);
     } catch {
-      setError(await writeFailureMessage(session?.user.id, errorMessage, t));
+      setError(await writeFailureMessage(session?.user.id, errorMessage ?? t('components.shareError'), t));
     } finally {
       setSubmitting(false);
     }
@@ -116,7 +116,7 @@ export function ShareModal({
           ) : (
             <>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                {title}
+                {title ?? t('components.shareLocation')}
               </ThemedText>
 
               {selected ? (

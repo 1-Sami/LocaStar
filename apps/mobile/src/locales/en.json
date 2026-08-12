@@ -1,28 +1,17 @@
 {
   "nav": {
-    "about": "About",
     "accountInfo": "Account info",
-    "addLocation": "Add",
     "blockedUsers": "Blocked users",
     "changePassword": "Change password",
     "deleteAccount": "Delete account",
     "editLocation": "Edit location",
-    "friends": "Friends",
     "language": "Language",
     "list": "List",
     "logIn": "Log in",
-    "moderationLog": "Moderation log",
-    "myContributions": "My contributions",
-    "myLists": "My lists",
-    "myReviews": "My reviews",
     "notifications": "Notifications",
-    "peopleAndBans": "People & bans",
     "privacyPolicy": "Privacy Policy",
     "profilePicture": "Profile picture",
-    "reports": "Reports",
     "resetPassword": "Reset password",
-    "saved": "Saved",
-    "settings": "Settings",
     "signUp": "Sign up",
     "termsOfService": "Terms of Service",
     "theme": "Theme",
@@ -44,7 +33,9 @@
     "private": "Private",
     "sort": "Sort",
     "discardTitle": "Discard this?",
-    "discard": "Discard"
+    "discard": "Discard",
+    "yes": "YES",
+    "no": "NO"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -504,7 +495,9 @@
     "sentRequests": "Sent requests",
     "empty": "No friends yet. Search for someone to add them.",
     "addAFriend": "Add a friend",
-    "blockNamed": "Block {{name}}"
+    "blockNamed": "Block {{name}}",
+    "requestSent": "A friend request was sent to {{name}}.",
+    "requestFailed": "Something went wrong sending the friend request. Try again."
   },
   "resetPassword": {
     "invalidLink": "This reset link is invalid or has expired. Request a new one.",
@@ -711,7 +704,10 @@
     "sharing": "Sharing…",
     "shareAction": "Share",
     "restartFailed": "Restart failed — close and reopen the app.",
-    "restartHint": "Restart to get the latest fixes."
+    "restartHint": "Restart to get the latest fixes.",
+    "selectDate": "Select a date",
+    "shareLocation": "Share this location",
+    "shareError": "Something went wrong sharing this location. Try again."
   },
   "validation": {
     "passwordTooShort": "Use at least {{count}} characters.",
