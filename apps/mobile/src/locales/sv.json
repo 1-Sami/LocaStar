@@ -36,7 +36,8 @@
     "somethingWentWrong": "Något gick fel. Försök igen.",
     "logIn": "Logga in",
     "createAccount": "Skapa ett konto",
-    "logOut": "Logga ut"
+    "logOut": "Logga ut",
+    "remove": "Ta bort"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -431,6 +432,16 @@
     "deleteAccountHeading": "Radera ditt konto",
     "deleteAccountBody": "Detta raderar permanent din profil, ditt användarnamn, din profilbild, dina favoriter, din önskelista, delade platser, listor och vänner. Det går inte att ångra.",
     "deleteAccountEmailNote": "Vi skickar en bekräftelse till din mejladress så att du vet att det skett — och så att du kan höra av dig om det inte var du.",
-    "deleteAccountButton": "Radera mitt konto"
+    "deleteAccountButton": "Radera mitt konto",
+    "somePerson": "Den här personen",
+    "unnamedUser": "Namnlös användare",
+    "removePhotoBody": "Ditt foto raderas och du visas med standardbilden i stället. Du kan lägga till ett nytt när som helst.",
+    "photoUploadError": "Något gick fel när fotot laddades upp. Försök igen.",
+    "photoRemoveError": "Något gick fel när fotot togs bort. Försök igen.",
+    "uploading": "Laddar upp…",
+    "changePhoto": "Byt bild",
+    "choosePhoto": "Välj en bild",
+    "removing": "Tar bort…",
+    "removePhoto": "Ta bort bild"
   }
 }

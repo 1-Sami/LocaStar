@@ -1,6 +1,7 @@
 import { fetchProfile, updateProfile } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +17,7 @@ import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfilePictureScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const { refreshProfile } = useSharedProfile();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export default function ProfilePictureScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          'Something went wrong uploading your photo. Try again.'
+          t('settings.photoUploadError')
         )
       );
     } finally {
@@ -82,9 +84,9 @@ export default function ProfilePictureScreen() {
   const handleRemoveImage = async () => {
     if (!session || !avatarUrl) return;
     const confirmed = await confirmAsync(
-      'Remove your profile picture?',
-      "Your photo is deleted and you'll show up with the default picture instead. You can add a new one any time.",
-      'Remove'
+      t('settings.removePhotoTitle'),
+      t('settings.removePhotoBody'),
+      t('common.remove')
     );
     if (!confirmed) return;
 
@@ -115,7 +117,7 @@ export default function ProfilePictureScreen() {
       setError(
         await writeFailureMessage(
           session.user.id,
-          'Something went wrong removing your photo. Try again.'
+          t('settings.photoRemoveError')
         )
       );
     } finally {
@@ -141,7 +143,7 @@ export default function ProfilePictureScreen() {
 
           {!avatarUrl && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-              You haven&apos;t added a photo yet.
+              {t('settings.noPhotoYet')}
             </ThemedText>
           )}
 
@@ -156,7 +158,11 @@ export default function ProfilePictureScreen() {
             disabled={uploading || removing}
             onPress={handlePickImage}>
             <ThemedText type="smallBold" style={styles.buttonText}>
-              {uploading ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Choose a photo'}
+              {uploading
+                ? t('settings.uploading')
+                : avatarUrl
+                  ? t('settings.changePhoto')
+                  : t('settings.choosePhoto')}
             </ThemedText>
           </Pressable>
 
@@ -166,7 +172,7 @@ export default function ProfilePictureScreen() {
               disabled={uploading || removing}
               onPress={handleRemoveImage}>
               <ThemedText type="smallBold" style={styles.removeButtonText}>
-                {removing ? 'Removing…' : 'Remove photo'}
+                {removing ? t('settings.removing') : t('settings.removePhoto')}
               </ThemedText>
             </Pressable>
           )}

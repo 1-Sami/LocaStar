@@ -1,6 +1,7 @@
 import { fetchBlockedUsers, unblockUser, type BlockedUser } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
 export default function BlockedUsersScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,11 +36,11 @@ export default function BlockedUsersScreen() {
   );
 
   const handleUnblock = async (entry: BlockedUser) => {
-    const name = entry.username ?? entry.displayName ?? 'This person';
+    const name = entry.username ?? entry.displayName ?? t('settings.somePerson');
     const confirmed = await confirmAsync(
-      `Unblock ${name}?`,
-      `${name} will be able to send you friend requests and share locations and lists with you again.`,
-      'Unblock'
+      t('settings.unblockTitle', { name }),
+      t('settings.unblockBody', { name }),
+      t('settings.unblock')
     );
     if (!confirmed) return;
 
@@ -67,8 +69,7 @@ export default function BlockedUsersScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {blocked.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-              You haven&apos;t blocked anyone. You can block someone from a friend request, or from
-              their profile.
+              {t('settings.noBlocked')}
             </ThemedText>
           ) : (
             <>
@@ -81,7 +82,7 @@ export default function BlockedUsersScreen() {
                   <Avatar url={entry.avatarUrl} size={40} />
                   <View style={styles.rowText}>
                     <ThemedText type="smallBold">
-                      {entry.username ?? entry.displayName ?? 'Unnamed user'}
+                      {entry.username ?? entry.displayName ?? t('settings.unnamedUser')}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       Blocked {new Date(entry.createdAt).toLocaleDateString()}
@@ -92,7 +93,7 @@ export default function BlockedUsersScreen() {
                     onPress={() => handleUnblock(entry)}
                     hitSlop={8}>
                     <ThemedText type="smallBold" style={styles.unblockText}>
-                      Unblock
+                      {t('settings.unblock')}
                     </ThemedText>
                   </Pressable>
                 </ThemedView>

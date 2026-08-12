@@ -36,7 +36,8 @@
     "somethingWentWrong": "Something went wrong. Try again.",
     "logIn": "Log in",
     "createAccount": "Create an account",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "remove": "Remove"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -431,6 +432,16 @@
     "deleteAccountHeading": "Delete your account",
     "deleteAccountBody": "This permanently deletes your profile, username, profile picture, favorites, bucket list, shared locations, lists and friends. There is no way to undo this.",
     "deleteAccountEmailNote": "We’ll send a confirmation to your email address so you know it happened — and so you can tell us if it wasn’t you.",
-    "deleteAccountButton": "Delete my account"
+    "deleteAccountButton": "Delete my account",
+    "somePerson": "This person",
+    "unnamedUser": "Unnamed user",
+    "removePhotoBody": "Your photo is deleted and you’ll show up with the default picture instead. You can add a new one any time.",
+    "photoUploadError": "Something went wrong uploading your photo. Try again.",
+    "photoRemoveError": "Something went wrong removing your photo. Try again.",
+    "uploading": "Uploading…",
+    "changePhoto": "Change photo",
+    "choosePhoto": "Choose a photo",
+    "removing": "Removing…",
+    "removePhoto": "Remove photo"
   }
 }
