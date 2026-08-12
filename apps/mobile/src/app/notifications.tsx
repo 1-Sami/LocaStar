@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +24,7 @@ import { supabase } from '@/lib/supabase';
 export default function NotificationsScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const { refreshUnreadCount } = useNotificationsBadge();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,9 +75,9 @@ export default function NotificationsScreen() {
 
   const handleDelete = async (notification: Notification) => {
     const confirmed = await confirmAsync(
-      'Delete this notification?',
-      "This can't be undone.",
-      'Delete'
+      t('notifications.deleteOneTitle'),
+      t('notifications.deleteOneBody'),
+      t('common.delete')
     );
     if (!confirmed) return;
     setNotifications((current) => current.filter((n) => n.id !== notification.id));
@@ -87,9 +89,9 @@ export default function NotificationsScreen() {
     if (!session) return;
     const count = notifications.length;
     const confirmed = await confirmAsync(
-      `Delete all ${count} notification${count === 1 ? '' : 's'}?`,
-      "This can't be undone. Anything they point to — friend requests, shared lists, places — stays where it is.",
-      'Delete all'
+      t('notifications.deleteAllTitle', { count }),
+      t('notifications.deleteAllBody'),
+      t('notifications.deleteAll')
     );
     if (!confirmed) return;
 
@@ -115,21 +117,21 @@ export default function NotificationsScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : notifications.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
-            No notifications yet.
+            {t('notifications.empty')}
           </ThemedText>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.bulkActionsRow}>
               {hasUnread ? (
                 <Pressable onPress={handleMarkAllRead} hitSlop={8}>
-                  <ThemedText type="linkPrimary">Mark all as read</ThemedText>
+                  <ThemedText type="linkPrimary">{t('notifications.markAllRead')}</ThemedText>
                 </Pressable>
               ) : (
                 <View />
               )}
               <Pressable onPress={handleDeleteAll} hitSlop={8}>
                 <ThemedText type="smallBold" style={styles.deleteAllText}>
-                  Delete all
+                  {t('notifications.deleteAll')}
                 </ThemedText>
               </Pressable>
             </View>
@@ -142,55 +144,61 @@ export default function NotificationsScreen() {
                     {notification.type === 'role_granted' ? (
                       <>
                         <ThemedText type="default" style={styles.noteText}>
-                          You&apos;re now a Superuser 🎉
+                          {t('notifications.roleGrantedTitle')}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          Thank you for everything you&apos;ve contributed to LocaStar. You can now handle
-                          reports, hide or remove content that breaks the rules, and propose bans.
+                          {t('notifications.roleGrantedBody1')}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          With great power comes great responsibility — every action you take is recorded in
-                          the moderation log, so use it thoughtfully and fairly.
+                          {t('notifications.roleGrantedBody2')}
                         </ThemedText>
                       </>
                     ) : notification.type === 'friend_request' ? (
                       <>
                         <ThemedText type="default" style={styles.noteText}>
-                          {notification.payload.sender_name} sent you a friend request
+                          {t('notifications.friendRequestTitle', { name: notification.payload.sender_name })}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          Tap to accept or decline it on your Friends page.
+                          {t('notifications.friendRequestBody')}
                         </ThemedText>
                       </>
                     ) : notification.type === 'friend_accepted' ? (
                       <>
                         <ThemedText type="default" style={styles.noteText}>
-                          {notification.payload.sender_name} accepted your friend request
+                          {t('notifications.friendAcceptedTitle', { name: notification.payload.sender_name })}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          You can now share places and lists with each other.
+                          {t('notifications.friendAcceptedBody')}
                         </ThemedText>
                       </>
                     ) : notification.type === 'activity_reminder' ? (
                       <>
                         <ThemedText type="default" style={styles.noteText}>
-                          {notification.payload.location_name ?? 'An activity'} starts tomorrow
+                          {t('notifications.reminderTitle', {
+                            name: notification.payload.location_name ?? t('notifications.reminderFallbackName'),
+                          })}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          You saved this. Tap to see the details.
+                          {t('notifications.reminderBody')}
                         </ThemedText>
                       </>
                     ) : (
                       <>
                         <ThemedText type="default" style={styles.noteText}>
                           {notification.type === 'list_share'
-                            ? `Shared the list "${notification.payload.list_name ?? 'Untitled'}" with you`
+                            ? t('notifications.listShared', {
+                                name: notification.payload.list_name ?? t('notifications.listSharedFallback'),
+                              })
                             : notification.payload.note
-                              ? `"${notification.payload.note}"`
-                              : `Shared ${notification.payload.location_name ?? 'a location'} with you`}
+                              ? `“${notification.payload.note}”`
+                              : t('notifications.locationShared', {
+                                  name:
+                                    notification.payload.location_name ??
+                                    t('notifications.locationSharedFallback'),
+                                })}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          Shared by {notification.payload.sender_name}
+                          {t('notifications.sharedBy', { name: notification.payload.sender_name })}
                         </ThemedText>
                       </>
                     )}

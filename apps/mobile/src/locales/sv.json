@@ -75,8 +75,29 @@
     "sv": "Svenska"
   },
   "notifications": {
-    "channelName": "Påminnelser",
-    "channelDescription": "Påminnelser om aktiviteter du sparat"
+    "empty": "Inga aviseringar än.",
+    "markAllRead": "Markera alla som lästa",
+    "deleteAll": "Radera alla",
+    "deleteOneTitle": "Radera den här aviseringen?",
+    "deleteOneBody": "Det går inte att ångra.",
+    "deleteAllTitle_one": "Radera {{count}} avisering?",
+    "deleteAllTitle_other": "Radera alla {{count}} aviseringar?",
+    "deleteAllBody": "Det går inte att ångra. Det de pekar på — vänförfrågningar, delade listor, platser — ligger kvar.",
+    "roleGrantedTitle": "Du är nu superanvändare 🎉",
+    "roleGrantedBody1": "Tack för allt du har bidragit med till LocaStar. Du kan nu hantera anmälningar, dölja eller ta bort innehåll som bryter mot reglerna och föreslå avstängningar.",
+    "roleGrantedBody2": "Med stor makt följer stort ansvar — varje åtgärd du gör loggas i modereringsloggen, så använd den eftertänksamt och rättvist.",
+    "friendRequestTitle": "{{name}} har skickat en vänförfrågan",
+    "friendRequestBody": "Tryck för att acceptera eller avböja den på din vänsida.",
+    "friendAcceptedTitle": "{{name}} accepterade din vänförfrågan",
+    "friendAcceptedBody": "Nu kan ni dela platser och listor med varandra.",
+    "reminderTitle": "{{name}} börjar i morgon",
+    "reminderFallbackName": "En aktivitet",
+    "reminderBody": "Du har sparat den här. Tryck för att se detaljerna.",
+    "listShared": "Delade listan ”{{name}}” med dig",
+    "listSharedFallback": "Namnlös",
+    "locationShared": "Delade {{name}} med dig",
+    "locationSharedFallback": "en plats",
+    "sharedBy": "Delad av {{name}}"
   },
   "tabs": {
     "home": "Hem",

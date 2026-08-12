@@ -75,8 +75,29 @@
     "sv": "Svenska"
   },
   "notifications": {
-    "channelName": "Reminders",
-    "channelDescription": "Reminders about activities you saved"
+    "empty": "No notifications yet.",
+    "markAllRead": "Mark all as read",
+    "deleteAll": "Delete all",
+    "deleteOneTitle": "Delete this notification?",
+    "deleteOneBody": "This can’t be undone.",
+    "deleteAllTitle_one": "Delete {{count}} notification?",
+    "deleteAllTitle_other": "Delete all {{count}} notifications?",
+    "deleteAllBody": "This can’t be undone. Anything they point to — friend requests, shared lists, places — stays where it is.",
+    "roleGrantedTitle": "You’re now a Superuser 🎉",
+    "roleGrantedBody1": "Thank you for everything you’ve contributed to LocaStar. You can now handle reports, hide or remove content that breaks the rules, and propose bans.",
+    "roleGrantedBody2": "With great power comes great responsibility — every action you take is recorded in the moderation log, so use it thoughtfully and fairly.",
+    "friendRequestTitle": "{{name}} sent you a friend request",
+    "friendRequestBody": "Tap to accept or decline it on your Friends page.",
+    "friendAcceptedTitle": "{{name}} accepted your friend request",
+    "friendAcceptedBody": "You can now share places and lists with each other.",
+    "reminderTitle": "{{name}} starts tomorrow",
+    "reminderFallbackName": "An activity",
+    "reminderBody": "You saved this. Tap to see the details.",
+    "listShared": "Shared the list “{{name}}” with you",
+    "listSharedFallback": "Untitled",
+    "locationShared": "Shared {{name}} with you",
+    "locationSharedFallback": "a location",
+    "sharedBy": "Shared by {{name}}"
   },
   "tabs": {
     "home": "Home",
