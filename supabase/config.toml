@@ -404,6 +404,15 @@ backend = "postgres"
 [functions.delete-account]
 verify_jwt = true
 
+# Called by pg_cron, not by a user, and the schedule sends only the anon key —
+# so there is no user token to verify and nothing to gain by demanding one.
+# Migration 0095 spells out why being triggerable is acceptable here: the worst
+# an outsider achieves is the day's reminders going out at the wrong hour. Who
+# receives them, and that nobody receives one twice, are both decided in SQL.
+# This was previously unrecorded, which meant a redeploy had to guess.
+[functions.send-activity-reminders]
+verify_jwt = false
+
 [experimental]
 # Configures Postgres storage engine to use OrioleDB (S3)
 orioledb_version = ""

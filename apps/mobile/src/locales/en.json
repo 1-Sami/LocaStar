@@ -96,7 +96,9 @@
     "listSharedFallback": "Untitled",
     "locationShared": "Shared {{name}} with you",
     "locationSharedFallback": "a location",
-    "sharedBy": "Shared by {{name}}"
+    "sharedBy": "Shared by {{name}}",
+    "lastDayTitle": "Last day for {{name}}",
+    "lastDayBody": "You saved this. Tap to see the details."
   },
   "tabs": {
     "home": "Home",

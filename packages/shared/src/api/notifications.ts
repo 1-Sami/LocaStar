@@ -31,6 +31,14 @@ export type ActivityReminderNotificationPayload = {
   location_id: string;
   location_name: string | null;
   starts_at: string;
+  /**
+   * Which reminder this is: the heads-up the day before it starts, or the one
+   * on the final morning of something that runs for several days.
+   *
+   * Optional because rows written before the last-day reminder existed carry no
+   * kind at all, and they should keep reading as what they were.
+   */
+  kind?: 'start' | 'last_day';
 };
 
 export type Notification =

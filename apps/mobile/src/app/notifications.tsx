@@ -174,12 +174,23 @@ export default function NotificationsScreen() {
                     ) : notification.type === 'activity_reminder' ? (
                       <>
                         <ThemedText type="default" style={styles.noteText}>
-                          {t('notifications.reminderTitle', {
-                            name: notification.payload.location_name ?? t('notifications.reminderFallbackName'),
-                          })}
+                          {t(
+                            notification.payload.kind === 'last_day'
+                              ? 'notifications.lastDayTitle'
+                              : 'notifications.reminderTitle',
+                            {
+                              name:
+                                notification.payload.location_name ??
+                                t('notifications.reminderFallbackName'),
+                            }
+                          )}
                         </ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          {t('notifications.reminderBody')}
+                          {t(
+                            notification.payload.kind === 'last_day'
+                              ? 'notifications.lastDayBody'
+                              : 'notifications.reminderBody'
+                          )}
                         </ThemedText>
                       </>
                     ) : (

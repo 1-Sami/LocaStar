@@ -147,6 +147,15 @@ export type Profile = {
   bio: string | null;
   avatar_url: string | null;
   theme_preference: ThemePreference;
+  /**
+   * Which language to write to this person from the server.
+   *
+   * Not what the app renders in — that is i18next, driven by the device and a
+   * stored override. This exists for the things the app is not present for:
+   * the activity reminders are built by a scheduled job, which has no way to
+   * read AsyncStorage on somebody's phone.
+   */
+  locale: string | null;
   role: UserRole;
 };
 
@@ -163,7 +172,7 @@ export type Profile = {
 export async function fetchProfile(client: SupabaseClient, userId: string): Promise<Profile> {
   const { data, error } = await client
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url, theme_preference, role")
+    .select("id, username, display_name, bio, avatar_url, theme_preference, locale, role")
     .eq("id", userId)
     .single();
   if (error) throw error;
@@ -195,6 +204,7 @@ export type ProfileUpdate = Partial<{
   bio: string | null;
   avatar_url: string | null;
   theme_preference: ThemePreference;
+  locale: string;
   notification_preferences: NotificationPreferences;
 }>;
 

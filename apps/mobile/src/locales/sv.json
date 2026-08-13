@@ -96,7 +96,9 @@
     "listSharedFallback": "Namnlös",
     "locationShared": "Delade {{name}} med dig",
     "locationSharedFallback": "en plats",
-    "sharedBy": "Delad av {{name}}"
+    "sharedBy": "Delad av {{name}}",
+    "lastDayTitle": "Sista dagen för {{name}}",
+    "lastDayBody": "Du har sparat den här. Tryck för att se detaljerna."
   },
   "tabs": {
     "home": "Hem",

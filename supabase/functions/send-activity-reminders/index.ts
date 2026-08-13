@@ -1,10 +1,14 @@
 // Sends the activity reminders that claim_activity_reminders() hands over.
 //
-// Deliberately thin. Every decision — which activities start tomorrow, who
-// saved them, who still wants reminders, who is banned, who has already been
-// told — lives in migration 0094, where it can be proved with a rolled-back
-// probe instead of by pushing notifications at real phones. This function only
-// carries the result to Expo.
+// Deliberately thin. Every decision — which activities are due, who saved
+// them, who still wants reminders, who is banned, who has already been told —
+// lives in migrations 0094 through 0100, where it can be proved with a
+// rolled-back probe instead of by pushing notifications at real phones. This
+// function only carries the result to Expo.
+//
+// Two reminders exist: the day before something starts, and the final morning
+// of something that runs for several days. The claim says which, and the only
+// difference here is one line of text.
 //
 // It is invoked on a schedule, not by a user, so it runs with the service role
 // and there is no JWT to read. claim_activity_reminders() is granted to
@@ -21,7 +25,37 @@ type Claim = {
   location_id: string;
   activity_name: string;
   starts_at: string;
+  kind: 'start' | 'last_day';
+  locale: string;
 };
+
+/*
+ * The body of the notification, in the recipient's language.
+ *
+ * This used to be one hardcoded English sentence, so a Swedish user got an
+ * English push — the one piece of the app that stayed English after everything
+ * else was translated, because it is written here rather than in the app's
+ * catalogue and nothing in the catalogue can reach a background job.
+ *
+ * Four short strings do not justify shipping an i18n library into an edge
+ * function. Anything other than 'sv' falls back to English, which is also what
+ * happens for a profile that has never recorded a language.
+ */
+const BODIES: Record<'start' | 'last_day', Record<string, string>> = {
+  start: {
+    en: 'Starts tomorrow — you saved this.',
+    sv: 'Börjar imorgon — du har sparat den här.',
+  },
+  last_day: {
+    en: 'Last day today — you saved this.',
+    sv: 'Sista dagen idag — du har sparat den här.',
+  },
+};
+
+function reminderBody(kind: 'start' | 'last_day', locale: string): string {
+  const forKind = BODIES[kind] ?? BODIES.start;
+  return forKind[locale] ?? forKind.en;
+}
 
 type ExpoTicket = {
   status: 'ok' | 'error';
@@ -72,7 +106,7 @@ Deno.serve(async (req) => {
   const messages = claims.map((c) => ({
     to: c.push_token,
     title: c.activity_name,
-    body: 'Starts tomorrow — you saved this.',
+    body: reminderBody(c.kind, c.locale),
     sound: 'default',
     // Enough for the app to open the right screen when tapped. Nothing
     // sensitive: a push payload passes through Apple's and Google's servers.
