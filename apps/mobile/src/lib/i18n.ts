@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // rules-of-hooks lint reads a bare top-level `use(...)` as calling it.
 import i18next, { changeLanguage, init, use as registerPlugin } from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { Platform } from 'react-native';
 
 import en from '@/locales/en.json';
 import sv from '@/locales/sv.json';
@@ -34,6 +35,21 @@ const STORAGE_KEY = 'locastar.language';
  * useless, and English is the right thing to fall back to.
  */
 export function deviceLanguage(): Language {
+  /*
+   * During the static web export there is no device, and Intl answers with the
+   * locale of the machine running the build. locastar.se went out in Swedish
+   * for that reason alone — the laptop that exported it is Swedish — while the
+   * generated markup still said <html lang="en">. Swedish text declared as
+   * English is wrong for a screen reader and for a crawler, and it would have
+   * silently changed language the first time somebody built it elsewhere.
+   *
+   * Pinning the prerender to English makes the served HTML match that
+   * attribute; the browser re-runs this on hydration and a Swedish visitor
+   * gets Swedish. Narrow on purpose — Platform.OS is 'ios' or 'android' on a
+   * phone, so this branch cannot affect the app.
+   */
+  if (Platform.OS === 'web' && typeof window === 'undefined') return 'en';
+
   try {
     const tag = Intl.DateTimeFormat().resolvedOptions().locale;
     return tag?.toLowerCase().startsWith('sv') ? 'sv' : 'en';
