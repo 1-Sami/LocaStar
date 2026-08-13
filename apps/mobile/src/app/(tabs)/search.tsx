@@ -442,13 +442,15 @@ export default function SearchScreen() {
                   return (
                     <Pressable
                       key={category.slug}
-                      style={styles.modalRow}
+                      style={[styles.modalRow, active && styles.modalRowActive]}
                       onPress={() =>
                         setActiveSlugs((current) =>
                           active ? current.filter((s) => s !== category.slug) : [...current, category.slug]
                         )
                       }>
-                      <Text style={styles.modalRowText}>{categoryLabel(t, category.slug, category.name)}</Text>
+                      <Text style={[styles.modalRowText, active && styles.modalRowTextActive]}>
+                        {categoryLabel(t, category.slug, category.name)}
+                      </Text>
                       {active && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
                     </Pressable>
                   );
@@ -738,8 +740,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.one,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: SearchPalette.hairline,
+  },
+  /*
+   * A selected row is the whole row, not a tick.
+   *
+   * The checkmark sat at the right edge, which is exactly where the thumb is
+   * when you tap — so you could not see what you had just selected without
+   * moving your hand. The tick stays, but the row now carries the state on its
+   * own: tinted background, accent left edge, brighter bolder label.
+   */
+  modalRowActive: {
+    backgroundColor: 'rgba(76,211,122,0.14)',
+    borderLeftWidth: 3,
+    borderLeftColor: SearchPalette.accent,
+    borderBottomColor: 'transparent',
+  },
+  modalRowTextActive: {
+    color: SearchPalette.accent,
+    fontWeight: '700',
   },
   modalRowText: {
     color: SearchPalette.text,

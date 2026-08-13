@@ -154,7 +154,7 @@
   },
   "search": {
     "title": "Explore",
-    "placeholder": "SEARCH PLACES",
+    "placeholder": "SEARCH",
     "clear": "Clear search",
     "filter": "FILTER",
     "resetFilters": "RESET FILTERS",
@@ -672,7 +672,8 @@
     "roleSuperuser": "Superuser",
     "roleUser": "User",
     "makeSuperuser": "Make Superuser",
-    "removeSuperuser": "Remove Superuser"
+    "removeSuperuser": "Remove Superuser",
+    "searchToBegin": "Search for someone by username or email."
   },
   "components": {
     "addToList": "Add to list",

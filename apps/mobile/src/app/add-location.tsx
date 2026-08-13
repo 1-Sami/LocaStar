@@ -806,12 +806,24 @@ export default function AddLocationScreen() {
                   {t('form.noCategoriesMatch')}
                 </ThemedText>
               ) : (
-                visibleCategories.map((category) => (
-                  <Pressable key={category.id} style={styles.modalRow} onPress={() => toggleCategory(category.id)}>
-                    <ThemedText type="default">{categoryLabel(t, category.slug, category.name)}</ThemedText>
-                    <ThemedText type="default">{categoryIds.includes(category.id) ? '✓' : ''}</ThemedText>
-                  </Pressable>
-                ))
+                visibleCategories.map((category) => {
+                  const picked = categoryIds.includes(category.id);
+                  return (
+                    <Pressable
+                      key={category.id}
+                      style={[
+                        styles.modalRow,
+                        picked && { backgroundColor: `${theme.primary}26`, borderLeftColor: theme.primary },
+                        picked && styles.modalRowActive,
+                      ]}
+                      onPress={() => toggleCategory(category.id)}>
+                      <ThemedText type={picked ? 'smallBold' : 'default'}>
+                        {categoryLabel(t, category.slug, category.name)}
+                      </ThemedText>
+                      <ThemedText type="default">{picked ? '✓' : ''}</ThemedText>
+                    </Pressable>
+                  );
+                })
               )}
             </ScrollView>
             <Pressable style={styles.doneButton} onPress={() => setPickerVisible(false)}>
@@ -1002,7 +1014,14 @@ const styles = StyleSheet.create({
   modalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.one,
+  },
+  /* Same reasoning as the Search filter: the tick is under your thumb. */
+  modalRowActive: {
+    borderLeftWidth: 3,
   },
   categorySearchBar: {
     flexDirection: 'row',

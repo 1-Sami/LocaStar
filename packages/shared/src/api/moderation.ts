@@ -394,28 +394,25 @@ export type ManagedUser = {
 };
 
 /**
- * PostgREST parses `or=(...)` as a comma-separated list, so a raw value with a
- * comma, a bracket or a quote in it changes the shape of the filter instead of
- * being searched for. Wrapping the value in double quotes makes PostgREST read
- * it as a literal; backslashes and quotes have to be escaped to survive that.
+ * Find someone to moderate, by handle, display name or email address.
  *
- * Admin-only and read-only, on a table admins can already read in full, so
- * this is about a comma in the search box not producing a baffling error —
- * not about privilege. Left un-escaped: % and _, which stay useful as
- * wildcards when an admin is hunting through the user list.
+ * Goes through `moderator_search_users` rather than querying `profiles`
+ * directly, for one reason: email. It lives in `auth.users`, and `profiles`
+ * deliberately does not carry it — see migration 0066 — so the only way to
+ * match on it without publishing addresses is inside a security-definer
+ * function. That function checks `is_moderator()` itself, matches email by
+ * equality so the field cannot be used to enumerate addresses, and never
+ * returns the address it matched.
+ *
+ * Returns nothing for a query shorter than two characters. The screen used to
+ * list every account when the box was empty, which handed the whole member
+ * directory to anyone made a superuser.
  */
-function quoteFilterValue(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
 export async function searchUsers(client: SupabaseClient, query: string): Promise<ManagedUser[]> {
   const trimmed = query.trim();
-  let request = client.from("profiles").select("id, display_name, username, role").limit(25);
-  if (trimmed) {
-    const pattern = quoteFilterValue(`%${trimmed}%`);
-    request = request.or(`username.ilike.${pattern},display_name.ilike.${pattern}`);
-  }
-  const { data, error } = await request;
+  if (trimmed.length < 2) return [];
+
+  const { data, error } = await client.rpc("moderator_search_users", { search_query: trimmed });
   if (error) throw error;
 
   const rows = (data ?? []) as { id: string; display_name: string | null; username: string | null; role: UserRole }[];

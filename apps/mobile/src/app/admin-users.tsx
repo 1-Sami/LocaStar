@@ -210,7 +210,15 @@ export default function AdminUsersScreen() {
               />
             </View>
 
-            {people.length === 0 ? (
+            {/* Nothing is listed until somebody searches. Showing the whole
+                directory to anyone made a superuser is a privacy leak in
+                miniature, and it stops being usable at any real size anyway.
+                Two characters is the same floor the RPC enforces. */}
+            {query.trim().length < 2 ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {t('admin.searchToBegin')}
+              </ThemedText>
+            ) : people.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 {t('admin.noPeopleMatch')}
               </ThemedText>
