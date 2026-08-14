@@ -365,7 +365,21 @@ export default function HomeScreen() {
   // done here, because is_boosted is not something the RPC filters on.
   const activities = nearbyActivities;
   const boosted = nearby.filter((l) => l.is_boosted).slice(0, HOME_SECTION_LIMIT);
-  const mostLiked = nearbyMostLiked;
+  /*
+   * Reviewed places only.
+   *
+   * The query asks for fifteen sorted by rating, but only four of the 360
+   * locations within 30 km of the owner have been reviewed at all — so the
+   * other eleven slots filled with 0.0 and no reviews, under a heading that
+   * says "Most liked". A short row of places somebody actually rated says
+   * something; a long row padded with unrated ones says nothing, and quietly
+   * teaches people that the stars mean nothing either.
+   *
+   * It grows on its own as reviews arrive. Filtered here rather than in the
+   * RPC because no other caller wants this: Search must keep showing unrated
+   * places, which are most of the map.
+   */
+  const mostLiked = nearbyMostLiked.filter((l) => l.review_count > 0);
   const summerActivities = nearbySummer;
   const winterActivities = nearbyWinter;
 

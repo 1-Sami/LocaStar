@@ -31,30 +31,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { useDiscardWarning } from '@/hooks/use-discard-warning';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { endOfLocalDay, startOfLocalDay } from '@/lib/activity-dates';
+import { formatCityLine, formatStreetLine, resolveCity } from '@/lib/address-format';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { categoryLabel, categoryLabelFromName } from '@/lib/categories';
 import { useSharedProfile } from '@/lib/profile-context';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
-
-function formatStreetLine(result: Location.LocationGeocodedAddress): string {
-  // Swedish street addresses put the number after the name (e.g. "Sturevägen 6"),
-  // so build from `street`/`streetNumber` directly rather than the ambiguous
-  // `name` field, whose ordering isn't consistent across platforms.
-  return [result.street, result.streetNumber].filter(Boolean).join(' ');
-}
-
-function resolveCity(result: Location.LocationGeocodedAddress): string | null {
-  // `city` frequently comes back null from the geocoder for addresses outside
-  // a major urban core — fall back to the district/subregion, which is
-  // usually the actual town/city name in that case.
-  return result.city || result.subregion || result.district || null;
-}
-
-function formatCityLine(result: Location.LocationGeocodedAddress): string {
-  return [result.postalCode, resolveCity(result)].filter(Boolean).join(' ');
-}
 
 // Roughly a city block. Wide enough to catch the same court pinned slightly
 // differently, tight enough not to list every place in the neighbourhood.
@@ -510,6 +493,11 @@ export default function AddLocationScreen() {
           <ThemedText type="smallBold" style={styles.photoLabel}>
             {isAdmin ? t('form.picturesAdmin') : t('form.picturesRequired')}
           </ThemedText>
+          {/* Above the picker, not below it: after the photo is chosen is too
+              late to be told what may not be chosen. */}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.photoRights}>
+            {t('common.photoRights')}
+          </ThemedText>
 
           <PhotoPicker uris={photoUris} onChange={setPhotoUris} />
 
@@ -850,6 +838,11 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     gap: Spacing.three,
+  },
+  photoRights: {
+    marginTop: -Spacing.two,
+    marginBottom: Spacing.one,
+    lineHeight: 17,
   },
   photoLabel: {
     marginTop: -Spacing.one,

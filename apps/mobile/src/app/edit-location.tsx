@@ -26,6 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { formatCityLine, formatStreetLine, resolveCity } from '@/lib/address-format';
 import { useAuth } from '@/lib/auth-context';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
@@ -65,6 +66,10 @@ export default function EditLocationScreen() {
   const [pinCoords, setPinCoords] = useState<MapCoords | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [addressPinFailed, setAddressPinFailed] = useState(false);
+  // Null until the pin actually moves. Sent only then, so simply opening this
+  // screen and saving a phone number cannot blank a city that is already right.
+  const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
+  const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
   const addressEdited = useRef(false);
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
@@ -168,9 +173,43 @@ export default function EditLocationScreen() {
     );
   };
 
-  const handlePinChange = (next: MapCoords) => {
+  /**
+   * Moves the pin, and rewrites the address to match where it landed.
+   *
+   * Only the address-to-pin direction existed here, so dragging the pin left
+   * the old address sitting underneath it — the screen would happily save a
+   * place whose coordinates and whose written address were in different towns,
+   * and the person doing it had no way to tell.
+   *
+   * Same rule as the create form: an address somebody typed themselves is
+   * never overwritten. The difference is that here the field starts full, of
+   * the stored address, and replacing *that* is the whole point.
+   *
+   * @param keepAddress the pin moved because of the address, so take only city
+   * and country from the answer and leave the question alone.
+   */
+  const handlePinChange = (next: MapCoords, keepAddress = false) => {
     setPinCoords(next);
     setSaved(false);
+    setGeocoding(true);
+    Location.reverseGeocodeAsync(next)
+      .then((results) => {
+        const result = results[0];
+        if (result && !keepAddress && !addressEdited.current) {
+          const streetLine = formatStreetLine(result);
+          const cityLine = formatCityLine(result);
+          if (streetLine) setAddressLine1(streetLine);
+          if (cityLine) setAddressLine2(cityLine);
+        }
+        // Captured even when the address is left alone: city and country are
+        // never typed, so the geocoder is the only thing that can supply them,
+        // and a place dragged to another town kept the old city in the
+        // database with nothing on screen admitting it.
+        setGeocodedCity(result ? resolveCity(result) : null);
+        setGeocodedCountry(result?.country ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setGeocoding(false));
   };
 
   /**
@@ -193,8 +232,9 @@ export default function EditLocationScreen() {
         setAddressPinFailed(true);
         return;
       }
-      setPinCoords({ latitude: hit.latitude, longitude: hit.longitude });
-      setSaved(false);
+      // keepAddress: the pin moved *because* of what was typed, so the answer
+      // must not overwrite the question — but city and country still refresh.
+      handlePinChange({ latitude: hit.latitude, longitude: hit.longitude }, true);
     } catch {
       setAddressPinFailed(true);
     } finally {
@@ -243,6 +283,10 @@ export default function EditLocationScreen() {
         address: [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', '),
         lat: pinCoords?.latitude,
         lng: pinCoords?.longitude,
+        // Only when the pin moved and the geocoder answered — see the state
+        // declaration. Undefined leaves the stored value alone.
+        city: geocodedCity ?? undefined,
+        country: geocodedCountry ?? undefined,
         website: website.trim() || null,
         // Split by kind, matching the create form: don't start writing a phone
         // number onto an activity, or an email onto a place.

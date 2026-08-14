@@ -153,6 +153,9 @@ export default function WriteReviewScreen() {
           <ThemedText type="smallBold" style={styles.photoLabel}>
             {t('review.addPhotos')}
           </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.photoRights}>
+            {t('common.photoRights')}
+          </ThemedText>
           <PhotoPicker uris={displayUris} onChange={handlePhotosChange} />
 
           {error && (
@@ -188,6 +191,11 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     gap: Spacing.three,
+  },
+  photoRights: {
+    marginTop: -Spacing.two,
+    marginBottom: Spacing.one,
+    lineHeight: 17,
   },
   photoLabel: {
     marginTop: -Spacing.one,

@@ -18,6 +18,7 @@
     "writeReview": "Skriv en recension"
   },
   "common": {
+    "photoRights": "Ladda bara upp bilder som du har tagit själv, eller har rätt att använda. Använd inte skärmbilder från Google Maps eller bilder hämtade från andra webbplatser.",
     "cancel": "Avbryt",
     "delete": "Radera",
     "retry": "Försök igen",

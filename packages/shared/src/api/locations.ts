@@ -580,6 +580,19 @@ export type LocationUpdate = {
   lat?: number;
   lng?: number;
   /**
+   * Where the new pin landed, or undefined to leave what is stored.
+   *
+   * Neither is ever typed -- both come from the geocoder -- so nothing else
+   * can keep them true when a place moves. Editing had no way to write them at
+   * all, which meant dragging a pin to another town left the old city on the
+   * row, and city is what the planned per-city pages will be built from.
+   *
+   * Undefined rather than null on an ordinary save: sending null would blank a
+   * city that was already correct.
+   */
+  city?: string | null;
+  country?: string | null;
+  /**
    * Contact details, or undefined to leave them as they are.
    *
    * Both were writable at creation and readable by fetchLocationById, but no
@@ -610,6 +623,8 @@ export async function updateLocation(
       ...(input.lat !== undefined && input.lng !== undefined
         ? { geom: `POINT(${input.lng} ${input.lat})` }
         : {}),
+      ...(input.city !== undefined ? { city: input.city } : {}),
+      ...(input.country !== undefined ? { country: input.country } : {}),
       ...(input.website !== undefined ? { website: input.website } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
       ...(input.email !== undefined ? { email: input.email } : {}),
