@@ -319,7 +319,7 @@ export default function HomeScreen() {
 
           <HomeSection
             title={t('home.activities')}
-            onShowMore={() => router.push('/search')}
+            onShowMore={() => router.push({ pathname: '/search', params: { kind: 'activity' } })}
             items={activities}
             keyExtractor={(item) => item.id}
             cardWidth={108}

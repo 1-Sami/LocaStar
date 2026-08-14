@@ -62,7 +62,11 @@ const SORT_OPTIONS = [
 const FILTER_BORDER_GRADIENT = ['#E84CA9', '#C9CDD3', '#4CD37A'] as const;
 
 export default function SearchScreen() {
-  const { season: initialSeason, sort: initialSort } = useLocalSearchParams<{ season?: string; sort?: string }>();
+  const {
+    season: initialSeason,
+    sort: initialSort,
+    kind: initialKind,
+  } = useLocalSearchParams<{ season?: string; sort?: string; kind?: string }>();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NearbyLocation[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -82,9 +86,39 @@ export default function SearchScreen() {
   const [activeSeason, setActiveSeason] = useState<'summer' | 'winter' | null>(
     initialSeason === 'summer' || initialSeason === 'winter' ? initialSeason : null
   );
+  const [activeKind, setActiveKind] = useState<'place' | 'activity' | null>(
+    initialKind === 'activity' || initialKind === 'place' ? initialKind : null
+  );
   // Results used to load once and never again, so a location added since the
   // app started never showed up. Bumping this on focus re-runs the query.
   const [refreshKey, setRefreshKey] = useState(0);
+
+  /*
+   * Home's "Show more" buttons arrive carrying filters, and this tab stays
+   * mounted once it has been opened — NativeTabs does not tear its screens
+   * down. Reading the params only into useState's initial value therefore
+   * worked exactly once per app launch: press "Most liked" having already
+   * visited Search, and the sort stayed where it was and nothing happened.
+   * That was true of season and sort before this change too.
+   *
+   * Syncing during render rather than from an effect is deliberate — it is
+   * React's sanctioned way to adjust state when an input changes, it lands
+   * before the paint instead of causing a second one, and it does not trip the
+   * cascading-render rule that setting state inside an effect does.
+   *
+   * Only *incoming* filters are applied. Arriving with no params at all — which
+   * is what tapping the tab itself does — must leave the filters alone, or
+   * every trip to another tab and back would silently wipe what the person had
+   * chosen by hand.
+   */
+  const paramSignature = `${initialSort ?? ''}|${initialSeason ?? ''}|${initialKind ?? ''}`;
+  const [appliedParams, setAppliedParams] = useState(paramSignature);
+  if (paramSignature !== '||' && paramSignature !== appliedParams) {
+    setAppliedParams(paramSignature);
+    setSortBy(initialSort === 'rating' ? 'rating' : 'distance');
+    setActiveSeason(initialSeason === 'summer' || initialSeason === 'winter' ? initialSeason : null);
+    setActiveKind(initialKind === 'activity' || initialKind === 'place' ? initialKind : null);
+  }
 
   /*
    * Which search the results on screen belong to.
@@ -136,7 +170,7 @@ export default function SearchScreen() {
 
     // A changed filter starts over at one page; anything else — coming back to
     // the tab, a location added elsewhere — keeps what is already on screen.
-    const filterKey = JSON.stringify([trimmed, [...activeSlugs].sort(), sortBy, activeSeason]);
+    const filterKey = JSON.stringify([trimmed, [...activeSlugs].sort(), sortBy, activeSeason, activeKind]);
     const isRefresh = lastFilterKey.current === filterKey;
     lastFilterKey.current = filterKey;
     const wanted = isRefresh
@@ -153,6 +187,7 @@ export default function SearchScreen() {
         searchQuery: trimmed.length > 0 ? trimmed : null,
         sort: sortBy,
         season: activeSeason,
+        kind: activeKind,
         maxResults: wanted,
       })
         .then((result) => {
@@ -178,7 +213,7 @@ export default function SearchScreen() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [coords, query, activeSlugs, sortBy, activeSeason, refreshKey]);
+  }, [coords, query, activeSlugs, sortBy, activeSeason, activeKind, refreshKey]);
 
   const cards = results.map(nearbyLocationToCard);
   const sortLabelKey = SORT_OPTIONS.find((o) => o.key === sortBy)?.labelKey ?? 'search.sortBy';
@@ -216,6 +251,7 @@ export default function SearchScreen() {
       searchQuery: trimmed.length > 0 ? trimmed : null,
       sort: sortBy,
       season: activeSeason,
+      kind: activeKind,
       maxResults: PAGE_SIZE,
       offset: results.length,
     })
@@ -238,7 +274,7 @@ export default function SearchScreen() {
     // loadingMore is deliberately absent: the guard is loadingMoreRef, and
     // depending on the state as well would rebuild this callback on every page
     // for no benefit.
-  }, [coords, loading, hasMore, query, activeSlugs, sortBy, activeSeason, results.length]);
+  }, [coords, loading, hasMore, query, activeSlugs, sortBy, activeSeason, activeKind, results.length]);
 
   const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
   const visibleCategories = trimmedCategoryQuery
@@ -312,12 +348,13 @@ export default function SearchScreen() {
           )}
         />
 
-        {(activeSlugs.length > 0 || activeSeason !== null) && (
+        {(activeSlugs.length > 0 || activeSeason !== null || activeKind !== null) && (
           <Pressable
             style={styles.resetFiltersButton}
             onPress={() => {
               setActiveSlugs([]);
               setActiveSeason(null);
+              setActiveKind(null);
             }}>
             <Text style={styles.resetFiltersX}>×</Text>
             <Text style={styles.resetFiltersText}>{t('search.resetFilters')}</Text>
@@ -394,6 +431,32 @@ export default function SearchScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={closePicker} />
           <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>{t('search.filterTitle')}</Text>
+
+            {/* Above Season because it is the broader cut, and visible at all
+                so that arriving here from Home's "Show more" is something you
+                can see and undo rather than a filter with no control. The
+                chips carry an icon each: the section below is headed
+                ACTIVITIES too, but means categories — a collision worth not
+                deepening with two bare words that look alike. */}
+            <Text style={styles.modalSectionLabel}>{t('search.show')}</Text>
+            <View style={styles.modalSeasonRow}>
+              <Pressable
+                style={[styles.modalSeasonChip, activeKind === 'activity' && styles.modalSeasonChipActive]}
+                onPress={() => setActiveKind((current) => (current === 'activity' ? null : 'activity'))}>
+                <Text
+                  style={[styles.modalSeasonChipText, activeKind === 'activity' && styles.modalSeasonChipTextActive]}>
+                  📅 {t('search.onlyActivities')}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalSeasonChip, activeKind === 'place' && styles.modalSeasonChipActive]}
+                onPress={() => setActiveKind((current) => (current === 'place' ? null : 'place'))}>
+                <Text
+                  style={[styles.modalSeasonChipText, activeKind === 'place' && styles.modalSeasonChipTextActive]}>
+                  📍 {t('search.onlyPlaces')}
+                </Text>
+              </Pressable>
+            </View>
 
             <Text style={styles.modalSectionLabel}>{t('search.season')}</Text>
             <View style={styles.modalSeasonRow}>
