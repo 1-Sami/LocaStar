@@ -30,6 +30,28 @@ import { supabase } from '@/lib/supabase';
 // Home sections empty.
 const HOME_RADIUS_M = 20_000_000;
 
+/*
+ * How far the summer and winter sections reach.
+ *
+ * A real limit, unlike HOME_RADIUS_M above, which is 20 000 km and therefore
+ * no limit at all. Those two sections used to be filtered out of the nearest
+ * 200 rows, and with 993 locations in the table the nearest 200 to Norsborg
+ * stop at 18.3 km — so Väsjöbacken at 25.1 km was excluded before anything
+ * looked at whether it was open in winter. The owner could see two winter
+ * places and knew of a third.
+ *
+ * The cure is not a wider row cap. Six locations in the country are marked for
+ * winter; slicing them out of a proximity query makes them compete with 993
+ * rows for 200 slots, and the competition gets worse every time somebody adds
+ * a boule court. So each season asks the database its own question, with the
+ * filter applied there — the same reasoning as the activities query below, and
+ * cheap for the same reason.
+ *
+ * Activities keep no distance limit on purpose. People will drive an hour and
+ * a half to a festival and not five minutes to a boule court.
+ */
+const HOME_SEASON_RADIUS_M = 30_000;
+
 // Boosted/paid placement is built but stays hidden until there are enough users
 // to sell placement to. Flip to true to bring the section back.
 const SHOW_BOOSTED_SECTION = false;
@@ -153,6 +175,8 @@ export default function HomeScreen() {
 
   const [nearby, setNearby] = useState<NearbyLocation[]>([]);
   const [nearbyActivities, setNearbyActivities] = useState<NearbyLocation[]>([]);
+  const [nearbySummer, setNearbySummer] = useState<NearbyLocation[]>([]);
+  const [nearbyWinter, setNearbyWinter] = useState<NearbyLocation[]>([]);
   const [publicLists, setPublicLists] = useState<PublicList[]>([]);
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
 
@@ -216,6 +240,31 @@ export default function HomeScreen() {
         .catch(() => {
           if (!cancelled) setNearbyActivities([]);
         });
+
+      // One query per season, filtered in the database. Ten is what the
+      // carousel shows, and the RPC sorts by distance before it caps — so this
+      // is the ten nearest of that season rather than whichever ten survived a
+      // general proximity query.
+      (['summer', 'winter'] as const).forEach((season) => {
+        fetchNearbyLocations(supabase, {
+          lat: coords.latitude,
+          lng: coords.longitude,
+          radiusM: HOME_SEASON_RADIUS_M,
+          sort: 'distance',
+          season,
+          maxResults: 10,
+        })
+          .then((rows) => {
+            if (cancelled) return;
+            if (season === 'summer') setNearbySummer(rows);
+            else setNearbyWinter(rows);
+          })
+          .catch(() => {
+            if (cancelled) return;
+            if (season === 'summer') setNearbySummer([]);
+            else setNearbyWinter([]);
+          });
+      });
     }
 
     if (session) {
@@ -281,8 +330,8 @@ export default function HomeScreen() {
   const mostLiked = [...nearby]
     .sort((a, b) => b.avg_rating - a.avg_rating || b.review_count - a.review_count)
     .slice(0, 10);
-  const summerActivities = nearby.filter((l) => l.available_summer).slice(0, 10);
-  const winterActivities = nearby.filter((l) => l.available_winter).slice(0, 10);
+  const summerActivities = nearbySummer;
+  const winterActivities = nearbyWinter;
 
   const renderLocationCard = (item: NearbyLocation) => (
     <CompactLocationCard
