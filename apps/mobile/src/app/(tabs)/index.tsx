@@ -31,26 +31,37 @@ import { supabase } from '@/lib/supabase';
 const HOME_RADIUS_M = 20_000_000;
 
 /*
- * How far the summer and winter sections reach.
+ * How far the near-you sections reach.
  *
- * A real limit, unlike HOME_RADIUS_M above, which is 20 000 km and therefore
- * no limit at all. Those two sections used to be filtered out of the nearest
- * 200 rows, and with 993 locations in the table the nearest 200 to Norsborg
- * stop at 18.3 km — so Väsjöbacken at 25.1 km was excluded before anything
- * looked at whether it was open in winter. The owner could see two winter
- * places and knew of a third.
+ * A real limit, unlike HOME_RADIUS_M above, which is 20 000 km and therefore no
+ * limit at all.
  *
- * The cure is not a wider row cap. Six locations in the country are marked for
- * winter; slicing them out of a proximity query makes them compete with 993
- * rows for 200 slots, and the competition gets worse every time somebody adds
- * a boule court. So each season asks the database its own question, with the
- * filter applied there — the same reasoning as the activities query below, and
- * cheap for the same reason.
- *
- * Activities keep no distance limit on purpose. People will drive an hour and
- * a half to a festival and not five minutes to a boule court.
+ * Activities are exempt and keep the unbounded radius: people will drive an
+ * hour and a half to a festival and not five minutes to a boule court.
  */
-const HOME_SEASON_RADIUS_M = 30_000;
+const HOME_NEARBY_RADIUS_M = 30_000;
+
+/*
+ * Rows per carousel — and the reason every section now asks its own question.
+ *
+ * Home used to slice most of its sections out of one query for the nearest 200
+ * locations. That quietly decided what the sections could contain: with 993
+ * rows in the table the nearest 200 to Norsborg stop at 18.3 km, so
+ * Väsjöbacken at 25.1 km never reached the winter carousel — it was cut before
+ * anything looked at whether it was open in winter. Six locations in the
+ * country are marked for winter, and they were competing with 993 rows for 200
+ * slots. Every boule court added made it worse.
+ *
+ * A bigger shared cap only postpones that. Asking the database a separate,
+ * filtered question per section removes the competition entirely, and each
+ * answer is small because the RPC sorts and filters before it caps — fifteen
+ * rows means the fifteen the section is actually about.
+ *
+ * It is also less work, not more: four queries of fifteen replace two of two
+ * hundred. Past fifteen there is a "Show more" that carries the same filter
+ * into Search, which is the screen built for going through a long list.
+ */
+const HOME_SECTION_LIMIT = 15;
 
 // Boosted/paid placement is built but stays hidden until there are enough users
 // to sell placement to. Flip to true to bring the section back.
@@ -175,6 +186,7 @@ export default function HomeScreen() {
 
   const [nearby, setNearby] = useState<NearbyLocation[]>([]);
   const [nearbyActivities, setNearbyActivities] = useState<NearbyLocation[]>([]);
+  const [nearbyMostLiked, setNearbyMostLiked] = useState<NearbyLocation[]>([]);
   const [nearbySummer, setNearbySummer] = useState<NearbyLocation[]>([]);
   const [nearbyWinter, setNearbyWinter] = useState<NearbyLocation[]>([]);
   const [publicLists, setPublicLists] = useState<PublicList[]>([]);
@@ -192,39 +204,36 @@ export default function HomeScreen() {
       });
 
     if (coords) {
-      fetchNearbyLocations(supabase, {
-        lat: coords.latitude,
-        lng: coords.longitude,
-        radiusM: HOME_RADIUS_M,
-        sort: 'distance',
-        // Home slices five sections out of this one query, so it needs more
-        // than the RPC's default of 100. Worth knowing what the cap changes:
-        // "Most liked" becomes most-liked *among the nearest 200* rather than
-        // in the whole country. With a national dataset that is arguably the
-        // better answer, but it is a change, not a no-op.
-        maxResults: 200,
-      })
-        .then((rows) => {
-          if (!cancelled) setNearby(rows);
+      /*
+       * Only the boosted carousel still needs the broad proximity query, and it
+       * is switched off — so while it is off, Home does not run it at all. It
+       * cannot be answered by a filtered query like the others: is_boosted is
+       * not something the RPC filters on.
+       */
+      if (SHOW_BOOSTED_SECTION) {
+        fetchNearbyLocations(supabase, {
+          lat: coords.latitude,
+          lng: coords.longitude,
+          radiusM: HOME_RADIUS_M,
+          sort: 'distance',
+          maxResults: 200,
         })
-        .catch(() => {
-          if (!cancelled) setNearby([]);
-        });
+          .then((rows) => {
+            if (!cancelled) setNearby(rows);
+          })
+          .catch(() => {
+            if (!cancelled) setNearby([]);
+          });
+      }
 
       /*
-       * Activities get their own query, deliberately not sliced out of the one
-       * above.
+       * Activities: no distance limit, on purpose.
        *
-       * They used to be, and the 200-row cap quietly ate them: once the import
-       * took the table past eight hundred rows, the nearest 200 to central
-       * Stockholm reached only 12 km, so a festival in Eskilstuna at 88 km was
-       * gone before the kind filter ever ran. Distance is the wrong axis here —
-       * people will drive an hour and a half to a festival and not five minutes
-       * to a boule court, so activities cannot be made to compete with courts
-       * for slots in a proximity query.
-       *
-       * Cheap despite the high cap: there are only a handful of activities in
-       * the country, because every one of them is somebody typing it in by hand.
+       * They were sliced out of a proximity query once, and it ate them — a
+       * festival in Eskilstuna at 88 km was gone before the kind filter ever
+       * ran. Distance is the wrong axis here, so this asks for the fifteen
+       * nearest activities in the country rather than the activities among the
+       * nearest anything.
        */
       fetchNearbyLocations(supabase, {
         lat: coords.latitude,
@@ -232,7 +241,7 @@ export default function HomeScreen() {
         radiusM: HOME_RADIUS_M,
         sort: 'distance',
         kind: 'activity',
-        maxResults: 200,
+        maxResults: HOME_SECTION_LIMIT,
       })
         .then((rows) => {
           if (!cancelled) setNearbyActivities(rows);
@@ -241,18 +250,44 @@ export default function HomeScreen() {
           if (!cancelled) setNearbyActivities([]);
         });
 
-      // One query per season, filtered in the database. Ten is what the
-      // carousel shows, and the RPC sorts by distance before it caps — so this
-      // is the ten nearest of that season rather than whichever ten survived a
-      // general proximity query.
+      /*
+       * Most liked, sorted in the database rather than here.
+       *
+       * The old client-side sort could only rank what the shared query had
+       * already returned, so it meant "best rated within about 18 km" without
+       * saying so. Now it is the fifteen best rated within the near-you radius.
+       *
+       * The tie-break changes with it: the RPC settles equal ratings by
+       * distance, where this screen used to settle them by review count. For a
+       * section headed "near you" proximity is the better answer, and equal
+       * ratings are the common case — only four locations within 30 km of the
+       * owner have been reviewed at all.
+       */
+      fetchNearbyLocations(supabase, {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        radiusM: HOME_NEARBY_RADIUS_M,
+        sort: 'rating',
+        maxResults: HOME_SECTION_LIMIT,
+      })
+        .then((rows) => {
+          if (!cancelled) setNearbyMostLiked(rows);
+        })
+        .catch(() => {
+          if (!cancelled) setNearbyMostLiked([]);
+        });
+
+      // One query per season, filtered in the database — so this is the nearest
+      // fifteen of that season, not whichever fifteen survived a general
+      // proximity query.
       (['summer', 'winter'] as const).forEach((season) => {
         fetchNearbyLocations(supabase, {
           lat: coords.latitude,
           lng: coords.longitude,
-          radiusM: HOME_SEASON_RADIUS_M,
+          radiusM: HOME_NEARBY_RADIUS_M,
           sort: 'distance',
           season,
-          maxResults: 10,
+          maxResults: HOME_SECTION_LIMIT,
         })
           .then((rows) => {
             if (cancelled) return;
@@ -325,11 +360,12 @@ export default function HomeScreen() {
     if (section) router.push({ pathname: '/favorites', params: { section } });
   };
 
-  const activities = nearbyActivities.slice(0, 10);
-  const boosted = nearby.filter((l) => l.is_boosted).slice(0, 10);
-  const mostLiked = [...nearby]
-    .sort((a, b) => b.avg_rating - a.avg_rating || b.review_count - a.review_count)
-    .slice(0, 10);
+  // Every carousel is now exactly what its query asked for; the database did
+  // the filtering, the sorting and the capping. Only boosted still needs work
+  // done here, because is_boosted is not something the RPC filters on.
+  const activities = nearbyActivities;
+  const boosted = nearby.filter((l) => l.is_boosted).slice(0, HOME_SECTION_LIMIT);
+  const mostLiked = nearbyMostLiked;
   const summerActivities = nearbySummer;
   const winterActivities = nearbyWinter;
 
