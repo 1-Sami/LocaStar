@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,10 +55,35 @@ export default function AdminUsersScreen() {
   const [myRole, setMyRole] = useState<UserRole>('user');
   const [tab, setTab] = useState<Tab>('people');
   const [query, setQuery] = useState('');
-  const [people, setPeople] = useState<ManagedUser[]>([]);
+  /*
+   * The search runs off a debounced copy of the query, never off `query` itself.
+   *
+   * It used to reload on every keystroke, and the reload swapped the whole tab
+   * for a spinner — which unmounted the TextInput, which dismissed the
+   * keyboard. Typing a name was impossible: one letter, keyboard gone, tap
+   * again, one letter. Keeping the input mounted is the real fix; the debounce
+   * is what stops it firing a query per character on the way there.
+   */
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  /*
+   * Results carry the query they answer, so "is a search still running" is
+   * derived rather than stored: it is true whenever the box and the results
+   * disagree. A separate `searching` flag would have to be set synchronously
+   * inside the effect, which is the cascading-render pattern the lint rule
+   * objects to — and it would need its own guard against the older of two
+   * in-flight requests landing last, under a box that has since moved on.
+   */
+  const [results, setResults] = useState<{ query: string; users: ManagedUser[] }>({
+    query: '',
+    users: [],
+  });
   const [bans, setBans] = useState<UserBan[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Bumped by the actions to re-run the current search after they change
+  // something — a ban has to show up without the moderator retyping the name.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const [banTarget, setBanTarget] = useState<ManagedUser | null>(null);
   const [banReason, setBanReason] = useState('');
@@ -67,27 +92,53 @@ export default function AdminUsersScreen() {
 
   const isAdmin = myRole === 'admin';
 
-  const reload = useCallback(() => {
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Who I am and what is awaiting review. Deliberately independent of the
+  // search box: a keystroke has no business reloading either.
+  const refreshCore = useCallback(() => {
     if (!session) return;
     setLoading(true);
     Promise.all([
       fetchProfile(supabase, session.user.id),
-      searchUsers(supabase, query),
       fetchBansByStatus(supabase, ['pending', 'active']),
     ])
-      .then(([profile, users, banRows]) => {
+      .then(([profile, banRows]) => {
         setMyRole(profile.role);
-        setPeople(users);
         setBans(banRows);
       })
-      .catch(() => {
-        setPeople([]);
-        setBans([]);
-      })
+      .catch(() => setBans([]))
       .finally(() => setLoading(false));
-  }, [session, query]);
+  }, [session]);
 
-  useFocusEffect(useCallback(() => reload(), [reload]));
+  useEffect(() => {
+    // Two characters is the floor the RPC enforces too; below it there is
+    // nothing to ask for and nothing to show.
+    const trimmed = debouncedQuery.trim();
+    if (trimmed.length < 2) return;
+    let cancelled = false;
+    searchUsers(supabase, trimmed)
+      .then((users) => {
+        if (!cancelled) setResults({ query: trimmed, users });
+      })
+      .catch(() => {
+        if (!cancelled) setResults({ query: trimmed, users: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, refreshTick]);
+
+  useFocusEffect(useCallback(() => refreshCore(), [refreshCore]));
+
+  // What the actions call once they have changed something.
+  const reload = useCallback(() => {
+    refreshCore();
+    setRefreshTick((tick) => tick + 1);
+  }, [refreshCore]);
 
   const openBanSheet = (user: ManagedUser) => {
     setBanTarget(user);
@@ -179,6 +230,17 @@ export default function AdminUsersScreen() {
 
   const pendingBans = bans.filter((b) => b.status === 'pending');
 
+  /*
+   * The box and the results disagree while a search is on its way — including
+   * during the debounce gap, which is why this is compared against `query` and
+   * not `debouncedQuery`. Without covering that gap the screen flashes "no
+   * matches" for a quarter of a second every time you finish typing a name that
+   * does match.
+   */
+  const trimmedQuery = query.trim();
+  const showSpinner = trimmedQuery.length >= 2 && results.query !== trimmedQuery;
+  const people = results.users;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -194,10 +256,10 @@ export default function AdminUsersScreen() {
           </Pressable>
         </View>
 
-        {loading ? (
-          <ActivityIndicator style={styles.loadingIndicator} />
-        ) : tab === 'people' ? (
+        {tab === 'people' ? (
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Outside every loading branch on purpose — see the note on
+                debouncedQuery. Unmounting this is what shut the keyboard. */}
             <View style={[styles.searchBar, { borderColor: theme.backgroundSelected }]}>
               <Ionicons name="search" size={16} color={theme.textSecondary} />
               <TextInput
@@ -206,6 +268,8 @@ export default function AdminUsersScreen() {
                 placeholder={t('admin.searchPeople')}
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
                 style={[styles.searchInput, { color: theme.text }]}
               />
             </View>
@@ -214,7 +278,9 @@ export default function AdminUsersScreen() {
                 directory to anyone made a superuser is a privacy leak in
                 miniature, and it stops being usable at any real size anyway.
                 Two characters is the same floor the RPC enforces. */}
-            {query.trim().length < 2 ? (
+            {showSpinner ? (
+              <ActivityIndicator style={styles.loadingIndicator} />
+            ) : trimmedQuery.length < 2 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 {t('admin.searchToBegin')}
               </ThemedText>
@@ -284,6 +350,8 @@ export default function AdminUsersScreen() {
               })
             )}
           </ScrollView>
+        ) : loading ? (
+          <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
             {bans.length === 0 ? (
@@ -300,12 +368,12 @@ export default function AdminUsersScreen() {
                       <View
                         style={[styles.badge, ban.status === 'pending' ? styles.pendingBadge : styles.bannedBadge]}>
                         <ThemedText type="small" style={styles.badgeTextLight}>
-                          {ban.status === 'pending' ? 'Awaiting review' : 'Active'}
+                          {ban.status === 'pending' ? t('admin.awaitingReview') : t('admin.banActive')}
                         </ThemedText>
                       </View>
                     </View>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {banExpiryLabel(ban, t)} · by {ban.issuedByName} ·{' '}
+                      {banExpiryLabel(ban, t)} · {t('admin.banIssuedBy', { name: ban.issuedByName })} ·{' '}
                       {new Date(ban.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default" style={styles.reason}>
@@ -352,7 +420,7 @@ export default function AdminUsersScreen() {
           <Pressable style={styles.modalContent} onPress={() => {}}>
             <ThemedView type="backgroundElement" style={styles.modalInner}>
               <ThemedText type="subtitle" style={styles.modalTitle}>
-                Ban {banTarget?.name}
+                {t('admin.banPerson', { name: banTarget?.name ?? '' })}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {isAdmin

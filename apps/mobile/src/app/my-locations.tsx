@@ -2,6 +2,7 @@ import { fetchMyAddedLocations, type MyAddedLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { categoryLabelFromName } from '@/lib/categories';
@@ -12,6 +13,7 @@ import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { formatActivityRange } from '@/lib/activity-dates';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
@@ -22,25 +24,17 @@ import { supabase } from '@/lib/supabase';
 const PLACE_BORDER = '#C34CE8';
 const ACTIVITY_BORDER = '#8A6A2A';
 
-function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 /**
  * When an activity runs, as one line.
  *
- * Only activities carry dates; a place returns null and shows nothing. An
- * activity with a start but no end is open-ended, so it reads "From …" rather
- * than inventing a finish.
+ * Only activities carry dates; a place returns null and shows nothing. The
+ * formatting itself lives in lib/activity-dates so this screen and the location
+ * screen cannot drift apart again — they already had, and both had English
+ * words baked into a translated app.
  */
-function dateLine(location: MyAddedLocation): string | null {
+function dateLine(location: MyAddedLocation, language: string, t: TFunction): string | null {
   if (location.kind !== 'activity') return null;
-  if (location.starts_at && location.expires_at) {
-    return `${formatDay(location.starts_at)} – ${formatDay(location.expires_at)}`;
-  }
-  if (location.starts_at) return `From ${formatDay(location.starts_at)}`;
-  if (location.expires_at) return `Until ${formatDay(location.expires_at)}`;
-  return null;
+  return formatActivityRange(location.starts_at, location.expires_at, language, t);
 }
 
 /** Past its end date. Keyed on expires_at: without one it never ends. */
@@ -49,7 +43,7 @@ function hasEnded(location: MyAddedLocation): boolean {
 }
 
 export default function MyLocationsScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const router = useRouter();
   const [locations, setLocations] = useState<MyAddedLocation[]>([]);
@@ -92,7 +86,7 @@ export default function MyLocationsScreen() {
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {locations.map((location) => {
               const isActivity = location.kind === 'activity';
-              const runs = dateLine(location);
+              const runs = dateLine(location, i18n.language, t);
               const ended = hasEnded(location);
               return (
                 <Pressable

@@ -675,7 +675,22 @@
     "roleUser": "Användare",
     "makeSuperuser": "Gör till superanvändare",
     "removeSuperuser": "Ta bort superanvändare",
-    "searchToBegin": "Sök efter någon på användarnamn eller mejladress."
+    "searchToBegin": "Sök efter någon på användarnamn eller mejladress.",
+    "awaitingReview": "Väntar på granskning",
+    "banActive": "Aktiv",
+    "banIssuedBy": "av {{name}}",
+    "banPerson": "Spärra {{name}}"
+  },
+  "activityWhen": {
+    "fromDate": "Från {{date}}",
+    "untilDate": "Till {{date}}",
+    "ended": "Avslutad",
+    "lastDay": "Sista dagen idag",
+    "today": "Idag",
+    "tomorrow": "Imorgon",
+    "onNow": "Pågår nu",
+    "inDays_one": "Om {{count}} dag",
+    "inDays_other": "Om {{count}} dagar"
   },
   "components": {
     "addToList": "Lägg till i lista",

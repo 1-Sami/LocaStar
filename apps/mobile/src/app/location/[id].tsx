@@ -45,6 +45,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
+import { activityWhen, activityWhenLabel, formatActivityRange } from '@/lib/activity-dates';
 import { useAuth } from '@/lib/auth-context';
 import { categoryLabelFromName } from '@/lib/categories';
 import { confirmAsync } from '@/lib/confirm';
@@ -168,10 +169,6 @@ function formatWindowLeft(ms: number, t: TFunction): string {
   return t('location.durationMinutes', { count: minutes });
 }
 
-function formatActivityDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
 const AVATAR_COLORS = ['#4C8FE8', '#4CD37A', '#E8A93B', '#C34CE8', '#F5738A', '#2BA3A3', '#E2791F'];
 function avatarColorFor(id: string): string {
   let hash = 0;
@@ -194,7 +191,7 @@ export default function LocationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
   const { isModerator } = useSharedProfile();
@@ -363,6 +360,12 @@ export default function LocationDetailScreen() {
 
   const websiteUrl = websiteHref(location.website);
   const websiteLabel = websiteUrl ? websiteText(websiteUrl) : null;
+
+  const isActivity = location.kind === 'activity';
+  const dateRange = isActivity
+    ? formatActivityRange(location.starts_at, location.expires_at, i18n.language, t)
+    : null;
+  const whenNow = isActivity ? activityWhen(location.starts_at, location.expires_at) : null;
 
   const viewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
   // Review photos belong to their review, not the place, so they can't lead it.
@@ -715,6 +718,26 @@ export default function LocationDetailScreen() {
               </ThemedText>
             </View>
 
+            {/* Above the address, and out of the grey metadata list entirely.
+                For an activity the dates are not one detail among six — they
+                are the whole question of whether you can go at all, and they
+                were losing a legibility contest with the street name. */}
+            {dateRange && (
+              <View style={[styles.dateBanner, { borderColor: theme.accent }]}>
+                <Ionicons name="calendar" size={18} color={theme.accent} />
+                <View style={styles.dateBannerText}>
+                  <ThemedText type="default" style={styles.dateRangeText}>
+                    {dateRange}
+                  </ThemedText>
+                  {whenNow && (
+                    <ThemedText type="smallBold" style={{ color: theme.accent }}>
+                      {activityWhenLabel(whenNow, location.starts_at, t)}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+            )}
+
             {location.address && (
               <View style={styles.infoRow}>
                 <Ionicons name="location-outline" size={16} color={theme.textSecondary} />
@@ -733,22 +756,12 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
-            {location.kind === 'activity' && location.starts_at && (
-              <View style={styles.infoRow}>
-                <Ionicons name="calendar-outline" size={16} color={theme.text} />
-                <ThemedText type="smallBold" style={styles.addressText}>
-                  Starts {formatActivityDate(location.starts_at)}
-                  {location.expires_at ? ` · Ends ${formatActivityDate(location.expires_at)}` : ''}
-                </ThemedText>
-              </View>
-            )}
-
             {/* Both were collected when a place was added and then shown
                 nowhere, so a website someone had typed in was simply lost. */}
             {websiteUrl && (
               <Pressable style={styles.infoRow} onPress={() => openUrl(websiteUrl)}>
                 <Ionicons name="globe-outline" size={16} color={theme.textSecondary} />
-                <ThemedText type="default" style={[styles.addressText, styles.linkText]} numberOfLines={1}>
+                <ThemedText type="default" style={[styles.addressText, styles.linkUnderline]} numberOfLines={1}>
                   {websiteLabel}
                 </ThemedText>
               </Pressable>
@@ -1569,6 +1582,36 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#4C8FE8',
     textDecorationLine: 'underline',
+  },
+  /*
+   * The website reads in the page's own text colour instead of link blue: on
+   * the dark theme #4C8FE8 against #0A0A0D is a dim smudge, and the address is
+   * long enough that it was the hardest line on the screen to read.
+   *
+   * The underline stays, and is now doing all the work of saying "tappable" —
+   * so it is not decoration and must not be dropped.
+   */
+  linkUnderline: {
+    textDecorationLine: 'underline',
+  },
+  dateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    // The accent is the same amber in both themes, so one tint works for both.
+    backgroundColor: 'rgba(232,169,59,0.12)',
+  },
+  dateBannerText: {
+    flex: 1,
+    gap: 2,
+  },
+  dateRangeText: {
+    fontSize: 16,
   },
   actionButtonsRow: {
     flexDirection: 'row',

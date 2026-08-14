@@ -675,7 +675,22 @@
     "roleUser": "User",
     "makeSuperuser": "Make Superuser",
     "removeSuperuser": "Remove Superuser",
-    "searchToBegin": "Search for someone by username or email."
+    "searchToBegin": "Search for someone by username or email.",
+    "awaitingReview": "Awaiting review",
+    "banActive": "Active",
+    "banIssuedBy": "by {{name}}",
+    "banPerson": "Ban {{name}}"
+  },
+  "activityWhen": {
+    "fromDate": "From {{date}}",
+    "untilDate": "Until {{date}}",
+    "ended": "Ended",
+    "lastDay": "Last day today",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "onNow": "On now",
+    "inDays_one": "In {{count}} day",
+    "inDays_other": "In {{count}} days"
   },
   "components": {
     "addToList": "Add to list",
