@@ -478,13 +478,13 @@ export default function SearchScreen() {
               </Pressable>
             </View>
 
-            <Text style={styles.modalSectionLabel}>{t('search.activities')}</Text>
+            <Text style={styles.modalSectionLabel}>{t('search.categories')}</Text>
             <View style={styles.categorySearchBar}>
               <Ionicons name="search-sharp" size={15} color={SearchPalette.textMuted} />
               <TextInput
                 value={categoryQuery}
                 onChangeText={setCategoryQuery}
-                placeholder={t('search.searchActivities')}
+                placeholder={t('search.searchCategories')}
                 placeholderTextColor={SearchPalette.textMuted}
                 style={styles.categorySearchInput}
                 autoCorrect={false}
@@ -498,7 +498,7 @@ export default function SearchScreen() {
             </View>
             <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
               {visibleCategories.length === 0 ? (
-                <Text style={styles.modalEmptyText}>{t('search.noActivitiesMatch')}</Text>
+                <Text style={styles.modalEmptyText}>{t('search.noCategoriesMatch')}</Text>
               ) : (
                 visibleCategories.map((category) => {
                   const active = activeSlugs.includes(category.slug);

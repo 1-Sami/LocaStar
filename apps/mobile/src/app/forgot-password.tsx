@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authRedirectTo } from '@/lib/auth-redirect';
+import { authErrorKey } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
 export default function ForgotPasswordScreen() {
@@ -28,7 +29,7 @@ export default function ForgotPasswordScreen() {
     });
     setSubmitting(false);
     if (resetError) {
-      setError(resetError.message);
+      setError(t(authErrorKey(resetError)));
       return;
     }
     setSent(true);

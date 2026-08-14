@@ -11,6 +11,7 @@ import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { APP_SCHEME_URL } from '@/lib/auth-redirect';
+import { authErrorKey } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordScreen() {
@@ -87,7 +88,7 @@ export default function ResetPasswordScreen() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setSaving(false);
     if (updateError) {
-      setError(updateError.message);
+      setError(t(authErrorKey(updateError)));
       return;
     }
     setSaved(true);

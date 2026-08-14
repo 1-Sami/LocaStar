@@ -10,6 +10,7 @@ import { passwordProblem } from '@/constants/auth';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { authErrorKey } from '@/lib/auth-errors';
 import { verifyCurrentPassword } from '@/lib/reauth';
 import { supabase } from '@/lib/supabase';
 
@@ -56,7 +57,7 @@ export default function ChangePasswordScreen() {
     });
     setSaving(false);
     if (updateError) {
-      setError(updateError.message);
+      setError(t(authErrorKey(updateError)));
       return;
     }
     setSaved(true);

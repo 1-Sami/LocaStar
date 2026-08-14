@@ -657,6 +657,16 @@ export default function AddLocationScreen() {
                 keyboardType="email-address"
                 style={[styles.input, styles.lightInput]}
               />
+              {/* The address being unusable already disabled Submit, but
+                  silently — the button greyed out and nothing said which of a
+                  dozen fields was at fault, on a form long enough that the
+                  email is off screen by the time you reach the button. The
+                  edit screen has said this all along. */}
+              {!emailValid && (
+                <ThemedText type="small" style={styles.addressWarning}>
+                  {t('form.emailInvalid')}
+                </ThemedText>
+              )}
               {/* An activity has a page to point at as often as a place does —
                   a festival's line-up, a ticket link. The field was simply
                   never offered here. */}

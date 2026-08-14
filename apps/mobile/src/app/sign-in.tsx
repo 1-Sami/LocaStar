@@ -27,7 +27,7 @@ export default function SignInScreen() {
     const { error: signInError } = await signInWithPassword(email.trim(), password);
     setSubmitting(false);
     if (signInError) {
-      setError(signInError);
+      setError(t(signInError));
       return;
     }
     router.back();

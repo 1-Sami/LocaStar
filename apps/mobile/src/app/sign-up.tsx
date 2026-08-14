@@ -66,7 +66,7 @@ export default function SignUpScreen() {
     );
     setSubmitting(false);
     if (signUpError) {
-      setError(signUpError);
+      setError(t(signUpError));
       return;
     }
     if (needsEmailConfirmation) {

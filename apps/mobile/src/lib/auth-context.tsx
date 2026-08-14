@@ -11,6 +11,7 @@ import { AppState } from 'react-native';
 
 import { authRedirectTo } from '@/lib/auth-redirect';
 import { unregisterPushNotifications } from '@/lib/push-registration';
+import { authErrorKey } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -66,9 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.remove();
   }, [awaitingConfirmation, refreshSession]);
 
+  // Returns a translation key, not a sentence — see lib/auth-errors. The
+  // screens hold `t`; this context deliberately does not.
   const signInWithPassword = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    return { error: error ? authErrorKey(error) : null };
   };
 
   const signUpWithPassword = async (email: string, password: string, username: string) => {
@@ -79,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: { data: { username }, emailRedirectTo: authRedirectTo('/auth/confirmed') },
     });
-    if (error) return { error: error.message, needsEmailConfirmation: false };
+    if (error) return { error: authErrorKey(error), needsEmailConfirmation: false };
 
     // Supabase deliberately answers a sign-up for an already-registered email
     // with a success-shaped response, so that nobody can use this endpoint to
@@ -87,10 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // attached. Without this check the person is shown "check your email" and
     // waits for a confirmation link that is never sent.
     if (data.user && (data.user.identities?.length ?? 0) === 0) {
-      return {
-        error: 'An account with that email already exists. Log in instead, or reset your password.',
-        needsEmailConfirmation: false,
-      };
+      return { error: 'authError.emailExists', needsEmailConfirmation: false };
     }
 
     return { error: null, needsEmailConfirmation: !data.session };
