@@ -181,6 +181,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,
     padding: Spacing.four,

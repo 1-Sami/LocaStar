@@ -730,6 +730,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   modalContent: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     maxHeight: '70%',
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,

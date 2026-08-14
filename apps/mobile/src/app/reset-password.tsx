@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/password-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { passwordProblem } from '@/constants/auth';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { APP_SCHEME_URL } from '@/lib/auth-redirect';
 import { authErrorKey } from '@/lib/auth-errors';
@@ -218,6 +218,9 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     padding: Spacing.four,
     gap: Spacing.three,
   },

@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
@@ -489,7 +489,12 @@ export default function AdminUsersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1 },
+  safeArea: {
+    flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+  },
   tabRow: {
     flexDirection: 'row',
     gap: Spacing.two,
@@ -549,7 +554,12 @@ const styles = StyleSheet.create({
   neutralButton: { backgroundColor: 'rgba(128,128,128,0.25)' },
   dangerButton: { backgroundColor: '#E05252' },
   confirmButton: { backgroundColor: '#E8A93B' },
-  modalContent: { maxHeight: '85%' },
+  modalContent: {
+    maxHeight: '85%',
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+  },
   modalInner: {
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,

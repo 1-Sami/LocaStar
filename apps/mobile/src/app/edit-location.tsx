@@ -24,7 +24,7 @@ import { PhotoPicker } from '@/components/photo-picker';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCityLine, formatStreetLine, resolveCity } from '@/lib/address-format';
 import { useAuth } from '@/lib/auth-context';
@@ -628,6 +628,9 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
   },
   loadingIndicator: {
     marginTop: Spacing.six,
@@ -731,6 +734,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   modalContent: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,
     padding: Spacing.four,
