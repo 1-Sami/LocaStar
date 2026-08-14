@@ -257,9 +257,18 @@ export default function ProfileScreen() {
               <ThemedText type="linkPrimary">{t('common.createAccount')}</ThemedText>
             </Pressable>
           </View>
-          {/* Available logged out too — it explains what the app is for. */}
+          {/* Both are available logged out. About explains what the app is
+              for; Settings still holds language, theme and the two legal
+              documents, which someone deciding whether to sign up should be
+              able to read — in their own language — before handing over an
+              email address. The rows that need an account hide themselves.
+
+              Deliberately the same list the signed-in branch renders, so the
+              two cannot drift apart. */}
           <View style={[styles.menu, styles.loggedOutMenu]}>
-            <MenuRow item="about" onPress={() => router.push('/about')} />
+            {SECONDARY_MENU_ITEMS.map((item) => (
+              <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
+            ))}
           </View>
         </SafeAreaView>
       </ThemedView>

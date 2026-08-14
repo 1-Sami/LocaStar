@@ -770,7 +770,7 @@ export default function LocationDetailScreen() {
             {location.phone && (
               <Pressable style={styles.infoRow} onPress={() => openUrl(`tel:${location.phone}`)}>
                 <Ionicons name="call-outline" size={16} color={theme.textSecondary} />
-                <ThemedText type="default" style={[styles.addressText, styles.linkText]}>
+                <ThemedText type="default" style={[styles.addressText, styles.linkUnderline]}>
                   {location.phone}
                 </ThemedText>
               </Pressable>
@@ -779,7 +779,7 @@ export default function LocationDetailScreen() {
             {location.email && (
               <Pressable style={styles.infoRow} onPress={() => openUrl(`mailto:${location.email}`)}>
                 <Ionicons name="mail-outline" size={16} color={theme.textSecondary} />
-                <ThemedText type="default" style={[styles.addressText, styles.linkText]} numberOfLines={1}>
+                <ThemedText type="default" style={[styles.addressText, styles.linkUnderline]} numberOfLines={1}>
                   {location.email}
                 </ThemedText>
               </Pressable>
