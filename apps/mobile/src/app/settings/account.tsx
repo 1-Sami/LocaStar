@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { authErrorKey } from '@/lib/auth-errors';
 import { authRedirectTo } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 import { writeFailureMessage } from '@/lib/restriction';
@@ -98,7 +99,21 @@ export default function AccountInfoScreen() {
           { email: trimmedEmail },
           { emailRedirectTo: authRedirectTo('/auth/confirmed') }
         );
-        if (emailError) throw emailError;
+        /*
+         * Reported specifically rather than thrown into the catch below.
+         *
+         * Every reason this fails is one the person can act on — the address
+         * belongs to someone else, it is malformed, too many confirmation mails
+         * have gone out already — and the catch answers all of them with "we
+         * couldn't save your account". Somebody typing in an address their
+         * partner already registered would be told nothing at all, and would
+         * try again.
+         */
+        if (emailError) {
+          setError(t(authErrorKey(emailError)));
+          setSaving(false);
+          return;
+        }
         setEmailChangePending(true);
         setCurrentPassword('');
       }
