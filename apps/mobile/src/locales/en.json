@@ -705,6 +705,10 @@
     "timeout": "That took too long. Try again.",
     "generic": "Something went wrong. Try again."
   },
+  "reviewCount": {
+    "label_one": "review",
+    "label_other": "reviews"
+  },
   "activityWhen": {
     "fromDate": "From {{date}}",
     "untilDate": "Until {{date}}",

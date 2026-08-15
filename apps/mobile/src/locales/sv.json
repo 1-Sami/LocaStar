@@ -705,6 +705,10 @@
     "timeout": "Det tog för lång tid. Försök igen.",
     "generic": "Något gick fel. Försök igen."
   },
+  "reviewCount": {
+    "label_one": "recension",
+    "label_other": "recensioner"
+  },
   "activityWhen": {
     "fromDate": "Från {{date}}",
     "untilDate": "Till {{date}}",

@@ -714,7 +714,7 @@ export default function LocationDetailScreen() {
               <StarRating rating={location.avg_rating} size={16} />
               <ThemedText type="small" themeColor="textSecondary">
                 {location.avg_rating.toFixed(1)} · {location.review_count}{' '}
-                {location.review_count === 1 ? 'review' : 'reviews'}
+                {t('reviewCount.label', { count: location.review_count })}
               </ThemedText>
             </View>
 
@@ -946,7 +946,7 @@ export default function LocationDetailScreen() {
                     <ThemedText style={styles.ratingSummaryNumber}>{location.avg_rating.toFixed(1)}</ThemedText>
                     <StarRating rating={location.avg_rating} size={14} />
                     <ThemedText type="small" themeColor="textSecondary">
-                      {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                      {reviews.length} {t('reviewCount.label', { count: reviews.length })}
                     </ThemedText>
                   </View>
                   <View style={styles.breakdown}>
