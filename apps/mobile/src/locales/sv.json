@@ -148,7 +148,7 @@
     "warningTitle": "Varning från en moderator",
     "warningDismiss": "Uppfattat",
     "statFavorites": "Favoriter",
-    "statBucketList": "Sparat till senare",
+    "statBucketList": "Bokmärken",
     "statShared": "Delat",
     "statReviews": "Recensioner",
     "statAdded": "Tillagt",
@@ -478,7 +478,7 @@
   "saved": {
     "favorites": "Favoriter",
     "favoritesEmpty": "Inget sparat än — tryck på hjärtat på en plats för att börja spara favoriter.",
-    "bucketList": "Sparat till senare",
+    "bucketList": "Bokmärken",
     "savedLists": "Sparade listor",
     "shared": "Delat",
     "sharedEmpty": "Inget delat än — dela en plats eller lista så dyker den upp här.",

@@ -148,7 +148,7 @@
     "warningTitle": "Warning from a moderator",
     "warningDismiss": "Got it",
     "statFavorites": "Favorites",
-    "statBucketList": "Saved for later",
+    "statBucketList": "Bookmark",
     "statShared": "Shared",
     "statReviews": "Reviews",
     "statAdded": "Added",
@@ -478,7 +478,7 @@
   "saved": {
     "favorites": "Favorites",
     "favoritesEmpty": "Nothing saved yet — tap the heart on a location to start saving your favorites.",
-    "bucketList": "Saved for later",
+    "bucketList": "Bookmark",
     "savedLists": "Saved lists",
     "shared": "Shared",
     "sharedEmpty": "Nothing shared yet — share a location or list to see it here.",

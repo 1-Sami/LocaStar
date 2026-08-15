@@ -51,7 +51,7 @@ export default function AppTabs() {
         Saved is deliberately not here. iOS shows at most five tabs and pushes
         the rest into a "More" list, so something had to give up its slot for
         Add — and Saved is the one already reached in a tap from the Favorites,
-        Saved for later and Shared tiles on Home and Profile.
+        Bookmark and Shared tiles on Home and Profile.
 
         It lives at app/favorites.tsx, a pushed screen, NOT a hidden tab. A
         hidden tab is filtered out of the navigator, and in production

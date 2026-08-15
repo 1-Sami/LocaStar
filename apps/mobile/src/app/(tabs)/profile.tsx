@@ -16,7 +16,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
@@ -41,9 +41,28 @@ const EMPTY_STATS: ProfileStats = {
   activities: 0,
 };
 
-const STAT_TILE_WIDTH = 59;
-const STAT_TILE_GAP = 10;
-const MENU_ROW_WIDTH = (91 * 3 + STAT_TILE_GAP * 2) * 0.8;
+/*
+ * The five tiles are measured to fill the row rather than being given a fixed
+ * width.
+ *
+ * They were 59pt each with 10pt between them, which left a gap at the right
+ * edge on every phone and made the numbers — the only part anyone reads — the
+ * smallest thing on the screen. There are always exactly five, so the width
+ * they should be is arithmetic, not a guess: whatever is left after the gaps,
+ * divided by five. Capped at MaxContentWidth so a tablet gets five sensible
+ * tiles instead of five very wide ones.
+ */
+const STAT_TILE_COUNT = 5;
+const STAT_TILE_GAP = 6;
+/*
+ * The menu rows' width, frozen as the number it has always evaluated to.
+ *
+ * It used to be written as (91 * 3 + STAT_TILE_GAP * 2) * 0.8, which tied the
+ * menu to the spacing between the stat tiles for no reason beyond the two
+ * having once been designed together — narrowing that gap quietly narrowed
+ * every row below it.
+ */
+const MENU_ROW_WIDTH = 234.4;
 
 /*
  * Stat tiles and menu rows are identified by id and *labelled* by translation.
@@ -136,6 +155,14 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
   const { unreadCount } = useNotificationsBadge();
+  const { width: windowWidth } = useWindowDimensions();
+
+  // See STAT_TILE_GAP. useWindowDimensions rather than Dimensions.get so the
+  // row re-measures if the window ever changes size under it.
+  const statRowWidth = Math.min(windowWidth, MaxContentWidth) - Spacing.three * 2;
+  const statTileWidth = Math.floor(
+    (statRowWidth - STAT_TILE_GAP * (STAT_TILE_COUNT - 1)) / STAT_TILE_COUNT
+  );
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -278,16 +305,11 @@ export default function ProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.bellRow}>
-          <Pressable
-            style={[styles.notificationBellButton, { borderColor: theme.text }]}
-            onPress={() => router.push('/notifications')}
-            hitSlop={8}>
-            <Ionicons name="notifications-outline" size={24} color={theme.text} />
-            {unreadCount > 0 && <View style={styles.notificationDot} />}
-          </Pressable>
-        </View>
-
+        {/* The bell used to sit on a row of its own above this one, which
+            pushed the avatar down the screen and left the bell stranded near
+            the status bar with nothing beside it. In the profile row it lines
+            up with the top of the avatar and the space it was occupying goes
+            back to the content. */}
         <View style={styles.profileRow}>
           <Pressable onPress={() => router.push('/settings/profile-picture' as never)}>
             <Avatar url={avatarUrl} size={82} />
@@ -311,6 +333,13 @@ export default function ProfileScreen() {
               <ThemedText style={styles.logOutText}>{t('profile.logOut')}</ThemedText>
             </Pressable>
           </View>
+          <Pressable
+            style={[styles.notificationBellButton, { borderColor: theme.text }]}
+            onPress={() => router.push('/notifications')}
+            hitSlop={8}>
+            <Ionicons name="notifications-outline" size={24} color={theme.text} />
+            {unreadCount > 0 && <View style={styles.notificationDot} />}
+          </Pressable>
         </View>
 
         {myBan && (
@@ -380,7 +409,7 @@ export default function ProfileScreen() {
             return (
               <Pressable
                 key={stat.id}
-                style={styles.statTile}
+                style={[styles.statTile, { width: statTileWidth, borderColor: theme.fieldBorder }]}
                 disabled={!clickable}
                 onPress={() => handleStatPress(stat.id)}
               >
@@ -443,19 +472,12 @@ const styles = StyleSheet.create({
     lineHeight: 31,
     paddingVertical: Spacing.two,
   },
-  // Sits above the profile row so the avatar/username stack under the bell.
-  bellRow: {
-    alignItems: 'flex-end',
-    paddingTop: Spacing.two,
-  },
-  // Sits higher on the screen than it did, and the space it gave up is spent
-  // below instead — the avatar block used to crowd the stat tiles.
   profileRow: {
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.five,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
   },
   notificationBellButton: {
     width: 48,
@@ -464,6 +486,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    // Pushed to the far edge and pinned to the top of the row, so it sits level
+    // with the top of the avatar rather than beside the username.
+    marginLeft: 'auto',
+    alignSelf: 'flex-start',
   },
   notificationDot: {
     position: 'absolute',
@@ -545,25 +571,23 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.four,
   },
   statTile: {
-    width: STAT_TILE_WIDTH,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(128,128,128,0.4)',
+    borderWidth: 1,
     borderRadius: Spacing.two,
-    paddingVertical: 5,
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.half,
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: Spacing.half,
   },
   statValue: {
-    fontSize: 15,
-    lineHeight: 17,
+    fontSize: 22,
+    lineHeight: 26,
     fontWeight: '700',
   },
   statLabel: {
     textAlign: 'center',
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 11,
+    lineHeight: 13,
   },
   menu: {
     width: MENU_ROW_WIDTH,
