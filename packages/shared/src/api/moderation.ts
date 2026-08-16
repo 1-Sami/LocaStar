@@ -17,6 +17,14 @@ export type LocationReport = {
   /** Who added the location — lets a moderator act on the person, not just the listing. */
   locationCreatorId: string | null;
   locationCreatorName: string;
+  /**
+   * The one photo this report is about, or null when it is about the listing.
+   *
+   * photoPath rather than a URL: building one needs the storage client, which
+   * the screen has and this module deliberately does not.
+   */
+  photoId: string | null;
+  photoPath: string | null;
   reason: string;
   details: string | null;
   reporterName: string;
@@ -30,6 +38,8 @@ export type LocationReport = {
 type LocationReportRow = {
   id: string;
   location_id: string;
+  location_photo_id: string | null;
+  location_photos: { storage_path: string } | null;
   reason: string;
   details: string | null;
   status: LocationReportStatus;
@@ -50,7 +60,7 @@ const LOCATION_REPORT_SELECT =
   // `locations` has two FKs to `profiles` (created_by and claimed_by), so the
   // nested embed must name the constraint — an unqualified profiles(...) here
   // is ambiguous and makes PostgREST reject the whole query.
-  "id, location_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, locations(name, status, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
+  "id, location_id, location_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, location_photos(storage_path), locations(name, status, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
 
 function mapLocationReport(row: LocationReportRow): LocationReport {
   return {
@@ -59,6 +69,8 @@ function mapLocationReport(row: LocationReportRow): LocationReport {
     locationName: row.locations?.name ?? "Unknown location",
     locationStatus: row.locations?.status ?? "active",
     locationCreatorId: row.locations?.created_by ?? null,
+    photoId: row.location_photo_id ?? null,
+    photoPath: row.location_photos?.storage_path ?? null,
     locationCreatorName: row.locations?.profiles?.username ?? row.locations?.profiles?.display_name ?? "Unknown",
     reason: row.reason,
     details: row.details,
@@ -132,6 +144,9 @@ export type ReviewReport = {
   reviewTitle: string | null;
   reviewBody: string | null;
   reviewStatus: ReviewStatus;
+  /** The one photo this report is about, or null when it is about the review. */
+  photoId: string | null;
+  photoPath: string | null;
   locationId: string;
   locationName: string;
   reason: string;
@@ -147,6 +162,8 @@ export type ReviewReport = {
 type ReviewReportRow = {
   id: string;
   review_id: string;
+  review_photo_id: string | null;
+  review_photos: { storage_path: string } | null;
   reason: string;
   details: string | null;
   status: LocationReportStatus;
@@ -168,7 +185,7 @@ type ReviewReportRow = {
 };
 
 const REVIEW_REPORT_SELECT =
-  "id, review_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, reviews(rating, title, body, status, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
+  "id, review_id, review_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, review_photos(storage_path), reviews(rating, title, body, status, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
 
 function mapReviewReport(row: ReviewReportRow): ReviewReport {
   return {
@@ -180,6 +197,8 @@ function mapReviewReport(row: ReviewReportRow): ReviewReport {
     reviewTitle: row.reviews?.title ?? null,
     reviewBody: row.reviews?.body ?? null,
     reviewStatus: row.reviews?.status ?? "visible",
+    photoId: row.review_photo_id ?? null,
+    photoPath: row.review_photos?.storage_path ?? null,
     locationId: row.reviews?.location_id ?? "",
     locationName: row.reviews?.locations?.name ?? "Unknown location",
     reason: row.reason,

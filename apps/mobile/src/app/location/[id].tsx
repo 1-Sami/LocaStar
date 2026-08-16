@@ -214,6 +214,10 @@ export default function LocationDetailScreen() {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  // Up here with the rest of the state on purpose: this screen returns early
+  // while loading and when the place is missing, so a hook declared beside the
+  // logic that uses it further down would be called conditionally.
+  const [reportingPhoto, setReportingPhoto] = useState<GalleryPhoto | null>(null);
   const [viewerWidth, setViewerWidth] = useState(() => Dimensions.get('window').width);
   const heroScrollRef = useRef<ScrollView>(null);
   const viewerScrollRef = useRef<ScrollView>(null);
@@ -375,6 +379,18 @@ export default function LocationDetailScreen() {
   // its review, so taking it down means acting on the review itself — deleting
   // the image alone would leave the words it illustrated sitting there.
   const canDeleteCurrentPhoto = isModerator && Boolean(viewerPhoto?.photoId);
+
+  /*
+   * Anyone signed in can report a photo, except their own.
+   *
+   * Reporting your own picture does nothing you cannot already do by deleting
+   * it, and it would put noise in a queue a person has to read. Signed out is
+   * excluded because a report with nobody attached cannot be followed up or
+   * counted against anyone abusing the button.
+   */
+  const canReportCurrentPhoto = Boolean(
+    session && viewerPhoto && viewerPhoto.uploaderId !== session.user.id
+  );
 
   const handleDeletePhoto = async () => {
     if (!viewerPhoto?.photoId || !id) return;
@@ -1185,6 +1201,37 @@ export default function LocationDetailScreen() {
         }}
       />
 
+      {/* Reporting one photo, from the viewer it is open in.
+          A photo belongs either to the place or to a review, so the report goes
+          into whichever queue already owns it — carrying the photo's id so the
+          moderator sees the picture instead of being told to go and find it. */}
+      <ReportModal
+        visible={reportingPhoto !== null}
+        title={t('location.reportPhotoTitle')}
+        confirmationText={t('location.reportPhotoConfirm')}
+        onClose={() => setReportingPhoto(null)}
+        onSubmit={async (reason, details) => {
+          if (!session || !reportingPhoto) return;
+          if (reportingPhoto.reviewId && reportingPhoto.reviewPhotoId) {
+            await reportReview(supabase, {
+              reviewId: reportingPhoto.reviewId,
+              reporterId: session.user.id,
+              reason,
+              details,
+              reviewPhotoId: reportingPhoto.reviewPhotoId,
+            });
+            return;
+          }
+          await reportLocation(supabase, {
+            locationId: location.id,
+            reporterId: session.user.id,
+            reason,
+            details,
+            locationPhotoId: reportingPhoto.photoId,
+          });
+        }}
+      />
+
       <ShareModal
         visible={shareVisible}
         onClose={() => setShareVisible(false)}
@@ -1281,26 +1328,52 @@ export default function LocationDetailScreen() {
             </Pressable>
           </SafeAreaView>
 
-          {(canPromoteCurrentPhoto || canDeleteCurrentPhoto) && (
-            <SafeAreaView style={styles.viewerFooter} edges={['bottom']} pointerEvents="box-none">
-              {canPromoteCurrentPhoto && (
-                <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
-                  <Ionicons name="star" size={14} color="#000000" />
-                  <ThemedText type="smallBold" style={styles.makeCoverText}>
-                    {t('location.makeCoverPhoto')}
+          <SafeAreaView style={styles.viewerFooter} edges={['bottom']} pointerEvents="box-none">
+            {/* Who took it and a way to complain about it, on the photo itself.
+                Reporting used to mean leaving the viewer, scrolling the reviews
+                to find the one this picture hangs off, and reporting that —
+                which on a place with a hundred reviews is a search. */}
+            <View style={styles.viewerCreditRow} pointerEvents="box-none">
+              {viewerPhoto?.uploaderName ? (
+                <ThemedText type="small" style={styles.viewerCredit}>
+                  {t('location.photoAddedBy', { name: viewerPhoto.uploaderName })}
+                </ThemedText>
+              ) : (
+                <View />
+              )}
+              {canReportCurrentPhoto && (
+                <Pressable
+                  style={styles.reportPhotoButton}
+                  onPress={() => setReportingPhoto(viewerPhoto)}
+                  hitSlop={8}>
+                  <Ionicons name="flag" size={14} color="#ffffff" />
+                  <ThemedText type="smallBold" style={styles.reportPhotoText}>
+                    {t('location.reportPhoto')}
                   </ThemedText>
                 </Pressable>
               )}
-              {canDeleteCurrentPhoto && (
-                <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
-                  <Ionicons name="trash-outline" size={14} color="#ffffff" />
-                  <ThemedText type="smallBold" style={styles.deletePhotoText}>
-                    {t('location.deletePhoto')}
-                  </ThemedText>
-                </Pressable>
-              )}
-            </SafeAreaView>
-          )}
+            </View>
+            {(canPromoteCurrentPhoto || canDeleteCurrentPhoto) && (
+              <View style={styles.viewerModeratorRow} pointerEvents="box-none">
+                {canPromoteCurrentPhoto && (
+                  <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
+                    <Ionicons name="star" size={14} color="#000000" />
+                    <ThemedText type="smallBold" style={styles.makeCoverText}>
+                      {t('location.makeCoverPhoto')}
+                    </ThemedText>
+                  </Pressable>
+                )}
+                {canDeleteCurrentPhoto && (
+                  <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
+                    <Ionicons name="trash-outline" size={14} color="#ffffff" />
+                    <ThemedText type="smallBold" style={styles.deletePhotoText}>
+                      {t('location.deletePhoto')}
+                    </ThemedText>
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </SafeAreaView>
         </View>
       </Modal>
     </ThemedView>
@@ -1447,6 +1520,39 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
   },
   viewerCount: {
+    color: '#ffffff',
+  },
+  viewerCreditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  viewerCredit: {
+    color: 'rgba(255,255,255,0.75)',
+  },
+  viewerModeratorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+  },
+  reportPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.five,
+    // Not a filled red button. Reporting is a normal thing to be able to do,
+    // not a destructive action, and a solid red pill over somebody's photo
+    // reads as an accusation before anyone has looked at it.
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  reportPhotoText: {
     color: '#ffffff',
   },
   viewerFooter: {

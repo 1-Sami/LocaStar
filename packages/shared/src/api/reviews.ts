@@ -166,6 +166,8 @@ export type ReviewReportInput = {
   reporterId: string;
   reason: string;
   details: string | null;
+  /** Set to report one of the review's photos rather than what it says. */
+  reviewPhotoId?: string | null;
 };
 
 export async function reportReview(client: SupabaseClient, input: ReviewReportInput): Promise<void> {
@@ -174,6 +176,7 @@ export async function reportReview(client: SupabaseClient, input: ReviewReportIn
     reporter_id: input.reporterId,
     reason: input.reason,
     details: input.details,
+    review_photo_id: input.reviewPhotoId ?? null,
   });
   if (error) throw error;
 }

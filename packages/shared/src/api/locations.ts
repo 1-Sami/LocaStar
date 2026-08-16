@@ -298,6 +298,35 @@ export type GalleryPhoto = {
   photoId: string | null;
   /** Needed to remove the stored file, not just the row, when a photo is deleted. */
   storagePath: string;
+  /**
+   * The review this came from, and the review_photos row within it. Both null
+   * for a photo belonging to the place itself.
+   *
+   * Carried so the viewer can report one photo: a report has to name the thing
+   * complained about, and for a review photo that means the review it hangs off
+   * as well as the photo row.
+   */
+  reviewId: string | null;
+  reviewPhotoId: string | null;
+  /**
+   * Who to credit, or null to credit nobody.
+   *
+   * Null covers two different situations that look the same to the viewer: the
+   * uploader has no username, or they added the place without wanting to be
+   * named on it. Deliberately resolved here rather than in the screen — the
+   * screen should not have to know the rule to avoid breaking it.
+   *
+   * Not a privacy control. created_by and user_id are stored either way, and
+   * the moderation queue reads them directly, so a reported photo can always be
+   * traced to the person who put it there.
+   */
+  uploaderName: string | null;
+  /**
+   * Who uploaded it, always — unlike uploaderName, which respects the
+   * do-not-credit setting. Used to keep somebody from reporting their own
+   * photo, and never displayed.
+   */
+  uploaderId: string | null;
 };
 
 /**
@@ -317,13 +346,13 @@ export async function fetchLocationPhotos(
   const [locationPhotos, reviewPhotos] = await Promise.all([
     client
       .from("location_photos")
-      .select("id, storage_path, sort_order")
+      .select("id, storage_path, sort_order, user_id, profiles(username), locations!inner(creator_visible, created_by)")
       .eq("location_id", locationId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     client
       .from("reviews")
-      .select("review_photos(storage_path)")
+      .select("id, user_id, profiles(username), review_photos(id, storage_path)")
       .eq("location_id", locationId)
       .eq("status", "visible")
       .order("created_at", { ascending: false }),
@@ -333,16 +362,55 @@ export async function fetchLocationPhotos(
 
   const publicUrl = (storagePath: string) => client.storage.from("media").getPublicUrl(storagePath).data.publicUrl;
 
-  const fromLocation = (locationPhotos.data as { id: string; storage_path: string }[]).map((row) => ({
-    url: publicUrl(row.storage_path),
-    photoId: row.id,
-    storagePath: row.storage_path,
-  }));
-  const fromReviews = (reviewPhotos.data as { review_photos: { storage_path: string }[] }[]).flatMap((row) =>
+  type LocationPhotoRow = {
+    id: string;
+    storage_path: string;
+    user_id: string | null;
+    profiles: { username: string | null } | null;
+    locations: { creator_visible: boolean; created_by: string | null } | null;
+  };
+  const fromLocation = (locationPhotos.data as unknown as LocationPhotoRow[]).map((row) => {
+    /*
+     * The opt-out belongs to the person who added the place, so it only
+     * suppresses their own name.
+     *
+     * creator_visible lives on the location, not on the photo. Reading it as
+     * "credit nobody here" would be right today — every photo so far was
+     * uploaded by the place's own creator — and wrong the first time somebody
+     * adds a photo to a place they did not create, in either direction: their
+     * name hidden because a stranger opted out, or shown because a stranger
+     * did not.
+     */
+    const uploaderIsCreator = row.user_id !== null && row.user_id === row.locations?.created_by;
+    const optedOut = uploaderIsCreator && row.locations?.creator_visible === false;
+    return {
+      url: publicUrl(row.storage_path),
+      photoId: row.id,
+      storagePath: row.storage_path,
+      reviewId: null,
+      reviewPhotoId: null,
+      uploaderName: optedOut ? null : (row.profiles?.username ?? null),
+      uploaderId: row.user_id,
+    };
+  });
+
+  type ReviewRow = {
+    id: string;
+    user_id: string | null;
+    profiles: { username: string | null } | null;
+    review_photos: { id: string; storage_path: string }[];
+  };
+  const fromReviews = (reviewPhotos.data as unknown as ReviewRow[]).flatMap((row) =>
     row.review_photos.map((photo) => ({
       url: publicUrl(photo.storage_path),
       photoId: null,
       storagePath: photo.storage_path,
+      reviewId: row.id,
+      reviewPhotoId: photo.id,
+      // A review already shows its author on the same screen, so there is
+      // nothing here to keep back.
+      uploaderName: row.profiles?.username ?? null,
+      uploaderId: row.user_id,
     }))
   );
 
@@ -407,6 +475,8 @@ export type LocationReportInput = {
   reporterId: string;
   reason: string;
   details: string | null;
+  /** Set to report one photo rather than the listing as a whole. */
+  locationPhotoId?: string | null;
 };
 
 export async function reportLocation(client: SupabaseClient, input: LocationReportInput): Promise<void> {
@@ -415,6 +485,7 @@ export async function reportLocation(client: SupabaseClient, input: LocationRepo
     reporter_id: input.reporterId,
     reason: input.reason,
     details: input.details,
+    location_photo_id: input.locationPhotoId ?? null,
   });
   if (error) throw error;
 }

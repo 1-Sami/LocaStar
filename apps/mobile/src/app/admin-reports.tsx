@@ -8,6 +8,8 @@ import {
   fetchOpenReviewReports,
   issueWarning,
   resolveBusinessClaim,
+  deleteLocationPhoto,
+  deleteReviewPhoto,
   resolveLocationReport,
   resolveReviewReport,
   updateLocationStatus,
@@ -19,6 +21,7 @@ import {
   type ReviewReport,
 } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
@@ -80,6 +83,26 @@ type PendingDecision = {
   run: (note: string) => Promise<void>;
 };
 
+/**
+ * The single photo a report is about, when it names one.
+ *
+ * Shown so a moderator can judge it here instead of opening the location and
+ * swiping the gallery to work out which picture was meant — the same search the
+ * reporter was spared by being able to report from the viewer.
+ */
+function ReportedPhoto({ path }: { path: string | null }) {
+  const { t } = useTranslation();
+  if (!path) return null;
+  const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+  return (
+    <View style={styles.reportedPhotoRow}>
+      <Image source={{ uri: url }} style={styles.reportedPhoto} contentFit="cover" />
+      <ThemedText type="small" themeColor="textSecondary" style={styles.reportedPhotoNote}>
+        {t('admin.reportIsAboutPhoto')}
+      </ThemedText>
+    </View>
+  );
+}
 export default function AdminReportsScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -222,6 +245,54 @@ export default function AdminReportsScreen() {
         if (!session) return;
         await updateLocationStatus(supabase, report.locationId, 'flagged');
         await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'hidden', note);
+      },
+    });
+
+  /*
+   * Takes down the one photo and closes the report, leaving the listing alone.
+   *
+   * The point of the whole feature: a bad picture on an otherwise fine place
+   * should cost that place nothing. Without this the only proportionate options
+   * were to hide the entire listing or to dismiss the report and go and delete
+   * the photo by hand somewhere else.
+   *
+   * The report is resolved after the delete, not before — the column is ON
+   * DELETE SET NULL, so resolving first would leave a report that no longer
+   * says which photo it was about if the delete then failed.
+   */
+  const askRemoveLocationPhoto = (report: LocationReport) =>
+    setPending({
+      reportId: report.id,
+      title: t('admin.removePhotoTitle'),
+      consequence: t('admin.removePhotoBody', { location: report.locationName }),
+      noteLabel: t('admin.whyRemoving'),
+      confirmLabel: t('admin.removePhoto'),
+      destructive: true,
+      run: async (note) => {
+        if (!session || !report.photoId) return;
+        await deleteLocationPhoto(supabase, report.photoId, report.photoPath);
+        await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
+      },
+    });
+
+  const askRemoveReviewPhoto = (report: ReviewReport) =>
+    setPending({
+      reportId: report.id,
+      title: t('admin.removePhotoTitle'),
+      consequence: t('admin.removePhotoBody', { location: report.locationName }),
+      noteLabel: t('admin.whyRemoving'),
+      confirmLabel: t('admin.removePhoto'),
+      destructive: true,
+      run: async (note) => {
+        if (!session || !report.photoId || !report.photoPath) return;
+        await deleteReviewPhoto(supabase, {
+          id: report.photoId,
+          storagePath: report.photoPath,
+          // deleteReviewPhoto only reads id and storagePath; the url is part of
+          // the type because the review screen displays it.
+          url: '',
+        });
+        await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
       },
     });
 
@@ -459,6 +530,7 @@ export default function AdminReportsScreen() {
                         {report.details}
                       </ThemedText>
                     )}
+                    <ReportedPhoto path={report.photoPath} />
 
                     <View style={styles.actionsRow}>
                       <Pressable
@@ -467,6 +539,14 @@ export default function AdminReportsScreen() {
                         onPress={() => askDismissLocation(report)}>
                         <ThemedText type='smallBold'>{t('admin.legendDismiss')}</ThemedText>
                       </Pressable>
+                      {report.photoId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.flagButton]}
+                          disabled={busy}
+                          onPress={() => askRemoveLocationPhoto(report)}>
+                          <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
+                        </Pressable>
+                      )}
                       {report.locationCreatorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
@@ -524,6 +604,7 @@ export default function AdminReportsScreen() {
                         {report.details}
                       </ThemedText>
                     )}
+                    <ReportedPhoto path={report.photoPath} />
 
                     <View style={styles.actionsRow}>
                       <Pressable
@@ -532,6 +613,14 @@ export default function AdminReportsScreen() {
                         onPress={() => askDismissReview(report)}>
                         <ThemedText type='smallBold'>{t('admin.legendDismiss')}</ThemedText>
                       </Pressable>
+                      {report.photoId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.flagButton]}
+                          disabled={busy}
+                          onPress={() => askRemoveReviewPhoto(report)}>
+                          <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
+                        </Pressable>
+                      )}
                       {report.reviewAuthorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
@@ -631,6 +720,7 @@ export default function AdminReportsScreen() {
                         {report.details}
                       </ThemedText>
                     )}
+                    <ReportedPhoto path={report.photoPath} />
                     {report.resolutionNote && (
                       <ThemedText type="small" style={styles.resolutionNote}>
                         Moderator: &ldquo;{report.resolutionNote}&rdquo;
@@ -657,6 +747,7 @@ export default function AdminReportsScreen() {
                         {report.details}
                       </ThemedText>
                     )}
+                    <ReportedPhoto path={report.photoPath} />
                     {report.resolutionNote && (
                       <ThemedText type="small" style={styles.resolutionNote}>
                         Moderator: &ldquo;{report.resolutionNote}&rdquo;
@@ -770,6 +861,21 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
     fontStyle: 'italic',
     color: '#4CD37A',
+  },
+  reportedPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  reportedPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: Spacing.two,
+    backgroundColor: 'rgba(128,128,128,0.25)',
+  },
+  reportedPhotoNote: {
+    flex: 1,
   },
   actionsRow: {
     flexDirection: 'row',

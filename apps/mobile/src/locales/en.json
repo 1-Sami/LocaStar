@@ -295,7 +295,11 @@
     "noReviews": "No reviews yet — be the first to write one!",
     "sortReviews": "Sort reviews",
     "makeCoverPhoto": "Make cover photo",
-    "deletePhoto": "Delete photo"
+    "deletePhoto": "Delete photo",
+    "photoAddedBy": "added by: {{name}}",
+    "reportPhoto": "Report photo",
+    "reportPhotoTitle": "Report this photo",
+    "reportPhotoConfirm": "Thanks — a moderator will look at this photo."
   },
   "form": {
     "nameLabel": "Name/Title",
@@ -683,7 +687,11 @@
     "awaitingReview": "Awaiting review",
     "banActive": "Active",
     "banIssuedBy": "by {{name}}",
-    "banPerson": "Ban {{name}}"
+    "banPerson": "Ban {{name}}",
+    "reportIsAboutPhoto": "This report is about this photo, not the whole listing.",
+    "removePhoto": "Remove photo",
+    "removePhotoTitle": "Remove this photo?",
+    "removePhotoBody": "The photo is taken down for everyone. “{{location}}” itself stays exactly as it is."
   },
   "authError": {
     "network": "Couldn’t reach LocaStar. Check your connection and try again.",

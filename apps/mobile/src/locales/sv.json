@@ -295,7 +295,11 @@
     "noReviews": "Inga recensioner än — bli först med att skriva en!",
     "sortReviews": "Sortera recensioner",
     "makeCoverPhoto": "Gör till omslagsbild",
-    "deletePhoto": "Radera foto"
+    "deletePhoto": "Radera foto",
+    "photoAddedBy": "tillagd av: {{name}}",
+    "reportPhoto": "Anmäl bild",
+    "reportPhotoTitle": "Anmäl den här bilden",
+    "reportPhotoConfirm": "Tack — en moderator tittar på bilden."
   },
   "form": {
     "nameLabel": "Namn/Titel",
@@ -683,7 +687,11 @@
     "awaitingReview": "Väntar på granskning",
     "banActive": "Aktiv",
     "banIssuedBy": "av {{name}}",
-    "banPerson": "Spärra {{name}}"
+    "banPerson": "Spärra {{name}}",
+    "reportIsAboutPhoto": "Anmälan gäller den här bilden, inte hela platsen.",
+    "removePhoto": "Ta bort bild",
+    "removePhotoTitle": "Ta bort den här bilden?",
+    "removePhotoBody": "Bilden tas bort för alla. ”{{location}}” i övrigt lämnas orörd."
   },
   "authError": {
     "network": "Kunde inte nå LocaStar. Kontrollera din anslutning och försök igen.",
