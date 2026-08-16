@@ -260,6 +260,49 @@ export default function AdminReportsScreen() {
    * DELETE SET NULL, so resolving first would leave a report that no longer
    * says which photo it was about if the delete then failed.
    */
+  /*
+   * Puts back something a moderator took down.
+   *
+   * The confirmation shown before hiding says "it is not deleted — you can
+   * restore it later", and until now nothing could: updateLocationStatus and
+   * updateReviewStatus were only ever called with 'flagged', 'removed' and
+   * 'hidden'. A hidden review is also invisible everywhere else by definition,
+   * so the report that hid it is the only route back to it — which is why this
+   * lives on the handled card rather than on the content.
+   *
+   * The report keeps the decision it recorded at the time. Rewriting it to look
+   * dismissed would erase that the content was once hidden and by whom, which
+   * is the opposite of what a moderation log is for; the restore is a new event
+   * on top, not a correction of the old one.
+   */
+  const askRestoreLocation = (report: LocationReport) =>
+    setPending({
+      reportId: report.id,
+      title: t('admin.restoreLocationTitle'),
+      consequence: t('admin.restoreLocationBody', { location: report.locationName }),
+      noteLabel: t('admin.whyRestoring'),
+      confirmLabel: t('admin.restore'),
+      destructive: false,
+      run: async () => {
+        if (!session) return;
+        await updateLocationStatus(supabase, report.locationId, 'active');
+      },
+    });
+
+  const askRestoreReview = (report: ReviewReport) =>
+    setPending({
+      reportId: report.id,
+      title: t('admin.restoreReviewTitle'),
+      consequence: t('admin.restoreReviewBody', { author: report.reviewAuthorName }),
+      noteLabel: t('admin.whyRestoring'),
+      confirmLabel: t('admin.restore'),
+      destructive: false,
+      run: async () => {
+        if (!session) return;
+        await updateReviewStatus(supabase, report.reviewId, 'visible');
+      },
+    });
+
   const askRemoveLocationPhoto = (report: LocationReport) =>
     setPending({
       reportId: report.id,
@@ -726,6 +769,19 @@ export default function AdminReportsScreen() {
                         Moderator: &ldquo;{report.resolutionNote}&rdquo;
                       </ThemedText>
                     )}
+                    {/* The only way back to hidden content: it is invisible
+                        everywhere else, so the report that took it down is the
+                        one place it can still be reached from. */}
+                    {report.reviewStatus !== 'visible' && (
+                      <View style={styles.actionsRow}>
+                        <Pressable
+                          style={[styles.actionButton, styles.dismissButton]}
+                          disabled={busyId === report.id}
+                          onPress={() => askRestoreReview(report)}>
+                          <ThemedText type="smallBold">{t('admin.restore')}</ThemedText>
+                        </Pressable>
+                      </View>
+                    )}
                   </ThemedView>
                 ))
               ) : activeTab === 'locations' ? (
@@ -752,6 +808,16 @@ export default function AdminReportsScreen() {
                       <ThemedText type="small" style={styles.resolutionNote}>
                         Moderator: &ldquo;{report.resolutionNote}&rdquo;
                       </ThemedText>
+                    )}
+                    {report.locationStatus !== 'active' && (
+                      <View style={styles.actionsRow}>
+                        <Pressable
+                          style={[styles.actionButton, styles.dismissButton]}
+                          disabled={busyId === report.id}
+                          onPress={() => askRestoreLocation(report)}>
+                          <ThemedText type="smallBold">{t('admin.restore')}</ThemedText>
+                        </Pressable>
+                      </View>
                     )}
                   </ThemedView>
                 ))

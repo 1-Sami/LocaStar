@@ -691,7 +691,13 @@
     "reportIsAboutPhoto": "Anmälan gäller den här bilden, inte hela platsen.",
     "removePhoto": "Ta bort bild",
     "removePhotoTitle": "Ta bort den här bilden?",
-    "removePhotoBody": "Bilden tas bort för alla. ”{{location}}” i övrigt lämnas orörd."
+    "removePhotoBody": "Bilden tas bort för alla. ”{{location}}” i övrigt lämnas orörd.",
+    "restore": "Återställ",
+    "whyRestoring": "Varför återställer du den?",
+    "restoreReviewTitle": "Återställ den här recensionen?",
+    "restoreReviewBody": "Recensionen av {{author}} blir synlig igen och räknas med i betyget på nytt.",
+    "restoreLocationTitle": "Återställ den här platsen?",
+    "restoreLocationBody": "”{{location}}” kommer tillbaka på kartan, i sökningen och i allas listor."
   },
   "authError": {
     "network": "Kunde inte nå LocaStar. Kontrollera din anslutning och försök igen.",
