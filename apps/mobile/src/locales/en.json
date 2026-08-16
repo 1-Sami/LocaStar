@@ -697,7 +697,11 @@
     "restoreReviewTitle": "Restore this review?",
     "restoreReviewBody": "The review by {{author}} becomes visible again and counts toward the rating once more.",
     "restoreLocationTitle": "Restore this location?",
-    "restoreLocationBody": "“{{location}}” goes back on the map, in search, and in everyone's lists."
+    "restoreLocationBody": "“{{location}}” goes back on the map, in search, and in everyone's lists.",
+    "keepPhoto": "Keep photo",
+    "keepPhotoTitle": "Keep this photo?",
+    "keepPhotoBody": "The photo goes back on display and the report is closed. Nobody is told anything.",
+    "photoOnHold": "Hidden from everyone while this report is open."
   },
   "authError": {
     "network": "Couldn’t reach LocaStar. Check your connection and try again.",
@@ -755,7 +759,7 @@
     "takePhoto": "Take a photo",
     "chooseFromLibrary": "Choose from library",
     "reportThanks": "Thanks for letting us know",
-    "reportPlaceholder": "*Explain why you’re reporting this",
+    "reportPlaceholder": "Anything else we should know? (optional)",
     "reasonSpam": "Spam",
     "reasonInappropriate": "Inappropriate content",
     "reasonClosed": "Doesn’t exist / permanently closed",
@@ -783,7 +787,9 @@
     "restartHint": "Restart to get the latest fixes.",
     "selectDate": "Select a date",
     "shareLocation": "Share this location",
-    "shareError": "Something went wrong sharing this location. Try again."
+    "shareError": "Something went wrong sharing this location. Try again.",
+    "reportOtherNeedsWords": "Say what is wrong in at least {{count}} words.",
+    "reportPlaceholderOther": "What is wrong with it?"
   },
   "validation": {
     "passwordTooShort": "Use at least {{count}} characters.",

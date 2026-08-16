@@ -96,6 +96,7 @@ export type {
 export {
   fetchOpenLocationReports,
   fetchHandledLocationReports,
+  releasePhotoHold,
   resolveLocationReport,
   updateLocationStatus,
   fetchOpenReviewReports,

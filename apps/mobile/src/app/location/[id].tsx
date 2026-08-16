@@ -1189,7 +1189,11 @@ export default function LocationDetailScreen() {
         visible={reportingReviewId !== null}
         title={t('location.reportReviewTitle')}
         confirmationText={t('location.reportReviewConfirm')}
+        target="review"
         onClose={() => setReportingReviewId(null)}
+        /* The photos the review carries, shown inside the sheet. Reporting a
+           review because of its picture meant describing the picture from
+           memory once the sheet covered it. */
         onSubmit={async (reason, details) => {
           if (!session || !reportingReviewId) return;
           await reportReview(supabase, {
@@ -1199,7 +1203,17 @@ export default function LocationDetailScreen() {
             details,
           });
         }}
-      />
+      >
+        {(reviews.find((r) => r.id === reportingReviewId)?.photos.length ?? 0) > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reportPhotoStrip}>
+            {reviews
+              .find((r) => r.id === reportingReviewId)
+              ?.photos.map((uri, index) => (
+                <Image key={index} source={{ uri }} style={styles.reportPhotoThumb} contentFit="cover" />
+              ))}
+          </ScrollView>
+        )}
+      </ReportModal>
 
       {/* Reporting one photo, from the viewer it is open in.
           A photo belongs either to the place or to a review, so the report goes
@@ -1538,6 +1552,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
+  },
+  reportPhotoStrip: {
+    flexGrow: 0,
+    marginBottom: Spacing.one,
+  },
+  reportPhotoThumb: {
+    width: 96,
+    height: 96,
+    borderRadius: Spacing.two,
+    marginRight: Spacing.two,
+    backgroundColor: 'rgba(128,128,128,0.25)',
   },
   reportPhotoButton: {
     flexDirection: 'row',

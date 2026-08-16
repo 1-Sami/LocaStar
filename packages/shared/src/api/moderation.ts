@@ -103,6 +103,25 @@ export async function fetchHandledLocationReports(client: SupabaseClient): Promi
   return ((data ?? []) as unknown as LocationReportRow[]).map(mapLocationReport);
 }
 
+
+/**
+ * Puts a held photo back on display, for a moderator who judged it fine.
+ *
+ * Through an RPC rather than a direct update: location_photos already lets its
+ * uploader update the row, so clearing the hold that way would let the person
+ * who posted the photo undo the hold on their own photo. review_photos allows
+ * no updates at all. The function checks is_moderator() itself.
+ */
+export async function releasePhotoHold(
+  client: SupabaseClient,
+  photo: { locationPhotoId?: string | null; reviewPhotoId?: string | null }
+): Promise<void> {
+  const { error } = await client.rpc("release_photo_hold", {
+    p_location_photo_id: photo.locationPhotoId ?? null,
+    p_review_photo_id: photo.reviewPhotoId ?? null,
+  });
+  if (error) throw error;
+}
 export async function resolveLocationReport(
   client: SupabaseClient,
   reportId: string,

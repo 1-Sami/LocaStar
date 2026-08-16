@@ -9,6 +9,7 @@ import {
   issueWarning,
   resolveBusinessClaim,
   deleteLocationPhoto,
+  releasePhotoHold,
   deleteReviewPhoto,
   resolveLocationReport,
   resolveReviewReport,
@@ -303,6 +304,34 @@ export default function AdminReportsScreen() {
       },
     });
 
+  /*
+   * Clears the hold and closes the report: the photo was fine.
+   *
+   * The counterpart to Remove. A reported photo is hidden the moment the
+   * report lands, so without this every report would end in deletion — there
+   * would be no way to say "I looked, it is fine" and give it back.
+   */
+  const askKeepPhoto = (report: LocationReport | ReviewReport, kind: 'location' | 'review') =>
+    setPending({
+      reportId: report.id,
+      title: t('admin.keepPhotoTitle'),
+      consequence: t('admin.keepPhotoBody'),
+      noteLabel: t('admin.whyDismissing'),
+      confirmLabel: t('admin.keepPhoto'),
+      destructive: false,
+      run: async (note) => {
+        if (!session || !report.photoId) return;
+        await releasePhotoHold(supabase, {
+          locationPhotoId: kind === 'location' ? report.photoId : null,
+          reviewPhotoId: kind === 'review' ? report.photoId : null,
+        });
+        if (kind === 'location') {
+          await resolveLocationReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
+        } else {
+          await resolveReviewReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
+        }
+      },
+    });
   const askRemoveLocationPhoto = (report: LocationReport) =>
     setPending({
       reportId: report.id,
@@ -590,6 +619,14 @@ export default function AdminReportsScreen() {
                           <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
                         </Pressable>
                       )}
+                      {report.photoId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.dismissButton]}
+                          disabled={busy}
+                          onPress={() => askKeepPhoto(report, 'location')}>
+                          <ThemedText type='smallBold'>{t('admin.keepPhoto')}</ThemedText>
+                        </Pressable>
+                      )}
                       {report.locationCreatorId && (
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
@@ -662,6 +699,14 @@ export default function AdminReportsScreen() {
                           disabled={busy}
                           onPress={() => askRemoveReviewPhoto(report)}>
                           <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
+                        </Pressable>
+                      )}
+                      {report.photoId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.dismissButton]}
+                          disabled={busy}
+                          onPress={() => askKeepPhoto(report, 'review')}>
+                          <ThemedText type='smallBold'>{t('admin.keepPhoto')}</ThemedText>
                         </Pressable>
                       )}
                       {report.reviewAuthorId && (

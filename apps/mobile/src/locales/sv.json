@@ -697,7 +697,11 @@
     "restoreReviewTitle": "Återställ den här recensionen?",
     "restoreReviewBody": "Recensionen av {{author}} blir synlig igen och räknas med i betyget på nytt.",
     "restoreLocationTitle": "Återställ den här platsen?",
-    "restoreLocationBody": "”{{location}}” kommer tillbaka på kartan, i sökningen och i allas listor."
+    "restoreLocationBody": "”{{location}}” kommer tillbaka på kartan, i sökningen och i allas listor.",
+    "keepPhoto": "Behåll bild",
+    "keepPhotoTitle": "Behåll den här bilden?",
+    "keepPhotoBody": "Bilden visas igen och anmälan stängs. Ingen får något meddelande.",
+    "photoOnHold": "Dold för alla så länge anmälan är öppen."
   },
   "authError": {
     "network": "Kunde inte nå LocaStar. Kontrollera din anslutning och försök igen.",
@@ -755,7 +759,7 @@
     "takePhoto": "Ta ett foto",
     "chooseFromLibrary": "Välj från biblioteket",
     "reportThanks": "Tack för att du hörde av dig",
-    "reportPlaceholder": "*Förklara varför du anmäler det här",
+    "reportPlaceholder": "Något mer vi borde veta? (frivilligt)",
     "reasonSpam": "Skräppost",
     "reasonInappropriate": "Olämpligt innehåll",
     "reasonClosed": "Finns inte / permanent stängt",
@@ -783,7 +787,9 @@
     "restartHint": "Starta om för att få de senaste fixarna.",
     "selectDate": "Välj ett datum",
     "shareLocation": "Dela den här platsen",
-    "shareError": "Något gick fel när platsen skulle delas. Försök igen."
+    "shareError": "Något gick fel när platsen skulle delas. Försök igen.",
+    "reportOtherNeedsWords": "Beskriv vad som är fel med minst {{count}} ord.",
+    "reportPlaceholderOther": "Vad är det som är fel?"
   },
   "validation": {
     "passwordTooShort": "Använd minst {{count}} tecken.",
