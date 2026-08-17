@@ -389,7 +389,14 @@ export default function LocationDetailScreen() {
   // Only location photos can be removed from here. A review's photo belongs to
   // its review, so taking it down means acting on the review itself — deleting
   // the image alone would leave the words it illustrated sitting there.
-  const canDeleteCurrentPhoto = isModerator && Boolean(viewerPhoto?.photoId);
+  const canDeleteCurrentPhoto =
+    isModerator && Boolean(viewerPhoto?.photoId || viewerPhoto?.reviewPhotoId);
+
+  /** Whichever kind of photo the viewer is on, shaped for the RPC. */
+  const currentPhotoRef = {
+    locationPhotoId: viewerPhoto?.photoId ?? null,
+    reviewPhotoId: viewerPhoto?.reviewPhotoId ?? null,
+  };
 
   /*
    * Anyone signed in can report a photo, except their own.
@@ -404,7 +411,7 @@ export default function LocationDetailScreen() {
   );
 
   const handleDeletePhoto = async () => {
-    if (!viewerPhoto?.photoId || !id) return;
+    if (!viewerPhoto || !id) return;
     const confirmed = await confirmAsync(
       t('location.deletePhotoTitle'),
       t('location.deletePhotoBody'),
@@ -412,7 +419,7 @@ export default function LocationDetailScreen() {
     );
     if (!confirmed) return;
     try {
-      await setPhotoRemoved(supabase, { locationPhotoId: viewerPhoto.photoId }, true);
+      await setPhotoRemoved(supabase, currentPhotoRef, true);
       const refreshed = await fetchLocationPhotos(supabase, id, isModerator);
       setPhotos(refreshed);
       // Close the viewer if that was the last photo, otherwise stay put and
@@ -435,9 +442,9 @@ export default function LocationDetailScreen() {
    * went.
    */
   const handleRestorePhoto = async () => {
-    if (!viewerPhoto?.photoId || !id) return;
+    if (!viewerPhoto || !id) return;
     try {
-      await setPhotoRemoved(supabase, { locationPhotoId: viewerPhoto.photoId }, false);
+      await setPhotoRemoved(supabase, currentPhotoRef, false);
       setPhotos(await fetchLocationPhotos(supabase, id, isModerator));
     } catch {
       // Same reasoning as the others here: RLS refusing is the expected

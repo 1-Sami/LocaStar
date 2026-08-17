@@ -26,7 +26,7 @@ type ReviewRow = {
   created_at: string;
   profiles: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
   review_likes: { count: number }[];
-  review_photos: { storage_path: string }[];
+  review_photos: { storage_path: string; hidden_at: string | null; removed_at: string | null }[];
 };
 
 export async function fetchReviews(
@@ -37,7 +37,7 @@ export async function fetchReviews(
   const { data, error } = await client
     .from("reviews")
     .select(
-      "id, user_id, rating, title, body, created_at, profiles(username, display_name, avatar_url), review_likes(count), review_photos(storage_path)"
+      "id, user_id, rating, title, body, created_at, profiles(username, display_name, avatar_url), review_likes(count), review_photos(storage_path, hidden_at, removed_at)"
     )
     .eq("location_id", locationId)
     .eq("status", "visible")
@@ -80,9 +80,19 @@ export async function fetchReviews(
     author_avatar_url: row.profiles?.avatar_url ?? null,
     likeCount: row.review_likes?.[0]?.count ?? 0,
     likedByMe: likedReviewIds.has(row.id),
-    photos: (row.review_photos ?? []).map(
-      (photo) => client.storage.from("media").getPublicUrl(photo.storage_path).data.publicUrl
-    ),
+    /*
+     * A photo on hold or in the trash is not one of this review's photos any
+     * more.
+     *
+     * The gallery already filtered these; the review list did not, so a
+     * reported picture vanished from the gallery and carried on showing as a
+     * thumbnail under the review it came from — which is where somebody
+     * looking for it would tap. A nested embed cannot be filtered by the
+     * outer query, so it happens here.
+     */
+    photos: (row.review_photos ?? [])
+      .filter((photo) => photo.hidden_at === null && photo.removed_at === null)
+      .map((photo) => client.storage.from("media").getPublicUrl(photo.storage_path).data.publicUrl),
   }));
 }
 

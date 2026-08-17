@@ -601,14 +601,12 @@
     "loadFailedTitle": "Couldn’t load reports",
     "loadFailedBody": "This list may be out of date or incomplete. Pull back and reopen the page to try again.",
     "legendDismiss": "Dismiss",
-    "legendDismissBody": " — close the report, change nothing.",
+    "legendDismissBody": " — nothing is wrong: the report closes and anything it hid comes back.",
     "legendWarn": "Warn",
     "legendWarnBody": " — message the person who posted it; the content stays up.",
     "legendReason": "Every action asks you for a reason, which is saved to the moderation log.",
-    "legendHide": "Hide",
-    "legendHideBody": " — take it out of the app but keep it, so you can restore it.",
     "legendRemove": "Remove",
-    "legendRemoveBody": " — take it down for good.",
+    "legendRemoveBody": " — take it down. Restorable for 30 days, then deleted for good.",
     "legendBans": "To restrict the person themselves, use People & bans.",
     "reject": "Reject",
     "approve": "Approve",
@@ -706,7 +704,9 @@
     "keepPhotoBody": "The photo goes back on display and the report is closed. Nobody is told anything.",
     "photoOnHold": "Hidden from everyone while this report is open.",
     "deletesInDays_one": "Deleted permanently in {{count}} day.",
-    "deletesInDays_other": "Deleted permanently in {{count}} days."
+    "deletesInDays_other": "Deleted permanently in {{count}} days.",
+    "legendRemovePhoto": "Remove photo",
+    "legendRemovePhotoBody": " — take down the one picture and leave the rest alone."
   },
   "authError": {
     "network": "Couldn’t reach LocaStar. Check your connection and try again.",

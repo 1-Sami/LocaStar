@@ -218,6 +218,9 @@ export default function AdminReportsScreen() {
       destructive: false,
       run: async (note) => {
         if (!session) return;
+        if (report.photoId) {
+          await releasePhotoHold(supabase, { locationPhotoId: report.photoId });
+        }
         await resolveLocationReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
       },
     });
@@ -310,27 +313,13 @@ export default function AdminReportsScreen() {
    * report lands, so without this every report would end in deletion — there
    * would be no way to say "I looked, it is fine" and give it back.
    */
-  const askKeepPhoto = (report: LocationReport | ReviewReport, kind: 'location' | 'review') =>
-    setPending({
-      reportId: report.id,
-      title: t('admin.keepPhotoTitle'),
-      consequence: t('admin.keepPhotoBody'),
-      noteLabel: t('admin.whyDismissing'),
-      confirmLabel: t('admin.keepPhoto'),
-      destructive: false,
-      run: async (note) => {
-        if (!session || !report.photoId) return;
-        await releasePhotoHold(supabase, {
-          locationPhotoId: kind === 'location' ? report.photoId : null,
-          reviewPhotoId: kind === 'review' ? report.photoId : null,
-        });
-        if (kind === 'location') {
-          await resolveLocationReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
-        } else {
-          await resolveReviewReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
-        }
-      },
-    });
+  /*
+   * Takes down the one photo and closes the report, leaving the listing alone.
+   *
+   * The point of the whole feature: a bad picture on an otherwise fine place
+   * should cost that place nothing. It goes to the thirty-day trash rather than
+   * being destroyed, so a wrong call is recoverable.
+   */
   const askRemoveLocationPhoto = (report: LocationReport) =>
     setPending({
       reportId: report.id,
@@ -345,7 +334,6 @@ export default function AdminReportsScreen() {
         await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
       },
     });
-
   const askRemoveReviewPhoto = (report: ReviewReport) =>
     setPending({
       reportId: report.id,
@@ -388,6 +376,13 @@ export default function AdminReportsScreen() {
       destructive: false,
       run: async (note) => {
         if (!session) return;
+        // Undo whatever the report itself took down. A report about a photo
+        // holds that photo; a report about the review hides the review.
+        if (report.photoId) {
+          await releasePhotoHold(supabase, { reviewPhotoId: report.photoId });
+        } else if (report.reviewStatus === 'hidden') {
+          await updateReviewStatus(supabase, report.reviewId, 'visible');
+        }
         await resolveReviewReport(supabase, report.id, 'dismissed', session.user.id, 'dismissed', note);
       },
     });
@@ -540,8 +535,8 @@ export default function AdminReportsScreen() {
                   {'\n'}
                   {t('admin.legendReason')}
                   {'\n'}
-                  <ThemedText type="smallBold">{t('admin.legendHide')}</ThemedText>
-                  {t('admin.legendHideBody')}
+                  <ThemedText type="smallBold">{t('admin.legendRemovePhoto')}</ThemedText>
+                  {t('admin.legendRemovePhotoBody')}
                   {'\n'}
                   <ThemedText type="smallBold">{t('admin.legendRemove')}</ThemedText>
                   {t('admin.legendRemoveBody')}
@@ -592,14 +587,6 @@ export default function AdminReportsScreen() {
                           disabled={busy}
                           onPress={() => askRemoveLocationPhoto(report)}>
                           <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
-                        </Pressable>
-                      )}
-                      {report.photoId && (
-                        <Pressable
-                          style={[styles.actionButton, styles.dismissButton]}
-                          disabled={busy}
-                          onPress={() => askKeepPhoto(report, 'location')}>
-                          <ThemedText type='smallBold'>{t('admin.keepPhoto')}</ThemedText>
                         </Pressable>
                       )}
                       {report.locationCreatorId && (
@@ -666,14 +653,6 @@ export default function AdminReportsScreen() {
                           disabled={busy}
                           onPress={() => askRemoveReviewPhoto(report)}>
                           <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
-                        </Pressable>
-                      )}
-                      {report.photoId && (
-                        <Pressable
-                          style={[styles.actionButton, styles.dismissButton]}
-                          disabled={busy}
-                          onPress={() => askKeepPhoto(report, 'review')}>
-                          <ThemedText type='smallBold'>{t('admin.keepPhoto')}</ThemedText>
                         </Pressable>
                       )}
                       {report.reviewAuthorId && (

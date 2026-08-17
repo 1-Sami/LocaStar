@@ -428,7 +428,7 @@ export async function fetchLocationPhotos(
     row.review_photos
       // A nested embed cannot be filtered by the outer query, so the hold
       // is applied here instead.
-      .filter((photo) => photo.hidden_at === null && photo.removed_at === null)
+      .filter((photo) => photo.hidden_at === null && (includeRemoved || photo.removed_at === null))
       .map((photo) => ({
       url: publicUrl(photo.storage_path),
       photoId: null,
@@ -439,7 +439,7 @@ export async function fetchLocationPhotos(
       // nothing here to keep back.
       uploaderName: row.profiles?.username ?? null,
       uploaderId: row.user_id,
-      removedAt: null,
+      removedAt: photo.removed_at,
     }))
   );
 

@@ -601,14 +601,12 @@
     "loadFailedTitle": "Kunde inte läsa in anmälningarna",
     "loadFailedBody": "Listan kan vara inaktuell eller ofullständig. Gå tillbaka och öppna sidan igen för att försöka på nytt.",
     "legendDismiss": "Avfärda",
-    "legendDismissBody": " — stäng anmälan, ändra ingenting.",
+    "legendDismissBody": " — inget är fel: anmälan stängs och det som dolts kommer tillbaka.",
     "legendWarn": "Varna",
     "legendWarnBody": " — meddela den som lagt upp det; innehållet ligger kvar.",
     "legendReason": "Varje åtgärd kräver en anledning, som sparas i händelseloggen.",
-    "legendHide": "Dölj",
-    "legendHideBody": " — ta bort det ur appen men behåll det, så att du kan återställa det.",
     "legendRemove": "Ta bort",
-    "legendRemoveBody": " — ta ned det för gott.",
+    "legendRemoveBody": " — ta ner det. Går att återställa i 30 dagar, sedan raderas det för gott.",
     "legendBans": "För att begränsa personen själv, använd Användare & spärrar.",
     "reject": "Avslå",
     "approve": "Godkänn",
@@ -706,7 +704,9 @@
     "keepPhotoBody": "Bilden visas igen och anmälan stängs. Ingen får något meddelande.",
     "photoOnHold": "Dold för alla så länge anmälan är öppen.",
     "deletesInDays_one": "Raderas permanent om {{count}} dag.",
-    "deletesInDays_other": "Raderas permanent om {{count}} dagar."
+    "deletesInDays_other": "Raderas permanent om {{count}} dagar.",
+    "legendRemovePhoto": "Ta bort bild",
+    "legendRemovePhotoBody": " — ta ner den enda bilden och lämna resten orörd."
   },
   "authError": {
     "network": "Kunde inte nå LocaStar. Kontrollera din anslutning och försök igen.",
