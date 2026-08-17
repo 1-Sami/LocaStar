@@ -8,9 +8,8 @@ import {
   fetchOpenReviewReports,
   issueWarning,
   resolveBusinessClaim,
-  deleteLocationPhoto,
   releasePhotoHold,
-  deleteReviewPhoto,
+  setPhotoRemoved,
   resolveLocationReport,
   resolveReviewReport,
   updateLocationStatus,
@@ -73,6 +72,21 @@ function claimActionLabel(claim: BusinessClaim, t: TFunction): string {
   return claim.status === 'approved' ? t('admin.resolvedApproved') : t('admin.resolvedRejected');
 }
 
+/**
+ * How long a removed item has left before the purge takes it.
+ *
+ * The window lives in expired_removed_content(); this only has to say the
+ * same number back. Clamped at zero because the job runs daily, so something
+ * can sit a few hours past due and still be sitting there.
+ */
+const TRASH_RETENTION_DAYS = 30;
+
+function daysUntilPurge(removedAt: string | null): number | null {
+  if (!removedAt) return null;
+  const elapsedMs = Date.now() - new Date(removedAt).getTime();
+  const left = TRASH_RETENTION_DAYS - Math.floor(elapsedMs / 86_400_000);
+  return Math.max(0, left);
+}
 /** A decision waiting on the moderator to type a reason and confirm it. */
 type PendingDecision = {
   reportId: string;
@@ -234,21 +248,6 @@ export default function AdminReportsScreen() {
       },
     });
 
-  const askHideLocation = (report: LocationReport) =>
-    setPending({
-      reportId: report.id,
-      title: t('admin.hideLocationTitle'),
-      consequence: t('admin.hideLocationBody', { location: report.locationName }),
-      noteLabel: t('admin.whyHiding'),
-      confirmLabel: t('admin.hideIt'),
-      destructive: false,
-      run: async (note) => {
-        if (!session) return;
-        await updateLocationStatus(supabase, report.locationId, 'flagged');
-        await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'hidden', note);
-      },
-    });
-
   /*
    * Takes down the one photo and closes the report, leaving the listing alone.
    *
@@ -342,7 +341,7 @@ export default function AdminReportsScreen() {
       destructive: true,
       run: async (note) => {
         if (!session || !report.photoId) return;
-        await deleteLocationPhoto(supabase, report.photoId, report.photoPath);
+        await setPhotoRemoved(supabase, { locationPhotoId: report.photoId }, true);
         await resolveLocationReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
       },
     });
@@ -357,13 +356,7 @@ export default function AdminReportsScreen() {
       destructive: true,
       run: async (note) => {
         if (!session || !report.photoId || !report.photoPath) return;
-        await deleteReviewPhoto(supabase, {
-          id: report.photoId,
-          storagePath: report.photoPath,
-          // deleteReviewPhoto only reads id and storagePath; the url is part of
-          // the type because the review screen displays it.
-          url: '',
-        });
+        await setPhotoRemoved(supabase, { reviewPhotoId: report.photoId }, true);
         await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'removed', note);
       },
     });
@@ -417,24 +410,6 @@ export default function AdminReportsScreen() {
           targetId: report.reviewId,
         });
         await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'warned', note);
-      },
-    });
-
-  const askHideReview = (report: ReviewReport) =>
-    setPending({
-      reportId: report.id,
-      title: t('admin.hideReviewTitle'),
-      consequence: t('admin.hideReviewBody', {
-        author: report.reviewAuthorName,
-        location: report.locationName,
-      }),
-      noteLabel: t('admin.whyHiding'),
-      confirmLabel: t('admin.hideIt'),
-      destructive: false,
-      run: async (note) => {
-        if (!session) return;
-        await updateReviewStatus(supabase, report.reviewId, 'hidden');
-        await resolveReviewReport(supabase, report.id, 'actioned', session.user.id, 'hidden', note);
       },
     });
 
@@ -636,14 +611,6 @@ export default function AdminReportsScreen() {
                         </Pressable>
                       )}
                       <Pressable
-                        style={[styles.actionButton, styles.flagButton]}
-                        disabled={busy}
-                        onPress={() => askHideLocation(report)}>
-                        <ThemedText type="smallBold" style={styles.flagButtonText}>
-                          {t('admin.legendHide')}
-                        </ThemedText>
-                      </Pressable>
-                      <Pressable
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
                         onPress={() => askRemoveLocation(report)}>
@@ -717,14 +684,6 @@ export default function AdminReportsScreen() {
                           <ThemedText type='smallBold'>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
-                      <Pressable
-                        style={[styles.actionButton, styles.flagButton]}
-                        disabled={busy}
-                        onPress={() => askHideReview(report)}>
-                        <ThemedText type="smallBold" style={styles.flagButtonText}>
-                          {t('admin.legendHide')}
-                        </ThemedText>
-                      </Pressable>
                       <Pressable
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
@@ -818,6 +777,10 @@ export default function AdminReportsScreen() {
                         everywhere else, so the report that took it down is the
                         one place it can still be reached from. */}
                     {report.reviewStatus !== 'visible' && (
+                      <>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {t('admin.deletesInDays', { count: daysUntilPurge(report.removedAt) ?? 0 })}
+                      </ThemedText>
                       <View style={styles.actionsRow}>
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
@@ -826,6 +789,7 @@ export default function AdminReportsScreen() {
                           <ThemedText type="smallBold">{t('admin.restore')}</ThemedText>
                         </Pressable>
                       </View>
+                      </>
                     )}
                   </ThemedView>
                 ))
@@ -855,6 +819,10 @@ export default function AdminReportsScreen() {
                       </ThemedText>
                     )}
                     {report.locationStatus !== 'active' && (
+                      <>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {t('admin.deletesInDays', { count: daysUntilPurge(report.removedAt) ?? 0 })}
+                      </ThemedText>
                       <View style={styles.actionsRow}>
                         <Pressable
                           style={[styles.actionButton, styles.dismissButton]}
@@ -863,6 +831,7 @@ export default function AdminReportsScreen() {
                           <ThemedText type="smallBold">{t('admin.restore')}</ThemedText>
                         </Pressable>
                       </View>
+                      </>
                     )}
                   </ThemedView>
                 ))

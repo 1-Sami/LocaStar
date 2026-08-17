@@ -97,6 +97,7 @@ export {
   fetchOpenLocationReports,
   fetchHandledLocationReports,
   releasePhotoHold,
+  setPhotoRemoved,
   resolveLocationReport,
   updateLocationStatus,
   fetchOpenReviewReports,

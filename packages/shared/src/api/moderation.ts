@@ -25,6 +25,8 @@ export type LocationReport = {
    */
   photoId: string | null;
   photoPath: string | null;
+  /** When it was removed, for the countdown. Null unless removed. */
+  removedAt: string | null;
   reason: string;
   details: string | null;
   reporterName: string;
@@ -50,6 +52,7 @@ type LocationReportRow = {
   locations: {
     name: string;
     status: LocationStatus;
+    removed_at: string | null;
     created_by: string | null;
     profiles: { username: string | null; display_name: string | null } | null;
   } | null;
@@ -60,7 +63,7 @@ const LOCATION_REPORT_SELECT =
   // `locations` has two FKs to `profiles` (created_by and claimed_by), so the
   // nested embed must name the constraint — an unqualified profiles(...) here
   // is ambiguous and makes PostgREST reject the whole query.
-  "id, location_id, location_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, location_photos(storage_path), locations(name, status, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
+  "id, location_id, location_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, location_photos(storage_path), locations(name, status, removed_at, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
 
 function mapLocationReport(row: LocationReportRow): LocationReport {
   return {
@@ -69,6 +72,7 @@ function mapLocationReport(row: LocationReportRow): LocationReport {
     locationName: row.locations?.name ?? "Unknown location",
     locationStatus: row.locations?.status ?? "active",
     locationCreatorId: row.locations?.created_by ?? null,
+    removedAt: row.locations?.removed_at ?? null,
     photoId: row.location_photo_id ?? null,
     photoPath: row.location_photos?.storage_path ?? null,
     locationCreatorName: row.locations?.profiles?.username ?? row.locations?.profiles?.display_name ?? "Unknown",
@@ -122,6 +126,26 @@ export async function releasePhotoHold(
   });
   if (error) throw error;
 }
+
+/**
+ * Moves a photo to the trash, or takes it back out.
+ *
+ * Replaces the hard delete this used to be. A moderator who removes the wrong
+ * picture now has thirty days to notice, and the stored object stays until the
+ * purge so a restore has something to restore.
+ */
+export async function setPhotoRemoved(
+  client: SupabaseClient,
+  photo: { locationPhotoId?: string | null; reviewPhotoId?: string | null },
+  removed: boolean
+): Promise<void> {
+  const { error } = await client.rpc("set_photo_removed", {
+    p_location_photo_id: photo.locationPhotoId ?? null,
+    p_review_photo_id: photo.reviewPhotoId ?? null,
+    p_removed: removed,
+  });
+  if (error) throw error;
+}
 export async function resolveLocationReport(
   client: SupabaseClient,
   reportId: string,
@@ -148,7 +172,13 @@ export async function updateLocationStatus(
   locationId: string,
   status: LocationStatus
 ): Promise<void> {
-  const { error } = await client.from("locations").update({ status }).eq("id", locationId);
+  // removed_at is the purge clock, and it is stamped and cleared here so a
+  // restore genuinely takes the row out of the trash rather than leaving it
+  // visible with a countdown still running underneath it.
+  const { error } = await client
+    .from("locations")
+    .update({ status, removed_at: status === "removed" ? new Date().toISOString() : null })
+    .eq("id", locationId);
   if (error) throw error;
 }
 
@@ -166,6 +196,8 @@ export type ReviewReport = {
   /** The one photo this report is about, or null when it is about the review. */
   photoId: string | null;
   photoPath: string | null;
+  /** When it was removed, for the countdown. Null unless removed. */
+  removedAt: string | null;
   locationId: string;
   locationName: string;
   reason: string;
@@ -195,6 +227,7 @@ type ReviewReportRow = {
     title: string | null;
     body: string | null;
     status: ReviewStatus;
+    removed_at: string | null;
     location_id: string;
     user_id: string;
     profiles: { username: string | null; display_name: string | null } | null;
@@ -204,7 +237,7 @@ type ReviewReportRow = {
 };
 
 const REVIEW_REPORT_SELECT =
-  "id, review_id, review_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, review_photos(storage_path), reviews(rating, title, body, status, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
+  "id, review_id, review_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, review_photos(storage_path), reviews(rating, title, body, status, removed_at, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
 
 function mapReviewReport(row: ReviewReportRow): ReviewReport {
   return {
@@ -216,6 +249,7 @@ function mapReviewReport(row: ReviewReportRow): ReviewReport {
     reviewTitle: row.reviews?.title ?? null,
     reviewBody: row.reviews?.body ?? null,
     reviewStatus: row.reviews?.status ?? "visible",
+    removedAt: row.reviews?.removed_at ?? null,
     photoId: row.review_photo_id ?? null,
     photoPath: row.review_photos?.storage_path ?? null,
     locationId: row.reviews?.location_id ?? "",
@@ -289,7 +323,10 @@ export async function updateReviewStatus(
   reviewId: string,
   status: ReviewStatus
 ): Promise<void> {
-  const { error } = await client.from("reviews").update({ status }).eq("id", reviewId);
+  const { error } = await client
+    .from("reviews")
+    .update({ status, removed_at: status === "removed" ? new Date().toISOString() : null })
+    .eq("id", reviewId);
   if (error) throw error;
 }
 

@@ -348,13 +348,15 @@ export async function fetchLocationPhotos(
       .from("location_photos")
       .select("id, storage_path, sort_order, user_id, profiles(username), locations!inner(creator_visible, created_by)")
       .eq("location_id", locationId)
-      // Reported photos are held out of sight until a moderator rules on them.
+      // Reported photos are held out of sight until a moderator rules on them;
+      // removed ones are in the trash awaiting the purge.
       .is("hidden_at", null)
+      .is("removed_at", null)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     client
       .from("reviews")
-      .select("id, user_id, profiles(username), review_photos(id, storage_path, hidden_at)")
+      .select("id, user_id, profiles(username), review_photos(id, storage_path, hidden_at, removed_at)")
       .eq("location_id", locationId)
       .eq("status", "visible")
       .order("created_at", { ascending: false }),
@@ -400,13 +402,13 @@ export async function fetchLocationPhotos(
     id: string;
     user_id: string | null;
     profiles: { username: string | null } | null;
-    review_photos: { id: string; storage_path: string; hidden_at: string | null }[];
+    review_photos: { id: string; storage_path: string; hidden_at: string | null; removed_at: string | null }[];
   };
   const fromReviews = (reviewPhotos.data as unknown as ReviewRow[]).flatMap((row) =>
     row.review_photos
       // A nested embed cannot be filtered by the outer query, so the hold
       // is applied here instead.
-      .filter((photo) => photo.hidden_at === null)
+      .filter((photo) => photo.hidden_at === null && photo.removed_at === null)
       .map((photo) => ({
       url: publicUrl(photo.storage_path),
       photoId: null,
