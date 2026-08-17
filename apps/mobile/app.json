@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "se.locastar.app",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "associatedDomains": ["applinks:locastar.se"],
       "config": {
         "usesNonExemptEncryption": false
