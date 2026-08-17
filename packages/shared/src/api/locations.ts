@@ -331,6 +331,11 @@ export type GalleryPhoto = {
    * photo, and never displayed.
    */
   uploaderId: string | null;
+  /**
+   * When a moderator removed it, or null. Only ever set for a moderator:
+   * everybody else has these filtered out before they get here.
+   */
+  removedAt: string | null;
 };
 
 /**
@@ -345,17 +350,23 @@ export type GalleryPhoto = {
  */
 export async function fetchLocationPhotos(
   client: SupabaseClient,
-  locationId: string
+  locationId: string,
+  /**
+   * Moderators only. Removed photos come back marked, so the person who put
+   * one in the trash can take it out again from the same place they deleted
+   * it — otherwise it is invisible everywhere and unrecoverable until the
+   * purge finishes the job.
+   */
+  includeRemoved = false
 ): Promise<GalleryPhoto[]> {
   const [locationPhotos, reviewPhotos] = await Promise.all([
     client
       .from("location_photos")
-      .select("id, storage_path, sort_order, user_id, profiles(username), locations!inner(creator_visible, created_by)")
+      .select("id, storage_path, sort_order, user_id, removed_at, profiles(username), locations!inner(creator_visible, created_by)")
       .eq("location_id", locationId)
       // Reported photos are held out of sight until a moderator rules on them;
       // removed ones are in the trash awaiting the purge.
       .is("hidden_at", null)
-      .is("removed_at", null)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     client
@@ -374,6 +385,7 @@ export async function fetchLocationPhotos(
     id: string;
     storage_path: string;
     user_id: string | null;
+    removed_at: string | null;
     profiles: { username: string | null } | null;
     locations: { creator_visible: boolean; created_by: string | null } | null;
   };
@@ -399,8 +411,12 @@ export async function fetchLocationPhotos(
       reviewPhotoId: null,
       uploaderName: optedOut ? null : (row.profiles?.username ?? null),
       uploaderId: row.user_id,
+      removedAt: row.removed_at,
     };
-  });
+  })
+    // The database cannot filter this conditionally without two queries, and
+    // the rows are few, so the caller's answer is applied here.
+    .filter((photo) => includeRemoved || photo.removedAt === null);
 
   type ReviewRow = {
     id: string;
@@ -423,6 +439,7 @@ export async function fetchLocationPhotos(
       // nothing here to keep back.
       uploaderName: row.profiles?.username ?? null,
       uploaderId: row.user_id,
+      removedAt: null,
     }))
   );
 

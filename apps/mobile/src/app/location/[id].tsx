@@ -1,6 +1,6 @@
 import {
   deleteLocation,
-  deleteLocationPhoto,
+  setPhotoRemoved,
   deleteReview,
   fetchLocationById,
   isAlwaysOpen,
@@ -239,7 +239,7 @@ export default function LocationDetailScreen() {
       Promise.all([
         fetchLocationById(supabase, id),
         fetchReviews(supabase, id, session?.user.id),
-        fetchLocationPhotos(supabase, id),
+        fetchLocationPhotos(supabase, id, isModerator),
       ])
         .then(([locationResult, reviewsResult, photosResult]) => {
           if (cancelled) return;
@@ -260,7 +260,7 @@ export default function LocationDetailScreen() {
       return () => {
         cancelled = true;
       };
-    }, [id, session?.user.id])
+    }, [id, session?.user.id, isModerator])
   );
 
   useFocusEffect(
@@ -412,8 +412,8 @@ export default function LocationDetailScreen() {
     );
     if (!confirmed) return;
     try {
-      await deleteLocationPhoto(supabase, viewerPhoto.photoId, viewerPhoto.storagePath);
-      const refreshed = await fetchLocationPhotos(supabase, id);
+      await setPhotoRemoved(supabase, { locationPhotoId: viewerPhoto.photoId }, true);
+      const refreshed = await fetchLocationPhotos(supabase, id, isModerator);
       setPhotos(refreshed);
       // Close the viewer if that was the last photo, otherwise stay put and
       // let the next one slide into this index.
@@ -425,6 +425,25 @@ export default function LocationDetailScreen() {
     }
   };
 
+  /*
+   * Takes a photo back out of the trash.
+   *
+   * Deleting from here used to destroy the row and the stored file outright,
+   * while deleting the same photo from the moderation queue gave thirty days to
+   * change your mind — and this is the easier path to reach. Now both go to the
+   * same place, and this is where it comes back from, because it is where it
+   * went.
+   */
+  const handleRestorePhoto = async () => {
+    if (!viewerPhoto?.photoId || !id) return;
+    try {
+      await setPhotoRemoved(supabase, { locationPhotoId: viewerPhoto.photoId }, false);
+      setPhotos(await fetchLocationPhotos(supabase, id, isModerator));
+    } catch {
+      // Same reasoning as the others here: RLS refusing is the expected
+      // outcome for anyone who should not be doing this.
+    }
+  };
   const handleMakeCover = async () => {
     if (!viewerPhoto?.photoId || !id) return;
     const confirmed = await confirmAsync(
@@ -435,7 +454,7 @@ export default function LocationDetailScreen() {
     if (!confirmed) return;
     try {
       await makeCoverPhoto(supabase, id, viewerPhoto.photoId);
-      const refreshed = await fetchLocationPhotos(supabase, id);
+      const refreshed = await fetchLocationPhotos(supabase, id, isModerator);
       setPhotos(refreshed);
       setViewerIndex(0);
       setActivePhotoIndex(0);
@@ -1397,11 +1416,21 @@ export default function LocationDetailScreen() {
                     </ThemedText>
                   </Pressable>
                 )}
-                {canDeleteCurrentPhoto && (
+                {canDeleteCurrentPhoto && !viewerPhoto?.removedAt && (
                   <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
                     <Ionicons name="trash-outline" size={14} color="#ffffff" />
                     <ThemedText type="smallBold" style={styles.deletePhotoText}>
                       {t('location.deletePhoto')}
+                    </ThemedText>
+                  </Pressable>
+                )}
+                {/* Only a moderator ever sees a trashed photo at all — everyone
+                    else has it filtered out before it reaches the gallery. */}
+                {canDeleteCurrentPhoto && viewerPhoto?.removedAt && (
+                  <Pressable style={styles.makeCoverButton} onPress={handleRestorePhoto}>
+                    <Ionicons name="arrow-undo" size={14} color="#000000" />
+                    <ThemedText type="smallBold" style={styles.makeCoverText}>
+                      {t('admin.restore')}
                     </ThemedText>
                   </Pressable>
                 )}

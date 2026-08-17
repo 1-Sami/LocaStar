@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ScreenTitle } from '@/components/screen-title';
 import { UpdateBanner } from '@/components/update-banner';
 import { AuthProvider } from '@/lib/auth-context';
-import { installCrashReporter } from '@/lib/crash-reporting';
+import { installCrashReporter, setCrashRoute } from '@/lib/crash-reporting';
 // Imported for the side effect of initialising i18next before any screen calls
 // useTranslation. loadStoredLanguage applies the saved override afterwards.
 import { loadStoredLanguage } from '@/lib/i18n';
@@ -32,6 +32,19 @@ function ThemedNavigation() {
   // Here rather than in RootLayout: it needs a router to push onto, and the
   // navigation tree only exists from this component down.
   useNotificationTaps();
+  /*
+   * Tell the crash reporter where we are.
+   *
+   * Without this the route column was always null: the setter existed and
+   * nothing ever called it, so every report said only *what* broke and never
+   * *where*, which is the first thing anyone asks. Here rather than in a
+   * screen, because usePathname needs the router and this is the highest
+   * component that has one.
+   */
+  const pathname = usePathname();
+  useEffect(() => {
+    setCrashRoute(pathname);
+  }, [pathname]);
   return (
     <ThemeProvider value={resolvedScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
