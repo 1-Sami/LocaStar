@@ -403,7 +403,8 @@
       "place": "Submit place",
       "activity": "Submit activity"
     },
-    "submitting": "Submitting…"
+    "submitting": "Submitting…",
+    "endsAndDisappears": "When the activity ends it is removed, along with any reviews and photos people added to it."
   },
   "editLocation": {
     "saveError": "Something went wrong saving your changes. Try again.",
@@ -566,7 +567,8 @@
     "submitting": "Submitting…",
     "submit": "Submit review",
     "reviewing": "Reviewing {{name}}",
-    "submitError": "Something went wrong submitting your review. Try again."
+    "submitError": "Something went wrong submitting your review. Try again.",
+    "activityReviewIsTemporary": "This is an activity — your review and photos are removed when it ends."
   },
   "listDetail": {
     "removeTitle": "Remove from list?",

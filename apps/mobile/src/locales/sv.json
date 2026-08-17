@@ -403,7 +403,8 @@
       "place": "Skicka in plats",
       "activity": "Skicka in aktivitet"
     },
-    "submitting": "Skickar…"
+    "submitting": "Skickar…",
+    "endsAndDisappears": "När aktiviteten är slut tas den bort, tillsammans med de recensioner och bilder som lagts till på den."
   },
   "editLocation": {
     "saveError": "Något gick fel när ändringarna sparades. Försök igen.",
@@ -566,7 +567,8 @@
     "submitting": "Skickar…",
     "submit": "Skicka recension",
     "reviewing": "Recenserar {{name}}",
-    "submitError": "Något gick fel när recensionen skickades. Försök igen."
+    "submitError": "Något gick fel när recensionen skickades. Försök igen.",
+    "activityReviewIsTemporary": "Det här är en aktivitet — din recension och dina bilder tas bort när den är slut."
   },
   "listDetail": {
     "removeTitle": "Ta bort från listan?",

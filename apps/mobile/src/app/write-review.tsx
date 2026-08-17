@@ -37,9 +37,10 @@ function StarPicker({ value, onChange }: { value: number; onChange: (rating: num
 
 export default function WriteReviewScreen() {
   const { t } = useTranslation();
-  const { locationId, locationName, reviewId, rating, title, body } = useLocalSearchParams<{
+  const { locationId, locationName, locationKind, reviewId, rating, title, body } = useLocalSearchParams<{
     locationId: string;
     locationName?: string;
+    locationKind?: string;
     reviewId?: string;
     rating?: string;
     title?: string;
@@ -129,6 +130,16 @@ export default function WriteReviewScreen() {
           {locationName && (
             <ThemedText type="small" themeColor="textSecondary">
               {t('review.reviewing', { name: locationName })}
+            </ThemedText>
+          )}
+
+          {/* An activity takes its reviews with it when it ends. That is the
+              point of them — they help somebody decide whether to go this
+              week — but it should be said before the writing, not found out
+              afterwards. */}
+          {locationKind === 'activity' && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {t('review.activityReviewIsTemporary')}
             </ThemedText>
           )}
 

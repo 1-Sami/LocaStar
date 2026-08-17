@@ -731,6 +731,14 @@ export default function AddLocationScreen() {
               <ThemedText type="small" themeColor="textSecondary" style={styles.publishHint}>
                 {t('addLocation.publishDateHint')}
               </ThemedText>
+              {/* Said here rather than discovered later. An activity and
+                  everything posted on it goes when it ends, which is the right
+                  behaviour — a festival's reviews are for people deciding
+                  whether to go this week — but being surprised by it is what
+                  costs you the person who wrote them. */}
+              <ThemedText type="small" themeColor="textSecondary" style={styles.publishHint}>
+                {t('addLocation.endsAndDisappears')}
+              </ThemedText>
               {dateError && (
                 <ThemedText type="small" style={styles.errorText}>
                   {dateError}

@@ -618,6 +618,7 @@ export default function LocationDetailScreen() {
       params: {
         locationId: location.id,
         locationName: location.name,
+        locationKind: location.kind,
         ...(myReview
           ? {
               reviewId: myReview.id,
