@@ -299,7 +299,8 @@
     "photoAddedBy": "added by: {{name}}",
     "reportPhoto": "Report photo",
     "reportPhotoTitle": "Report this photo",
-    "reportPhotoConfirm": "Thanks — a moderator will look at this photo."
+    "reportPhotoConfirm": "Thanks — a moderator will look at this photo.",
+    "activityEndedOnlyYou": "This activity has ended. Only you can see it now — it is out of search and off the map. Its reviews and photos have been removed. Delete it whenever you like."
   },
   "form": {
     "nameLabel": "Name/Title",

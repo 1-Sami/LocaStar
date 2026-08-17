@@ -4,7 +4,7 @@ import { DELETED_ACCOUNT_NAME } from "./profile";
 import type { UserRole } from "./profile";
 
 export type LocationReportStatus = "open" | "reviewed" | "actioned" | "dismissed";
-export type LocationStatus = "pending" | "active" | "flagged" | "removed";
+export type LocationStatus = "pending" | "active" | "flagged" | "past" | "removed";
 
 /** What the moderator actually decided, recorded rather than inferred. */
 export type ResolutionAction = "dismissed" | "warned" | "hidden" | "removed";

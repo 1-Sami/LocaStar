@@ -360,7 +360,18 @@ export default function LocationDetailScreen() {
   const ownsPrivateActivity = Boolean(
     session && location.created_by === session.user.id && location.visibility === 'private'
   );
-  const canDeleteLocation = isAdmin || ownsPrivateActivity;
+
+  /*
+   * An activity that has ended is the creator's to clear.
+   *
+   * It is nobody else's any more: a past activity is out of search and out of
+   * everyone else's reach, so the reason public content is admin-only — that it
+   * carries other people's reviews and photos — has expired along with it.
+   */
+  const ownsPastActivity = Boolean(
+    session && location.created_by === session.user.id && location.status === 'past'
+  );
+  const canDeleteLocation = isAdmin || ownsPrivateActivity || ownsPastActivity;
 
   const websiteUrl = websiteHref(location.website);
   const websiteLabel = websiteUrl ? websiteText(websiteUrl) : null;
@@ -739,6 +750,14 @@ export default function LocationDetailScreen() {
                 For an activity the dates are not one detail among six — they
                 are the whole question of whether you can go at all, and they
                 were losing a legibility contest with the street name. */}
+            {/* Otherwise the screen looks exactly as it did while the activity
+                was running, and only the creator can see it at all — so say so
+                rather than let them assume it is still out there. */}
+            {location.status === 'past' && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.pastNotice}>
+                {t('location.activityEndedOnlyYou')}
+              </ThemedText>
+            )}
             {dateRange && (
               <View style={[styles.dateBanner, { borderColor: theme.accent }]}>
                 <Ionicons name="calendar" size={18} color={theme.accent} />
@@ -1725,6 +1744,10 @@ const styles = StyleSheet.create({
    */
   linkUnderline: {
     textDecorationLine: 'underline',
+  },
+  pastNotice: {
+    marginTop: Spacing.three,
+    lineHeight: 18,
   },
   dateBanner: {
     flexDirection: 'row',

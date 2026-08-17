@@ -299,7 +299,8 @@
     "photoAddedBy": "tillagd av: {{name}}",
     "reportPhoto": "Anmäl bild",
     "reportPhotoTitle": "Anmäl den här bilden",
-    "reportPhotoConfirm": "Tack — en moderator tittar på bilden."
+    "reportPhotoConfirm": "Tack — en moderator tittar på bilden.",
+    "activityEndedOnlyYou": "Aktiviteten är slut. Bara du kan se den nu — den syns inte i sökningen eller på kartan. Recensioner och bilder är borttagna. Radera den när du vill."
   },
   "form": {
     "nameLabel": "Namn/Titel",

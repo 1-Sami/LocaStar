@@ -156,6 +156,8 @@ export type LocationDetail = {
   creator_username: string | null;
   creator_visible: boolean;
   visibility: LocationVisibility;
+  /** 'past' once an activity has ended: still its creator's, gone for everyone else. */
+  status: string;
   starts_at: string | null;
   publish_at: string;
   /** Drives the creator's 24-hour edit window (migration 0079). */
@@ -192,6 +194,8 @@ type LocationDetailRow = {
   creator: { username: string | null } | null;
   creator_visible: boolean;
   visibility: LocationVisibility;
+  /** 'past' once an activity has ended: still its creator's, gone for everyone else. */
+  status: string;
   starts_at: string | null;
   publish_at: string;
   /** Drives the creator's 24-hour edit window (migration 0079). */
@@ -502,7 +506,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -515,6 +519,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     id: row.id,
     kind: row.kind,
     name: row.name,
+    status: row.status,
     description: row.description,
     address: row.address,
     phone: row.phone,
