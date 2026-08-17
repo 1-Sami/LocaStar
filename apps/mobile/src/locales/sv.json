@@ -479,7 +479,11 @@
     "newListTitle": "Ny lista",
     "namePlaceholder": "Listnamn",
     "descriptionPlaceholder": "Beskrivning (valfritt)",
-    "publicList": "Offentlig lista"
+    "publicList": "Offentlig lista",
+    "publicExplainer": "Alla med åtkomst kan se den här listan.",
+    "privateExplainer": "Bara du kan se den här listan.",
+    "creating": "Skapar…",
+    "createList": "Skapa lista"
   },
   "saved": {
     "favorites": "Favoriter",

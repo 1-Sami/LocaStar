@@ -51,6 +51,7 @@ export default function FriendsScreen() {
   const { session } = useAuth();
   const [friendships, setFriendships] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [addVisible, setAddVisible] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -59,7 +60,11 @@ export default function FriendsScreen() {
     setLoading(true);
     fetchFriendships(supabase, session.user.id)
       .then(setFriendships)
-      .catch(() => setFriendships([]))
+      .catch((err) => {
+        // Somebody with friends seeing "no friends yet" reads as data loss.
+        console.error('Failed to load friends', err);
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [session]);
 
@@ -206,7 +211,11 @@ export default function FriendsScreen() {
               <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
                 {t('friends.friendsCount', { count: friends.length })}
               </ThemedText>
-              {friends.length === 0 ? (
+              {loadFailed ? (
+                <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+                  {t('common.somethingWentWrong')}
+                </ThemedText>
+              ) : friends.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                   {t('friends.empty')}
                 </ThemedText>

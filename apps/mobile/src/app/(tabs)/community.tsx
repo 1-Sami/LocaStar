@@ -33,6 +33,7 @@ export default function CommunityScreen() {
 
   const [lists, setLists] = useState<PublicList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [sort, setSort] = useState<PublicListSort>('newest');
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
@@ -43,8 +44,11 @@ export default function CommunityScreen() {
       .then((rows) => {
         if (!cancelled) setLists(rows);
       })
-      .catch(() => {
-        if (!cancelled) setLists([]);
+      .catch((err) => {
+        // Emptying the list here would render as "no public lists yet",
+        // which is a different and untrue statement.
+        console.error('Failed to load public lists', err);
+        if (!cancelled) setLoadFailed(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -94,7 +98,11 @@ export default function CommunityScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
-            {lists.length === 0 ? (
+            {loadFailed ? (
+              <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+                {t('common.somethingWentWrong')}
+              </ThemedText>
+            ) : lists.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 {t('community.empty')}
               </ThemedText>

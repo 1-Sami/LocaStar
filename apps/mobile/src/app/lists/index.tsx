@@ -145,7 +145,7 @@ export default function MyListsScreen() {
               <View style={styles.visibilityRowText}>
                 <ThemedText type="default">{t('lists.publicList')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {isPublic ? 'Anyone with access can view this list.' : 'Only you can see this list.'}
+                  {isPublic ? t('lists.publicExplainer') : t('lists.privateExplainer')}
                 </ThemedText>
               </View>
               <Switch value={isPublic} onValueChange={setIsPublic} trackColor={{ true: Colors.light.primary }} />
@@ -160,7 +160,7 @@ export default function MyListsScreen() {
               disabled={!name.trim() || creating}
               onPress={handleCreate}>
               <ThemedText type="smallBold" style={styles.createButtonText}>
-                {creating ? 'Creating…' : 'Create list'}
+                {creating ? t('lists.creating') : t('lists.createList')}
               </ThemedText>
             </Pressable>
           </ThemedView>

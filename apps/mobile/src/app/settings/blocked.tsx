@@ -18,6 +18,7 @@ export default function BlockedUsersScreen() {
   const { session } = useAuth();
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
@@ -25,7 +26,12 @@ export default function BlockedUsersScreen() {
     setLoading(true);
     fetchBlockedUsers(supabase, session.user.id)
       .then(setBlocked)
-      .catch(() => setBlocked([]))
+      .catch((err) => {
+        // The worst of the three to get wrong: "nobody blocked" when the
+        // load failed suggests somebody's blocks have been undone.
+        console.error('Failed to load blocked users', err);
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [session]);
 
@@ -67,7 +73,11 @@ export default function BlockedUsersScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          {blocked.length === 0 ? (
+          {loadFailed ? (
+            <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+              {t('common.somethingWentWrong')}
+            </ThemedText>
+          ) : blocked.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
               {t('settings.noBlocked')}
             </ThemedText>

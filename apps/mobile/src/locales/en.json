@@ -479,7 +479,11 @@
     "newListTitle": "New list",
     "namePlaceholder": "List name",
     "descriptionPlaceholder": "Description (optional)",
-    "publicList": "Public list"
+    "publicList": "Public list",
+    "publicExplainer": "Anyone with access can view this list.",
+    "privateExplainer": "Only you can see this list.",
+    "creating": "Creating…",
+    "createList": "Create list"
   },
   "saved": {
     "favorites": "Favorites",
