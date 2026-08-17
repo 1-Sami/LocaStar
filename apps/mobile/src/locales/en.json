@@ -15,7 +15,8 @@
     "signUp": "Sign up",
     "termsOfService": "Terms of Service",
     "theme": "Theme",
-    "writeReview": "Write a review"
+    "writeReview": "Write a review",
+    "crashes": "Crash reports"
   },
   "common": {
     "photoRights": "Only upload photos you took yourself, or have the right to use. Don’t use screenshots from Google Maps or pictures taken from other websites.",
@@ -130,7 +131,8 @@
     "saved": "Saved",
     "myReviews": "My reviews",
     "myContributions": "My contributions",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "crashes": "Crash reports"
   },
   "profile": {
     "title": "Profile",
@@ -874,5 +876,10 @@
     "track-and-field-stadium": "Track & Field Stadium",
     "volleyball": "Volleyball",
     "water-activities": "Water activities"
+  },
+  "crashes": {
+    "empty": "Nothing has crashed in the last 30 days.",
+    "seenOn": "Seen on {{releases}}",
+    "currentRelease": "still on the current release"
   }
 }

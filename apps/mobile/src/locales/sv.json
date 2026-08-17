@@ -15,7 +15,8 @@
     "signUp": "Skapa konto",
     "termsOfService": "Användarvillkor",
     "theme": "Tema",
-    "writeReview": "Skriv en recension"
+    "writeReview": "Skriv en recension",
+    "crashes": "Kraschrapporter"
   },
   "common": {
     "photoRights": "Ladda bara upp bilder som du har tagit själv, eller har rätt att använda. Använd inte skärmbilder från Google Maps eller bilder hämtade från andra webbplatser.",
@@ -130,7 +131,8 @@
     "saved": "Sparat",
     "myReviews": "Mina recensioner",
     "myContributions": "Mina bidrag",
-    "notifications": "Aviseringar"
+    "notifications": "Aviseringar",
+    "crashes": "Kraschrapporter"
   },
   "profile": {
     "title": "Profil",
@@ -874,5 +876,10 @@
     "track-and-field-stadium": "Friidrottsarena",
     "volleyball": "Volleyboll",
     "water-activities": "Vattenaktiviteter"
+  },
+  "crashes": {
+    "empty": "Inget har kraschat de senaste 30 dagarna.",
+    "seenOn": "Setts i {{releases}}",
+    "currentRelease": "finns kvar i nuvarande version"
   }
 }

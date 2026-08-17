@@ -107,6 +107,9 @@ const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends', 'addLocation', 'addA
 const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
 // Kept in their own group so moderation tools don't sit flush against About.
 const MODERATOR_MENU_ITEMS: MenuId[] = ['reports', 'peopleAndBans', 'moderationLog'];
+// Admin-only, and separate from the list above: superusers moderate content,
+// they do not need to know which build is throwing.
+const ADMIN_MENU_ITEMS: MenuId[] = ['crashes'];
 
 function MenuRow({
   item,
@@ -247,6 +250,7 @@ export default function ProfileScreen() {
     if (item === 'reports') router.push('/admin-reports');
     if (item === 'peopleAndBans') router.push('/admin-users' as never);
     if (item === 'moderationLog') router.push('/admin-audit' as never);
+    if (item === 'crashes') router.push('/crash-reports' as never);
   };
 
   const handleStatPress = (id: StatId) => {
@@ -448,6 +452,14 @@ export default function ProfileScreen() {
                 badgeCount={item === 'reports' ? openReportsCount : undefined}
                 onPress={() => handleMenuPress(item)}
               />
+            ))}
+          </View>
+        )}
+
+        {myRole === 'admin' && (
+          <View style={[styles.menu, styles.menuGroupGap]}>
+            {ADMIN_MENU_ITEMS.map((item) => (
+              <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
             ))}
           </View>
         )}

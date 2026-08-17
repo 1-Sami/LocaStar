@@ -8,6 +8,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ScreenTitle } from '@/components/screen-title';
 import { UpdateBanner } from '@/components/update-banner';
 import { AuthProvider } from '@/lib/auth-context';
+import { installCrashReporter } from '@/lib/crash-reporting';
 // Imported for the side effect of initialising i18next before any screen calls
 // useTranslation. loadStoredLanguage applies the saved override afterwards.
 import { loadStoredLanguage } from '@/lib/i18n';
@@ -17,6 +18,11 @@ import { useNotificationTaps } from '@/lib/use-notification-taps';
 import { ThemeModeProvider, useThemeMode } from '@/lib/theme-mode-context';
 
 SplashScreen.preventAutoHideAsync();
+
+// At module scope on purpose: a handler installed inside an effect is
+// registered after the first render, and the errors most worth catching are
+// the ones that happen before anything has rendered at all.
+installCrashReporter();
 
 function ThemedNavigation() {
   const { resolvedScheme } = useThemeMode();
@@ -64,6 +70,7 @@ function ThemedNavigation() {
           <Stack.Screen name="admin-reports" options={{ headerTitle: () => <ScreenTitle titleKey="reports" /> }} />
           <Stack.Screen name="admin-users" options={{ headerTitle: () => <ScreenTitle titleKey="peopleAndBans" /> }} />
           <Stack.Screen name="admin-audit" options={{ headerTitle: () => <ScreenTitle titleKey="moderationLog" /> }} />
+          <Stack.Screen name="crash-reports" options={{ headerTitle: () => <ScreenTitle titleKey="crashes" /> }} />
           <Stack.Screen name="lists/index" options={{ headerTitle: () => <ScreenTitle titleKey="myLists" /> }} />
           <Stack.Screen name="lists/[id]" options={{ title: t('nav.list') }} />
           <Stack.Screen name="friends" options={{ headerTitle: () => <ScreenTitle titleKey="friends" /> }} />

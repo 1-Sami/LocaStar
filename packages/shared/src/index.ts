@@ -1,4 +1,5 @@
 export { createSupabaseClient } from "./supabaseClient";
+export { reportCrash, fetchCrashReports, type CrashReport, type CrashReportRow } from "./api/crashes";
 export type { Session, User } from "@supabase/supabase-js";
 
 export {

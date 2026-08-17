@@ -47,6 +47,13 @@ export default function PrivacyPolicyScreen() {
             restrictions applied to your account, together with the moderator action log.
           </LegalText>
         </LegalBullet>
+        <LegalBullet>
+          <LegalText>
+            Technical error reports — if the app fails, it sends us the error, the screen it happened on,
+            your app version and your platform. These contain nothing that identifies you or your account,
+            and they are deleted after 30 days.
+          </LegalText>
+        </LegalBullet>
         <LegalText>
           We do not use advertising trackers, and we do not sell or rent your personal data to anyone.
         </LegalText>

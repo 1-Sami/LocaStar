@@ -21,6 +21,7 @@ export type MenuId =
   | 'reports'
   | 'peopleAndBans'
   | 'moderationLog'
+  | 'crashes'
   | 'myReviews'
   | 'myContributions'
   | 'saved'
@@ -53,6 +54,7 @@ export const MENU_ICONS: Record<MenuId, MenuIcon> = {
   reports: { icon: 'flag-outline', color: '#E05252' },
   peopleAndBans: { icon: 'shield-checkmark-outline', color: '#E8A93B' },
   moderationLog: { icon: 'document-text-outline', color: '#4C8FE8' },
+  crashes: { icon: 'bug-outline', color: '#E05252' },
   myReviews: { icon: 'create-outline', color: '#4CD37A' },
   myContributions: { icon: 'location-outline', color: '#C34CE8' },
   saved: { icon: 'bookmark-outline', color: '#4C8FE8' },
