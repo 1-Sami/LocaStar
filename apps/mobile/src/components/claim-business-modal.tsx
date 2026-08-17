@@ -89,7 +89,7 @@ export function ClaimBusinessModal({
                 {t('components.claimTitle')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Tell us how you're connected to this business (e.g. your role, phone number, or
+                Tell us how you&apos;re connected to this business (e.g. your role, phone number, or
                 website) so we can verify your claim. At least {MIN_REASON_WORDS} words required.
               </ThemedText>
               <TextInput

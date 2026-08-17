@@ -28,6 +28,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCityLine, formatStreetLine, resolveCity } from '@/lib/address-format';
 import { useAuth } from '@/lib/auth-context';
+import { locationPhotoPath } from '@/lib/media-path';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
@@ -310,7 +311,7 @@ export default function EditLocationScreen() {
         // Resume where a previous attempt stopped rather than starting over, so
         // a retry cannot attach the same picture twice.
         for (let index = uploadedPhotoCount.current; index < photoUris.length; index += 1) {
-          const path = `locations/${id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+          const path = locationPhotoPath(id);
           await uploadImageToMedia(path, photoUris[index]);
           await addLocationPhoto(supabase, id, session.user.id, path);
           uploadedPhotoCount.current = index + 1;

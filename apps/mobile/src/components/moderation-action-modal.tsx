@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -39,10 +39,10 @@ export function ModerationActionModal({
   const theme = useTheme();
   const [note, setNote] = useState('');
 
-  // Start each decision from a blank note rather than the previous one's.
-  useEffect(() => {
-    if (visible) setNote('');
-  }, [visible]);
+  // Each decision gets a fresh note because the parent remounts this with a
+  // key per report, so useState above starts blank on its own. Clearing it
+  // in an effect instead meant a render with the previous decision's text
+  // still in the box.
 
   const canConfirm = note.trim().length > 0 && !submitting;
 

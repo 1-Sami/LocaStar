@@ -34,14 +34,28 @@ export function UpdateBanner() {
   const theme = useTheme();
   const { isUpdatePending, isRestarting } = useUpdates();
   const [restartFailed, setRestartFailed] = useState(false);
-  // Starts now, not at zero: expo-updates already checks on launch, and there
-  // is nothing to learn from asking again a minute later.
-  const lastCheck = useRef(Date.now());
+  /*
+   * Seeded on the first run of the effect below, not here.
+   *
+   * A ref initialiser is evaluated on every render even though only the first
+   * value is kept, so Date.now() in that position is a clock read during
+   * render — which is exactly what it is not allowed to be. Zero means
+   * unseeded, and the effect still starts the countdown from mount, so the
+   * behaviour is unchanged: expo-updates already checks on launch and there is
+   * nothing to learn from asking again a minute later.
+   */
+  const lastCheck = useRef(0);
 
   useEffect(() => {
     // checkForUpdateAsync and friends reject outright in dev, and there is no
     // update server behind Expo Go at all.
     if (!Updates.isEnabled || __DEV__) return;
+
+    // Seeded here, which is what the ref initialiser used to do. Leaving it at
+    // zero would make the first foreground after launch look overdue and check
+    // immediately — the one check that is certainly pointless, because
+    // expo-updates has just done it.
+    lastCheck.current = Date.now();
 
     const check = async () => {
       if (Date.now() - lastCheck.current < RECHECK_AFTER_MS) return;

@@ -30,6 +30,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { supabase } from '@/lib/supabase';
 import { confirmAsync } from '@/lib/confirm';
 import { useSharedProfile } from '@/lib/profile-context';
 
@@ -44,8 +45,6 @@ function formatListDate(iso: string): string {
 function sameDay(a: string, b: string): boolean {
   return formatListDate(a) === formatListDate(b);
 }
-import { supabase } from '@/lib/supabase';
-
 export default function ListDetailScreen() {
   const { t } = useTranslation();
   const { id, name, shared, isPublic: isPublicParam } = useLocalSearchParams<{

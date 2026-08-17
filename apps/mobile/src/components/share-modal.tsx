@@ -36,7 +36,10 @@ export function ShareModal({
   const theme = useTheme();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ShareCandidate[]>([]);
+  const [results, setResults] = useState<{ query: string; rows: ShareCandidate[] }>({
+    query: '',
+    rows: [],
+  });
   const [selected, setSelected] = useState<ShareCandidate | null>(null);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -44,18 +47,20 @@ export function ShareModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session || query.trim().length < 2 || selected) {
-      setResults([]);
-      return;
-    }
+    // Nothing to ask for, so nothing to do — and deliberately no setState here.
+    // Clearing the list from inside the effect is a synchronous state write on
+    // every keystroke below the threshold; what should be shown is derived
+    // below instead.
+    if (!session || query.trim().length < 2 || selected) return;
     let cancelled = false;
+    const trimmed = query.trim();
     const timeout = setTimeout(() => {
-      searchShareCandidates(supabase, query.trim(), session.user.id)
+      searchShareCandidates(supabase, trimmed, session.user.id)
         .then((rows) => {
-          if (!cancelled) setResults(rows);
+          if (!cancelled) setResults({ query: trimmed, rows });
         })
         .catch(() => {
-          if (!cancelled) setResults([]);
+          if (!cancelled) setResults({ query: trimmed, rows: [] });
         });
     }, 300);
     return () => {
@@ -64,10 +69,20 @@ export function ShareModal({
     };
   }, [query, session, selected]);
 
+  /*
+   * What to show, worked out rather than stored.
+   *
+   * Results remember the query they answer, so a slow reply for "sa" cannot
+   * appear under a box that has since become "sam" — the same reason the admin
+   * people search is written this way.
+   */
+  const visibleResults =
+    !selected && query.trim().length >= 2 && results.query === query.trim() ? results.rows : [];
+
   const handleClose = () => {
     onClose();
     setQuery('');
-    setResults([]);
+    setResults({ query: '', rows: [] });
     setSelected(null);
     setNote('');
     setSubmitting(false);
@@ -141,7 +156,7 @@ export function ShareModal({
                     autoCapitalize="none"
                     style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
                   />
-                  {results.map((candidate) => (
+                  {visibleResults.map((candidate) => (
                     <Pressable key={candidate.id} style={styles.resultRow} onPress={() => setSelected(candidate)}>
                       <Avatar url={candidate.avatarUrl} size={36} />
                       <View>
@@ -156,7 +171,7 @@ export function ShareModal({
                       </View>
                     </Pressable>
                   ))}
-                  {query.trim().length >= 2 && results.length === 0 && (
+                  {query.trim().length >= 2 && visibleResults.length === 0 && (
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('components.noUsersFound')}
                     </ThemedText>

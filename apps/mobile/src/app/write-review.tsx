@@ -19,6 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { reviewPhotoPath } from '@/lib/media-path';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
@@ -104,7 +105,7 @@ export default function WriteReviewScreen() {
       }
 
       for (const uri of photoUris) {
-        const path = `reviews/${savedReviewId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+        const path = reviewPhotoPath(savedReviewId);
         await uploadImageToMedia(path, uri);
         await addReviewPhoto(supabase, savedReviewId, path);
       }

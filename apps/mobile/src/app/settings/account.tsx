@@ -1,4 +1,4 @@
-import { fetchMyPrivateProfile, fetchProfile, updateProfile } from '@locastar/shared';
+import { fetchProfile, updateProfile } from '@locastar/shared';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';

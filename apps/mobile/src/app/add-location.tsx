@@ -33,6 +33,7 @@ import { useUserLocation } from '@/hooks/use-user-location';
 import { endOfLocalDay, startOfLocalDay } from '@/lib/activity-dates';
 import { formatCityLine, formatStreetLine, resolveCity } from '@/lib/address-format';
 import { useAuth } from '@/lib/auth-context';
+import { locationPhotoPath } from '@/lib/media-path';
 import { uploadImageToMedia } from '@/lib/media-upload';
 import { categoryLabel, categoryLabelFromName } from '@/lib/categories';
 import { useSharedProfile } from '@/lib/profile-context';
@@ -187,19 +188,6 @@ export default function AddLocationScreen() {
       .catch(() => setCategories([]));
   }, []);
 
-  // Go through handlePinChange rather than setting the pin directly, so the
-  // opening position is geocoded like any other. It used to only set the pin:
-  // anyone who left it where their phone put them submitted with city and
-  // country null, because those two are *only* ever filled in by the geocode —
-  // there are no fields for them. That silently emptied the city line on every
-  // card for locations added without touching the map.
-  useEffect(() => {
-    if (coords && !pinCoords) {
-      handlePinChange(coords);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords]);
-
   // Nothing in the schema stops two people adding the same court, which would
   // split its reviews and rating across two listings. We can't reliably detect
   // a duplicate automatically (names vary, one park can hold several courts),
@@ -241,6 +229,19 @@ export default function AddLocationScreen() {
       .catch(() => {})
       .finally(() => setGeocoding(false));
   };
+
+  // Go through handlePinChange rather than setting the pin directly, so the
+  // opening position is geocoded like any other. It used to only set the pin:
+  // anyone who left it where their phone put them submitted with city and
+  // country null, because those two are *only* ever filled in by the geocode —
+  // there are no fields for them. That silently emptied the city line on every
+  // card for locations added without touching the map.
+  useEffect(() => {
+    if (coords && !pinCoords) {
+      handlePinChange(coords);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords]);
 
   /**
    * Moves the pin to the address that was typed.
@@ -398,7 +399,7 @@ export default function AddLocationScreen() {
       // Resume at the photo that failed rather than re-uploading the ones that
       // already went up (which would attach them to the location twice).
       for (let index = uploadedPhotoCount.current; index < photoUris.length; index += 1) {
-        const path = `locations/${locationId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+        const path = locationPhotoPath(locationId);
         await uploadImageToMedia(path, photoUris[index]);
         await addLocationPhoto(supabase, locationId, session.user.id, path);
         uploadedPhotoCount.current = index + 1;

@@ -859,6 +859,9 @@ export default function AdminReportsScreen() {
       </SafeAreaView>
 
       <ModerationActionModal
+        // Remounted per decision, so its note box starts empty without an
+        // effect clearing it after the fact.
+        key={pending?.reportId ?? 'none'}
         visible={pending !== null}
         title={pending?.title ?? ''}
         consequence={pending?.consequence ?? ''}

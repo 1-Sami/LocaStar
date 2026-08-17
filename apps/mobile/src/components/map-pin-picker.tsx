@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -72,8 +72,12 @@ export function MapPinPicker({
   // The HTML is built once, from wherever the pin started. Rebuilding it on
   // every move would reload the whole map and fight the user's drag; later
   // moves are pushed in through window.moveMarker instead.
-  const seed = useRef({ latitude, longitude });
-  const html = useMemo(() => buildMapHtml(seed.current.latitude, seed.current.longitude), []);
+  // Lazy state rather than a ref. Both capture the opening position once and
+  // never change, but a ref read during render is unsound in a way state is
+  // not: React makes no promise about ref contents mid-render, and the
+  // compiler is right to refuse it.
+  const [seed] = useState({ latitude, longitude });
+  const html = useMemo(() => buildMapHtml(seed.latitude, seed.longitude), [seed]);
 
   const webview = useRef<WebView>(null);
   const loaded = useRef(false);

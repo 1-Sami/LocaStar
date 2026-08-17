@@ -21,7 +21,16 @@ export default function ResetPasswordScreen() {
   const { code } = useLocalSearchParams<{ code?: string }>();
 
   const [exchanging, setExchanging] = useState(true);
-  const [linkError, setLinkError] = useState<string | null>(null);
+  /*
+   * Whether the link was usable, not the sentence saying so.
+   *
+   * Storing the translated text meant the effect that validates the link
+   * depended on t, and adding t to its dependencies would re-run the whole
+   * session exchange every time the language changed. Keeping the fact here
+   * and translating at render also means the message follows a language
+   * switch, which a stored string would not.
+   */
+  const [linkInvalid, setLinkInvalid] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -32,7 +41,7 @@ export default function ResetPasswordScreen() {
     let cancelled = false;
     const fail = () => {
       if (!cancelled) {
-        setLinkError(t('resetPassword.invalidLink'));
+        setLinkInvalid(true);
         setExchanging(false);
       }
     };
@@ -140,13 +149,13 @@ export default function ResetPasswordScreen() {
     );
   }
 
-  if (linkError) {
+  if (linkInvalid) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle">{t('resetPassword.linkExpired')}</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            {linkError}
+            {t('resetPassword.invalidLink')}
           </ThemedText>
           <Pressable
             style={[styles.submitButton, { backgroundColor: theme.primary }]}
