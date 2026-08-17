@@ -8,10 +8,15 @@ import { SUPPORT_EMAIL } from '@/constants/support';
  */
 export default function TermsScreen() {
   return (
-    <LegalPage lastUpdated="29 July 2026">
+    <LegalPage lastUpdated="17 August 2026">
       <LegalSection title="Who these terms are with">
+        {/* Named as a natural person, not as a company. No company is registered
+            yet — one is planned for 2027 — and naming an entity that does not
+            exist would be wrong on the App Store, on Play, and here. Update all
+            three (this, the Privacy Policy, and the About screen) together on
+            the day incorporation completes, not before. */}
         <LegalText>
-          LocaStar is operated by Application AB, Hundhamravägen 7, 145 70 Norsborg, Stockholm, Sweden.
+          LocaStar is operated by Sadek Mirza, Stockholm, Sweden, who can be reached at {SUPPORT_EMAIL}.
           By creating an account or using the app you agree to these terms. If you do not agree, please
           do not use LocaStar.
         </LegalText>

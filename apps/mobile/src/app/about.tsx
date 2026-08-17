@@ -158,7 +158,7 @@ export default function AboutScreen() {
           </Pressable>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-            Application AB · Version v{APP_RELEASE}
+            LocaStar · Version v{APP_RELEASE}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.buildLine}>
             {buildLabel}

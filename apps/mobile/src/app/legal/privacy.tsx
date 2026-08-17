@@ -7,11 +7,17 @@ import { SUPPORT_EMAIL } from '@/constants/support';
  */
 export default function PrivacyPolicyScreen() {
   return (
-    <LegalPage lastUpdated="1 August 2026">
+    <LegalPage lastUpdated="17 August 2026">
       <LegalSection title="Who we are">
+        {/* The controller has to be a party that legally exists. No company is
+            registered yet — one is planned for 2027 — so this names the natural
+            person who actually holds that role. "LocaStar" cannot stand here: it
+            is a brand, and a user exercising a GDPR right needs someone real to
+            address. Change this, the Terms and the About screen together once
+            the company exists, and add its registration number then. */}
         <LegalText>
-          LocaStar is operated by Application AB, Hundhamravägen 7, 145 70 Norsborg, Stockholm, Sweden.
-          Application AB is the data controller for the personal data described here. You can reach us at
+          LocaStar is operated by Sadek Mirza, Stockholm, Sweden, who is the data controller for the
+          personal data described here. You can reach us at
           {' '}{SUPPORT_EMAIL} for any question about your data.
         </LegalText>
       </LegalSection>
