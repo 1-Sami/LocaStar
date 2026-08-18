@@ -537,6 +537,14 @@ export type ModerationAction = {
    * are looked up now and the ids are kept underneath.
    */
   names: Record<string, string>;
+  /**
+   * What the entry is about, in words: "a review by sadek2 on Test location 1".
+   *
+   * Resolved when the log is read, from the target id the entry stored. Null
+   * when the row it named has since been deleted — which is a fact worth
+   * showing rather than hiding, and the reason ids are stored and not names.
+   */
+  subject: string | null;
   actorRole: UserRole | null;
   action: string;
   targetType: string;
@@ -571,6 +579,7 @@ export async function fetchModerationActions(
     id: row.id,
     actorName: personName(row.actor),
     names: {},
+    subject: null,
     actorRole: row.actor_role,
     action: row.action,
     targetType: row.target_type,
@@ -601,7 +610,106 @@ export async function fetchModerationActions(
   // their account. Saying so is more use than printing the id.
   for (const id of ids) if (!names[id]) names[id] = DELETED_ACCOUNT_NAME;
 
-  return rows.map((entry) => ({ ...entry, names }));
+  const subjects = await resolveSubjects(client, rows);
+  return rows.map((entry) => ({ ...entry, names, subject: subjects.get(entry.id) ?? null }));
+}
+
+/**
+ * Turns each entry's target id into something a person can read.
+ *
+ * Chases the chain the log does not store: a report points at a review, a
+ * review points at a location and an author. Done in a handful of batched
+ * queries rather than per row, and every step tolerates a missing row — the
+ * whole reason the log keeps ids is that the thing it describes can be deleted
+ * afterwards, and an entry about something deleted is still a record of what
+ * happened.
+ */
+async function resolveSubjects(
+  client: SupabaseClient,
+  rows: { id: string; targetType: string; targetId: string | null }[]
+): Promise<Map<string, string>> {
+  const idsOf = (type: string) =>
+    rows.filter((r) => r.targetType === type && r.targetId).map((r) => r.targetId as string);
+
+  const lookup = async (table: string, ids: string[], columns: string) => {
+    if (ids.length === 0) return new Map<string, Record<string, unknown>>();
+    const { data } = await client.from(table).select(columns).in("id", ids);
+    return new Map(
+      ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => [row.id as string, row])
+    );
+  };
+
+  // One hop: the things that only point at something else.
+  const [reviewReports, locationReports, reviewPhotos, locationPhotos] = await Promise.all([
+    lookup("review_reports", idsOf("review_report"), "id, review_id"),
+    lookup("location_reports", idsOf("location_report"), "id, location_id"),
+    lookup("review_photos", idsOf("review_photo"), "id, review_id"),
+    lookup("location_photos", idsOf("location_photo"), "id, location_id"),
+  ]);
+
+  const reviewIds = new Set<string>(idsOf("review"));
+  const locationIds = new Set<string>(idsOf("location"));
+  for (const row of reviewReports.values()) reviewIds.add(row.review_id as string);
+  for (const row of reviewPhotos.values()) reviewIds.add(row.review_id as string);
+  for (const row of locationReports.values()) locationIds.add(row.location_id as string);
+  for (const row of locationPhotos.values()) locationIds.add(row.location_id as string);
+
+  const reviews = await lookup("reviews", [...reviewIds], "id, location_id, user_id");
+  for (const row of reviews.values()) locationIds.add(row.location_id as string);
+
+  const [locations, people] = await Promise.all([
+    lookup("locations", [...locationIds], "id, name"),
+    lookup("profiles", [...new Set([...idsOf("user"), ...[...reviews.values()].map((r) => r.user_id as string)])].filter(Boolean), "id, username"),
+  ]);
+
+  const placeName = (id?: string) => (id ? (locations.get(id)?.name as string) ?? null : null);
+  const personName2 = (id?: string) => (id ? (people.get(id)?.username as string) ?? null : null);
+
+  const describeReview = (reviewId?: string) => {
+    const review = reviewId ? reviews.get(reviewId) : undefined;
+    if (!review) return null;
+    const author = personName2(review.user_id as string);
+    const place = placeName(review.location_id as string);
+    return `a review${author ? ` by ${author}` : ""}${place ? ` on ${place}` : ""}`;
+  };
+
+  const out = new Map<string, string>();
+  for (const row of rows) {
+    if (!row.targetId) continue;
+    let subject: string | null = null;
+    switch (row.targetType) {
+      case "review":
+        subject = describeReview(row.targetId);
+        break;
+      case "review_report":
+        subject = describeReview(reviewReports.get(row.targetId)?.review_id as string);
+        if (subject) subject = `a report about ${subject}`;
+        break;
+      case "review_photo": {
+        const described = describeReview(reviewPhotos.get(row.targetId)?.review_id as string);
+        subject = described ? `a photo on ${described}` : null;
+        break;
+      }
+      case "location":
+        subject = placeName(row.targetId);
+        break;
+      case "location_report": {
+        const place = placeName(locationReports.get(row.targetId)?.location_id as string);
+        subject = place ? `a report about ${place}` : null;
+        break;
+      }
+      case "location_photo": {
+        const place = placeName(locationPhotos.get(row.targetId)?.location_id as string);
+        subject = place ? `a photo on ${place}` : null;
+        break;
+      }
+      case "user":
+        subject = personName2(row.targetId);
+        break;
+    }
+    if (subject) out.set(row.id, subject);
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------ warnings --- */

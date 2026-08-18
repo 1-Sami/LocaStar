@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -27,6 +27,7 @@ const ACTION_LABELS: Record<string, string> = {
   role_changed: 'Role changed',
   report_resolved: 'Report resolved',
   warning_issued: 'Warning issued',
+  photo_deleted: 'Photo taken down',
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -37,7 +38,22 @@ const ACTION_COLORS: Record<string, string> = {
   location_status_changed: '#C34CE8',
   review_status_changed: '#C34CE8',
   report_resolved: '#4CD37A',
+  photo_deleted: '#C34CE8',
 };
+
+/*
+ * The groups the chips filter by.
+ *
+ * Fewer than there are action types on purpose: somebody scanning this wants
+ * "what got taken down" or "what happened to people", not a checkbox per
+ * database enum.
+ */
+const FILTERS: { key: string; label: string; actions: string[] }[] = [
+  { key: 'all', label: 'All', actions: [] },
+  { key: 'takedowns', label: 'Takedowns', actions: ['location_status_changed', 'review_status_changed', 'photo_deleted'] },
+  { key: 'reports', label: 'Reports', actions: ['report_resolved'] },
+  { key: 'people', label: 'People', actions: ['ban_issued', 'ban_reviewed', 'warning_issued', 'role_changed'] },
+];
 
 /** What the entry is about, in words rather than a table name. */
 const TARGET_LABELS: Record<string, string> = {
@@ -46,6 +62,9 @@ const TARGET_LABELS: Record<string, string> = {
   review_report: 'a report about a review',
   location_report: 'a report about a place',
   profile: 'an account',
+  user: 'an account',
+  review_photo: 'a photo on a review',
+  location_photo: 'a photo on a place',
   user_ban: 'a ban',
   user_warning: 'a warning',
 };
@@ -106,6 +125,7 @@ function searchableText(entry: ModerationAction): string {
     entry.actorName,
     ACTION_LABELS[entry.action] ?? entry.action,
     TARGET_LABELS[entry.targetType] ?? entry.targetType,
+    entry.subject ?? '',
     ...detailLines(entry.detail, entry.names),
   ]
     .join(' ')
@@ -119,6 +139,7 @@ export default function AdminAuditScreen() {
   const [myRole, setMyRole] = useState<UserRole>('user');
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('all');
   const theme = useTheme();
 
   const reload = useCallback(() => {
@@ -148,7 +169,10 @@ export default function AdminAuditScreen() {
   }
 
   const trimmed = query.trim().toLowerCase();
-  const visible = trimmed ? actions.filter((entry) => searchableText(entry).includes(trimmed)) : actions;
+  const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const visible = actions
+    .filter((entry) => active.actions.length === 0 || active.actions.includes(entry.action))
+    .filter((entry) => !trimmed || searchableText(entry).includes(trimmed));
 
   return (
     <ThemedView style={styles.container}>
@@ -176,6 +200,27 @@ export default function AdminAuditScreen() {
               />
             </View>
 
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterRow}>
+              {FILTERS.map((option) => (
+                <Pressable
+                  key={option.key}
+                  onPress={() => setFilter(option.key)}
+                  style={[
+                    styles.filterChip,
+                    { borderColor: theme.fieldBorder },
+                    filter === option.key && styles.filterChipActive,
+                  ]}>
+                  <ThemedText type="small" style={filter === option.key ? styles.filterChipTextActive : undefined}>
+                    {option.label}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </ScrollView>
+
             {actions.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 {t('admin.nothingLogged')}
@@ -195,8 +240,11 @@ export default function AdminAuditScreen() {
                       {new Date(entry.createdAt).toLocaleString()}
                     </ThemedText>
                   </View>
+                  <ThemedText type="small" style={styles.detailLine}>
+                    {entry.subject ?? `${TARGET_LABELS[entry.targetType] ?? entry.targetType} (no longer exists)`}
+                  </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    {entry.actorName} · {roleLabel(entry.actorRole)} · {TARGET_LABELS[entry.targetType] ?? entry.targetType}
+                    {entry.actorName} · {roleLabel(entry.actorRole)}
                   </ThemedText>
                   {detailLines(entry.detail, entry.names).map((line, index) => (
                     <ThemedText key={index} type="small" style={styles.detailLine}>
@@ -238,6 +286,16 @@ const styles = StyleSheet.create({
     height: 44,
   },
   searchInput: { flex: 1, fontSize: 16 },
+  filterScroll: { flexGrow: 0 },
+  filterRow: { flexDirection: 'row', gap: Spacing.two, paddingVertical: Spacing.one },
+  filterChip: {
+    borderWidth: 1,
+    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  filterChipActive: { backgroundColor: '#E8A93B', borderColor: '#E8A93B' },
+  filterChipTextActive: { color: '#1A1400', fontWeight: '700' },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
