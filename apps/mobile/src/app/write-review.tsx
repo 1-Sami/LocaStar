@@ -69,7 +69,11 @@ export default function WriteReviewScreen() {
       .then((photos) => {
         if (!cancelled) setExistingPhotos(photos);
       })
-      .catch(() => {});
+      .catch((err) => {
+        // Only affects showing photos already on the review; deletions come
+        // from an explicit pick, so a failure here cannot remove any.
+        console.error('Failed to load existing review photos', err);
+      });
     return () => {
       cancelled = true;
     };

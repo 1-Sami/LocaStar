@@ -226,7 +226,10 @@ export default function AddLocationScreen() {
         setGeocodedCity(result ? resolveCity(result) : null);
         setGeocodedCountry(result?.country ?? null);
       })
-      .catch(() => {})
+      .catch((err) => {
+        // The address fields stay as typed; only the lookup is lost.
+        console.error('Reverse geocoding failed', err);
+      })
       .finally(() => setGeocoding(false));
   };
 

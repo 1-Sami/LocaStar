@@ -159,7 +159,12 @@ export default function SearchScreen() {
   useEffect(() => {
     fetchCategories(supabase)
       .then(setCategories)
-      .catch(() => setCategories([]));
+      .catch((err) => {
+        // Losing the chips degrades filtering rather than the results, so this
+        // does not take over the screen — but it must not vanish either.
+        console.error('Failed to load categories', err);
+        setCategories([]);
+      });
   }, []);
 
   useEffect(() => {

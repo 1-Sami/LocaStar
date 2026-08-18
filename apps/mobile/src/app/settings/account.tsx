@@ -32,18 +32,33 @@ export default function AccountInfoScreen() {
   const [saved, setSaved] = useState(false);
   const [emailChangePending, setEmailChangePending] = useState(false);
 
+  const [loadFailed, setLoadFailed] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       if (!session) return;
       let cancelled = false;
       setLoading(true);
+      setLoadFailed(false);
       setEmail(session.user.email ?? '');
       fetchProfile(supabase, session.user.id)
         .then((profile) => {
           if (cancelled) return;
           setUsername(profile.username ?? '');
         })
-        .catch(() => {})
+        .catch((err) => {
+          /*
+           * Swallowing this blanked people's usernames.
+           *
+           * The field stays empty when the profile never arrives, and the
+           * username rules are only checked on a non-empty string — so Save
+           * sent `username: null` and the handle was gone. Proved against the
+           * live database with a rolled-back probe: nothing else stops that
+           * write. Saving is now blocked until we know what we are editing.
+           */
+          console.error('Failed to load your profile', err);
+          if (!cancelled) setLoadFailed(true);
+        })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
@@ -62,6 +77,11 @@ export default function AccountInfoScreen() {
 
   const handleSave = async () => {
     if (!session) return;
+    // Nothing loaded means the fields are empty by accident, not by intent.
+    if (loadFailed) {
+      setError(t('common.somethingWentWrong'));
+      return;
+    }
     setError(null);
     setSaved(false);
     setEmailChangePending(false);

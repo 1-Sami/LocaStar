@@ -35,7 +35,11 @@ export default function ProfilePictureScreen() {
         .then((profile) => {
           if (!cancelled) setAvatarUrl(profile.avatar_url);
         })
-        .catch(() => {})
+        .catch((err) => {
+          // Remove is gated on a loaded url, so a failure here cannot clear
+          // the picture — it just shows the empty avatar.
+          console.error('Failed to load your profile picture', err);
+        })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });

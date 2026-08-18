@@ -46,7 +46,11 @@ export default function NotificationsScreen() {
         .then((profile) => {
           if (!cancelled) setPreferences(profile.notification_preferences ?? DEFAULT_PREFERENCES);
         })
-        .catch(() => {})
+        .catch((err) => {
+          // Falls back to the defaults, which is the safe direction: it never
+          // silently turns a notification the person had switched off back on.
+          console.error('Failed to load notification preferences', err);
+        })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
@@ -56,12 +60,19 @@ export default function NotificationsScreen() {
     }, [session])
   );
 
+  const [saveFailed, setSaveFailed] = useState(false);
+
   const handleToggle = (key: keyof NotificationPreferences, value: boolean) => {
     if (!session) return;
     const next = { ...preferences, [key]: value };
     setPreferences(next);
-    updateProfile(supabase, session.user.id, { notification_preferences: next }).catch(() => {
+    setSaveFailed(false);
+    updateProfile(supabase, session.user.id, { notification_preferences: next }).catch((err) => {
+      // The switch springs back on failure. Without a word for why, that reads
+      // as the app glitching, and the natural response is to keep flipping it.
+      console.error('Failed to save notification preferences', err);
       setPreferences(preferences);
+      setSaveFailed(true);
     });
   };
 
@@ -79,6 +90,11 @@ export default function NotificationsScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.content}>
+          {saveFailed && (
+            <ThemedText type="small" style={styles.saveError}>
+              {t('common.somethingWentWrong')}
+            </ThemedText>
+          )}
           {rows.map((row) => (
             <ThemedView key={row.key} type="backgroundElement" style={styles.row}>
               <View style={styles.rowText}>
@@ -101,6 +117,10 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
+  saveError: {
+    color: '#E05252',
+    textAlign: 'center',
+  },
   container: {
     flex: 1,
   },

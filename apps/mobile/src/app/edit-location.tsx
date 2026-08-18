@@ -79,6 +79,7 @@ export default function EditLocationScreen() {
   const [email, setEmail] = useState('');
   const [kind, setKind] = useState<LocationKind>('place');
   // Only used to work out whether this save will actually be allowed through.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [permissions, setPermissions] = useState<{
     createdBy: string | null;
     createdAt: string;
@@ -118,6 +119,7 @@ export default function EditLocationScreen() {
       if (!id) return;
       let cancelled = false;
       setLoading(true);
+      setLoadFailed(false);
       Promise.all([fetchLocationById(supabase, id), fetchLocationCategoryIds(supabase, id), fetchCategories(supabase)])
         .then(([location, existingCategoryIds, categoriesResult]) => {
           if (cancelled) return;
@@ -153,7 +155,14 @@ export default function EditLocationScreen() {
           }
           setCategoryIds(existingCategoryIds);
         })
-        .catch(() => {})
+        .catch((err) => {
+          // Every field stays at its initial empty value, so the form claims
+          // the place has no name, no address and no hours. canSave already
+          // refuses to write that back, but silence left a dead Save button
+          // and no reason for it.
+          console.error('Failed to load the location to edit', err);
+          if (!cancelled) setLoadFailed(true);
+        })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
@@ -209,7 +218,10 @@ export default function EditLocationScreen() {
         setGeocodedCity(result ? resolveCity(result) : null);
         setGeocodedCountry(result?.country ?? null);
       })
-      .catch(() => {})
+      .catch((err) => {
+        // The typed address stays; only the lookup for the moved pin is lost.
+        console.error('Reverse geocoding failed', err);
+      })
       .finally(() => setGeocoding(false));
   };
 
@@ -335,6 +347,21 @@ export default function EditLocationScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <ActivityIndicator style={styles.loadingIndicator} />
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
+
+  // Showing the form would be showing this place as blank. Say what happened
+  // instead — the fields are empty because nothing arrived, not because the
+  // location is empty.
+  if (loadFailed) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+          <ThemedText type="default" themeColor="textSecondary" style={styles.loadFailedText}>
+            {t('common.somethingWentWrong')}
+          </ThemedText>
         </SafeAreaView>
       </ThemedView>
     );
@@ -623,6 +650,11 @@ export default function EditLocationScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadFailedText: {
+    textAlign: 'center',
+    marginTop: Spacing.six,
+    paddingHorizontal: Spacing.four,
+  },
   container: {
     flex: 1,
   },
