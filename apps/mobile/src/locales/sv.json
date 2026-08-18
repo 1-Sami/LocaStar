@@ -37,7 +37,10 @@
     "discardTitle": "Kasta bort det här?",
     "discard": "Kasta bort",
     "yes": "JA",
-    "no": "NEJ"
+    "no": "NEJ",
+    "public": "Offentlig",
+    "continue": "Fortsätt",
+    "openApp": "Öppna LocaStar"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -65,7 +68,8 @@
     "signUp": "Skapa konto",
     "signingUp": "Skapar konto…",
     "username": "Användarnamn",
-    "usernameHint": "Det här namnet visas vid dina recensioner och de platser du lägger till. Du kan ändra det senare."
+    "usernameHint": "Det här namnet visas vid dina recensioner och de platser du lägger till. Du kan ändra det senare.",
+    "startExploring": "Börja utforska"
   },
   "language": {
     "title": "Språk",
@@ -302,7 +306,8 @@
     "reportPhoto": "Anmäl bild",
     "reportPhotoTitle": "Anmäl den här bilden",
     "reportPhotoConfirm": "Tack — en moderator tittar på bilden.",
-    "activityEndedOnlyYou": "Aktiviteten är slut. Bara du kan se den nu — den syns inte i sökningen eller på kartan. Recensioner och bilder är borttagna. Radera den när du vill."
+    "activityEndedOnlyYou": "Aktiviteten är slut. Bara du kan se den nu — den syns inte i sökningen eller på kartan. Recensioner och bilder är borttagna. Radera den när du vill.",
+    "distanceAway": "{{distance}} bort"
   },
   "form": {
     "nameLabel": "Namn/Titel",
@@ -338,7 +343,9 @@
     "picturesRequired": "*Obligatoriskt: minst 1 bild",
     "nameOfActivity": "*Aktivitetens namn",
     "nameOfLocation": "*Platsens namn",
-    "categoryPlaceholder": "*Typ av plats/kategori"
+    "categoryPlaceholder": "*Typ av plats/kategori",
+    "photoHintPlace": "Läggs till på platsen när du sparar. Foton som redan finns hanteras från dess galleri.",
+    "photoHintActivity": "Läggs till på aktiviteten när du sparar. Foton som redan finns hanteras från dess galleri."
   },
   "addLocation": {
     "disclaimerPlace": "Platser publiceras direkt när du skickar in dem och modereras i efterhand. Vem som helst kan anmäla en plats som är vilseledande, olaglig eller felplacerad, och anmälda platser granskas och kan döljas eller tas bort. Att lägga till platser i strid med reglerna ger en varning — upprepade felaktiga inlägg gör att ditt konto blockeras från att skapa nya platser.",
@@ -485,7 +492,8 @@
     "publicExplainer": "Alla med åtkomst kan se den här listan.",
     "privateExplainer": "Bara du kan se den här listan.",
     "creating": "Skapar…",
-    "createList": "Skapa lista"
+    "createList": "Skapa lista",
+    "privateList": "Privat lista"
   },
   "saved": {
     "favorites": "Favoriter",
@@ -822,7 +830,10 @@
   "myContributions": {
     "noLocations": "Du har inte lagt till några platser eller aktiviteter än.",
     "ended": "Avslutad",
-    "noReviews": "Du har inte skrivit några recensioner än."
+    "noReviews": "Du har inte skrivit några recensioner än.",
+    "kindActivity": "Aktivitet",
+    "kindPlace": "Plats",
+    "locationGone": "Den här platsen finns inte längre"
   },
   "categories": {
     "4h-farms": "4H-gårdar",
@@ -884,5 +895,9 @@
     "empty": "Inget har kraschat de senaste 30 dagarna.",
     "seenOn": "Setts i {{releases}}",
     "currentRelease": "finns kvar i nuvarande version"
+  },
+  "placeCount": {
+    "label_one": "plats",
+    "label_other": "platser"
   }
 }

@@ -416,7 +416,7 @@ export default function FavoritesScreen() {
                         <ThemedView type="backgroundElement" style={styles.sharedListCard}>
                           <ThemedText type="smallBold">{list.name}</ThemedText>
                           <ThemedText type="small" themeColor="textSecondary">
-                            {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
+                            {list.itemCount} {t('placeCount.label', { count: list.itemCount })}
                           </ThemedText>
                         </ThemedView>
                       </Pressable>

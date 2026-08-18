@@ -561,8 +561,7 @@ export default function EditLocationScreen() {
                 {t('form.addPhotos')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.photoHint}>
-                Added to this {kind === 'activity' ? 'activity' : 'location'} when you save. Photos
-                already on it are managed from its gallery.
+                {t(kind === 'activity' ? 'form.photoHintActivity' : 'form.photoHintPlace')}
               </ThemedText>
               <PhotoPicker
                 uris={photoUris}

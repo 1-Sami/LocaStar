@@ -41,16 +41,17 @@ export async function fetchLists(client: SupabaseClient, userId: string): Promis
   const listIds = rows.map((row) => row.id);
   if (listIds.length === 0) return [];
 
-  const [previewByList, likesByList] = await Promise.all([
+  const [previewByList, likesByList, countByList] = await Promise.all([
     fetchPreviewLocations(client, listIds),
     fetchLikeInfo(client, listIds, userId),
+    fetchReadableItemCounts(client, listIds),
   ]);
 
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description,
-    itemCount: row.list_items?.[0]?.count ?? 0,
+    itemCount: countByList.get(row.id) ?? 0,
     createdAt: row.created_at,
     isPublic: row.is_public,
     likeCount: likesByList.get(row.id)?.count ?? 0,
@@ -84,6 +85,10 @@ async function fetchPreviewLocations(
 
   const byList = new Map<string, ListPreviewLocation[]>();
   for (const row of (data ?? []) as unknown as PreviewRow[]) {
+    // An embed that did not resolve is a location this reader cannot open — an
+    // activity the retire job marked `past`, or one a moderator removed. It
+    // must not take a preview slot and lead nowhere.
+    if (row.location === null) continue;
     const existing = byList.get(row.list_id) ?? [];
     if (existing.length < 3) {
       const path = coverPhotoPath(row.location?.location_photos);
@@ -93,6 +98,33 @@ async function fetchPreviewLocations(
       });
       byList.set(row.list_id, existing);
     }
+  }
+  return byList;
+}
+
+/**
+ * How many items in each list this reader can actually see.
+ *
+ * `list_items(count)` counts rows, and a row outlives its location becoming
+ * unreadable — an activity the retire job marked `past`, or a place a
+ * moderator removed. The card said "6 places" over a list that opened showing
+ * 5. `!inner` makes PostgREST drop the item when the join does not resolve,
+ * so the number matches the screen.
+ */
+async function fetchReadableItemCounts(
+  client: SupabaseClient,
+  listIds: string[]
+): Promise<Map<string, number>> {
+  if (listIds.length === 0) return new Map();
+  const { data, error } = await client
+    .from("list_items")
+    .select("list_id, locations!inner(id)")
+    .in("list_id", listIds);
+  if (error) throw error;
+
+  const byList = new Map<string, number>();
+  for (const row of (data ?? []) as { list_id: string }[]) {
+    byList.set(row.list_id, (byList.get(row.list_id) ?? 0) + 1);
   }
   return byList;
 }
@@ -402,6 +434,13 @@ export async function fetchMyListShares(client: SupabaseClient, userId: string):
 
   const rows = ((data ?? []) as unknown as SharedListRow[]).filter((row) => row.list !== null);
 
+  // Same reason as everywhere else a list count is shown: rows outlive the
+  // locations they point at, so the count has to come from what is readable.
+  const countByList = await fetchReadableItemCounts(
+    client,
+    rows.map((row) => row.list!.id)
+  );
+
   // One row per share means a list shared with three people appeared three
   // times in your own Shared section. Collapse the sent side to one card per
   // list and count the recipients instead. The received side stays one card
@@ -417,7 +456,7 @@ export async function fetchMyListShares(client: SupabaseClient, userId: string):
       shareId: row.id,
       name: row.list!.name,
       description: row.list!.description,
-      itemCount: row.list!.list_items?.[0]?.count ?? 0,
+      itemCount: countByList.get(row.list!.id) ?? 0,
       sharedAt: row.created_at,
       direction: sent ? "sent" : "received",
       otherPartyUsername: otherParty?.username ?? null,
@@ -516,16 +555,17 @@ export async function fetchPublicLists(
   const listIds = rows.map((row) => row.id);
   if (listIds.length === 0) return [];
 
-  const [previewByList, likesByList] = await Promise.all([
+  const [previewByList, likesByList, countByList] = await Promise.all([
     fetchPreviewLocations(client, listIds),
     fetchLikeInfo(client, listIds, viewerUserId ?? ""),
+    fetchReadableItemCounts(client, listIds),
   ]);
 
   const lists = rows.map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description,
-    itemCount: row.list_items?.[0]?.count ?? 0,
+    itemCount: countByList.get(row.id) ?? 0,
     createdAt: row.created_at,
     isPublic: row.is_public,
     likeCount: likesByList.get(row.id)?.count ?? 0,
@@ -602,16 +642,17 @@ export async function fetchSavedLists(client: SupabaseClient, userId: string): P
   if (rows.length === 0) return [];
 
   const listIds = rows.map((row) => row.id);
-  const [previewByList, likesByList] = await Promise.all([
+  const [previewByList, likesByList, countByList] = await Promise.all([
     fetchPreviewLocations(client, listIds),
     fetchLikeInfo(client, listIds, userId),
+    fetchReadableItemCounts(client, listIds),
   ]);
 
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description,
-    itemCount: row.list_items?.[0]?.count ?? 0,
+    itemCount: countByList.get(row.id) ?? 0,
     createdAt: row.created_at,
     isPublic: row.is_public,
     likeCount: likesByList.get(row.id)?.count ?? 0,

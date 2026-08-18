@@ -18,6 +18,7 @@ export default function MyReviewsScreen() {
   const router = useRouter();
   const [reviews, setReviews] = useState<MyReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -27,12 +28,16 @@ export default function MyReviewsScreen() {
       }
       let cancelled = false;
       setLoading(true);
+      setLoadFailed(false);
       fetchMyReviews(supabase, session.user.id)
         .then((rows) => {
           if (!cancelled) setReviews(rows);
         })
-        .catch(() => {
-          if (!cancelled) setReviews([]);
+        .catch((err) => {
+          // "You haven't written any reviews" when you have written nine reads
+          // as your work having been deleted, not as a failed request.
+          console.error('Failed to load your reviews', err);
+          if (!cancelled) setLoadFailed(true);
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -48,6 +53,10 @@ export default function MyReviewsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
+        ) : loadFailed ? (
+          <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+            {t('common.somethingWentWrong')}
+          </ThemedText>
         ) : reviews.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
             {t('myContributions.noReviews')}
@@ -58,8 +67,15 @@ export default function MyReviewsScreen() {
               <Pressable
                 key={review.id}
                 style={styles.reviewCard}
+                // A gone location has no page to open, so the card stops being a
+                // link rather than pushing a screen that fails to load.
+                disabled={review.location_name === null}
                 onPress={() => router.push({ pathname: '/location/[id]', params: { id: review.location_id } })}>
-                <ThemedText type="smallBold">{review.location_name}</ThemedText>
+                <ThemedText
+                  type="smallBold"
+                  themeColor={review.location_name === null ? 'textSecondary' : undefined}>
+                  {review.location_name ?? t('myContributions.locationGone')}
+                </ThemedText>
                 <View style={styles.ratingRow}>
                   <StarRating rating={review.rating} size={14} />
                   <ThemedText type="small" themeColor="textSecondary">

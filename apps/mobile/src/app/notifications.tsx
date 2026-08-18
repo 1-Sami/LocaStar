@@ -28,13 +28,20 @@ export default function NotificationsScreen() {
   const { refreshUnreadCount } = useNotificationsBadge();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const reload = useCallback(() => {
     if (!session) return;
     setLoading(true);
+    setLoadFailed(false);
     fetchNotifications(supabase, session.user.id)
       .then(setNotifications)
-      .catch(() => setNotifications([]))
+      .catch((err) => {
+        // Emptying the list renders as "no notifications yet", which is a
+        // different and untrue statement.
+        console.error('Failed to load notifications', err);
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [session]);
 
@@ -115,6 +122,10 @@ export default function NotificationsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
+        ) : loadFailed ? (
+          <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+            {t('common.somethingWentWrong')}
+          </ThemedText>
         ) : notifications.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
             {t('notifications.empty')}

@@ -70,7 +70,7 @@ export default function ConfirmedScreen() {
             onPress={openApp}
             style={[styles.button, { backgroundColor: theme.primary }]}>
             <ThemedText type="smallBold" style={styles.buttonText}>
-              {Platform.OS === 'web' ? 'Open LocaStar' : 'Start exploring'}
+              {Platform.OS === 'web' ? t('common.openApp') : t('auth.startExploring')}
             </ThemedText>
           </Pressable>
 

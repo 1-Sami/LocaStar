@@ -37,7 +37,10 @@
     "discardTitle": "Discard this?",
     "discard": "Discard",
     "yes": "YES",
-    "no": "NO"
+    "no": "NO",
+    "public": "Public",
+    "continue": "Continue",
+    "openApp": "Open LocaStar"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -65,7 +68,8 @@
     "signUp": "Sign up",
     "signingUp": "Signing up…",
     "username": "Username",
-    "usernameHint": "This is the name shown next to your reviews and the places you add. You can change it later."
+    "usernameHint": "This is the name shown next to your reviews and the places you add. You can change it later.",
+    "startExploring": "Start exploring"
   },
   "language": {
     "title": "Language",
@@ -302,7 +306,8 @@
     "reportPhoto": "Report photo",
     "reportPhotoTitle": "Report this photo",
     "reportPhotoConfirm": "Thanks — a moderator will look at this photo.",
-    "activityEndedOnlyYou": "This activity has ended. Only you can see it now — it is out of search and off the map. Its reviews and photos have been removed. Delete it whenever you like."
+    "activityEndedOnlyYou": "This activity has ended. Only you can see it now — it is out of search and off the map. Its reviews and photos have been removed. Delete it whenever you like.",
+    "distanceAway": "{{distance}} away"
   },
   "form": {
     "nameLabel": "Name/Title",
@@ -338,7 +343,9 @@
     "picturesRequired": "*Mandatory: at least 1 picture",
     "nameOfActivity": "*Name of activity",
     "nameOfLocation": "*Name of location",
-    "categoryPlaceholder": "*Location type/Category"
+    "categoryPlaceholder": "*Location type/Category",
+    "photoHintPlace": "Added to this location when you save. Photos already on it are managed from its gallery.",
+    "photoHintActivity": "Added to this activity when you save. Photos already on it are managed from its gallery."
   },
   "addLocation": {
     "disclaimerPlace": "Locations go live as soon as you submit them, and are moderated afterwards. Anyone can report a location that is misleading, unlawful, or in the wrong place, and reported locations are reviewed and can be hidden or removed. Adding locations in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.",
@@ -485,7 +492,8 @@
     "publicExplainer": "Anyone with access can view this list.",
     "privateExplainer": "Only you can see this list.",
     "creating": "Creating…",
-    "createList": "Create list"
+    "createList": "Create list",
+    "privateList": "Private list"
   },
   "saved": {
     "favorites": "Favorites",
@@ -822,7 +830,10 @@
   "myContributions": {
     "noLocations": "You haven’t added any locations or activities yet.",
     "ended": "Ended",
-    "noReviews": "You haven’t written any reviews yet."
+    "noReviews": "You haven’t written any reviews yet.",
+    "kindActivity": "Activity",
+    "kindPlace": "Location",
+    "locationGone": "This place is no longer listed"
   },
   "categories": {
     "4h-farms": "4H Farms",
@@ -884,5 +895,9 @@
     "empty": "Nothing has crashed in the last 30 days.",
     "seenOn": "Seen on {{releases}}",
     "currentRelease": "still on the current release"
+  },
+  "placeCount": {
+    "label_one": "place",
+    "label_other": "places"
   }
 }

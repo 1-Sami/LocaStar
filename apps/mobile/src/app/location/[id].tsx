@@ -813,7 +813,7 @@ export default function LocationDetailScreen() {
               <View style={styles.infoRow}>
                 <Ionicons name="navigate-outline" size={16} color={theme.textSecondary} />
                 <ThemedText type="default" themeColor="textSecondary" style={styles.addressText}>
-                  {distanceLabel} away
+                  {t('location.distanceAway', { distance: distanceLabel })}
                 </ThemedText>
               </View>
             )}

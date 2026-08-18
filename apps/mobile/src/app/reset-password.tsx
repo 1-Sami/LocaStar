@@ -129,7 +129,7 @@ export default function ResetPasswordScreen() {
               else router.replace('/');
             }}>
             <ThemedText type="smallBold" style={styles.submitButtonText}>
-              {Platform.OS === 'web' ? 'Open LocaStar' : 'Continue'}
+              {Platform.OS === 'web' ? t('common.openApp') : t('common.continue')}
             </ThemedText>
           </Pressable>
         </SafeAreaView>

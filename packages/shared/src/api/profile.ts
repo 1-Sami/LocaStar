@@ -54,7 +54,13 @@ export async function fetchProfileStats(
 export type MyReview = {
   id: string;
   location_id: string;
-  location_name: string;
+  /**
+   * Null when the location is no longer readable — an activity the retire job
+   * has marked `past`, or a place a moderator removed. RLS drops the embed in
+   * both cases. This used to discard the whole review, so a user's own reviews
+   * silently vanished from My reviews as activities ended.
+   */
+  location_name: string | null;
   rating: number;
   title: string | null;
   body: string | null;
@@ -83,11 +89,10 @@ export async function fetchMyReviews(
   if (error) throw error;
 
   return ((data ?? []) as unknown as MyReviewRow[])
-    .filter((row) => row.locations !== null)
     .map((row) => ({
       id: row.id,
       location_id: row.location_id,
-      location_name: row.locations!.name,
+      location_name: row.locations?.name ?? null,
       rating: row.rating,
       title: row.title,
       body: row.body,

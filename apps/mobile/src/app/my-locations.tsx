@@ -48,6 +48,7 @@ export default function MyLocationsScreen() {
   const router = useRouter();
   const [locations, setLocations] = useState<MyAddedLocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,12 +58,16 @@ export default function MyLocationsScreen() {
       }
       let cancelled = false;
       setLoading(true);
+      setLoadFailed(false);
       fetchMyAddedLocations(supabase, session.user.id)
         .then((rows) => {
           if (!cancelled) setLocations(rows);
         })
-        .catch(() => {
-          if (!cancelled) setLocations([]);
+        .catch((err) => {
+          // Same reasoning as My reviews: this screen lists what you have
+          // contributed, so an empty one is a claim about you.
+          console.error('Failed to load your locations', err);
+          if (!cancelled) setLoadFailed(true);
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -78,6 +83,10 @@ export default function MyLocationsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
+        ) : loadFailed ? (
+          <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+            {t('common.somethingWentWrong')}
+          </ThemedText>
         ) : locations.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
             {t('myContributions.noLocations')}
@@ -104,7 +113,7 @@ export default function MyLocationsScreen() {
                   </View>
                   <View style={styles.metaRow}>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {isActivity ? 'Activity' : 'Location'}
+                      {isActivity ? t('myContributions.kindActivity') : t('myContributions.kindPlace')}
                       {location.category_label
                         ? ` · ${categoryLabelFromName(t, location.category_label)}`
                         : ''}
@@ -118,7 +127,8 @@ export default function MyLocationsScreen() {
                   <View style={styles.ratingRow}>
                     <StarRating rating={location.avg_rating} size={13} />
                     <ThemedText type="small" themeColor="textSecondary" style={styles.ratingText}>
-                      {location.avg_rating.toFixed(1)} · {location.review_count} reviews
+                      {location.avg_rating.toFixed(1)} · {location.review_count}{' '}
+                      {t('reviewCount.label', { count: location.review_count })}
                     </ThemedText>
                     {ended && (
                       <ThemedText type="small" style={styles.endedText}>

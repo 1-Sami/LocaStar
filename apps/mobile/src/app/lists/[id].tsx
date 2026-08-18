@@ -272,7 +272,8 @@ export default function ListDetailScreen() {
                       <View style={styles.ratingRow}>
                         <StarRating rating={item.avgRating} size={14} />
                         <ThemedText type="small" themeColor="textSecondary">
-                          {item.avgRating.toFixed(1)} · {item.reviewCount} reviews
+                          {item.avgRating.toFixed(1)} · {item.reviewCount}{' '}
+                          {t('reviewCount.label', { count: item.reviewCount })}
                         </ThemedText>
                       </View>
                       {item.note && (
@@ -307,7 +308,9 @@ export default function ListDetailScreen() {
                   </Pressable>
 
                   <View style={styles.visibilityInline}>
-                    <ThemedText type="default">{isPublic ? 'Public' : 'Private'} list</ThemedText>
+                    <ThemedText type="default">
+                      {isPublic ? t('lists.publicList') : t('lists.privateList')}
+                    </ThemedText>
                     <Switch
                       value={isPublic}
                       onValueChange={handleToggleVisibility}
