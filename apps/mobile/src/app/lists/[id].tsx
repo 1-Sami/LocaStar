@@ -73,13 +73,18 @@ export default function ListDetailScreen() {
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const [shareRecipients, setShareRecipients] = useState<ListShareRecipient[]>([]);
   const [isSaved, setIsSaved] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   // Only meaningful on someone else's list — you can't "save" your own.
   const reloadSavedState = useCallback(() => {
     if (!id || !isSharedView || !session) return;
     fetchListSavedState(supabase, id, session.user.id)
       .then(setIsSaved)
-      .catch(() => {});
+      .catch((err) => {
+        // Only decides which way the Save control points; it corrects itself
+        // on the next load.
+        console.error('Failed to load the saved state', err);
+      });
   }, [id, isSharedView, session]);
 
   const handleToggleSaved = () => {
@@ -95,20 +100,33 @@ export default function ListDetailScreen() {
   const reload = useCallback(() => {
     if (!id) return;
     setLoading(true);
+    setLoadFailed(false);
     fetchListItems(supabase, id)
       .then(setItems)
-      .catch(() => setItems([]))
+      .catch((err) => {
+        // Emptying renders "No places in this list yet", which is a claim about
+        // someone's list rather than about the request that failed.
+        console.error('Failed to load the list', err);
+        setItems([]);
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
     fetchListMeta(supabase, id)
       .then(setMeta)
-      .catch(() => setMeta(null));
+      .catch((err) => {
+        console.error('Failed to load the list details', err);
+        setMeta(null);
+      });
   }, [id]);
 
   const reloadShareRecipients = useCallback(() => {
     if (!id || isSharedView) return;
     fetchListShareRecipients(supabase, id)
       .then(setShareRecipients)
-      .catch(() => setShareRecipients([]));
+      .catch((err) => {
+        console.error('Failed to load who this list is shared with', err);
+        setShareRecipients([]);
+      });
   }, [id, isSharedView]);
 
   useFocusEffect(
@@ -256,7 +274,11 @@ export default function ListDetailScreen() {
                 </ThemedText>
               </View>
             )}
-            {items.length === 0 ? (
+            {loadFailed ? (
+              <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+                {t('common.somethingWentWrong')}
+              </ThemedText>
+            ) : items.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 {t('listDetail.empty')}
               </ThemedText>

@@ -38,7 +38,13 @@ export default function DeleteAccountScreen() {
       // Supabase refuses direct deletes against storage.objects, so the SQL
       // function cannot do it (migration 0073).
       if (session) {
-        const profile = await fetchProfile(supabase, session.user.id).catch(() => null);
+        // A failure here only orphans the avatar file. Deletion still goes
+        // ahead: leaving is a right, and a storage hiccup is no reason to hold
+        // someone in an account they want gone.
+        const profile = await fetchProfile(supabase, session.user.id).catch((err) => {
+          console.error('Could not read the profile to remove the avatar', err);
+          return null;
+        });
         await removeAvatarFile(profile?.avatar_url ?? null);
       }
 

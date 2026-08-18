@@ -227,17 +227,17 @@ export default function FavoritesScreen() {
   // screen used to leave this list stale until the app was restarted.
   useFocusEffect(
     useCallback(() => {
-      reload().catch(() => {});
+      reload().catch((err) => console.error('Reload failed', err));
     }, [reload])
   );
 
   const handleToggleFavorite = async (id: string) => {
     await toggleFavorite(id);
-    reload().catch(() => {});
+    reload().catch((err) => console.error('Reload failed', err));
   };
   const handleToggleBucketList = async (id: string) => {
     await toggleBucketList(id);
-    reload().catch(() => {});
+    reload().catch((err) => console.error('Reload failed', err));
   };
   const handleOpen = (id: string) => router.push({ pathname: '/location/[id]', params: { id } });
 
