@@ -159,7 +159,9 @@
     "statReviews": "Reviews",
     "statAdded": "Added",
     "statLists": "My lists",
-    "statActivities": "Activities"
+    "statActivities": "Activities",
+    "contributionsTotal_one": "{{count}} contribution in total",
+    "contributionsTotal_other": "{{count}} contributions in total"
   },
   "search": {
     "title": "Explore",

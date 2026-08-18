@@ -39,6 +39,7 @@ const EMPTY_STATS: ProfileStats = {
   added: 0,
   lists: 0,
   activities: 0,
+  contributions: 0,
 };
 
 /*
@@ -426,6 +427,19 @@ export default function ProfileScreen() {
           })}
         </ScrollView>
 
+        {/*
+          * A line rather than a sixth tile: every tile opens the list behind
+          * it, and this number deliberately does not match any list. It counts
+          * what you have contributed over time, including the activities that
+          * have since ended and the reviews you have deleted — which is the
+          * one figure the live counts cannot keep.
+          */}
+        {stats.contributions > 0 && (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.contributionsLine}>
+            {t('profile.contributionsTotal', { count: stats.contributions })}
+          </ThemedText>
+        )}
+
         <View style={styles.menu}>
           {PRIMARY_MENU_ITEMS.map((item) => (
             <MenuRow
@@ -581,6 +595,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: STAT_TILE_GAP,
     paddingBottom: Spacing.four,
+  },
+  contributionsLine: {
+    textAlign: 'center',
+    marginTop: Spacing.two,
   },
   statTile: {
     borderWidth: 1,

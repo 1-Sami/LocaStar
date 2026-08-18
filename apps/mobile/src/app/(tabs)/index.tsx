@@ -78,6 +78,7 @@ const EMPTY_STATS: ProfileStats = {
   added: 0,
   lists: 0,
   activities: 0,
+  contributions: 0,
 };
 
 /*

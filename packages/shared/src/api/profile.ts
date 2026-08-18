@@ -8,6 +8,13 @@ export type ProfileStats = {
   added: number;
   lists: number;
   activities: number;
+  /**
+   * Everything this person has ever contributed, including what has since been
+   * deleted or has ended. Kept as a column on `profiles` and only ever
+   * incremented, because every other number here is a live count and falls
+   * when an activity is retired or a review is tidied away.
+   */
+  contributions: number;
 };
 
 async function countRows(
@@ -30,11 +37,27 @@ async function countRows(
   return count ?? 0;
 }
 
+/**
+ * The lifetime tally, maintained by trigger rather than counted here.
+ *
+ * Counting rows would give the live number back — the whole point is that it
+ * survives the rows going away. See migration 0114.
+ */
+async function fetchContributionCount(client: SupabaseClient, userId: string): Promise<number> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("contribution_count")
+    .eq("id", userId)
+    .single();
+  if (error) throw error;
+  return (data as { contribution_count: number } | null)?.contribution_count ?? 0;
+}
+
 export async function fetchProfileStats(
   client: SupabaseClient,
   userId: string
 ): Promise<ProfileStats> {
-  const [favorites, bucketList, shared, reviews, added, lists, activities] = await Promise.all([
+  const [favorites, bucketList, shared, reviews, added, lists, activities, contributions] = await Promise.all([
     countRows(client, "saves", { user_id: userId, kind: "favorite" }),
     countRows(client, "saves", { user_id: userId, kind: "bucket_list" }),
     countRows(client, "location_shares", { recipient_id: userId }),
@@ -46,9 +69,10 @@ export async function fetchProfileStats(
     countRows(client, "locations", { created_by: userId }, ["import_batch"]),
     countRows(client, "lists", { user_id: userId }),
     countRows(client, "locations", { created_by: userId, kind: "activity" }, ["import_batch"]),
+    fetchContributionCount(client, userId),
   ]);
 
-  return { favorites, bucketList, shared, reviews, added, lists, activities };
+  return { favorites, bucketList, shared, reviews, added, lists, activities, contributions };
 }
 
 export type MyReview = {

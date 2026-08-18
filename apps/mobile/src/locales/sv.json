@@ -159,7 +159,9 @@
     "statReviews": "Recensioner",
     "statAdded": "Tillagt",
     "statLists": "Mina listor",
-    "statActivities": "Aktiviteter"
+    "statActivities": "Aktiviteter",
+    "contributionsTotal_one": "{{count}} bidrag totalt",
+    "contributionsTotal_other": "{{count}} bidrag totalt"
   },
   "search": {
     "title": "Utforska",
