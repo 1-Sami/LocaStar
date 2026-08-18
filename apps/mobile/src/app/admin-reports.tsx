@@ -540,10 +540,10 @@ export default function AdminReportsScreen() {
             {activeTab !== 'claims' && legendOpen && (
               <ThemedView type="backgroundElement" style={styles.legendCard}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  <ThemedText type="smallBold">{t('admin.legendDismiss')}</ThemedText>
+                  <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendDismiss')}</ThemedText>
                   {t('admin.legendDismissBody')}
                   {'\n'}
-                  <ThemedText type="smallBold">{t('admin.legendWarn')}</ThemedText>
+                  <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendWarn')}</ThemedText>
                   {t('admin.legendWarnBody')}
                   {'\n'}
                   {t('admin.legendReason')}
@@ -592,14 +592,14 @@ export default function AdminReportsScreen() {
                         style={[styles.actionButton, styles.dismissButton]}
                         disabled={busy}
                         onPress={() => askDismissLocation(report)}>
-                        <ThemedText type='smallBold'>{t('admin.legendDismiss')}</ThemedText>
+                        <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendDismiss')}</ThemedText>
                       </Pressable>
                       {report.photoId && (
                         <Pressable
                           style={[styles.actionButton, styles.flagButton]}
                           disabled={busy}
                           onPress={() => askRemoveLocationPhoto(report)}>
-                          <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.removePhoto')}</ThemedText>
                         </Pressable>
                       )}
                       {report.locationCreatorId && (
@@ -607,14 +607,14 @@ export default function AdminReportsScreen() {
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busy}
                           onPress={() => askWarnLocationAuthor(report)}>
-                          <ThemedText type='smallBold'>{t('admin.legendWarn')}</ThemedText>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
                       <Pressable
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
                         onPress={() => askRemoveLocation(report)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
+                        <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
                           {t('admin.legendRemove')}
                         </ThemedText>
                       </Pressable>
@@ -658,14 +658,14 @@ export default function AdminReportsScreen() {
                         style={[styles.actionButton, styles.dismissButton]}
                         disabled={busy}
                         onPress={() => askDismissReview(report)}>
-                        <ThemedText type='smallBold'>{t('admin.legendDismiss')}</ThemedText>
+                        <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendDismiss')}</ThemedText>
                       </Pressable>
                       {report.photoId && (
                         <Pressable
                           style={[styles.actionButton, styles.flagButton]}
                           disabled={busy}
                           onPress={() => askRemoveReviewPhoto(report)}>
-                          <ThemedText type='smallBold'>{t('admin.removePhoto')}</ThemedText>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.removePhoto')}</ThemedText>
                         </Pressable>
                       )}
                       {report.reviewAuthorId && (
@@ -673,14 +673,14 @@ export default function AdminReportsScreen() {
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busy}
                           onPress={() => askWarnReviewAuthor(report)}>
-                          <ThemedText type='smallBold'>{t('admin.legendWarn')}</ThemedText>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
                       <Pressable
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
                         onPress={() => askRemoveReview(report)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
+                        <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
                           {t('admin.legendRemove')}
                         </ThemedText>
                       </Pressable>
@@ -711,7 +711,7 @@ export default function AdminReportsScreen() {
                         style={[styles.actionButton, styles.removeButton]}
                         disabled={busy}
                         onPress={() => askRejectClaim(claim)}>
-                        <ThemedText type="smallBold" style={styles.removeButtonText}>
+                        <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
                           {t('admin.reject')}
                         </ThemedText>
                       </Pressable>
@@ -719,7 +719,7 @@ export default function AdminReportsScreen() {
                         style={[styles.actionButton, styles.flagButton]}
                         disabled={busy}
                         onPress={() => askApproveClaim(claim)}>
-                        <ThemedText type="smallBold" style={styles.flagButtonText}>
+                        <ThemedText type="smallBold" style={[styles.flagButtonText, styles.actionButtonText]}>
                           {t('admin.approve')}
                         </ThemedText>
                       </Pressable>
@@ -778,7 +778,7 @@ export default function AdminReportsScreen() {
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busyId === report.id}
                           onPress={() => askRestoreReview(report)}>
-                          <ThemedText type="smallBold">{t('admin.restore')}</ThemedText>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.restore')}</ThemedText>
                         </Pressable>
                       </View>
                       </>
@@ -820,7 +820,7 @@ export default function AdminReportsScreen() {
                           style={[styles.actionButton, styles.dismissButton]}
                           disabled={busyId === report.id}
                           onPress={() => askRestoreLocation(report)}>
-                          <ThemedText type="smallBold">{t('admin.restore')}</ThemedText>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.restore')}</ThemedText>
                         </Pressable>
                       </View>
                       </>
@@ -965,10 +965,19 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    height: 40,
+    // minHeight, not height: a wrapped label needs the box to grow with it
+    // rather than overflow a fixed one.
+    minHeight: 40,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.one,
     borderRadius: Spacing.five,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Centres the wrapped line too. alignItems only centres the Text block; the
+  // lines inside it still align left without this.
+  actionButtonText: {
+    textAlign: 'center',
   },
   dismissButton: {
     backgroundColor: 'rgba(128,128,128,0.25)',
