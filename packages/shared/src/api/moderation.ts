@@ -527,6 +527,16 @@ export async function setUserRole(client: SupabaseClient, userId: string, role: 
 export type ModerationAction = {
   id: string;
   actorName: string;
+  /**
+   * Usernames for any account id mentioned in `detail`, resolved when the log
+   * is read.
+   *
+   * The log deliberately stores ids: a display name can change afterwards, and
+   * the entry has to keep meaning what it meant. But a screen showing
+   * "author: cfe37315-2987-43e9…" is a record nobody can act on, so the names
+   * are looked up now and the ids are kept underneath.
+   */
+  names: Record<string, string>;
   actorRole: UserRole | null;
   action: string;
   targetType: string;
@@ -546,7 +556,7 @@ export async function fetchModerationActions(
     .limit(limit);
   if (error) throw error;
 
-  return (
+  const rows = (
     (data ?? []) as unknown as {
       id: string;
       actor_role: UserRole | null;
@@ -560,6 +570,7 @@ export async function fetchModerationActions(
   ).map((row) => ({
     id: row.id,
     actorName: personName(row.actor),
+    names: {},
     actorRole: row.actor_role,
     action: row.action,
     targetType: row.target_type,
@@ -567,6 +578,30 @@ export async function fetchModerationActions(
     detail: row.detail,
     createdAt: row.created_at,
   }));
+
+  const ids = new Set<string>();
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  for (const entry of rows) {
+    for (const value of Object.values(entry.detail ?? {})) {
+      if (typeof value === "string" && UUID.test(value)) ids.add(value);
+    }
+  }
+  if (ids.size === 0) return rows;
+
+  const { data: people } = await client
+    .from("profiles")
+    .select("id, username, display_name")
+    .in("id", [...ids]);
+
+  const names: Record<string, string> = {};
+  for (const person of (people ?? []) as { id: string; username: string | null; display_name: string | null }[]) {
+    names[person.id] = person.username ?? person.display_name ?? "Anonymous";
+  }
+  // An id with no profile behind it belonged to somebody who has since deleted
+  // their account. Saying so is more use than printing the id.
+  for (const id of ids) if (!names[id]) names[id] = DELETED_ACCOUNT_NAME;
+
+  return rows.map((entry) => ({ ...entry, names }));
 }
 
 /* ------------------------------------------------------------ warnings --- */

@@ -706,7 +706,10 @@
     "deletesInDays_one": "Deleted permanently in {{count}} day.",
     "deletesInDays_other": "Deleted permanently in {{count}} days.",
     "legendRemovePhoto": "Remove photo",
-    "legendRemovePhotoBody": " — take down the one picture and leave the rest alone."
+    "legendRemovePhotoBody": " — take down the one picture and leave the rest alone.",
+    "legendTitle": "What each action does",
+    "searchLog": "Search the log",
+    "noLogMatch": "Nothing in the log matches that."
   },
   "authError": {
     "network": "Couldn’t reach LocaStar. Check your connection and try again.",

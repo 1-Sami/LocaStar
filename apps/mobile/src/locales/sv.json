@@ -706,7 +706,10 @@
     "deletesInDays_one": "Raderas permanent om {{count}} dag.",
     "deletesInDays_other": "Raderas permanent om {{count}} dagar.",
     "legendRemovePhoto": "Ta bort bild",
-    "legendRemovePhotoBody": " — ta ner den enda bilden och lämna resten orörd."
+    "legendRemovePhotoBody": " — ta ner den enda bilden och lämna resten orörd.",
+    "legendTitle": "Vad varje åtgärd gör",
+    "searchLog": "Sök i loggen",
+    "noLogMatch": "Inget i loggen matchar det."
   },
   "authError": {
     "network": "Kunde inte nå LocaStar. Kontrollera din anslutning och försök igen.",

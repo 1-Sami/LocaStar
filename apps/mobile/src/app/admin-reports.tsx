@@ -125,6 +125,7 @@ export default function AdminReportsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('locations');
   const [handledExpanded, setHandledExpanded] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
 
   const [openLocationReports, setOpenLocationReports] = useState<LocationReport[]>([]);
   const [handledLocationReports, setHandledLocationReports] = useState<LocationReport[]>([]);
@@ -525,6 +526,18 @@ export default function AdminReportsScreen() {
               </ThemedView>
             )}
             {activeTab !== 'claims' && (
+              <Pressable style={styles.legendHeader} onPress={() => setLegendOpen((v) => !v)}>
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  {t('admin.legendTitle')}
+                </ThemedText>
+                <Ionicons
+                  name={legendOpen ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+            )}
+            {activeTab !== 'claims' && legendOpen && (
               <ThemedView type="backgroundElement" style={styles.legendCard}>
                 <ThemedText type="small" themeColor="textSecondary">
                   <ThemedText type="smallBold">{t('admin.legendDismiss')}</ThemedText>
@@ -897,6 +910,12 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.half,
+  },
+  legendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
   },
   legendCard: {
     borderRadius: Spacing.two,
