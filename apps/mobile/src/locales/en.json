@@ -832,8 +832,7 @@
     "ended": "Ended",
     "noReviews": "You haven’t written any reviews yet.",
     "kindActivity": "Activity",
-    "kindPlace": "Location",
-    "locationGone": "This place is no longer listed"
+    "kindPlace": "Location"
   },
   "categories": {
     "4h-farms": "4H Farms",

@@ -832,8 +832,7 @@
     "ended": "Avslutad",
     "noReviews": "Du har inte skrivit några recensioner än.",
     "kindActivity": "Aktivitet",
-    "kindPlace": "Plats",
-    "locationGone": "Den här platsen finns inte längre"
+    "kindPlace": "Plats"
   },
   "categories": {
     "4h-farms": "4H-gårdar",

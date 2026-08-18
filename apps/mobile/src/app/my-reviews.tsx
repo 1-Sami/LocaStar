@@ -67,15 +67,8 @@ export default function MyReviewsScreen() {
               <Pressable
                 key={review.id}
                 style={styles.reviewCard}
-                // A gone location has no page to open, so the card stops being a
-                // link rather than pushing a screen that fails to load.
-                disabled={review.location_name === null}
                 onPress={() => router.push({ pathname: '/location/[id]', params: { id: review.location_id } })}>
-                <ThemedText
-                  type="smallBold"
-                  themeColor={review.location_name === null ? 'textSecondary' : undefined}>
-                  {review.location_name ?? t('myContributions.locationGone')}
-                </ThemedText>
+                <ThemedText type="smallBold">{review.location_name}</ThemedText>
                 <View style={styles.ratingRow}>
                   <StarRating rating={review.rating} size={14} />
                   <ThemedText type="small" themeColor="textSecondary">
