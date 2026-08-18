@@ -73,10 +73,12 @@ export default function AdminUsersScreen() {
    * objects to — and it would need its own guard against the older of two
    * in-flight requests landing last, under a box that has since moved on.
    */
-  const [results, setResults] = useState<{ query: string; users: ManagedUser[] }>({
+  const [results, setResults] = useState<{ query: string; users: ManagedUser[]; failed: boolean }>({
     query: '',
     users: [],
+    failed: false,
   });
+  const [bansFailed, setBansFailed] = useState(false);
   const [bans, setBans] = useState<UserBan[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -109,8 +111,15 @@ export default function AdminUsersScreen() {
       .then(([profile, banRows]) => {
         setMyRole(profile.role);
         setBans(banRows);
+        setBansFailed(false);
       })
-      .catch(() => setBans([]))
+      .catch((err) => {
+        // "No bans" to a moderator looking for pending ones is worse than an
+        // error: they act on it and move on.
+        console.error('Failed to load bans', err);
+        setBans([]);
+        setBansFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [session]);
 
@@ -122,10 +131,13 @@ export default function AdminUsersScreen() {
     let cancelled = false;
     searchUsers(supabase, trimmed)
       .then((users) => {
-        if (!cancelled) setResults({ query: trimmed, users });
+        if (!cancelled) setResults({ query: trimmed, users, failed: false });
       })
-      .catch(() => {
-        if (!cancelled) setResults({ query: trimmed, users: [] });
+      .catch((err) => {
+        // Same again: "no one matches" is how a moderator concludes an account
+        // does not exist.
+        console.error('Failed to search users', err);
+        if (!cancelled) setResults({ query: trimmed, users: [], failed: true });
       });
     return () => {
       cancelled = true;
@@ -240,6 +252,9 @@ export default function AdminUsersScreen() {
   const trimmedQuery = query.trim();
   const showSpinner = trimmedQuery.length >= 2 && results.query !== trimmedQuery;
   const people = results.users;
+  // Only counts once the answer is for what is currently typed, so a stale
+  // failure does not sit over fresh results.
+  const searchFailed = results.failed && results.query === trimmedQuery;
 
   return (
     <ThemedView style={styles.container}>
@@ -283,6 +298,10 @@ export default function AdminUsersScreen() {
             ) : trimmedQuery.length < 2 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 {t('admin.searchToBegin')}
+              </ThemedText>
+            ) : searchFailed ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {t('common.somethingWentWrong')}
               </ThemedText>
             ) : people.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
@@ -354,7 +373,11 @@ export default function AdminUsersScreen() {
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
-            {bans.length === 0 ? (
+            {bansFailed ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {t('common.somethingWentWrong')}
+              </ThemedText>
+            ) : bans.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 {t('admin.noBans')}
               </ThemedText>

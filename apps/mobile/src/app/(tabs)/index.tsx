@@ -200,7 +200,8 @@ export default function HomeScreen() {
       .then((rows) => {
         if (!cancelled) setPublicLists(rows);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to load public lists', err);
         if (!cancelled) setPublicLists([]);
       });
 
@@ -222,7 +223,8 @@ export default function HomeScreen() {
           .then((rows) => {
             if (!cancelled) setNearby(rows);
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error('Failed to load nearby locations', err);
             if (!cancelled) setNearby([]);
           });
       }
@@ -247,7 +249,8 @@ export default function HomeScreen() {
         .then((rows) => {
           if (!cancelled) setNearbyActivities(rows);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error('Failed to load nearby activities', err);
           if (!cancelled) setNearbyActivities([]);
         });
 
@@ -274,7 +277,8 @@ export default function HomeScreen() {
         .then((rows) => {
           if (!cancelled) setNearbyMostLiked(rows);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error('Failed to load most liked', err);
           if (!cancelled) setNearbyMostLiked([]);
         });
 
@@ -295,7 +299,8 @@ export default function HomeScreen() {
             if (season === 'summer') setNearbySummer(rows);
             else setNearbyWinter(rows);
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error(`Failed to load ${season} locations`, err);
             if (cancelled) return;
             if (season === 'summer') setNearbySummer([]);
             else setNearbyWinter([]);
@@ -308,8 +313,11 @@ export default function HomeScreen() {
         .then((result) => {
           if (!cancelled) setStats(result);
         })
-        .catch(() => {
-          if (!cancelled) setStats(EMPTY_STATS);
+        .catch((err) => {
+          // Not EMPTY_STATS: zeroing asserts this person has contributed
+          // nothing, which is a statement about them rather than about the
+          // request. Leave whatever was last known standing.
+          console.error('Failed to load profile stats', err);
         });
     } else {
       setStats(EMPTY_STATS);

@@ -201,6 +201,7 @@ export default function LocationDetailScreen() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [locationReportVisible, setLocationReportVisible] = useState(false);
   const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
@@ -235,6 +236,7 @@ export default function LocationDetailScreen() {
       if (!id) return;
       let cancelled = false;
       setLoading(true);
+      setLoadFailed(false);
       setActivePhotoIndex(0);
       Promise.all([
         fetchLocationById(supabase, id),
@@ -247,11 +249,17 @@ export default function LocationDetailScreen() {
           setReviews(reviewsResult);
           setPhotos(photosResult);
         })
-        .catch(() => {
+        .catch((err) => {
+          // fetchLocationById returns null when the row genuinely is not there
+          // or is not readable; a rejection means the request failed. Both used
+          // to render "This location couldn't be found", so anyone opening a
+          // shared link on a bad connection was told the place was gone.
+          console.error('Failed to load the location', err);
           if (!cancelled) {
             setLocation(null);
             setReviews([]);
             setPhotos([]);
+            setLoadFailed(true);
           }
         })
         .finally(() => {
@@ -321,7 +329,7 @@ export default function LocationDetailScreen() {
             <Ionicons name="arrow-back" size={22} color={theme.text} />
           </Pressable>
           <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
-            {t('location.notFound')}
+            {loadFailed ? t('common.somethingWentWrong') : t('location.notFound')}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>

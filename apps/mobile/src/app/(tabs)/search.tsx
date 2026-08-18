@@ -147,6 +147,7 @@ export default function SearchScreen() {
    * another fetch.
    */
   const loadedCount = useRef(0);
+  const [searchFailed, setSearchFailed] = useState(false);
   const lastFilterKey = useRef<string | null>(null);
   const loadingMoreRef = useRef(false);
 
@@ -198,16 +199,21 @@ export default function SearchScreen() {
         .then((result) => {
           if (cancelled) return;
           setResults(result);
+          setSearchFailed(false);
           loadedCount.current = result.length;
           // total_count is on every row and identical across them; with no rows
           // there is nothing to read it from, and the answer is zero anyway.
           setTotalCount(result[0]?.total_count ?? 0);
         })
-        .catch(() => {
+        .catch((err) => {
+          // "Nothing matched your search" is a statement about the search, and
+          // a failed request has not made one.
+          console.error('Search failed', err);
           if (cancelled) return;
           setResults([]);
           loadedCount.current = 0;
           setTotalCount(0);
+          setSearchFailed(true);
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -392,7 +398,11 @@ export default function SearchScreen() {
             data={cards}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={<Text style={styles.emptyText}>{t('search.noMatches')}</Text>}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                {searchFailed ? t('common.somethingWentWrong') : t('search.noMatches')}
+              </Text>
+            }
             onEndReached={loadMore}
             // A screen and a half of runway. At 0.5 the fetch only started once
             // the last card was nearly in view, so every fifty rows ended in a

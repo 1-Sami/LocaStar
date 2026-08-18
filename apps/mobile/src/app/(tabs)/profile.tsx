@@ -185,14 +185,21 @@ export default function ProfileScreen() {
         .then((result) => {
           if (!cancelled) setStats(result);
         })
-        .catch(() => {
-          if (!cancelled) setStats(EMPTY_STATS);
+        .catch((err) => {
+          // Not EMPTY_STATS: zeroing asserts this person has contributed
+          // nothing, which is a statement about them rather than about the
+          // request. Leave whatever was last known standing.
+          console.error('Failed to load profile stats', err);
         });
       fetchMyActiveBan(supabase, session.user.id)
         .then((ban) => {
           if (!cancelled) setMyBan(ban);
         })
-        .catch(() => {});
+        .catch((err) => {
+          // The ban itself is enforced in the database, so losing this only
+          // costs the banner explaining why things are refusing to work.
+          console.error('Failed to load your ban status', err);
+        });
       fetchPendingFriendRequestCount(supabase, session.user.id)
         .then((count) => {
           if (!cancelled) setPendingFriendRequests(count);
