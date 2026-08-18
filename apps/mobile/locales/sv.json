@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "LocaStar använder din plats för att visa platser och aktiviteter i närheten.",
+    "NSPhotoLibraryUsageDescription": "LocaStar använder ditt bildbibliotek så att du kan lägga till bilder på platser och recensioner.",
+    "NSCameraUsageDescription": "LocaStar använder kameran så att du kan ta bilder till platser och recensioner."
+  }
+}

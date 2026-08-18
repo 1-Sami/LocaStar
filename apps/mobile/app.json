@@ -2,6 +2,10 @@
   "expo": {
     "name": "LocaStar",
     "slug": "locastar",
+    "locales": {
+      "en": "./locales/en.json",
+      "sv": "./locales/sv.json"
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,9 +14,18 @@
     "ios": {
       "bundleIdentifier": "se.locastar.app",
       "supportsTablet": false,
-      "associatedDomains": ["applinks:locastar.se"],
+      "associatedDomains": [
+        "applinks:locastar.se"
+      ],
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleLocalizations": [
+          "en",
+          "sv"
+        ]
       }
     },
     "android": {
