@@ -1,0 +1,74 @@
+---
+import '../styles/tokens.css';
+
+/*
+ * Every page's <head>.
+ *
+ * The site this replaces served `<title data-rh="true"></title>` — empty — on
+ * every route, with no description and no content in the HTML until JavaScript
+ * ran. That is why nothing could be indexed, and it is the single thing this
+ * rebuild exists to fix. So title and description are required props: a page
+ * cannot forget them.
+ */
+interface Props {
+  title: string;
+  description: string;
+  canonical: string;
+  lang?: 'en' | 'sv';
+  /** JSON-LD objects. Emitted verbatim, so build them where the data is. */
+  jsonLd?: unknown[];
+}
+
+const { title, description, canonical, lang = 'en', jsonLd = [] } = Astro.props;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    {
+      jsonLd.map((block) => (
+        <script type="application/ld+json" set:html={JSON.stringify(block)} />
+      ))
+    }
+  </head>
+  <body>
+    <a href="#main" class="skip">Skip to content</a>
+    <slot />
+  </body>
+</html>
+
+<style>
+  /* Visible only when focused — keyboard users get a way past the header. */
+  .skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--accent);
+    color: var(--page);
+    padding: 12px 18px;
+    border-radius: 0 0 8px 0;
+    font-weight: 600;
+    z-index: 10;
+  }
+  .skip:focus {
+    left: 0;
+  }
+</style>

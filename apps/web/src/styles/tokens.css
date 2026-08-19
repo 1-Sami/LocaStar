@@ -1,0 +1,102 @@
+/*
+ * The design system from the handoff, verbatim.
+ *
+ * Two backgrounds only — page and surface. Depth comes from those plus
+ * hairlines, not shadows. Do not add a third.
+ *
+ * The site commits to one dark look on purpose: it is the app's own palette,
+ * and the mockups are built around it. No light theme.
+ */
+:root {
+  --page: #07100f;
+  --surface: #0c1817;
+  --surface-alt: #141f1e;
+  --brand: #125f6f;
+  --brand-light: #2ba3a3;
+  --link: #5fd3cf;
+  --accent: #e8a93b;
+  --text: #f4f6f5;
+  --text-70: rgba(244, 246, 245, 0.7);
+  --text-55: rgba(244, 246, 245, 0.55);
+  --text-42: rgba(244, 246, 245, 0.42);
+  --hairline: rgba(244, 246, 245, 0.09);
+  --border: rgba(244, 246, 245, 0.28);
+  --list-surface: #141f2e;
+  --ok: #4cd37a;
+
+  --font-display: 'Spline Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --gutter: 40px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: 18px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 300;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+  text-wrap: balance;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+  transition: color 120ms ease-out;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* Never removed — the handoff calls this out explicitly. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Mono uppercase labels: counts, distances, categories, ratings. */
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.wrap {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

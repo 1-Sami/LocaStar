@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "astro": "7.2.3",
-    "@astrojs/cloudflare": "14.2.2"
+    "@astrojs/cloudflare": "14.2.2",
+    "@locastar/shared": "workspace:*"
   },
   "devDependencies": {
     "wrangler": "4.124.0"

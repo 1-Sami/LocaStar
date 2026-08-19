@@ -143,6 +143,9 @@ importers:
       '@astrojs/cloudflare':
         specifier: 14.2.2
         version: 14.2.2(@types/node@26.1.1)(astro@7.2.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(terser@5.49.0)(yaml@2.9.0))(esbuild@0.28.1)(terser@5.49.0)(wrangler@4.124.0)(yaml@2.9.0)
+      '@locastar/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       astro:
         specifier: 7.2.3
         version: 7.2.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(terser@5.49.0)(yaml@2.9.0)

@@ -143,6 +143,9 @@ export type LocationDetail = {
   name: string;
   description: string | null;
   address: string | null;
+  /** Reverse-geocoded from the pin, not typed — the website needs it for page titles. */
+  city: string | null;
+  country: string | null;
   phone: string | null;
   email: string | null;
   website: string | null;
@@ -183,6 +186,8 @@ type LocationDetailRow = {
   name: string;
   description: string | null;
   address: string | null;
+  city: string | null;
+  country: string | null;
   phone: string | null;
   email: string | null;
   website: string | null;
@@ -523,7 +528,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, city, country, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -539,6 +544,8 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     status: row.status,
     description: row.description,
     address: row.address,
+    city: row.city,
+    country: row.country,
     phone: row.phone,
     email: row.email,
     website: row.website,
