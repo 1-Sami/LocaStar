@@ -126,3 +126,71 @@ export async function fetchCategoryPlaces(
 
   return { places, total: count ?? places.length };
 }
+
+export type CategoryCount = {
+  slug: string;
+  name: string;
+  count: number;
+};
+
+/**
+ * Every category with how many places it has.
+ *
+ * One round trip rather than 54. Used by the sitemap to skip empty categories,
+ * and by the browse grid. RLS applies inside the function, so the numbers match
+ * what a visitor can actually open.
+ */
+export async function fetchCategoryCounts(client: SupabaseClient): Promise<CategoryCount[]> {
+  const { data, error } = await client.rpc("category_counts");
+  if (error) throw error;
+  return ((data ?? []) as { slug: string; name: string; n: number }[]).map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    count: Number(row.n),
+  }));
+}
+
+export type SitemapEntry = {
+  path: string;
+  lastmod: string | null;
+};
+
+/**
+ * Everything the sitemap should list.
+ *
+ * Locations come back filtered by RLS, so a retired activity or a removed place
+ * drops out on its own — which is the requirement, and the reason this is
+ * generated per request rather than baked at build time.
+ *
+ * `locations` has no updated_at, so created_at is the best lastmod available.
+ * It understates freshness when a review is added later; lastmod is a hint to
+ * crawlers rather than a promise, so that is acceptable.
+ */
+export async function fetchSitemapEntries(
+  client: SupabaseClient
+): Promise<{ locations: SitemapEntry[]; lists: SitemapEntry[]; categories: SitemapEntry[] }> {
+  const [locationsResult, listsResult, counts] = await Promise.all([
+    client.from("locations").select("id, created_at").order("created_at", { ascending: false }).limit(10000),
+    client.from("lists").select("id, updated_at").eq("is_public", true).limit(10000),
+    fetchCategoryCounts(client),
+  ]);
+
+  if (locationsResult.error) throw locationsResult.error;
+  if (listsResult.error) throw listsResult.error;
+
+  return {
+    locations: ((locationsResult.data ?? []) as { id: string; created_at: string }[]).map((row) => ({
+      path: `/location/${row.id}`,
+      lastmod: row.created_at,
+    })),
+    lists: ((listsResult.data ?? []) as { id: string; updated_at: string | null }[]).map((row) => ({
+      path: `/lists/${row.id}`,
+      lastmod: row.updated_at,
+    })),
+    // Empty categories are left out on purpose — a "0 places" page is thin, and
+    // a sitemap full of them costs the crawl budget the good pages need.
+    categories: counts
+      .filter((row) => row.count > 0)
+      .map((row) => ({ path: `/activity/${row.slug}`, lastmod: null })),
+  };
+}

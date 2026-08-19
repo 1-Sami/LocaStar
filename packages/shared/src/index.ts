@@ -3,11 +3,15 @@ export {
   fetchAllCategories,
   fetchCategoryCityCounts,
   fetchCategoryPlaces,
+  fetchCategoryCounts,
+  fetchSitemapEntries,
 } from "./api/categoryPages";
 export type {
   CategoryCityCount,
   CategoryPlace,
   CategorySummary,
+  CategoryCount,
+  SitemapEntry,
 } from "./api/categoryPages";
 export { CategoryColors } from "./categoryColors";
 export { createSupabaseClient } from "./supabaseClient";
