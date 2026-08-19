@@ -5,6 +5,7 @@ export {
   fetchCategoryPlaces,
   fetchCategoryCounts,
   fetchSitemapEntries,
+  fetchLocationTotal,
 } from "./api/categoryPages";
 export type {
   CategoryCityCount,

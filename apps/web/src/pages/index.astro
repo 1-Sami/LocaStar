@@ -1,14 +1,567 @@
 ---
-// Same question as the Next spike: does a server-rendered route reach
-// Cloudflare at all? The timestamp is rendered on the server, so if it is in
-// the HTML source, server rendering works.
+import {
+  fetchCategoryBySlug,
+  fetchCategoryCounts,
+  fetchCategoryPlaces,
+  fetchLocationTotal,
+  fetchPublicLists,
+} from '@locastar/shared';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { categoryColor, ratingLabel } from '../lib/format';
+import { OSM_ATTRIBUTION, storeLinksReady, STORE_LINKS } from '../lib/site';
+import { anonClient } from '../lib/supabase';
+
 export const prerender = false;
-const renderedAt = new Date().toISOString();
+
+const supabase = anonClient();
+
+const [categoryCounts, lists, totalPlaces] = await Promise.all([
+  fetchCategoryCounts(supabase).catch(() => []),
+  fetchPublicLists(supabase).catch(() => []),
+  fetchLocationTotal(supabase).catch(() => 0),
+]);
+
+const withPlaces = categoryCounts.filter((row) => row.count > 0);
+
+/*
+ * A sample of places, taken from the biggest category.
+ *
+ * The mockup calls this strip "Near you". The server has no idea where the
+ * visitor is and a crawler has no location at all, so that heading would be
+ * false on the render that actually gets indexed. Ordered by review count
+ * instead — the places somebody has written about are both the honest answer
+ * and the best first impression when 99% of entries have nothing.
+ */
+const biggest = withPlaces[0];
+const biggestCategory = biggest ? await fetchCategoryBySlug(supabase, biggest.slug).catch(() => null) : null;
+const featured = biggestCategory
+  ? (await fetchCategoryPlaces(supabase, biggestCategory.id, { limit: 4 }).catch(() => ({ places: [], total: 0 })))
+      .places
+  : [];
+
+const publicUrl = (path: string | null) =>
+  path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+
+const title = 'LocaStar — a map of things to actually go and do';
+const description =
+  `${totalPlaces} places and activities across Sweden — courts, trails, slopes, playgrounds and festivals, ` +
+  'described by the people who have been there. Free, and you can browse without an account.';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'LocaStar',
+    url: `${origin}/`,
+    description,
+  },
+];
 ---
-<html lang="en">
-  <head><title>LocaStar — deploy spike</title></head>
-  <body style="font-family:system-ui;padding:3rem;color:#F4F6F5;background:#07100F">
-    <h1>Deploy spike</h1>
-    <p data-testid="rendered-at">Rendered at {renderedAt}</p>
-  </body>
-</html>
+
+<Base title={title} description={description} canonical={`${origin}/`} jsonLd={jsonLd}>
+  <SiteHeader />
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-inner wrap">
+        <span class="mono eyebrow">
+          {totalPlaces} places and activities · {withPlaces.length} categories
+        </span>
+
+        <h1>Explore</h1>
+
+        <p class="promise">
+          One map of things to actually go and do — described by the people who have been there.
+        </p>
+
+        {
+          storeLinksReady ? (
+            <div class="badges">
+              <a class="store" href={STORE_LINKS.appStore}>
+                <span class="mono over">Download on the</span>
+                <span class="store-name">App Store</span>
+              </a>
+              <a class="store" href={STORE_LINKS.googlePlay}>
+                <span class="mono over">Get it on</span>
+                <span class="store-name">Google Play</span>
+              </a>
+              <span class="badge-note">Free · iOS and Android · English and Swedish</span>
+            </div>
+          ) : (
+            /* No dead store buttons. Until both apps are public this says what
+               is true, which is more convincing than a link that 404s. */
+            <p class="soon">The app is on its way to the App Store and Google Play. The map works here in the meantime.</p>
+          )
+        }
+      </div>
+    </section>
+
+    {
+      featured.length > 0 && (
+        <section class="wrap strip">
+          <div class="strip-head">
+            <h2>Where people have been</h2>
+            {biggest && (
+              <a class="mono see-all" href={`/activity/${biggest.slug}`}>
+                See all {biggest.count} {biggest.name.toLowerCase()} →
+              </a>
+            )}
+          </div>
+          <div class="grid-4">
+            {featured.map((place) => {
+              const colour = categoryColor(biggest?.slug ?? null);
+              const rating = ratingLabel(place.avgRating, place.reviewCount);
+              const cover = publicUrl(place.coverPhotoPath);
+              return (
+                <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
+                  {cover ? (
+                    <div class="card-photo" style={`background-image:url("${cover}")`} />
+                  ) : (
+                    <div class="card-photo flat" style={`background:${colour}`}>
+                      <span class="mono">{biggest?.name ?? ''}</span>
+                    </div>
+                  )}
+                  <div class="card-body">
+                    <span class="card-name">{place.name}</span>
+                    {rating.rated ? (
+                      <span class="mono card-rating">★ {rating.avg} <span class="dim">({rating.count})</span></span>
+                    ) : (
+                      <span class="mono card-unrated">Not rated yet</span>
+                    )}
+                    {place.city && <span class="card-where">{place.city}</span>}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )
+    }
+
+    <section class="wrap browse">
+      <div class="strip-head">
+        <h2>Browse by activity</h2>
+        <span class="soft">{withPlaces.length} categories with somewhere to go</span>
+      </div>
+      <div class="cat-grid">
+        {
+          withPlaces.slice(0, 23).map((row) => (
+            <a class="cat" href={`/activity/${row.slug}`} style={`background:${categoryColor(row.slug)}`}>
+              <span class="cat-name">{row.name}</span>
+              <span class="mono cat-count">{row.count}</span>
+            </a>
+          ))
+        }
+        {
+          withPlaces.length > 23 && (
+            <a class="cat more" href="/search">
+              <span class="cat-name">+{withPlaces.length - 23} more</span>
+            </a>
+          )
+        }
+      </div>
+    </section>
+
+    {
+      lists.length > 0 && (
+        <section class="wrap strip">
+          <div class="strip-head">
+            <h2>Lists people have shared</h2>
+            <a class="mono see-all" href="/community">See all →</a>
+          </div>
+          <div class="grid-4">
+            {lists.slice(0, 4).map((list) => (
+              <a class="list-card" href={`/lists/${list.id}`}>
+                <span class="list-name">{list.name}</span>
+                <span class="list-by">by {list.ownerUsername ?? list.ownerDisplayName ?? 'someone on LocaStar'}</span>
+                <span class="mono list-count">
+                  {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <div class="foot-col">
+          <span class="foot-head">LocaStar</span>
+          <p class="foot-note">
+            A map of things to actually go and do, described by the people who have been there.
+          </p>
+          <p class="foot-note">
+            <a href={OSM_ATTRIBUTION.href} rel="noopener noreferrer" target="_blank">{OSM_ATTRIBUTION.text}</a>
+          </p>
+        </div>
+        <div class="foot-col">
+          <span class="foot-head">Explore</span>
+          <a href="/search">Search</a>
+          <a href="/community">Shared lists</a>
+          <a href="/add">Add a place</a>
+        </div>
+        <div class="foot-col">
+          <span class="foot-head">About</span>
+          <a href="/about">The story</a>
+          <a href="/features">What it does</a>
+          <a href="/contact">Contact</a>
+        </div>
+        <div class="foot-col">
+          <span class="foot-head">Legal</span>
+          <a href="/legal/privacy">Privacy</a>
+          <a href="/legal/terms">Terms</a>
+          <a href="/legal/delete-account">Delete your account</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+</Base>
+
+<style>
+  /*
+   * No hero photograph yet.
+   *
+   * The mockup uses one of the owner's own pictures, and shipping a stock photo
+   * of somewhere that is not in the map would be exactly the dishonesty the
+   * rest of the site avoids. A deep brand gradient reads as deliberate, and the
+   * moment a real photograph exists it drops straight in behind this.
+   */
+  .hero {
+    position: relative;
+    min-height: 560px;
+    display: flex;
+    align-items: flex-end;
+    background:
+      radial-gradient(1200px 500px at 20% 0%, rgba(43, 163, 163, 0.22), transparent 60%),
+      linear-gradient(150deg, #125f6f 0%, #0a2a31 45%, #07100f 100%);
+  }
+
+  .hero-inner {
+    width: 100%;
+    padding-block: 96px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-size: clamp(58px, 12vw, 168px);
+    line-height: 0.9;
+    letter-spacing: -0.045em;
+    margin: 0;
+  }
+
+  .promise {
+    font-size: clamp(19px, 2.4vw, 26px);
+    line-height: 1.4;
+    color: rgba(244, 246, 245, 0.88);
+    margin: 0;
+    max-width: 620px;
+    text-wrap: pretty;
+  }
+
+  .badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 6px;
+  }
+
+  .store {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 20px;
+    background: var(--text);
+    border-radius: 9px;
+    color: var(--page);
+  }
+
+  .store:hover {
+    color: var(--page);
+  }
+
+  .over {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    color: rgba(7, 16, 15, 0.55);
+  }
+
+  .store-name {
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .badge-note,
+  .soon {
+    font-size: 13px;
+    line-height: 1.4;
+    color: rgba(244, 246, 245, 0.62);
+    margin: 6px 0 0;
+    max-width: 420px;
+  }
+
+  /* ---- shared section furniture ---- */
+  .strip,
+  .browse {
+    padding-top: 64px;
+  }
+
+  .strip-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .strip-head h2 {
+    font-size: clamp(24px, 3vw, 30px);
+  }
+
+  .see-all {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--link);
+  }
+
+  .soft {
+    font-size: 15px;
+    color: var(--text-55);
+  }
+
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+
+  .card {
+    border: 1px solid;
+    border-radius: 11px;
+    overflow: hidden;
+    background: var(--surface);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .card-photo {
+    height: 158px;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .card-photo.flat {
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .card-photo.flat .mono {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .card-body {
+    padding: 15px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .card-name {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .card-rating {
+    font-size: 11.5px;
+    color: var(--accent);
+  }
+
+  .dim {
+    color: var(--text-42);
+  }
+
+  .card-unrated {
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    color: var(--text-42);
+  }
+
+  .card-where {
+    font-size: 13px;
+    color: var(--text-55);
+  }
+
+  /* ---- category grid: colour carries the family, the name carries the meaning ---- */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 10px;
+  }
+
+  .cat {
+    height: 74px;
+    border-radius: 9px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 3px;
+    color: #fff;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .cat:hover {
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.18);
+  }
+
+  .cat-name {
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.15;
+  }
+
+  .cat-count {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .cat.more {
+    background: var(--surface-alt);
+    color: var(--text-70);
+    justify-content: center;
+  }
+
+  /* ---- shared lists, in the blue family the app uses ---- */
+  .list-card {
+    background: var(--list-surface);
+    border-radius: 11px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text);
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .list-card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .list-name {
+    font-weight: 500;
+    font-size: 16px;
+  }
+
+  .list-by,
+  .list-count {
+    font-size: 13px;
+    color: var(--text-55);
+  }
+
+  .list-count {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ---- footer ---- */
+  .site-footer {
+    margin-top: 80px;
+    border-top: 1px solid var(--hairline);
+    padding-block: 44px 64px;
+  }
+
+  .footer-inner {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px;
+  }
+
+  .foot-col {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    align-items: flex-start;
+  }
+
+  .foot-head {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+
+  .foot-note {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-55);
+    margin: 0;
+    max-width: 46ch;
+  }
+
+  .foot-col a {
+    font-size: 14px;
+    color: var(--text-70);
+  }
+
+  .foot-col a:hover {
+    color: var(--accent);
+  }
+
+  @media (max-width: 1279px) {
+    .grid-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .cat-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .footer-inner {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .hero {
+      min-height: 400px;
+    }
+
+    .grid-4 {
+      grid-template-columns: 1fr;
+    }
+
+    .cat-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .footer-inner {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -194,3 +194,17 @@ export async function fetchSitemapEntries(
       .map((row) => ({ path: `/activity/${row.slug}`, lastmod: null })),
   };
 }
+
+/**
+ * How many places exist, counted once each.
+ *
+ * Not the sum of the category counts: a location can sit in more than one
+ * category, so adding those up overstates the total — it read 1002 against 998
+ * real places the first time the home page tried it. RLS applies, so this is
+ * the number a visitor could actually reach.
+ */
+export async function fetchLocationTotal(client: SupabaseClient): Promise<number> {
+  const { count, error } = await client.from("locations").select("*", { count: "exact", head: true });
+  if (error) throw error;
+  return count ?? 0;
+}

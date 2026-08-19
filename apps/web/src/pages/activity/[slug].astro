@@ -4,6 +4,7 @@ import {
   fetchCategoryBySlug,
   fetchCategoryCityCounts,
   fetchCategoryPlaces,
+  fetchCategoryCounts,
 } from '@locastar/shared';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
@@ -28,20 +29,27 @@ if (!category || !slug) return new Response(null, { status: 404 });
  */
 const cityParam = Astro.url.searchParams.get('city')?.trim() || undefined;
 
-const [cityCounts, listing, allCategories] = await Promise.all([
+const [cityCounts, listing, allCategories, counts] = await Promise.all([
   fetchCategoryCityCounts(supabase, slug).catch(() => []),
   fetchCategoryPlaces(supabase, category.id, { city: cityParam, limit: 24 }).catch(() => ({
     places: [],
     total: 0,
   })),
   fetchAllCategories(supabase).catch(() => []),
+  fetchCategoryCounts(supabase).catch(() => []),
 ]);
 
 const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
 
 const colour = categoryColor(slug);
-const total = cityCounts.reduce((sum, row) => sum + row.count, 0) || listing.total;
+/*
+ * The category total comes from the count function, not from adding up the
+ * city facets: 16 places have no city at all, so summing the facets quietly
+ * loses them. The same class of mistake as summing category counts for a
+ * location total — both read as a number that is simply wrong.
+ */
+const total = counts.find((row) => row.slug === slug)?.count ?? listing.total;
 const shownTotal = cityParam ? listing.total : total;
 
 const topCities = cityCounts.slice(0, 6);
