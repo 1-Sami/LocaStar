@@ -1,0 +1,5 @@
+{
+  "name": "locastar-web",
+  "compatibility_date": "2026-08-19",
+  "compatibility_flags": ["nodejs_compat"]
+}

@@ -1,0 +1,14 @@
+---
+// Same question as the Next spike: does a server-rendered route reach
+// Cloudflare at all? The timestamp is rendered on the server, so if it is in
+// the HTML source, server rendering works.
+export const prerender = false;
+const renderedAt = new Date().toISOString();
+---
+<html lang="en">
+  <head><title>LocaStar — deploy spike</title></head>
+  <body style="font-family:system-ui;padding:3rem;color:#F4F6F5;background:#07100F">
+    <h1>Deploy spike</h1>
+    <p data-testid="rendered-at">Rendered at {renderedAt}</p>
+  </body>
+</html>

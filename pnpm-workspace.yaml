@@ -2,9 +2,24 @@ packages:
   - "apps/*"
   - "packages/*"
 
+
 # pnpm 11 refuses to run a dependency's install scripts unless it is listed
 # here, and `expo lint` treats that refusal as a hard failure. unrs-resolver is
 # the native resolver behind eslint-import-resolver; it is a dev dependency of
 # the lint tooling only and never reaches the app bundle.
 allowBuilds:
+  # esbuild and workerd are the build toolchain and the Cloudflare runtime for
+  # apps/web. workerd downloads its native binary in a postinstall, so without
+  # this wrangler cannot run the Worker locally at all.
+  esbuild: true
   unrs-resolver: true
+  workerd: true
+
+minimumReleaseAgeExclude:
+  - miniflare@5.20260815.0-alpha
+  - wrangler@4.124.0
+  - '@astrojs/cloudflare@14.2.2'
+  - '@astrojs/internal-helpers@0.10.3'
+  - '@astrojs/markdown-satteri@0.3.6'
+  - astro@7.2.3
+
