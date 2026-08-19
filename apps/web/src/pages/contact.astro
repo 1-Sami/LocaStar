@@ -1,0 +1,152 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { SUPPORT_EMAIL } from '../lib/site';
+
+/*
+ * Both stores check that the support URL shows a way to reach a human, so the
+ * address is large and in the open rather than behind a form. No contact form
+ * at all: a form that silently fails is worse than an address, and there is
+ * nobody staffing a ticket queue.
+ */
+export const prerender = false;
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const title = 'Contact and support | LocaStar';
+const description =
+  'Email a person at support@locastar.se — about something wrong on the map, claiming a business you run, or deleting your account.';
+---
+
+<Base title={title} description={description} canonical={`${origin}/contact`}>
+  <SiteHeader />
+
+  <main id="main" class="wrap">
+    <header class="head">
+      <h1>Contact and support</h1>
+      <p class="lead">One address, read by a person. There is no ticket system and no bot.</p>
+      <a class="email" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+    </header>
+
+    <div class="cards">
+      <section class="card" id="report">
+        <h2>Something is wrong on the map</h2>
+        <p>
+          A place that has closed, an address in the wrong spot, a review that should not be there. Every place
+          has a report link on its own page, which goes straight to a moderator — that is faster than email.
+        </p>
+        <p class="small">
+          Reported photos are hidden the moment they are reported, before anyone has looked at them.
+        </p>
+      </section>
+
+      <section class="card" id="claim">
+        <h2>You run a place that is listed</h2>
+        <p>
+          Claiming it lets you keep the details right — hours, contact, description. Write to us from an address
+          at the organisation and say which place it is.
+        </p>
+        <p class="small">Claiming does not let you remove reviews or hide what people have written.</p>
+      </section>
+
+      <section class="card">
+        <h2>Delete your account</h2>
+        <p>
+          You can do it yourself in the app, in Settings, and it takes effect immediately. If you cannot sign in
+          or no longer have the app, email us from the address on the account.
+        </p>
+        <p class="small">
+          <a href="/legal/delete-account">What is deleted, and what is kept →</a>
+        </p>
+      </section>
+    </div>
+
+    <p class="who">
+      LocaStar is operated by Sadek Mirza, Stockholm, Sweden. See the{' '}
+      <a href="/legal/privacy">Privacy Policy</a> and <a href="/legal/terms">Terms of Service</a>.
+    </p>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-block: 48px 72px;
+  }
+
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 36px;
+    align-items: flex-start;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+
+  .lead {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 56ch;
+  }
+
+  .email {
+    font-size: clamp(22px, 3.4vw, 34px);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    margin-top: 6px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 13px;
+    padding: 24px;
+  }
+
+  .card h2 {
+    font-size: 18px;
+    line-height: 1.3;
+    margin-bottom: 12px;
+  }
+
+  .card p {
+    margin: 0 0 10px;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text-70);
+  }
+
+  .small {
+    font-size: 13px;
+    color: var(--text-55);
+  }
+
+  .who {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--hairline);
+    font-size: 14px;
+    color: var(--text-55);
+  }
+
+  @media (max-width: 1000px) {
+    .cards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

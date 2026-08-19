@@ -1,0 +1,277 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { storeLinksReady, STORE_LINKS } from '../lib/site';
+
+/*
+ * Four alternating bands, from the app's own About copy (about.find*, save*,
+ * private*, contribute* in apps/mobile/src/locales/en.json). Same words as the
+ * app, per the handoff — not rewritten for the web.
+ */
+export const prerender = false;
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const title = 'What LocaStar does';
+const description =
+  'Find places worth going to, save and organise them, plan something private, and leave something behind for the next person. Free, on iOS and Android.';
+
+const bands = [
+  {
+    lead: 'Find places worth going to.',
+    body: 'Search by activity or browse what’s near you, with ratings, photos and directions from people who actually showed up.',
+  },
+  {
+    lead: 'Save and organise.',
+    body: 'Keep favourites, build a “want to go” list, and group places into lists you can keep private or share with everyone.',
+  },
+  {
+    lead: 'Plan something private.',
+    body: 'Organising a party, a wedding, or a film shoot? Create it as a private activity and share it only with the people you invite.',
+  },
+  {
+    lead: 'Leave something behind.',
+    body: 'Add a rating, a photo, or a spot nobody has listed yet.',
+  },
+];
+---
+
+<Base title={`${title} | LocaStar`} description={description} canonical={`${origin}/features`}>
+  <SiteHeader current="features" />
+
+  <main id="main">
+    <header class="wrap head">
+      <h1>What you can do here</h1>
+      <p class="lead">
+        LocaStar starts from the activity. You look for a court, a slope, a trail or a festival, and you get the
+        spot itself: what it’s like, who’s been there, and how to get to it.
+      </p>
+    </header>
+
+    {
+      bands.map((band, index) => (
+        <section class={`band${index % 2 === 1 ? ' flip' : ''}`}>
+          <div class="wrap band-inner">
+            <div class="band-copy">
+              <h2>{band.lead}</h2>
+              <p>{band.body}</p>
+            </div>
+            <div class="band-art" aria-hidden="true" />
+          </div>
+        </section>
+      ))
+    }
+
+    <section class="wrap closing">
+      <div class="closing-inner">
+        <h2>Free, on both stores</h2>
+        <p>
+          Browsing needs no account at all. One is only needed to save places, write a review, or add somewhere
+          new. English and Swedish, no ads.
+        </p>
+        <div class="badges">
+          {
+            storeLinksReady ? (
+              <>
+                <a class="store" href={STORE_LINKS.appStore}>
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">DOWNLOAD ON THE</span>
+                    <span class="store-name">App Store</span>
+                  </span>
+                </a>
+                <a class="store" href={STORE_LINKS.googlePlay}>
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">GET IT ON</span>
+                    <span class="store-name">Google Play</span>
+                  </span>
+                </a>
+              </>
+            ) : (
+              <>
+                <span class="store waiting">
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">DOWNLOAD ON THE</span>
+                    <span class="store-name">App Store</span>
+                  </span>
+                </span>
+                <span class="store waiting">
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">GET IT ON</span>
+                    <span class="store-name">Google Play</span>
+                  </span>
+                </span>
+              </>
+            )
+          }
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .head {
+    padding-block: 48px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+
+  .lead {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 60ch;
+  }
+
+  .band {
+    padding-block: 48px;
+  }
+
+  .band:nth-child(odd) {
+    background: var(--surface);
+  }
+
+  .band-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+
+  .band.flip .band-inner {
+    direction: rtl;
+  }
+
+  .band.flip .band-copy {
+    direction: ltr;
+  }
+
+  .band-copy h2 {
+    font-size: clamp(22px, 3vw, 30px);
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .band-copy p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--text-70);
+    max-width: 50ch;
+  }
+
+  /* A coloured panel rather than a screenshot: the app's screens are on the
+     home page's download band, and repeating them here would say less. */
+  .band-art {
+    height: 260px;
+    border-radius: 13px;
+    background:
+      radial-gradient(420px 200px at 30% 20%, rgba(43, 163, 163, 0.22), transparent 65%),
+      linear-gradient(150deg, #125f6f, #0a2a31);
+  }
+
+  .closing {
+    padding-block: 56px 72px;
+  }
+
+  .closing-inner {
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .closing h2 {
+    font-size: 28px;
+  }
+
+  .closing p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 56ch;
+  }
+
+  .badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .store {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 20px;
+    background: var(--text);
+    border-radius: 9px;
+    color: var(--page);
+  }
+
+  .store:hover {
+    color: var(--page);
+  }
+
+  .store.waiting {
+    opacity: 0.72;
+    cursor: default;
+  }
+
+  .store-mark {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: repeating-linear-gradient(45deg, #d9ddd9, #d9ddd9 5px, #c9cfc9 5px, #c9cfc9 10px);
+    flex: none;
+  }
+
+  .store-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .over {
+    font-size: 8px;
+    line-height: 1.2;
+    letter-spacing: 0.1em;
+    color: rgba(7, 16, 15, 0.55);
+  }
+
+  .store-name {
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  @media (max-width: 900px) {
+    .band-inner,
+    .band.flip .band-inner {
+      grid-template-columns: 1fr;
+      direction: ltr;
+      gap: 24px;
+    }
+
+    .band-art {
+      height: 180px;
+    }
+  }
+</style>
