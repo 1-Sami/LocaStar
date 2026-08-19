@@ -1,3 +1,14 @@
+export {
+  fetchCategoryBySlug,
+  fetchAllCategories,
+  fetchCategoryCityCounts,
+  fetchCategoryPlaces,
+} from "./api/categoryPages";
+export type {
+  CategoryCityCount,
+  CategoryPlace,
+  CategorySummary,
+} from "./api/categoryPages";
 export { CategoryColors } from "./categoryColors";
 export { createSupabaseClient } from "./supabaseClient";
 export { reportCrash, fetchCrashReports, type CrashReport, type CrashReportRow } from "./api/crashes";

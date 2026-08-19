@@ -1,0 +1,549 @@
+---
+import {
+  fetchAllCategories,
+  fetchCategoryBySlug,
+  fetchCategoryCityCounts,
+  fetchCategoryPlaces,
+} from '@locastar/shared';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { categoryColor, ratingLabel } from '../../lib/format';
+import { anonClient } from '../../lib/supabase';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const supabase = anonClient();
+
+const category = slug ? await fetchCategoryBySlug(supabase, slug).catch(() => null) : null;
+if (!category || !slug) return new Response(null, { status: 404 });
+
+/*
+ * ?city= narrows the page without becoming a separate indexable URL.
+ *
+ * The filtered view is genuinely useful to a person — "libraries in Järfälla"
+ * — but it is the same content sliced, so it canonicalises back to the
+ * unfiltered page. Otherwise 54 categories times 66 cities is 3,500 pages
+ * competing with each other for the same terms.
+ */
+const cityParam = Astro.url.searchParams.get('city')?.trim() || undefined;
+
+const [cityCounts, listing, allCategories] = await Promise.all([
+  fetchCategoryCityCounts(supabase, slug).catch(() => []),
+  fetchCategoryPlaces(supabase, category.id, { city: cityParam, limit: 24 }).catch(() => ({
+    places: [],
+    total: 0,
+  })),
+  fetchAllCategories(supabase).catch(() => []),
+]);
+
+const publicUrl = (path: string | null) =>
+  path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
+
+const colour = categoryColor(slug);
+const total = cityCounts.reduce((sum, row) => sum + row.count, 0) || listing.total;
+const shownTotal = cityParam ? listing.total : total;
+
+const topCities = cityCounts.slice(0, 6);
+const remainingCities = Math.max(0, cityCounts.length - topCities.length);
+
+/*
+ * Related activities: other categories, excluding this one.
+ *
+ * Deliberately not "random" — a stable slice keeps the internal link graph
+ * stable between crawls, which is what the links are for.
+ */
+const related = allCategories.filter((c) => c.slug !== slug).slice(0, 10);
+
+const heading = cityParam ? `${category.name} in ${cityParam}` : `${category.name} in Sweden`;
+const title = cityParam
+  ? `${category.name} in ${cityParam} — ${shownTotal} places | LocaStar`
+  : `${category.name} in Sweden — ${shownTotal} places | LocaStar`;
+
+/*
+ * A description built from what is actually on the page.
+ *
+ * Not a template sentence with the name dropped in — those get discarded, and
+ * they tell a reader nothing the title did not. The counts are real, so this
+ * changes as the map grows.
+ */
+const where = cityParam ? cityParam : 'Sweden';
+const cityBit =
+  !cityParam && cityCounts.length > 1
+    ? ` Across ${cityCounts.length} towns and cities, from ${topCities[0].city} downwards.`
+    : '';
+const description =
+  `${shownTotal} ${category.name.toLowerCase()} in ${where}, added and described by the people who go to them.` +
+  `${cityBit} Directions, photos and reviews on LocaStar.`;
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const canonical = `${origin}/activity/${slug}`;
+
+const jsonLd: Record<string, unknown>[] = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'LocaStar', item: `${origin}/` },
+      { '@type': 'ListItem', position: 2, name: category.name, item: canonical },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: heading,
+    numberOfItems: listing.places.length,
+    itemListElement: listing.places.slice(0, 24).map((place, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: place.name,
+      url: `${origin}/location/${place.id}`,
+    })),
+  },
+];
+
+/*
+ * FAQ answers are written from what the data can support, not invented.
+ * FAQPage structured data is only emitted because these answers are genuinely
+ * on the page — Google treats markup that is not visible as a violation.
+ */
+const faqs = [
+  {
+    q: `Is every ${category.name.toLowerCase()} in Sweden listed here?`,
+    a: 'No. The map is young and grows when people add what they know. Most entries came from OpenStreetMap; the descriptions and photos come from people who have been there.',
+  },
+  {
+    q: 'Does it cost anything?',
+    a: 'No. Browsing needs no account at all. An account is only needed to save places, write a review or add somewhere new.',
+  },
+  {
+    q: 'Something here is wrong or gone. What now?',
+    a: 'Every place has a report link on its own page. Reports go to a moderator, and a reported photo is hidden until someone has looked at it.',
+  },
+];
+
+jsonLd.push({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.q,
+    acceptedAnswer: { '@type': 'Answer', text: faq.a },
+  })),
+});
+---
+
+<Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
+  <SiteHeader />
+
+  <main id="main">
+    <div class="colour-bar" style={`background:${colour}`}></div>
+
+    <div class="wrap intro">
+      <nav class="mono crumbs" aria-label="Breadcrumb">
+        <a href="/">LocaStar</a>
+        <span aria-hidden="true">/</span>
+        <span class="here">{category.name}</span>
+      </nav>
+
+      <h1>{heading}</h1>
+
+      <p class="lead">
+        {shownTotal === 0
+          ? `Nothing here yet — nobody has added ${category.name.toLowerCase()} in ${where}.`
+          : description}
+      </p>
+
+      {
+        cityCounts.length > 0 && (
+          <div class="chips">
+            <a
+              class={`chip${cityParam ? '' : ' on'}`}
+              href={`/activity/${slug}`}
+              style={cityParam ? '' : `background:${colour};border-color:${colour}`}
+            >
+              All {total}
+            </a>
+            {topCities.map((row) => (
+              <a
+                class={`chip${cityParam === row.city ? ' on' : ''}`}
+                href={`/activity/${slug}?city=${encodeURIComponent(row.city)}`}
+                style={cityParam === row.city ? `background:${colour};border-color:${colour}` : ''}
+              >
+                {row.city} {row.count}
+              </a>
+            ))}
+            {remainingCities > 0 && <span class="chip muted">+{remainingCities} more</span>}
+          </div>
+        )
+      }
+    </div>
+
+    <section class="wrap listing">
+      <div class="listing-head">
+        <h2>{cityParam ? `In ${cityParam}` : 'Where people have been'}</h2>
+        {listing.total > listing.places.length && (
+          <span class="mono soft">Showing {listing.places.length} of {listing.total}</span>
+        )}
+      </div>
+
+      {
+        listing.places.length === 0 ? (
+          <div class="empty">
+            <p class="empty-lead">Nothing here yet.</p>
+            <p class="sub">
+              If you know {category.name.toLowerCase()} around here, you know something the map does not.
+            </p>
+          </div>
+        ) : (
+          <div class="grid">
+            {listing.places.map((place) => {
+              const rating = ratingLabel(place.avgRating, place.reviewCount);
+              const cover = publicUrl(place.coverPhotoPath);
+              return (
+                <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
+                  {cover ? (
+                    <div class="card-photo" style={`background-image:url("${cover}")`} />
+                  ) : (
+                    <div class="card-photo flat" style={`background:${colour}`}>
+                      <span class="mono">{category.name}</span>
+                    </div>
+                  )}
+                  <div class="card-body">
+                    <span class="card-name">{place.name}</span>
+                    {rating.rated ? (
+                      <span class="mono card-rating">
+                        ★ {rating.avg} <span class="dim">({rating.count})</span>
+                      </span>
+                    ) : (
+                      <span class="mono card-unrated">Not rated yet</span>
+                    )}
+                    {(place.address || place.city) && (
+                      <span class="card-where">{[place.address, place.city].filter(Boolean).join(' · ')}</span>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )
+      }
+    </section>
+
+    <section class="wrap two-col">
+      <div class="prose">
+        <h2>Finding {category.name.toLowerCase()} in {where}</h2>
+        <p>
+          Places like these are hard to find on an ordinary map, because most of them are not listings of
+          their own — they sit inside a school yard, a park or a stretch of forest, under somebody else's
+          name or under no name at all.
+        </p>
+        <p>
+          That is the gap LocaStar is for. Every entry here can carry directions, opening hours, whether it
+          works in winter, and what it is actually like when you turn up — written by people who did.
+        </p>
+        <a class="add-link" href="/add">Know one that isn't here? Add it →</a>
+      </div>
+
+      <div class="faq">
+        <h2>Questions</h2>
+        {
+          faqs.map((faq) => (
+            <details class="faq-item">
+              <summary>{faq.q}</summary>
+              <p>{faq.a}</p>
+            </details>
+          ))
+        }
+      </div>
+    </section>
+
+    {
+      related.length > 0 && (
+        <section class="wrap related">
+          <h2>Other things to do</h2>
+          <div class="chips">
+            {related.map((other) => (
+              <a class="chip" href={`/activity/${other.slug}`} style={`border-color:${categoryColor(other.slug)}`}>
+                {other.name}
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  .colour-bar {
+    height: 8px;
+  }
+
+  .intro {
+    padding-top: 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
+  }
+
+  .crumbs .here {
+    color: var(--accent);
+  }
+
+  h1 {
+    font-size: clamp(36px, 6vw, 68px);
+    line-height: 1.02;
+    letter-spacing: -0.038em;
+  }
+
+  .lead {
+    font-size: 20px;
+    line-height: 1.6;
+    color: var(--text-70);
+    margin: 0;
+    max-width: 640px;
+    text-wrap: pretty;
+  }
+
+  .chips {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-weight: 500;
+    font-size: 13px;
+    padding: 11px 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(244, 246, 245, 0.2);
+    color: var(--text-70);
+    transition: border-color 120ms ease-out;
+  }
+
+  .chip:hover {
+    color: var(--text);
+  }
+
+  .chip.on {
+    color: #fff;
+  }
+
+  .chip.muted {
+    color: var(--text-42);
+  }
+
+  .listing {
+    padding-top: 56px;
+  }
+
+  .listing-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+  }
+
+  .listing-head h2 {
+    font-size: 26px;
+  }
+
+  .soft {
+    font-size: 12px;
+    color: var(--text-42);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    border: 1px solid;
+    border-radius: 11px;
+    overflow: hidden;
+    background: var(--surface);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .card-photo {
+    height: 140px;
+    background-size: cover;
+    background-position: center;
+  }
+
+  /* The normal case: 985 of 996 places have no photo. */
+  .card-photo.flat {
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .card-photo.flat .mono {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .card-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .card-name {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .card-rating {
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+
+  .dim {
+    color: var(--text-42);
+  }
+
+  .card-unrated {
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    color: var(--text-42);
+  }
+
+  .card-where {
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--text-55);
+  }
+
+  .empty {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 26px;
+  }
+
+  .empty-lead {
+    margin: 0;
+    font-size: 17px;
+  }
+
+  .sub {
+    font-size: 13px;
+    color: var(--text-55);
+    margin: 6px 0 0;
+  }
+
+  .two-col {
+    padding-top: 52px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+  }
+
+  .prose h2,
+  .faq h2 {
+    font-size: 24px;
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+
+  .prose p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-70);
+    margin: 0 0 14px;
+    max-width: 62ch;
+  }
+
+  .add-link {
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .faq-item {
+    border-top: 1px solid var(--hairline);
+    padding: 15px 0;
+  }
+
+  .faq-item summary {
+    font-size: 16px;
+    line-height: 1.3;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-item summary::after {
+    content: '+';
+    font-family: var(--font-mono);
+    color: var(--text-42);
+  }
+
+  .faq-item[open] summary::after {
+    content: '−';
+  }
+
+  .faq-item p {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text-70);
+    margin: 10px 0 0;
+  }
+
+  .related {
+    padding-block: 52px 64px;
+  }
+
+  .related h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 1279px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .two-col {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
