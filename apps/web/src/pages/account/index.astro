@@ -6,6 +6,7 @@ import {
   fetchProfile,
   fetchProfileStats,
   fetchSavedLocations,
+  isModeratorRole,
 } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -36,6 +37,15 @@ const [profile, stats, favourites, bucketList, lists, reviews, added] = await Pr
 ]);
 
 const name = profile?.username ?? profile?.display_name ?? user.email ?? 'You';
+
+/*
+ * Moderators get told plainly that the tools are not here.
+ *
+ * Reports, bans and the moderation log all work in the app and none of it is
+ * on the website — agreed to revisit for v2. A moderator signing in here and
+ * finding nothing would reasonably assume it was broken.
+ */
+const isModerator = isModeratorRole(profile?.role ?? 'user');
 const saved = [...favourites, ...bucketList];
 
 const NAV = [
@@ -53,7 +63,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   description="Your saved places, lists, contributions and reviews."
   canonical={`${origin}/account`}
 >
-  <SiteHeader cta="add" />
+  <SiteHeader />
 
   <main id="main" class="wrap layout">
     <aside class="side">
@@ -86,10 +96,22 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         <form method="post" action="/auth/sign-out">
           <button class="signout" type="submit">Log out</button>
         </form>
+        <a class="delete-link" href="/account/delete">Delete your account</a>
       </div>
     </aside>
 
     <section class="body">
+      {
+        isModerator && (
+          <div class="mod-note">
+            <span class="mono mod-kicker">MODERATOR</span>
+            <p>
+              Reports, bans, warnings and the moderation log are in the app only. None of it is on the website
+              yet — that is planned for a later version, not missing by accident.
+            </p>
+          </div>
+        )
+      }
       {
         section === 'saved' && (
           <>
@@ -303,6 +325,45 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     font-size: 11px;
     letter-spacing: 0.1em;
     color: var(--text-42);
+  }
+
+  .side-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .delete-link {
+    font-size: 13px;
+    color: var(--text-42);
+  }
+
+  .delete-link:hover {
+    color: #e05252;
+  }
+
+  .mod-note {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--accent);
+    border-radius: 9px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+  }
+
+  .mod-kicker {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .mod-note p {
+    margin: 8px 0 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 60ch;
   }
 
   .signout {

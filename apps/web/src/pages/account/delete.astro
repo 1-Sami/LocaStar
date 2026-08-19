@@ -1,0 +1,277 @@
+---
+import { DELETE_ACCOUNT_INFO } from '@locastar/shared';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { currentUser } from '../../lib/auth';
+import { SUPPORT_EMAIL } from '../../lib/site';
+
+/*
+ * Deleting an account, from the website.
+ *
+ * The app has had this since launch and the website did not, which meant
+ * somebody signed in here had to go and find their phone to leave. Leaving is
+ * a right; it should not need the app.
+ *
+ * The two lists below are read from the shared legal document rather than
+ * retyped, so this page cannot end up promising something different from
+ * /legal/delete-account — which is the page Google Play has on file.
+ */
+export const prerender = false;
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect('/auth/sign-in');
+
+const deletedSection = DELETE_ACCOUNT_INFO.sections.find((s) => s.title === 'What is deleted');
+const keptSection = DELETE_ACCOUNT_INFO.sections.find((s) => s.title === 'What is kept, and why');
+
+const deletedItems =
+  deletedSection?.blocks.find((b) => b.kind === 'bullets')?.kind === 'bullets'
+    ? (deletedSection.blocks.find((b) => b.kind === 'bullets') as { kind: 'bullets'; items: string[] }).items
+    : [];
+
+const keptText =
+  keptSection?.blocks.find((b) => b.kind === 'text')?.kind === 'text'
+    ? (keptSection.blocks.find((b) => b.kind === 'text') as { kind: 'text'; text: string }).text
+    : '';
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const typed = String(form.get('confirm') ?? '').trim();
+
+  /*
+   * Typing the word, not just clicking a button.
+   *
+   * This cannot be undone and it is one click from a page somebody reached by
+   * accident. A deliberate action should require a deliberate act.
+   */
+  if (typed.toUpperCase() !== 'DELETE') {
+    error = 'Type DELETE to confirm, exactly as shown.';
+  } else {
+    try {
+      /*
+       * The edge function deletes the account and then emails a confirmation,
+       * which the client cannot do for itself — the address has to come from a
+       * verified token rather than from whatever the browser claims. If it is
+       * unreachable, delete directly instead: a mail outage is no reason to
+       * hold somebody in an account they want gone. Same fallback the app uses.
+       */
+      const { error: functionError } = await supabase.functions.invoke('delete-account');
+      if (functionError) {
+        console.error('Falling back to direct deletion, no email sent', functionError);
+        const { error: rpcError } = await supabase.rpc('delete_own_account');
+        if (rpcError) throw rpcError;
+      }
+      await supabase.auth.signOut();
+      return Astro.redirect('/?deleted=1');
+    } catch (deleteError) {
+      console.error('Account deletion failed', deleteError);
+      error = `That did not go through. Try again, or write to ${SUPPORT_EMAIL} and we will do it for you.`;
+    }
+  }
+}
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base
+  title="Delete your account | LocaStar"
+  description="Delete your LocaStar account. Immediate, and it cannot be undone."
+  canonical={`${origin}/account/delete`}
+>
+  <SiteHeader />
+
+  <main id="main" class="wrap">
+    <div class="panel">
+      <a class="mono back" href="/account">← BACK TO YOUR ACCOUNT</a>
+
+      <h1>Delete your account</h1>
+      <p class="lead">Immediate, and it cannot be undone.</p>
+
+      <section class="block">
+        <h2>What is erased</h2>
+        <ul>
+          {deletedItems.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+
+      <section class="block">
+        <h2>What is kept</h2>
+        <p>{keptText}</p>
+        <p class="small">
+          The full explanation is on <a href="/legal/delete-account">the deletion page</a>. If you want something
+          you posted removed outright rather than unlinked, write to{' '}
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> first — afterwards there is no account to
+          match it to.
+        </p>
+      </section>
+
+      <form method="post" class="form">
+        {error && <p class="error" role="alert">{error}</p>}
+
+        <label class="field">
+          <span class="mono label">TYPE DELETE TO CONFIRM</span>
+          <input name="confirm" autocomplete="off" placeholder="DELETE" required />
+        </label>
+
+        <div class="actions">
+          <button type="submit">Delete my account</button>
+          <a class="ghost" href="/account">Keep my account</a>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-block: 48px 80px;
+  }
+
+  .panel {
+    max-width: 640px;
+  }
+
+  .back {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-42);
+  }
+
+  h1 {
+    font-size: clamp(30px, 5vw, 44px);
+    line-height: 1.06;
+    letter-spacing: -0.03em;
+    margin-top: 16px;
+  }
+
+  .lead {
+    margin: 12px 0 30px;
+    font-size: 17px;
+    color: var(--text-70);
+  }
+
+  .block {
+    margin-bottom: 26px;
+  }
+
+  h2 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  li,
+  .block p {
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--text-70);
+  }
+
+  .block p {
+    margin: 0 0 10px;
+  }
+
+  .small {
+    font-size: 13.5px;
+    color: var(--text-55);
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-top: 22px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .label {
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--text-55);
+  }
+
+  input {
+    border: 1px solid rgba(244, 246, 245, 0.3);
+    border-radius: 8px;
+    padding: 14px 15px;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    max-width: 260px;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: #e05252;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Red, not the accent: this is the one control on the site that destroys
+     something, and it should not look like every other button. */
+  button {
+    background: #e05252;
+    border: 0;
+    border-radius: 9px;
+    padding: 14px 24px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #c94545;
+  }
+
+  .ghost {
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 13px 20px;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .ghost:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .error {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(224, 82, 82, 0.12);
+    border: 1px solid rgba(224, 82, 82, 0.35);
+    color: #f0a9a9;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+</style>
