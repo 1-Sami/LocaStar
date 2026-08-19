@@ -16,11 +16,35 @@ export const prerender = false;
 
 const supabase = anonClient();
 
-const [categoryCounts, lists, totalPlaces] = await Promise.all([
-  fetchCategoryCounts(supabase).catch(() => []),
-  fetchPublicLists(supabase).catch(() => []),
-  fetchLocationTotal(supabase).catch(() => 0),
-]);
+/*
+ * The counts are the page, so they are not allowed to fail quietly.
+ *
+ * Defaulting them to zero would render "0 places and activities" — a false
+ * claim that the map is empty, on the first page anyone sees. 503 says the
+ * server is having a moment, which is both true and retryable.
+ *
+ * The shared-lists strip is different: it is supplementary, so losing it just
+ * drops a section.
+ */
+let categoryCounts;
+let totalPlaces;
+try {
+  [categoryCounts, totalPlaces] = await Promise.all([
+    fetchCategoryCounts(supabase),
+    fetchLocationTotal(supabase),
+  ]);
+} catch (error) {
+  console.error('Failed to load the home page counts', error);
+  return new Response('Temporarily unavailable', {
+    status: 503,
+    headers: { 'Retry-After': '60' },
+  });
+}
+
+const lists = await fetchPublicLists(supabase).catch((error) => {
+  console.error('Failed to load shared lists', error);
+  return [];
+});
 
 const withPlaces = categoryCounts.filter((row) => row.count > 0);
 

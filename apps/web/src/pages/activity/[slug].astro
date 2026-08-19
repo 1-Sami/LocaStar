@@ -16,7 +16,18 @@ export const prerender = false;
 const { slug } = Astro.params;
 const supabase = anonClient();
 
-const category = slug ? await fetchCategoryBySlug(supabase, slug).catch(() => null) : null;
+let category;
+try {
+  category = slug ? await fetchCategoryBySlug(supabase, slug) : null;
+} catch (error) {
+  // Same reasoning as the location page: a blip must not read as "gone".
+  console.error('Failed to load category', slug, error);
+  return new Response('Temporarily unavailable', {
+    status: 503,
+    headers: { 'Retry-After': '60' },
+  });
+}
+
 if (!category || !slug) return new Response(null, { status: 404 });
 
 /*

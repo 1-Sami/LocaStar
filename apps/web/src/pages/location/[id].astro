@@ -23,7 +23,26 @@ const supabase = anonClient();
  * activity are not, which is exactly the behaviour we want. A miss is a real
  * 404, not an error.
  */
-const location = id ? await fetchLocationById(supabase, id).catch(() => null) : null;
+let location;
+try {
+  location = id ? await fetchLocationById(supabase, id) : null;
+} catch (error) {
+  /*
+   * A failed request is not a missing page.
+   *
+   * Swallowing this into a 404 tells Google the place is gone, and Google
+   * acts on that by dropping it from the index — a transient blip during a
+   * crawl would quietly cost the page its ranking. 503 says "ask again",
+   * which is the truth.
+   */
+  console.error('Failed to load location', id, error);
+  return new Response('Temporarily unavailable', {
+    status: 503,
+    headers: { 'Retry-After': '60' },
+  });
+}
+
+// Genuinely absent, or hidden from anonymous readers by RLS. That is a 404.
 if (!location) return new Response(null, { status: 404 });
 
 const [photos, reviews] = await Promise.all([
