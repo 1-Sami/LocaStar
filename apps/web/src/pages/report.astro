@@ -1,0 +1,358 @@
+---
+import { fetchLocationById, reportLocation, reportReview } from '@locastar/shared';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { currentUser } from '../lib/auth';
+import { anonClient } from '../lib/supabase';
+
+/*
+ * Reporting, from the website.
+ *
+ * The same reason lists the app uses, deliberately — a moderator reading the
+ * queue should not be able to tell which surface a report came from, and two
+ * vocabularies would make the audit log inconsistent.
+ *
+ * A report needs an account. Not to make it awkward: an anonymous report has
+ * nobody to tell the outcome to, and nothing to stop one person filing a
+ * hundred.
+ */
+export const prerender = false;
+
+const REASON_OTHER = 'Other';
+
+const LOCATION_REASONS = [
+  'Spam',
+  'Inappropriate content',
+  "Doesn't exist / permanently closed",
+  'Incorrect information',
+  'Duplicate of another listing',
+  REASON_OTHER,
+];
+
+/*
+ * A review has fewer honest complaints available than a listing does.
+ * "Doesn't exist" and "Duplicate" are claims about a place, not about
+ * somebody's opinion of it — offering them invites reports a moderator can
+ * only dismiss. Same reasoning, and same list, as the app.
+ */
+const REVIEW_REASONS = ['Spam', 'Inappropriate content', REASON_OTHER];
+
+/** Words, not characters: "bad" and "no" are not a reason anyone can act on. */
+const MIN_OTHER_WORDS = 3;
+const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+
+const locationId = Astro.url.searchParams.get('location');
+const reviewId = Astro.url.searchParams.get('review');
+const isReview = Boolean(reviewId);
+
+if (!locationId && !reviewId) return Astro.redirect('/');
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+
+// The place being reported, or the place the review is on, for context.
+const context = locationId
+  ? await fetchLocationById(anonClient(), locationId).catch(() => null)
+  : null;
+
+let error: string | null = null;
+let done = false;
+
+if (Astro.request.method === 'POST') {
+  if (!user) {
+    error = 'You need to be signed in to report something.';
+  } else {
+    const form = await Astro.request.formData();
+    const reason = String(form.get('reason') ?? '');
+    const details = String(form.get('details') ?? '').trim();
+
+    const allowed = isReview ? REVIEW_REASONS : LOCATION_REASONS;
+    if (!allowed.includes(reason)) {
+      error = 'Choose a reason.';
+    } else if (reason === REASON_OTHER && countWords(details) < MIN_OTHER_WORDS) {
+      error = `Tell us what is wrong — at least ${MIN_OTHER_WORDS} words, so a moderator can act on it.`;
+    } else {
+      try {
+        if (isReview) {
+          await reportReview(supabase, {
+            reviewId: reviewId!,
+            reporterId: user.id,
+            reason,
+            details: details || null,
+          });
+        } else {
+          await reportLocation(supabase, {
+            locationId: locationId!,
+            reporterId: user.id,
+            reason,
+            details: details || null,
+          });
+        }
+        done = true;
+      } catch (submitError) {
+        console.error('Failed to file report', submitError);
+        error = 'That did not send. Try again in a moment.';
+      }
+    }
+  }
+}
+
+const reasons = isReview ? REVIEW_REASONS : LOCATION_REASONS;
+const backHref = locationId ? `/location/${locationId}` : '/';
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base
+  title="Report something | LocaStar"
+  description="Tell a moderator about a place or a review that breaks the rules."
+  canonical={`${origin}/report`}
+>
+  <SiteHeader />
+
+  <main id="main" class="wrap">
+    <div class="panel">
+      {
+        done ? (
+          <>
+            <h1>Thank you — that is with a moderator</h1>
+            <p class="lead">
+              Somebody will look at it. If it breaks the rules it comes down; if it does not, the report is
+              closed and nothing changes.
+            </p>
+            <a class="cta" href={backHref}>Back to the place</a>
+          </>
+        ) : (
+          <>
+            <h1>{isReview ? 'Report a review' : 'Report this place'}</h1>
+            {context && <p class="what">{context.name}</p>}
+            <p class="lead">
+              Reports go to a moderator, not to whoever posted it. They can dismiss it, remove the content,
+              warn the author, or restrict the account behind it.
+            </p>
+
+            {!user ? (
+              <div class="signin-first">
+                <p>
+                  You need an account to report something — so we can tell you what happened, and so one person
+                  cannot file a hundred.
+                </p>
+                <div class="actions">
+                  <a class="cta" href="/auth/sign-in">Sign in</a>
+                  <a class="ghost" href="/auth/sign-up">Create an account</a>
+                </div>
+              </div>
+            ) : (
+              <form method="post" class="form">
+                {error && <p class="error" role="alert">{error}</p>}
+
+                <fieldset class="reasons">
+                  <legend class="mono label">WHAT IS WRONG</legend>
+                  {reasons.map((reason, index) => (
+                    <label class="radio">
+                      <input type="radio" name="reason" value={reason} required checked={index === 0} />
+                      <span>{reason}</span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <label class="field">
+                  <span class="mono label">ANYTHING ELSE (OPTIONAL, UNLESS YOU CHOSE OTHER)</span>
+                  <textarea name="details" rows="4" placeholder="What should a moderator know?"></textarea>
+                </label>
+
+                <div class="actions">
+                  <button type="submit">Send report</button>
+                  <a class="ghost" href={backHref}>Cancel</a>
+                </div>
+
+                <p class="fine">
+                  A reported photo is hidden straight away, before anyone has looked at it. Everything else stays
+                  visible until a moderator decides.
+                </p>
+              </form>
+            )}
+          </>
+        )
+      }
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-block: 48px 80px;
+  }
+
+  .panel {
+    max-width: 620px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4.5vw, 42px);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  .what {
+    margin: 10px 0 0;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .lead {
+    margin: 14px 0 26px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-70);
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .reasons {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .label {
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--text-55);
+  }
+
+  legend.label {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+
+  .radio {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 15.5px;
+    color: var(--text-70);
+    cursor: pointer;
+  }
+
+  .radio input {
+    accent-color: var(--accent);
+    width: 17px;
+    height: 17px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  textarea {
+    border: 1px solid rgba(244, 246, 245, 0.3);
+    border-radius: 8px;
+    padding: 13px 14px;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 15px;
+    line-height: 1.55;
+    resize: vertical;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  button {
+    background: var(--accent);
+    border: 0;
+    border-radius: 9px;
+    padding: 14px 24px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--page);
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #f0b94e;
+  }
+
+  .cta {
+    background: var(--accent);
+    color: var(--page);
+    border-radius: 9px;
+    padding: 14px 24px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .cta:hover {
+    background: #f0b94e;
+    color: var(--page);
+  }
+
+  .ghost {
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 13px 20px;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .ghost:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .fine {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-42);
+  }
+
+  .error {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(224, 82, 82, 0.12);
+    border: 1px solid rgba(224, 82, 82, 0.35);
+    color: #f0a9a9;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .signin-first {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 24px;
+  }
+
+  .signin-first p {
+    margin: 0 0 16px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-70);
+  }
+</style>

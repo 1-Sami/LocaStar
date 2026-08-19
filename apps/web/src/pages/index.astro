@@ -8,7 +8,7 @@ import {
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
-import { categoryColor, ratingLabel } from '../lib/format';
+import { categoryColor, ratingLabel, roundedCount } from '../lib/format';
 import { storeLinksReady, STORE_LINKS } from '../lib/site';
 import { anonClient } from '../lib/supabase';
 
@@ -69,7 +69,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
 const title = 'LocaStar — a map of things to actually go and do';
 const description =
-  `${totalPlaces} places and activities across Sweden — courts, trails, slopes, playgrounds and festivals, ` +
+  `${roundedCount(totalPlaces)} places and activities across Sweden — courts, trails, slopes, playgrounds and festivals, ` +
   'described by the people who have been there. Free, and you can browse without an account.';
 
 const jsonLd = [
@@ -84,7 +84,7 @@ const jsonLd = [
 ---
 
 <Base title={title} description={description} canonical={`${origin}/`} jsonLd={jsonLd}>
-  <SiteHeader current="explore" />
+  <SiteHeader />
 
   <main id="main">
     <section class="hero">
@@ -92,7 +92,7 @@ const jsonLd = [
 
       <div class="hero-inner">
         <span class="mono eyebrow">
-          {totalPlaces} PLACES AND ACTIVITIES · {withPlaces.length} CATEGORIES
+          {roundedCount(totalPlaces)} PLACES AND ACTIVITIES · {roundedCount(withPlaces.length)} CATEGORIES
         </span>
 
         <h1>Explore</h1>
@@ -152,7 +152,10 @@ const jsonLd = [
       <form class="finder" action="/search" method="get">
         <label class="cell activity">
           <span class="mono cell-label">ACTIVITY</span>
-          <input name="q" placeholder="Basketball, skiing, hiking…" autocomplete="off" />
+          <select name="activity">
+            <option value="">Any activity</option>
+            {withPlaces.map((row) => <option value={row.slug}>{row.name}</option>)}
+          </select>
         </label>
         <label class="cell">
           <span class="mono cell-label">WHERE</span>
@@ -184,7 +187,7 @@ const jsonLd = [
           <div class="strip-head">
             <h2>Most liked</h2>
             <a class="mono see-all" href="/search">
-              SEE ALL {totalPlaces} →
+              SEE ALL {roundedCount(totalPlaces)} →
             </a>
           </div>
           <div class="grid-4">
@@ -226,7 +229,7 @@ const jsonLd = [
     <section class="wrap browse">
       <div class="strip-head tight">
         <h2>Browse by activity</h2>
-        <span class="soft">{withPlaces.length} categories, grouped the way the map is</span>
+        <span class="soft">{roundedCount(withPlaces.length)} categories, grouped the way the map is</span>
       </div>
       <div class="cat-grid">
         {

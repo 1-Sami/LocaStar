@@ -9,9 +9,12 @@ export const prerender = false;
 
 const supabase = anonClient();
 
+const sortParam = Astro.url.searchParams.get('sort');
+const sort = sortParam === 'most_liked' || sortParam === 'least_liked' ? sortParam : 'newest';
+
 let lists;
 try {
-  lists = await fetchPublicLists(supabase);
+  lists = await fetchPublicLists(supabase, null, sort);
 } catch (error) {
   console.error('Failed to load public lists', error);
   return new Response('Temporarily unavailable', { status: 503, headers: { 'Retry-After': '60' } });
@@ -42,6 +45,15 @@ const jsonLd = [
         A list is somebody's own collection — the places they would send a friend to. These ones are public,
         so anyone can open them.
       </p>
+
+      <label class="sort">
+        <span class="mono sort-label">SORT</span>
+        <select onchange="location.href = this.value" aria-label="Sort lists">
+          <option value="/community" selected={sort === 'newest'}>Newest</option>
+          <option value="/community?sort=most_liked" selected={sort === 'most_liked'}>Most liked</option>
+          <option value="/community?sort=least_liked" selected={sort === 'least_liked'}>Least liked</option>
+        </select>
+      </label>
     </header>
 
     {
@@ -116,6 +128,34 @@ const jsonLd = [
     line-height: 1.6;
     color: var(--text-70);
     max-width: 58ch;
+  }
+
+  .sort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .sort-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-42);
+  }
+
+  .sort select {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13px;
+    padding: 7px 10px;
+  }
+
+  .sort select option {
+    background: var(--surface);
+    color: var(--text);
   }
 
   .grid {

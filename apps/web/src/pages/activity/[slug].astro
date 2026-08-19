@@ -250,21 +250,7 @@ jsonLd.push({
       }
     </section>
 
-    <section class="wrap two-col">
-      <div class="prose">
-        <h2>Finding {category.name.toLowerCase()} in {where}</h2>
-        <p>
-          Places like these are hard to find on an ordinary map, because most of them are not listings of
-          their own — they sit inside a school yard, a park or a stretch of forest, under somebody else's
-          name or under no name at all.
-        </p>
-        <p>
-          That is the gap LocaStar is for. Every entry here can carry directions, opening hours, whether it
-          works in winter, and what it is actually like when you turn up — written by people who did.
-        </p>
-        <a class="add-link" href="/add">Know one that isn't here? Add it →</a>
-      </div>
-
+    <section class="wrap one-col">
       <div class="faq">
         <h2>Questions</h2>
         {
@@ -479,14 +465,11 @@ jsonLd.push({
     margin: 6px 0 0;
   }
 
-  .two-col {
+  .one-col {
     padding-top: 52px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 56px;
+    max-width: 720px;
   }
 
-  .prose h2,
   .faq h2 {
     font-size: 24px;
     line-height: 1.15;

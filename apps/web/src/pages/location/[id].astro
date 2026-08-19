@@ -276,6 +276,9 @@ const seasonLabel =
                           {'☆'.repeat(5 - review.rating)}
                         </span>
                         <span class="mono when">{relativeDate(review.created_at)}</span>
+                        <a class="mono report" href={`/report?review=${review.id}&location=${location.id}`}>
+                          REPORT
+                        </a>
                       </div>
                       {review.title && <strong class="review-title">{review.title}</strong>}
                       {review.body && <p class="review-text">{review.body}</p>}
@@ -324,7 +327,7 @@ const seasonLabel =
         }
 
         <div class="panel quiet">
-          Something wrong or gone? <a href="/contact#report">Report it</a>
+          Something wrong or gone? <a href={`/report?location=${location.id}`}>Report it</a>
         </div>
       </aside>
     </div>
@@ -627,6 +630,17 @@ const seasonLabel =
 
   .review-head .star {
     font-size: 12px;
+  }
+
+  .report {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-42);
+    margin-left: auto;
+  }
+
+  .report:hover {
+    color: var(--accent);
   }
 
   .when {

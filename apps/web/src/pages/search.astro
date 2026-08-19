@@ -3,7 +3,7 @@ import { fetchCategoryCounts, fetchSearchResults } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
-import { categoryColor, ratingLabel } from '../lib/format';
+import { categoryColor, ratingLabel, roundedCount } from '../lib/format';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
@@ -23,6 +23,8 @@ const activity = url.searchParams.getAll('activity').filter(Boolean);
 const kindParam = url.searchParams.get('kind');
 const seasonParam = url.searchParams.get('season');
 const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
+const sortParam = url.searchParams.get('sort');
+const sort = sortParam === 'name' ? 'name' : 'rating';
 
 const kind = kindParam === 'place' || kindParam === 'activity' ? kindParam : null;
 const season = seasonParam === 'summer' || seasonParam === 'winter' ? seasonParam : null;
@@ -31,7 +33,7 @@ let response;
 let categoryCounts;
 try {
   [response, categoryCounts] = await Promise.all([
-    fetchSearchResults(supabase, { query: q, categorySlugs: activity, kind, season, page, perPage: 20 }),
+    fetchSearchResults(supabase, { query: q, categorySlugs: activity, kind, season, sort, page, perPage: 20 }),
     fetchCategoryCounts(supabase),
   ]);
 } catch (error) {
@@ -186,6 +188,20 @@ const canonical = `${origin}/search`;
       <section class="results" aria-label="Results">
         <div class="results-head">
           <span class="mono count">{response.total} RESULTS</span>
+          <label class="sort">
+            <span class="mono sort-label">SORT</span>
+            <select
+              onchange="location.href = this.value"
+              aria-label="Sort results"
+            >
+              <option value={withParam('sort', 'rating', false)} selected={sort === 'rating'}>
+                Best rated
+              </option>
+              <option value={withParam('sort', 'name', false)} selected={sort === 'name'}>
+                Name, A–Z
+              </option>
+            </select>
+          </label>
           {
             (q || activity.length > 0 || kind || season) && (
               <a class="mono clear" href="/search">
@@ -263,13 +279,6 @@ const canonical = `${origin}/search`;
                 <div class="bar" aria-hidden="true">
                   <div class="bar-fill" style={`width:${progress}%`} />
                 </div>
-                {
-                  response.page < response.pageCount && (
-                    <a class="load-more" href={pageHref(response.page + 1)}>
-                      Load 20 more
-                    </a>
-                  )
-                }
                 {
                   response.pageCount > 1 && (
                     <nav class="pages" aria-label="Pagination">
@@ -473,6 +482,34 @@ const canonical = `${origin}/search`;
     font-size: 12px;
     letter-spacing: 0.1em;
     color: var(--text-55);
+  }
+
+  .sort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .sort-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-42);
+  }
+
+  .sort select {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13px;
+    padding: 7px 10px;
+  }
+
+  .sort select option {
+    background: var(--surface);
+    color: var(--text);
   }
 
   .clear {

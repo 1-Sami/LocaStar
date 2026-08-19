@@ -62,3 +62,20 @@ export function metaDescription(
   const where = fallback.city ? ` in ${fallback.city}` : '';
   return `${fallback.name} — ${what}${where}, on LocaStar. Directions, photos and reviews from people who have been there.`;
 }
+
+/**
+ * A count as a round figure it will not outgrow — "900+", "40+".
+ *
+ * The owner asked for approximate numbers rather than exact ones, so the copy
+ * does not need rewriting every time the map grows. It always rounds *down*:
+ * 998 becomes "900+", not "1000+", because 998 is not a thousand and a site
+ * whose own numbers are wrong is not one to trust about anything else. It
+ * starts saying "1000+" on its own the day there are 1000.
+ */
+export function roundedCount(value: number): string {
+  if (value < 10) return String(value);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+  const step = magnitude >= 1000 ? magnitude : magnitude;
+  const floored = Math.floor(value / step) * step;
+  return `${floored}+`;
+}

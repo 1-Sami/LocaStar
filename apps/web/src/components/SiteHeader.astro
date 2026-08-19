@@ -1,23 +1,20 @@
 ---
+import { fetchProfile } from '@locastar/shared';
+
+import { currentUser } from '../lib/auth';
+
 /*
  * The header as drawn in section 01 of the mockups.
  *
  * The logo is the app's own mark, lifted from
- * apps/mobile/src/components/locastar-logo.tsx — same path data, same teal
- * tile. The handoff is explicit that this is the SVG, not the PNG icons.
- *
- * Several nav targets are not built yet and will 404. They stay in place
- * because the design has them: a header that grows items later moves
- * everything around and reads as a different site.
+ * apps/mobile/src/components/locastar-logo.tsx — same path data, same teal tile.
  */
 interface Props {
-  /** Which nav item is underlined. */
+  /** Which nav item is underlined. Omit on pages that are not a nav target. */
   current?: 'explore' | 'categories' | 'community' | 'features' | 'about';
-  /** Section 01 uses "Get the app"; the detail pages use "Add a place". */
-  cta?: 'app' | 'add';
 }
 
-const { current, cta = 'app' } = Astro.props;
+const { current } = Astro.props;
 
 const NAV = [
   { key: 'explore', label: 'Explore', href: '/search' },
@@ -26,6 +23,29 @@ const NAV = [
   { key: 'features', label: 'Features', href: '/features' },
   { key: 'about', label: 'About', href: '/about' },
 ] as const;
+
+/*
+ * Who is signed in, checked only when a session cookie is actually present.
+ *
+ * Verifying a token is a network round trip, and this header renders on every
+ * page including the ones a crawler reads. Skipping the call when there is no
+ * cookie means a signed-out visitor pays nothing for it.
+ */
+const hasSessionCookie = (Astro.request.headers.get('cookie') ?? '').includes('sb-');
+
+let signedInName: string | null = null;
+let avatarUrl: string | null = null;
+
+if (hasSessionCookie) {
+  const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+  if (user) {
+    const profile = await fetchProfile(supabase, user.id).catch(() => null);
+    signedInName = profile?.username ?? profile?.display_name ?? user.email ?? 'Account';
+    avatarUrl = profile?.avatar_url ?? null;
+  }
+}
+
+const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
 ---
 
 <header class="site-header">
@@ -69,10 +89,23 @@ const NAV = [
 
     <div class="actions">
       <span class="mono lang">EN · SV</span>
-      <a class="signin" href="/auth/sign-in">Sign in</a>
-      <a class="cta" href={cta === 'add' ? '/add' : '#get-the-app'}>
-        {cta === 'add' ? 'Add a place' : 'Get the app'}
-      </a>
+
+      {
+        signedInName ? (
+          <a class="me" href="/account" aria-label={`Your account, signed in as ${signedInName}`}>
+            <span class="me-name">{signedInName}</span>
+            {avatarUrl ? (
+              <span class="me-avatar" style={`background-image:url("${avatarUrl}")`} />
+            ) : (
+              <span class="me-avatar initial">{initial}</span>
+            )}
+          </a>
+        ) : (
+          <a class="signin" href="/auth/sign-in">Sign in</a>
+        )
+      }
+
+      <a class="cta" href="/add">Add a place</a>
     </div>
   </div>
 </header>
@@ -172,6 +205,43 @@ const NAV = [
     color: var(--text);
   }
 
+  /* Signed in: the name and a picture, so it is obvious at a glance which it
+     is. "Sign in" sitting there while you are signed in reads as broken. */
+  .me {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+  }
+
+  .me:hover {
+    color: var(--accent);
+  }
+
+  .me-name {
+    font-weight: 500;
+    font-size: 15px;
+  }
+
+  .me-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: var(--brand);
+    background-size: cover;
+    background-position: center;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .me-avatar.initial {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+
   /* Black on accent, never white — roughly 9:1, and white would fail. */
   .cta {
     font-weight: 600;
@@ -195,7 +265,7 @@ const NAV = [
 
   @media (max-width: 640px) {
     .lang,
-    .signin {
+    .me-name {
       display: none;
     }
   }
