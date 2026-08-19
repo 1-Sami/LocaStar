@@ -1,0 +1,369 @@
+---
+import { isValidUsername } from '@locastar/shared';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { currentUser, sessionClient } from '../../lib/auth';
+
+export const prerender = false;
+
+const { mode } = Astro.params;
+if (mode !== 'sign-in' && mode !== 'sign-up') return new Response(null, { status: 404 });
+const isSignUp = mode === 'sign-up';
+
+const { user } = await currentUser(Astro.cookies, Astro.request.headers);
+if (user) return Astro.redirect('/account');
+
+let error: string | null = null;
+let sentTo: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+  const username = String(form.get('username') ?? '').trim();
+
+  const supabase = sessionClient(Astro.cookies, Astro.request.headers);
+
+  if (!email || !password) {
+    error = 'Enter your email address and a password.';
+  } else if (isSignUp) {
+    /*
+     * The same username rule the app and the database use, checked here so a
+     * bad handle comes back as a sentence rather than as a raw constraint
+     * violation after the account already exists.
+     */
+    const badUsername = username !== '' && !isValidUsername(username);
+    if (badUsername) {
+      error = 'That username will not work — 3 to 20 characters, letters, numbers and underscores.';
+    } else {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: username ? { username } : undefined,
+          emailRedirectTo: new URL('/auth/confirmed', Astro.url.origin).href,
+        },
+      });
+      if (signUpError) {
+        error = signUpError.message;
+      } else {
+        /*
+         * Always the same message, whether or not the address was already
+         * registered. Saying "that email is taken" tells anyone who asks which
+         * addresses have accounts here.
+         */
+        sentTo = email;
+      }
+    }
+  } else {
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      error = 'That email and password did not match. Check both and try again.';
+    } else {
+      return Astro.redirect('/account');
+    }
+  }
+}
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const title = isSignUp ? 'Create an account | LocaStar' : 'Sign in | LocaStar';
+const description = isSignUp
+  ? 'An account lets you save places, build lists and add somewhere new. Browsing LocaStar needs nothing.'
+  : 'Sign in to LocaStar to reach your saved places, lists and reviews.';
+---
+
+<Base title={title} description={description} canonical={`${origin}/auth/${mode}`}>
+  <SiteHeader />
+
+  <main id="main" class="wrap">
+    <div class="card">
+      <div class="pane">
+        <svg width="44" height="44" viewBox="0 0 200 200" aria-hidden="true">
+          <rect x="4" y="4" width="192" height="192" rx="42" fill="#125F6F"></rect>
+          <g
+            transform="translate(23.86 13.94) scale(0.2794)"
+            fill="none"
+            stroke="#F4F6F5"
+            stroke-width="24.5"
+            stroke-linecap="round"
+            stroke-miterlimit="6"
+          >
+            <path d="M 49 48 L 49 566 L 261 566"></path>
+            <path d="M 131 360 L 131 480 L 201 480"></path>
+            <path d="M 466 332 A 182 192 0 1 0 163 325 L 313 568 L 418 412"></path>
+            <path
+              d="M 355 248 L 423 200 L 341 180 L 311 118 L 283 180 L 203 200 L 277 238 L 250 332 L 312 272 L 452 383 C 472 398 492 420 494 450 C 497 490 480 520 450 542 C 425 560 400 568 378 568"
+            ></path>
+          </g>
+        </svg>
+
+        <div class="intro">
+          <h1>{isSignUp ? 'Create an account' : 'Welcome back'}</h1>
+          <p>
+            {
+              isSignUp
+                ? 'You only need one to save places, build lists and add somewhere new. Browsing needs nothing.'
+                : 'Your saved places, lists and reviews are the same ones as in the app.'
+            }
+          </p>
+        </div>
+
+        <div class="segmented">
+          <a class={`seg${isSignUp ? ' on' : ''}`} href="/auth/sign-up">Sign up</a>
+          <a class={`seg${isSignUp ? '' : ' on'}`} href="/auth/sign-in">Sign in</a>
+        </div>
+
+        {
+          sentTo ? (
+            <div class="sent">
+              <p class="sent-lead">Check your email.</p>
+              <p class="sent-sub">
+                If {sentTo} can have an account, a confirmation link is on its way. Opening it on your phone
+                opens the app, if you have it installed.
+              </p>
+            </div>
+          ) : (
+            <form method="post" class="form">
+              {error && <p class="error" role="alert">{error}</p>}
+
+              {isSignUp && (
+                <label class="field">
+                  <span class="mono label">USERNAME</span>
+                  <input name="username" autocomplete="username" placeholder="sam_86" />
+                </label>
+              )}
+
+              <label class="field">
+                <span class="mono label">EMAIL</span>
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  placeholder="you@example.com"
+                />
+              </label>
+
+              <label class="field">
+                <span class="mono label">PASSWORD</span>
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  minlength="8"
+                  autocomplete={isSignUp ? 'new-password' : 'current-password'}
+                  placeholder={isSignUp ? 'At least 8 characters, letters and numbers' : ''}
+                />
+              </label>
+
+              <button type="submit">{isSignUp ? 'Create account' : 'Sign in'}</button>
+
+              {
+                isSignUp ? (
+                  <p class="fine">
+                    By creating an account you agree to the <a href="/legal/terms">Terms of Service</a> and the{' '}
+                    <a href="/legal/privacy">Privacy Policy</a>. The confirmation link opens the app if you have
+                    it installed.
+                  </p>
+                ) : (
+                  <p class="fine">
+                    Forgotten your password? Reset it from the app, or write to us and we will help.
+                  </p>
+                )
+              }
+            </form>
+          )
+        }
+      </div>
+
+      <div class="art" aria-hidden="true"></div>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-block: 56px 80px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 760px;
+    background: var(--page);
+    border: 1px solid var(--hairline);
+    border-radius: 13px;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+  }
+
+  .pane {
+    padding: 44px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  h1 {
+    font-size: 34px;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  .intro p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text-55);
+  }
+
+  .segmented {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    background: var(--surface);
+    border-radius: 9px;
+  }
+
+  .seg {
+    flex: 1;
+    text-align: center;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 11px;
+    border-radius: 7px;
+    color: var(--text-70);
+  }
+
+  .seg.on {
+    background: var(--text);
+    color: var(--page);
+  }
+
+  .seg.on:hover {
+    color: var(--page);
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .label {
+    font-size: 11.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-55);
+  }
+
+  input {
+    border: 1px solid rgba(244, 246, 245, 0.3);
+    border-radius: 8px;
+    padding: 14px 15px;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 15px;
+  }
+
+  input::placeholder {
+    color: var(--text-42);
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  button {
+    margin-top: 4px;
+    background: var(--accent);
+    border: 0;
+    border-radius: 9px;
+    padding: 15px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--page);
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #f0b94e;
+  }
+
+  .fine {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-42);
+  }
+
+  .error {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(224, 82, 82, 0.12);
+    border: 1px solid rgba(224, 82, 82, 0.35);
+    color: #f0a9a9;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .sent {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 22px;
+  }
+
+  .sent-lead {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 500;
+  }
+
+  .sent-sub {
+    margin: 8px 0 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-55);
+  }
+
+  .art {
+    background:
+      radial-gradient(300px 200px at 40% 20%, rgba(43, 163, 163, 0.28), transparent 65%),
+      linear-gradient(150deg, #125f6f, #0a2a31);
+  }
+
+  @media (max-width: 720px) {
+    .card {
+      grid-template-columns: 1fr;
+    }
+
+    .art {
+      display: none;
+    }
+
+    .pane {
+      padding: 32px 24px;
+    }
+  }
+</style>

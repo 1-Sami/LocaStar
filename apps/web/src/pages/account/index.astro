@@ -1,0 +1,498 @@
+---
+import {
+  fetchLists,
+  fetchMyAddedLocations,
+  fetchMyReviews,
+  fetchProfile,
+  fetchProfileStats,
+  fetchSavedLocations,
+} from '@locastar/shared';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { categoryColor, ratingLabel } from '../../lib/format';
+import { currentUser } from '../../lib/auth';
+
+export const prerender = false;
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect('/auth/sign-in');
+
+const section = Astro.url.searchParams.get('show') ?? 'saved';
+
+/*
+ * Everything is fetched with the visitor's own session, so RLS returns their
+ * rows and nobody else's — the same authorisation the app relies on, not a
+ * check written again here.
+ */
+const [profile, stats, favourites, bucketList, lists, reviews, added] = await Promise.all([
+  fetchProfile(supabase, user.id).catch(() => null),
+  fetchProfileStats(supabase, user.id).catch(() => null),
+  fetchSavedLocations(supabase, user.id, 'favorite').catch(() => []),
+  fetchSavedLocations(supabase, user.id, 'bucket_list').catch(() => []),
+  fetchLists(supabase, user.id).catch(() => []),
+  fetchMyReviews(supabase, user.id).catch(() => []),
+  fetchMyAddedLocations(supabase, user.id).catch(() => []),
+]);
+
+const name = profile?.username ?? profile?.display_name ?? user.email ?? 'You';
+const saved = [...favourites, ...bucketList];
+
+const NAV = [
+  { key: 'saved', label: 'Saved', count: saved.length },
+  { key: 'lists', label: 'My lists', count: lists.length },
+  { key: 'added', label: 'Added by me', count: added.length },
+  { key: 'reviews', label: 'My reviews', count: reviews.length },
+] as const;
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base
+  title="Your account | LocaStar"
+  description="Your saved places, lists, contributions and reviews."
+  canonical={`${origin}/account`}
+>
+  <SiteHeader cta="add" />
+
+  <main id="main" class="wrap layout">
+    <aside class="side">
+      <div class="who">
+        <span class="avatar" aria-hidden="true"></span>
+        <div class="who-text">
+          <span class="name">{name}</span>
+          {
+            stats && (
+              <span class="mono contributions">
+                {stats.contributions} {stats.contributions === 1 ? 'CONTRIBUTION' : 'CONTRIBUTIONS'}
+              </span>
+            )
+          }
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Account">
+        {
+          NAV.map((item) => (
+            <a class={`side-link${section === item.key ? ' on' : ''}`} href={`/account?show=${item.key}`}>
+              <span>{item.label}</span>
+              <span class="mono side-count">{item.count}</span>
+            </a>
+          ))
+        }
+      </nav>
+
+      <div class="side-foot">
+        <form method="post" action="/auth/sign-out">
+          <button class="signout" type="submit">Log out</button>
+        </form>
+      </div>
+    </aside>
+
+    <section class="body">
+      {
+        section === 'saved' && (
+          <>
+            <h1>Saved</h1>
+            {saved.length === 0 ? (
+              <div class="empty">
+                <p class="empty-lead">Nothing saved yet.</p>
+                <p class="empty-sub">
+                  The heart keeps a favourite; the bookmark builds a “want to go” list. Both show up here.
+                </p>
+                <a class="ghost" href="/search">Find somewhere</a>
+              </div>
+            ) : (
+              <div class="grid">
+                {saved.map((place) => {
+                  const colour = categoryColor(place.category_slug ?? null);
+                  const rating = ratingLabel(place.avg_rating, place.review_count);
+                  return (
+                    <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
+                      {place.cover_photo_path ? (
+                        <div
+                          class="card-photo"
+                          style={`background-image:url("${supabase.storage.from('media').getPublicUrl(place.cover_photo_path).data.publicUrl}")`}
+                        />
+                      ) : (
+                        <div class="card-photo flat" style={`background:${colour}`} />
+                      )}
+                      <div class="card-body">
+                        <span class="card-name">{place.name}</span>
+                        {rating.rated ? (
+                          <span class="mono card-rating">★ {rating.avg}</span>
+                        ) : (
+                          <span class="mono card-unrated">NOT RATED YET</span>
+                        )}
+                        {place.city && <span class="card-where">{place.city}</span>}
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )
+      }
+
+      {
+        section === 'lists' && (
+          <>
+            <h1>My lists</h1>
+            {lists.length === 0 ? (
+              <div class="empty">
+                <p class="empty-lead">No lists yet.</p>
+                <p class="empty-sub">Private by default. Share one later if you want to.</p>
+              </div>
+            ) : (
+              <div class="grid">
+                {lists.map((list) => (
+                  <a class="list-card" href={`/lists/${list.id}`}>
+                    <span class="card-name">{list.name}</span>
+                    <span class="mono card-unrated">
+                      {list.itemCount} {list.itemCount === 1 ? 'PLACE' : 'PLACES'} ·{' '}
+                      {list.isPublic ? 'PUBLIC' : 'PRIVATE'}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </>
+        )
+      }
+
+      {
+        section === 'added' && (
+          <>
+            <h1>Added by me</h1>
+            {added.length === 0 ? (
+              <div class="empty">
+                <p class="empty-lead">You have not added anywhere yet.</p>
+                <p class="empty-sub">
+                  If you know a court, a trail or a slope the map is missing, it takes a minute.
+                </p>
+                <a class="ghost" href="/add">Add a place</a>
+              </div>
+            ) : (
+              <div class="grid">
+                {added.map((place) => {
+                  const colour = categoryColor(null);
+                  const rating = ratingLabel(place.avg_rating, place.review_count);
+                  return (
+                    <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
+                      <div class="card-photo flat" style={`background:${colour}`} />
+                      <div class="card-body">
+                        <span class="card-name">{place.name}</span>
+                        {rating.rated ? (
+                          <span class="mono card-rating">★ {rating.avg}</span>
+                        ) : (
+                          <span class="mono card-unrated">NOT RATED YET</span>
+                        )}
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )
+      }
+
+      {
+        section === 'reviews' && (
+          <>
+            <h1>My reviews</h1>
+            {reviews.length === 0 ? (
+              <div class="empty">
+                <p class="empty-lead">You have not written a review yet.</p>
+                <p class="empty-sub">
+                  A sentence about what a place is actually like is worth more than a star on its own.
+                </p>
+              </div>
+            ) : (
+              <div class="reviews">
+                {reviews.map((review) => (
+                  <a class="review" href={`/location/${review.location_id}`}>
+                    <span class="card-name">{review.location_name}</span>
+                    <span class="mono card-rating">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                    {review.title && <strong class="review-title">{review.title}</strong>}
+                    {review.body && <p class="review-body">{review.body}</p>}
+                  </a>
+                ))}
+              </div>
+            )}
+          </>
+        )
+      }
+    </section>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 40px;
+    padding-block: 40px 72px;
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    align-self: start;
+    position: sticky;
+    top: 24px;
+  }
+
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface-alt);
+    flex: none;
+  }
+
+  .who-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .name {
+    font-weight: 500;
+    font-size: 16px;
+  }
+
+  .contributions {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+  }
+
+  .side-nav {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .side-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    font-size: 15px;
+    color: var(--text-70);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .side-link.on {
+    color: var(--accent);
+  }
+
+  .side-count {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
+  }
+
+  .signout {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .signout:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .body {
+    min-width: 0;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 22px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .card,
+  .list-card {
+    border-radius: 11px;
+    overflow: hidden;
+    background: var(--surface);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .card {
+    border: 1px solid;
+  }
+
+  .list-card {
+    background: var(--list-surface);
+    border: 1px solid rgba(76, 143, 232, 0.3);
+    padding: 18px;
+    gap: 8px;
+  }
+
+  .card:hover,
+  .list-card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .card-photo {
+    height: 132px;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .card-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .card-name {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .card-rating {
+    font-size: 11.5px;
+    color: var(--accent);
+  }
+
+  .card-unrated {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-42);
+  }
+
+  .card-where {
+    font-size: 13px;
+    color: var(--text-55);
+  }
+
+  .reviews {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .review {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: var(--text);
+  }
+
+  .review:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .review-title {
+    font-weight: 500;
+    font-size: 15px;
+  }
+
+  .review-body {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-70);
+  }
+
+  .empty {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .empty-lead {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 500;
+  }
+
+  .empty-sub {
+    margin: 8px 0 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-55);
+    max-width: 52ch;
+  }
+
+  .ghost {
+    margin-top: 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .ghost:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  @media (max-width: 1000px) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 28px;
+    }
+
+    .side {
+      position: static;
+    }
+
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,14 +1,9 @@
+import { USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH, USERNAME_PATTERN } from '@locastar/shared';
+
 import type { ValidationProblem } from '@/constants/auth';
 
-export const USERNAME_MIN_LENGTH = 3;
-export const USERNAME_MAX_LENGTH = 20;
+export { USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH };
 
-/**
- * Mirrors the profiles_username_format_check constraint in the database, so a
- * bad handle is caught inline rather than coming back as a raw constraint
- * violation after submitting.
- */
-const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,19}$/;
 
 /**
  * What is wrong with the handle, as something the caller can translate — or

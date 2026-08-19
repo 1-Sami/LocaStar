@@ -1,0 +1,87 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { currentUser } from '../lib/auth';
+
+/*
+ * Adding from the web is designed (section 10) but deliberately not built yet
+ * — agreed with the owner. The pin picker needs a real web map library, and
+ * that work would have delayed the half of the site that earns search traffic.
+ *
+ * So this page is honest about it rather than being a 404 behind a header link
+ * that appears on every page.
+ */
+export const prerender = false;
+
+const { user } = await currentUser(Astro.cookies, Astro.request.headers);
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base
+  title="Add a place | LocaStar"
+  description="Add a court, a trail, a slope or a festival the map is missing. It goes live the moment you submit — there is no approval queue."
+  canonical={`${origin}/add`}
+>
+  <SiteHeader cta="add" />
+
+  <main id="main" class="wrap">
+    <header class="head">
+      <h1>Add a place</h1>
+      <p class="lead">
+        If you know a court, a trail, a slope or a festival the map is missing, it takes a minute. It goes live
+        the moment you submit — there is no approval queue.
+      </p>
+    </header>
+
+    <div class="cards">
+      <div class="entry place">
+        <span class="mono kind">A PLACE</span>
+        <p>Somewhere that is simply there — a court, a beach, an outdoor gym, a trail.</p>
+      </div>
+      <div class="entry activity">
+        <span class="mono kind">AN ACTIVITY</span>
+        <p>Something with dates — a festival, a market, a tournament. It retires itself once it has passed.</p>
+      </div>
+    </div>
+
+    <div class="notice">
+      <h2>For now, adding happens in the app</h2>
+      <p>
+        Placing the pin needs a proper map, and that part of the website is not finished. The app does it
+        already, and anything you add there shows up here straight away — it is the same map.
+      </p>
+      <p class="small">
+        {user ? 'You are signed in, so it will be under your account.' : 'You will need an account, which is free.'}
+      </p>
+      <div class="actions">
+        <a class="ghost" href="/search">Look around instead</a>
+        {!user && <a class="ghost" href="/auth/sign-up">Create an account</a>}
+      </div>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main { padding-block: 48px 72px; }
+  .head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 30px; }
+  h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.05; letter-spacing: -0.035em; }
+  .lead { margin: 0; font-size: 18px; line-height: 1.6; color: var(--text-70); max-width: 58ch; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .entry { border: 1px solid; border-radius: 13px; padding: 24px; background: var(--surface); }
+  /* Purple for a place, amber for an activity — the same split the app uses. */
+  .entry.place { border-color: #c34ce8; }
+  .entry.activity { border-color: rgba(232, 169, 59, 0.5); }
+  .kind { font-size: 10px; letter-spacing: 0.16em; color: var(--text-55); }
+  .entry p { margin: 10px 0 0; font-size: 15px; line-height: 1.6; color: var(--text-70); }
+  .notice { margin-top: 24px; border: 1px solid var(--hairline); border-radius: 13px; padding: 28px; }
+  .notice h2 { font-size: 20px; margin-bottom: 12px; }
+  .notice p { margin: 0 0 10px; font-size: 15px; line-height: 1.65; color: var(--text-70); max-width: 58ch; }
+  .small { font-size: 13px; color: var(--text-55); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .ghost { border: 1px solid var(--border); border-radius: 8px; padding: 11px 18px; font-weight: 500; font-size: 14px; color: var(--text); }
+  .ghost:hover { color: var(--accent); border-color: var(--accent); }
+  @media (max-width: 800px) { .cards { grid-template-columns: 1fr; } }
+</style>
