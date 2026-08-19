@@ -6,6 +6,7 @@ import {
   fetchCategoryPlaces,
   fetchCategoryCounts,
 } from '@locastar/shared';
+import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { categoryColor, ratingLabel } from '../../lib/format';
@@ -153,7 +154,7 @@ jsonLd.push({
 ---
 
 <Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
-  <SiteHeader />
+  <SiteHeader current="categories" />
 
   <main id="main">
     <div class="colour-bar" style={`background:${colour}`}></div>
@@ -291,6 +292,7 @@ jsonLd.push({
         </section>
       )
     }
+    <SiteFooter />
   </main>
 </Base>
 

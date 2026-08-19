@@ -1,0 +1,146 @@
+---
+/*
+ * Footer as drawn in section 01: four columns, mono column headings, and the
+ * OpenStreetMap attribution in the first one.
+ *
+ * That attribution is a licence requirement, not decoration — most of the map
+ * was imported from OpenStreetMap and ODbL requires the credit to travel with
+ * the data. Do not drop it to tidy the layout.
+ */
+---
+
+<footer class="site-footer">
+  <div class="wrap inner">
+    <div class="col brand-col">
+      <div class="brand">
+        <svg width="40" height="40" viewBox="0 0 200 200" aria-hidden="true">
+          <rect x="4" y="4" width="192" height="192" rx="42" fill="#125F6F"></rect>
+          <g
+            transform="translate(23.86 13.94) scale(0.2794)"
+            fill="none"
+            stroke="#F4F6F5"
+            stroke-width="24.5"
+            stroke-linecap="round"
+            stroke-miterlimit="6"
+          >
+            <path d="M 49 48 L 49 566 L 261 566"></path>
+            <path d="M 131 360 L 131 480 L 201 480"></path>
+            <path d="M 466 332 A 182 192 0 1 0 163 325 L 313 568 L 418 412"></path>
+            <path
+              d="M 355 248 L 423 200 L 341 180 L 311 118 L 283 180 L 203 200 L 277 238 L 250 332 L 312 272 L 452 383 C 472 398 492 420 494 450 C 497 490 480 520 450 542 C 425 560 400 568 378 568"
+            ></path>
+          </g>
+        </svg>
+        <span class="wordmark">LOCASTAR</span>
+      </div>
+      <p class="credit">
+        Place data ©
+        <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">
+          OpenStreetMap contributors</a
+        >, ODbL. Photos and reviews by LocaStar members.
+      </p>
+    </div>
+
+    <div class="col">
+      <span class="mono col-head">Explore</span>
+      <a href="/search">Search</a>
+      <a href="/categories">Categories</a>
+      <a href="/community">Community lists</a>
+      <a href="/add">Add a place</a>
+    </div>
+
+    <div class="col">
+      <span class="mono col-head">LocaStar</span>
+      <a href="/about">About</a>
+      <a href="/features">Features</a>
+      <a href="/contact">Contact &amp; support</a>
+      <a href="/contact#claim">Claim a business</a>
+    </div>
+
+    <div class="col">
+      <span class="mono col-head">Legal</span>
+      <a href="/legal/privacy">Privacy policy</a>
+      <a href="/legal/terms">Terms of service</a>
+      <a href="/legal/delete-account">Delete your account</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 72px;
+    border-top: 1px solid rgba(244, 246, 245, 0.08);
+  }
+
+  .inner {
+    padding-block: 44px 64px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 36px;
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    align-items: flex-start;
+  }
+
+  .brand-col {
+    gap: 12px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .wordmark {
+    font-weight: 600;
+    font-size: 19px;
+    line-height: 1;
+    letter-spacing: 0.03em;
+  }
+
+  .credit {
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(244, 246, 245, 0.45);
+    margin: 0;
+    max-width: 280px;
+  }
+
+  .credit a {
+    color: rgba(244, 246, 245, 0.6);
+  }
+
+  .col-head {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: rgba(244, 246, 245, 0.35);
+    margin-bottom: 3px;
+  }
+
+  .col a {
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-55);
+  }
+
+  .col a:hover {
+    color: var(--accent);
+  }
+
+  @media (max-width: 1279px) {
+    .inner {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .inner {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

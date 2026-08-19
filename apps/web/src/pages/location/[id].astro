@@ -6,6 +6,7 @@ import {
   fetchReviews,
   isAlwaysOpen,
 } from '@locastar/shared';
+import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { categoryColor, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
@@ -146,7 +147,7 @@ const seasonLabel =
 ---
 
 <Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
-  <SiteHeader />
+  <SiteHeader cta="add" />
 
   <main id="main">
     {
@@ -299,7 +300,12 @@ const seasonLabel =
           <div class="map-slot mono">Map</div>
           <div class="panel-actions">
             <a class="cta" href={mapsHref} rel="noopener noreferrer" target="_blank">Directions</a>
-            <p class="note">Saving needs an account — free, in the app or here.</p>
+            <div class="secondary">
+              <a class="ghost" href="/auth/sign-in">Save</a>
+              <a class="ghost" href="/auth/sign-in">Add to list</a>
+              <a class="ghost narrow" href={`/location/${location.id}`}>Share</a>
+            </div>
+            <span class="note">Saving needs an account — free, in the app or here.</span>
           </div>
         </div>
 
@@ -312,9 +318,14 @@ const seasonLabel =
             <div class="panel quiet">
               <strong>Do you run this place?</strong>
               <span>Claim it to keep the details right.</span>
+              <a class="quiet-link" href="/contact#claim">Claim this place →</a>
             </div>
           )
         }
+
+        <div class="panel quiet">
+          Something wrong or gone? <a href="/contact#report">Report it</a>
+        </div>
       </aside>
     </div>
 
@@ -350,11 +361,20 @@ const seasonLabel =
         </section>
       )
     }
+    <SiteFooter />
   </main>
 </Base>
 
 <style>
   /* ---- photo mosaic, 2fr/1fr at 420px as the mockup sets it ---- */
+  /* The mockup is a 1440px canvas — the photos stop there, they do not bleed
+     to the edge of a wide monitor. */
+  .mosaic,
+  .no-photo {
+    max-width: 1440px;
+    margin-inline: auto;
+  }
+
   .mosaic {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -717,6 +737,38 @@ const seasonLabel =
     line-height: 1.5;
     color: var(--text-42);
     text-align: center;
+  }
+
+  .secondary {
+    display: flex;
+    gap: 9px;
+  }
+
+  .ghost {
+    flex: 1;
+    border: 1px solid rgba(244, 246, 245, 0.22);
+    border-radius: 9px;
+    padding: 13px;
+    text-align: center;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .ghost:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .ghost.narrow {
+    flex: none;
+    padding-inline: 15px;
+  }
+
+  .quiet-link {
+    font-weight: 500;
+    font-size: 13px;
+    margin-top: 3px;
   }
 
   .panel.quiet {

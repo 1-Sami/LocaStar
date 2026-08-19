@@ -1,77 +1,163 @@
 ---
 /*
+ * The header as drawn in section 01 of the mockups.
+ *
  * The logo is the app's own mark, lifted from
  * apps/mobile/src/components/locastar-logo.tsx — same path data, same teal
  * tile. The handoff is explicit that this is the SVG, not the PNG icons.
+ *
+ * Several nav targets are not built yet and will 404. They stay in place
+ * because the design has them: a header that grows items later moves
+ * everything around and reads as a different site.
  */
+interface Props {
+  /** Which nav item is underlined. */
+  current?: 'explore' | 'categories' | 'community' | 'features' | 'about';
+  /** Section 01 uses "Get the app"; the detail pages use "Add a place". */
+  cta?: 'app' | 'add';
+}
+
+const { current, cta = 'app' } = Astro.props;
+
+const NAV = [
+  { key: 'explore', label: 'Explore', href: '/search' },
+  { key: 'categories', label: 'Categories', href: '/categories' },
+  { key: 'community', label: 'Community', href: '/community' },
+  { key: 'features', label: 'Features', href: '/features' },
+  { key: 'about', label: 'About', href: '/about' },
+] as const;
 ---
 
 <header class="site-header">
   <div class="wrap inner">
-    <a class="brand" href="/">
-      <svg width="40" height="40" viewBox="0 0 200 200" aria-hidden="true">
-        <rect x="4" y="4" width="192" height="192" rx="42" fill="#125F6F"></rect>
-        <g
-          transform="translate(23.86 13.94) scale(0.2794)"
-          fill="none"
-          stroke="#F4F6F5"
-          stroke-width="24.5"
-          stroke-linecap="round"
-          stroke-miterlimit="6"
-        >
-          <path d="M 49 48 L 49 566 L 261 566"></path>
-          <path d="M 131 360 L 131 480 L 201 480"></path>
-          <path d="M 466 332 A 182 192 0 1 0 163 325 L 313 568 L 418 412"></path>
-          <path
-            d="M 355 248 L 423 200 L 341 180 L 311 118 L 283 180 L 203 200 L 277 238 L 250 332 L 312 272 L 452 383 C 472 398 492 420 494 450 C 497 490 480 520 450 542 C 425 560 400 568 378 568"
-          ></path>
-        </g>
-      </svg>
-      <span class="wordmark">LOCASTAR</span>
-    </a>
+    <div class="left">
+      <a class="brand" href="/">
+        <svg width="48" height="48" viewBox="0 0 200 200" aria-hidden="true">
+          <rect x="4" y="4" width="192" height="192" rx="42" fill="#125F6F"></rect>
+          <g
+            transform="translate(23.86 13.94) scale(0.2794)"
+            fill="none"
+            stroke="#F4F6F5"
+            stroke-width="24.5"
+            stroke-linecap="round"
+            stroke-miterlimit="6"
+          >
+            <path d="M 49 48 L 49 566 L 261 566"></path>
+            <path d="M 131 360 L 131 480 L 201 480"></path>
+            <path d="M 466 332 A 182 192 0 1 0 163 325 L 313 568 L 418 412"></path>
+            <path
+              d="M 355 248 L 423 200 L 341 180 L 311 118 L 283 180 L 203 200 L 277 238 L 250 332 L 312 272 L 452 383 C 472 398 492 420 494 450 C 497 490 480 520 450 542 C 425 560 400 568 378 568"
+            ></path>
+          </g>
+        </svg>
+        <span class="lockup">
+          <span class="wordmark">LOCASTAR</span>
+          <span class="mono tagline">EXPLORE. MAP. SHARE.</span>
+        </span>
+      </a>
 
-    <nav class="actions" aria-label="Main">
+      <nav class="nav" aria-label="Main">
+        {
+          NAV.map((item) => (
+            <a class={`nav-link${current === item.key ? ' on' : ''}`} href={item.href}>
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+    </div>
+
+    <div class="actions">
       <span class="mono lang">EN · SV</span>
       <a class="signin" href="/auth/sign-in">Sign in</a>
-      <a class="cta" href="/add">Add a place</a>
-    </nav>
+      <a class="cta" href={cta === 'add' ? '/add' : '#get-the-app'}>
+        {cta === 'add' ? 'Add a place' : 'Get the app'}
+      </a>
+    </div>
   </div>
 </header>
 
 <style>
   .site-header {
     border-bottom: 1px solid var(--hairline);
+    background: rgba(7, 16, 15, 0.9);
   }
 
   .inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-block: 22px;
-    gap: 20px;
+    padding-block: 24px;
+    gap: 24px;
+  }
+
+  .left {
+    display: flex;
+    align-items: center;
+    gap: 46px;
+    min-width: 0;
   }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     color: var(--text);
+    flex: none;
   }
 
   .brand:hover {
     color: var(--text);
   }
 
+  .lockup {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
   .wordmark {
     font-weight: 600;
-    font-size: 19px;
+    font-size: 22px;
+    line-height: 1;
     letter-spacing: 0.03em;
+  }
+
+  .tagline {
+    font-size: 9.5px;
+    line-height: 1;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+  }
+
+  .nav {
+    display: flex;
+    gap: 32px;
+  }
+
+  .nav-link {
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1;
+    color: rgba(244, 246, 245, 0.85);
+    padding-bottom: 6px;
+    border-bottom: 2px solid transparent;
+  }
+
+  .nav-link:hover {
+    color: var(--accent);
+  }
+
+  .nav-link.on {
+    color: var(--text);
+    border-bottom-color: var(--accent);
   }
 
   .actions {
     display: flex;
     align-items: center;
     gap: 20px;
+    flex: none;
   }
 
   .lang {
@@ -89,11 +175,11 @@
   /* Black on accent, never white — roughly 9:1, and white would fail. */
   .cta {
     font-weight: 600;
-    font-size: 15.5px;
+    font-size: 16px;
     color: var(--page);
     background: var(--accent);
-    padding: 13px 20px;
-    border-radius: 8px;
+    padding: 14px 24px;
+    border-radius: 9px;
   }
 
   .cta:hover {
@@ -101,8 +187,15 @@
     background: #f0b94e;
   }
 
+  @media (max-width: 1100px) {
+    .nav {
+      display: none;
+    }
+  }
+
   @media (max-width: 640px) {
-    .lang {
+    .lang,
+    .signin {
       display: none;
     }
   }

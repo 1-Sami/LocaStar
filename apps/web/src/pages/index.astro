@@ -6,10 +6,11 @@ import {
   fetchLocationTotal,
   fetchPublicLists,
 } from '@locastar/shared';
+import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { categoryColor, ratingLabel } from '../lib/format';
-import { OSM_ATTRIBUTION, storeLinksReady, STORE_LINKS } from '../lib/site';
+import { storeLinksReady, STORE_LINKS } from '../lib/site';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
@@ -29,10 +30,7 @@ const supabase = anonClient();
 let categoryCounts;
 let totalPlaces;
 try {
-  [categoryCounts, totalPlaces] = await Promise.all([
-    fetchCategoryCounts(supabase),
-    fetchLocationTotal(supabase),
-  ]);
+  [categoryCounts, totalPlaces] = await Promise.all([fetchCategoryCounts(supabase), fetchLocationTotal(supabase)]);
 } catch (error) {
   console.error('Failed to load the home page counts', error);
   return new Response('Temporarily unavailable', {
@@ -49,13 +47,12 @@ const lists = await fetchPublicLists(supabase).catch((error) => {
 const withPlaces = categoryCounts.filter((row) => row.count > 0);
 
 /*
- * A sample of places, taken from the biggest category.
+ * The strip's places.
  *
- * The mockup calls this strip "Near you". The server has no idea where the
- * visitor is and a crawler has no location at all, so that heading would be
- * false on the render that actually gets indexed. Ordered by review count
- * instead — the places somebody has written about are both the honest answer
- * and the best first impression when 99% of entries have nothing.
+ * Ordered by review count, so the ones somebody has actually written about come
+ * first — which is the best that can be done on the server, since it has no
+ * idea where the visitor is. Making the heading literally true needs the
+ * browser's location; see the note on the heading itself.
  */
 const biggest = withPlaces[0];
 const biggestCategory = biggest ? await fetchCategoryBySlug(supabase, biggest.slug).catch(() => null) : null;
@@ -86,13 +83,15 @@ const jsonLd = [
 ---
 
 <Base title={title} description={description} canonical={`${origin}/`} jsonLd={jsonLd}>
-  <SiteHeader />
+  <SiteHeader current="explore" />
 
   <main id="main">
     <section class="hero">
-      <div class="hero-inner wrap">
+      <div class="hero-shade"></div>
+
+      <div class="hero-inner">
         <span class="mono eyebrow">
-          {totalPlaces} places and activities · {withPlaces.length} categories
+          {totalPlaces} PLACES AND ACTIVITIES · {withPlaces.length} CATEGORIES
         </span>
 
         <h1>Explore</h1>
@@ -101,38 +100,91 @@ const jsonLd = [
           One map of things to actually go and do — described by the people who have been there.
         </p>
 
-        {
-          storeLinksReady ? (
-            <div class="badges">
-              <a class="store" href={STORE_LINKS.appStore}>
-                <span class="mono over">Download on the</span>
-                <span class="store-name">App Store</span>
-              </a>
-              <a class="store" href={STORE_LINKS.googlePlay}>
-                <span class="mono over">Get it on</span>
-                <span class="store-name">Google Play</span>
-              </a>
-              <span class="badge-note">Free · iOS and Android · English and Swedish</span>
-            </div>
-          ) : (
-            /* No dead store buttons. Until both apps are public this says what
-               is true, which is more convincing than a link that 404s. */
-            <p class="soon">The app is on its way to the App Store and Google Play. The map works here in the meantime.</p>
-          )
-        }
+        <div class="badges">
+          {
+            storeLinksReady ? (
+              <>
+                <a class="store" href={STORE_LINKS.appStore}>
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">DOWNLOAD ON THE</span>
+                    <span class="store-name">App Store</span>
+                  </span>
+                </a>
+                <a class="store" href={STORE_LINKS.googlePlay}>
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">GET IT ON</span>
+                    <span class="store-name">Google Play</span>
+                  </span>
+                </a>
+              </>
+            ) : (
+              /*
+               * Spans, not links, until the apps are public: the App Store id
+               * does not exist until Apple approves, and a badge that 404s is
+               * worse than one that waits. They become links the moment
+               * STORE_LINKS is filled in — the design is identical either way.
+               */
+              <>
+                <span class="store waiting">
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">DOWNLOAD ON THE</span>
+                    <span class="store-name">App Store</span>
+                  </span>
+                </span>
+                <span class="store waiting">
+                  <span class="store-mark" aria-hidden="true" />
+                  <span class="store-text">
+                    <span class="mono over">GET IT ON</span>
+                    <span class="store-name">Google Play</span>
+                  </span>
+                </span>
+              </>
+            )
+          }
+          <span class="badge-note">Free · iOS and Android · English and Swedish</span>
+        </div>
       </div>
+
+      <form class="finder" action="/search" method="get">
+        <label class="cell activity">
+          <span class="mono cell-label">ACTIVITY</span>
+          <input name="q" placeholder="Basketball, skiing, hiking…" autocomplete="off" />
+        </label>
+        <label class="cell">
+          <span class="mono cell-label">WHERE</span>
+          <input name="where" placeholder="Near me" autocomplete="off" />
+        </label>
+        <label class="cell narrow">
+          <span class="mono cell-label">TYPE</span>
+          <select name="kind">
+            <option value="">Place · Activity</option>
+            <option value="place">Place</option>
+            <option value="activity">Activity</option>
+          </select>
+        </label>
+        <label class="cell narrow">
+          <span class="mono cell-label">SEASON</span>
+          <select name="season">
+            <option value="">Any</option>
+            <option value="summer">Summer</option>
+            <option value="winter">Winter</option>
+          </select>
+        </label>
+        <button class="finder-go" type="submit">Explore</button>
+      </form>
     </section>
 
     {
       featured.length > 0 && (
         <section class="wrap strip">
           <div class="strip-head">
-            <h2>Where people have been</h2>
-            {biggest && (
-              <a class="mono see-all" href={`/activity/${biggest.slug}`}>
-                See all {biggest.count} {biggest.name.toLowerCase()} →
-              </a>
-            )}
+            <h2>Near you</h2>
+            <a class="mono see-all" href="/search">
+              SEE ALL {totalPlaces} →
+            </a>
           </div>
           <div class="grid-4">
             {featured.map((place) => {
@@ -149,11 +201,16 @@ const jsonLd = [
                     </div>
                   )}
                   <div class="card-body">
+                    <span class="card-badge" style={`background:${colour}`}>
+                      {biggest?.name ?? ''}
+                    </span>
                     <span class="card-name">{place.name}</span>
                     {rating.rated ? (
-                      <span class="mono card-rating">★ {rating.avg} <span class="dim">({rating.count})</span></span>
+                      <span class="mono card-rating">
+                        ★ {rating.avg} <span class="dim">({rating.count})</span>
+                      </span>
                     ) : (
-                      <span class="mono card-unrated">Not rated yet</span>
+                      <span class="mono card-unrated">NOT RATED YET</span>
                     )}
                     {place.city && <span class="card-where">{place.city}</span>}
                   </div>
@@ -166,9 +223,9 @@ const jsonLd = [
     }
 
     <section class="wrap browse">
-      <div class="strip-head">
+      <div class="strip-head tight">
         <h2>Browse by activity</h2>
-        <span class="soft">{withPlaces.length} categories with somewhere to go</span>
+        <span class="soft">{withPlaces.length} categories, grouped the way the map is</span>
       </div>
       <div class="cat-grid">
         {
@@ -181,7 +238,7 @@ const jsonLd = [
         }
         {
           withPlaces.length > 23 && (
-            <a class="cat more" href="/search">
+            <a class="cat more" href="/categories">
               <span class="cat-name">+{withPlaces.length - 23} more</span>
             </a>
           )
@@ -194,79 +251,127 @@ const jsonLd = [
         <section class="wrap strip">
           <div class="strip-head">
             <h2>Lists people have shared</h2>
-            <a class="mono see-all" href="/community">See all →</a>
+            <a class="mono see-all" href="/community">
+              COMMUNITY →
+            </a>
           </div>
           <div class="grid-4">
-            {lists.slice(0, 4).map((list) => (
-              <a class="list-card" href={`/lists/${list.id}`}>
-                <span class="list-name">{list.name}</span>
-                <span class="list-by">by {list.ownerUsername ?? list.ownerDisplayName ?? 'someone on LocaStar'}</span>
-                <span class="mono list-count">
-                  {list.itemCount} {list.itemCount === 1 ? 'place' : 'places'}
-                </span>
-              </a>
-            ))}
+            {lists.slice(0, 4).map((list) => {
+              const previews = list.previewLocations.slice(0, 3);
+              return (
+                <a class="list-card" href={`/lists/${list.id}`}>
+                  <span class="list-name">{list.name}</span>
+                  <span class="list-by">
+                    by {list.ownerUsername ?? list.ownerDisplayName ?? 'someone on LocaStar'}
+                  </span>
+                  <div class="list-mosaic">
+                    <div
+                      class="lm-main"
+                      style={previews[0]?.imageUrl ? `background-image:url("${previews[0].imageUrl}")` : ''}
+                    />
+                    <div class="lm-side">
+                      <div
+                        class="lm-tile"
+                        style={previews[1]?.imageUrl ? `background-image:url("${previews[1].imageUrl}")` : ''}
+                      />
+                      <div
+                        class="lm-tile"
+                        style={previews[2]?.imageUrl ? `background-image:url("${previews[2].imageUrl}")` : ''}
+                      />
+                    </div>
+                  </div>
+                  <span class="mono list-count">
+                    {list.itemCount} {list.itemCount === 1 ? 'PLACE' : 'PLACES'} · {list.likeCount} LIKES
+                  </span>
+                </a>
+              );
+            })}
           </div>
         </section>
       )
     }
 
-    <footer class="site-footer">
-      <div class="wrap footer-inner">
-        <div class="foot-col">
-          <span class="foot-head">LocaStar</span>
-          <p class="foot-note">
-            A map of things to actually go and do, described by the people who have been there.
+    <section class="wrap" id="get-the-app">
+      <div class="band">
+        <div class="band-copy">
+          <h2>The whole map, in your pocket</h2>
+          <p>
+            Directions from where you actually are, places saved for later, and a reminder before something you
+            wanted to see starts.
           </p>
-          <p class="foot-note">
-            <a href={OSM_ATTRIBUTION.href} rel="noopener noreferrer" target="_blank">{OSM_ATTRIBUTION.text}</a>
-          </p>
+          <div class="band-badges">
+            <span class="store waiting">
+              <span class="store-mark" aria-hidden="true" />
+              <span class="store-text">
+                <span class="mono over">DOWNLOAD ON THE</span>
+                <span class="store-name">App Store</span>
+              </span>
+            </span>
+            <span class="store waiting">
+              <span class="store-mark" aria-hidden="true" />
+              <span class="store-text">
+                <span class="mono over">GET IT ON</span>
+                <span class="store-name">Google Play</span>
+              </span>
+            </span>
+          </div>
+          <p class="band-note">Free, no ads. Works in English and Swedish.</p>
         </div>
-        <div class="foot-col">
-          <span class="foot-head">Explore</span>
-          <a href="/search">Search</a>
-          <a href="/community">Shared lists</a>
-          <a href="/add">Add a place</a>
-        </div>
-        <div class="foot-col">
-          <span class="foot-head">About</span>
-          <a href="/about">The story</a>
-          <a href="/features">What it does</a>
-          <a href="/contact">Contact</a>
-        </div>
-        <div class="foot-col">
-          <span class="foot-head">Legal</span>
-          <a href="/legal/privacy">Privacy</a>
-          <a href="/legal/terms">Terms</a>
-          <a href="/legal/delete-account">Delete your account</a>
+
+        <div class="band-art">
+          <div class="phone tall">
+            <img src="/app/screen-1.jpg" alt="The LocaStar app showing places near you" loading="lazy" />
+          </div>
+          <div class="phone short">
+            <img src="/app/screen-2.jpg" alt="The LocaStar app showing a place in detail" loading="lazy" />
+          </div>
         </div>
       </div>
-    </footer>
+    </section>
+
+    <SiteFooter />
   </main>
 </Base>
 
 <style>
   /*
-   * No hero photograph yet.
+   * The mockup is a 1440px canvas, so the hero stops there rather than running
+   * to the edge of a wide monitor.
    *
-   * The mockup uses one of the owner's own pictures, and shipping a stock photo
-   * of somewhere that is not in the map would be exactly the dishonesty the
-   * rest of the site avoids. A deep brand gradient reads as deliberate, and the
-   * moment a real photograph exists it drops straight in behind this.
+   * No hero photograph yet: the mockup uses one of the owner's own pictures,
+   * and a stock photo of somewhere not in the map would be exactly the
+   * dishonesty the rest of the site avoids. A deep brand gradient holds the
+   * space and a real picture drops in behind it with one line.
    */
   .hero {
     position: relative;
-    min-height: 560px;
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 660px;
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    justify-content: space-between;
     background:
-      radial-gradient(1200px 500px at 20% 0%, rgba(43, 163, 163, 0.22), transparent 60%),
-      linear-gradient(150deg, #125f6f 0%, #0a2a31 45%, #07100f 100%);
+      radial-gradient(900px 420px at 22% 12%, rgba(43, 163, 163, 0.28), transparent 62%),
+      linear-gradient(150deg, #125f6f 0%, #0a2a31 46%, #07100f 100%);
+    overflow: hidden;
+  }
+
+  .hero-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(7, 16, 15, 0.55) 0%,
+      rgba(7, 16, 15, 0.15) 40%,
+      rgba(7, 16, 15, 0.92) 100%
+    );
+    pointer-events: none;
   }
 
   .hero-inner {
-    width: 100%;
-    padding-block: 96px 64px;
+    position: relative;
+    padding: 150px var(--gutter) 0;
     display: flex;
     flex-direction: column;
     gap: 22px;
@@ -294,6 +399,7 @@ const jsonLd = [
     text-wrap: pretty;
   }
 
+  /* ---- store badges ---- */
   .badges {
     display: flex;
     gap: 10px;
@@ -304,7 +410,8 @@ const jsonLd = [
 
   .store {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 11px;
     padding: 12px 20px;
     background: var(--text);
     border-radius: 9px;
@@ -315,8 +422,27 @@ const jsonLd = [
     color: var(--page);
   }
 
+  .store.waiting {
+    opacity: 0.72;
+    cursor: default;
+  }
+
+  .store-mark {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: repeating-linear-gradient(45deg, #d9ddd9, #d9ddd9 5px, #c9cfc9 5px, #c9cfc9 10px);
+    flex: none;
+  }
+
+  .store-text {
+    display: flex;
+    flex-direction: column;
+  }
+
   .over {
     font-size: 8px;
+    line-height: 1.2;
     letter-spacing: 0.1em;
     color: rgba(7, 16, 15, 0.55);
   }
@@ -327,16 +453,90 @@ const jsonLd = [
     line-height: 1.2;
   }
 
-  .badge-note,
-  .soon {
+  .badge-note {
     font-size: 13px;
     line-height: 1.4;
     color: rgba(244, 246, 245, 0.62);
-    margin: 6px 0 0;
-    max-width: 420px;
+    max-width: 170px;
+    padding-left: 8px;
   }
 
-  /* ---- shared section furniture ---- */
+  /* ---- the finder, pinned to the hero's lower edge ---- */
+  .finder {
+    position: relative;
+    margin: 44px var(--gutter) 36px;
+    display: flex;
+    background: rgba(7, 16, 15, 0.72);
+    border: 1px solid rgba(244, 246, 245, 0.16);
+    border-radius: 10px;
+    overflow: hidden;
+    backdrop-filter: blur(14px);
+  }
+
+  .cell {
+    flex: 1;
+    padding: 18px 22px;
+    border-right: 1px solid rgba(244, 246, 245, 0.14);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    cursor: text;
+  }
+
+  .cell.activity {
+    flex: 1.2;
+  }
+
+  .cell.narrow {
+    flex: 0.8;
+  }
+
+  .cell-label {
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    color: rgba(244, 246, 245, 0.5);
+  }
+
+  .cell input,
+  .cell select {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: rgba(244, 246, 245, 0.85);
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1;
+    width: 100%;
+  }
+
+  .cell input::placeholder {
+    color: rgba(244, 246, 245, 0.85);
+  }
+
+  .cell select option {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .finder-go {
+    width: 190px;
+    flex: none;
+    background: var(--accent);
+    border: 0;
+    color: var(--page);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    cursor: pointer;
+  }
+
+  .finder-go:hover {
+    background: #f0b94e;
+  }
+
+  /* ---- section furniture ---- */
   .strip,
   .browse {
     padding-top: 64px;
@@ -349,6 +549,10 @@ const jsonLd = [
     gap: 16px;
     margin-bottom: 22px;
     flex-wrap: wrap;
+  }
+
+  .strip-head.tight {
+    justify-content: flex-start;
   }
 
   .strip-head h2 {
@@ -411,6 +615,18 @@ const jsonLd = [
     display: flex;
     flex-direction: column;
     gap: 7px;
+    align-items: flex-start;
+  }
+
+  .card-badge {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 8px;
+    border-radius: 4px;
+    color: #fff;
   }
 
   .card-name {
@@ -439,7 +655,7 @@ const jsonLd = [
     color: var(--text-55);
   }
 
-  /* ---- category grid: colour carries the family, the name carries the meaning ---- */
+  /* ---- category grid ---- */
   .cat-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
@@ -484,11 +700,11 @@ const jsonLd = [
   /* ---- shared lists, in the blue family the app uses ---- */
   .list-card {
     background: var(--list-surface);
+    border: 1px solid rgba(76, 143, 232, 0.3);
     border-radius: 11px;
     padding: 18px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
     color: var(--text);
     transition: box-shadow 120ms ease-out;
   }
@@ -500,61 +716,122 @@ const jsonLd = [
 
   .list-name {
     font-weight: 500;
-    font-size: 16px;
+    font-size: 17px;
+    line-height: 1.25;
   }
 
-  .list-by,
-  .list-count {
+  .list-by {
     font-size: 13px;
+    line-height: 1;
     color: var(--text-55);
+    margin: 6px 0 14px;
+  }
+
+  .list-mosaic {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 5px;
+    height: 110px;
+  }
+
+  .lm-side {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .lm-main,
+  .lm-tile {
+    border-radius: 6px;
+    background-color: rgba(244, 246, 245, 0.06);
+    background-size: cover;
+    background-position: center;
   }
 
   .list-count {
     font-size: 11px;
     letter-spacing: 0.1em;
+    color: var(--text-55);
+    margin-top: 12px;
   }
 
-  /* ---- footer ---- */
-  .site-footer {
-    margin-top: 80px;
-    border-top: 1px solid var(--hairline);
-    padding-block: 44px 64px;
-  }
-
-  .footer-inner {
+  /* ---- download band ---- */
+  .band {
+    margin-top: 72px;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 40px;
+    align-items: end;
+    background: linear-gradient(150deg, #125f6f, #0a2a31);
+    border-radius: 14px;
+    overflow: hidden;
+    padding-left: 44px;
   }
 
-  .foot-col {
+  .band-copy {
+    padding-block: 44px;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 14px;
     align-items: flex-start;
+    align-self: center;
   }
 
-  .foot-head {
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 3px;
+  .band-copy h2 {
+    font-size: clamp(24px, 3vw, 32px);
   }
 
-  .foot-note {
-    font-size: 13px;
+  .band-copy p {
+    font-size: 16px;
     line-height: 1.6;
-    color: var(--text-55);
+    color: rgba(244, 246, 245, 0.75);
     margin: 0;
     max-width: 46ch;
   }
 
-  .foot-col a {
-    font-size: 14px;
-    color: var(--text-70);
+  .band-badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
   }
 
-  .foot-col a:hover {
-    color: var(--accent);
+  .band-note {
+    font-size: 13px;
+    color: rgba(244, 246, 245, 0.55);
+  }
+
+  .band-art {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 20px;
+    padding-top: 44px;
+  }
+
+  .phone {
+    width: 186px;
+    border-radius: 26px 26px 0 0;
+    border: 7px solid #05100f;
+    background: #0a0a0d;
+    overflow: hidden;
+    flex: none;
+  }
+
+  .phone img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .phone.tall {
+    height: 380px;
+  }
+
+  .phone.short {
+    height: 330px;
+    margin-bottom: -14px;
   }
 
   @media (max-width: 1279px) {
@@ -566,14 +843,36 @@ const jsonLd = [
       grid-template-columns: repeat(4, 1fr);
     }
 
-    .footer-inner {
-      grid-template-columns: 1fr 1fr;
+    .finder {
+      flex-wrap: wrap;
+    }
+
+    .cell {
+      flex: 1 1 45%;
+    }
+
+    .finder-go {
+      width: 100%;
+      padding-block: 16px;
+    }
+
+    .band {
+      grid-template-columns: 1fr;
+      padding-left: 0;
+    }
+
+    .band-copy {
+      padding-inline: 28px;
     }
   }
 
   @media (max-width: 767px) {
     .hero {
       min-height: 400px;
+    }
+
+    .hero-inner {
+      padding-top: 72px;
     }
 
     .grid-4 {
@@ -584,8 +883,10 @@ const jsonLd = [
       grid-template-columns: repeat(2, 1fr);
     }
 
-    .footer-inner {
-      grid-template-columns: 1fr;
+    .cell {
+      flex: 1 1 100%;
+      border-right: 0;
+      border-bottom: 1px solid rgba(244, 246, 245, 0.14);
     }
   }
 </style>
