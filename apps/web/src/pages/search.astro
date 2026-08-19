@@ -1,0 +1,820 @@
+---
+import { fetchCategoryCounts, fetchSearchResults } from '@locastar/shared';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { categoryColor, ratingLabel } from '../lib/format';
+import { anonClient } from '../lib/supabase';
+
+export const prerender = false;
+
+const supabase = anonClient();
+const url = Astro.url;
+
+/*
+ * Every filter lives in the URL.
+ *
+ * /search?activity=basketball&page=3 has to be a real address somebody can
+ * link, bookmark and index — the handoff is explicit that endless scroll alone
+ * would cost the crawlability the whole project is built around.
+ */
+const q = url.searchParams.get('q')?.trim() || '';
+const activity = url.searchParams.getAll('activity').filter(Boolean);
+const kindParam = url.searchParams.get('kind');
+const seasonParam = url.searchParams.get('season');
+const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
+
+const kind = kindParam === 'place' || kindParam === 'activity' ? kindParam : null;
+const season = seasonParam === 'summer' || seasonParam === 'winter' ? seasonParam : null;
+
+let response;
+let categoryCounts;
+try {
+  [response, categoryCounts] = await Promise.all([
+    fetchSearchResults(supabase, { query: q, categorySlugs: activity, kind, season, page, perPage: 20 }),
+    fetchCategoryCounts(supabase),
+  ]);
+} catch (error) {
+  // A failed search is not an empty one — see the note on the location page.
+  console.error('Search failed', error);
+  return new Response('Temporarily unavailable', { status: 503, headers: { 'Retry-After': '60' } });
+}
+
+const publicUrl = (path: string | null) =>
+  path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
+
+const withPlaces = categoryCounts.filter((row) => row.count > 0);
+
+/** A URL with one parameter changed, everything else preserved. */
+function withParam(name: string, value: string | null, resetPage = true) {
+  const next = new URLSearchParams(url.search);
+  if (value === null) next.delete(name);
+  else next.set(name, value);
+  if (resetPage) next.delete('page');
+  const qs = next.toString();
+  return qs ? `/search?${qs}` : '/search';
+}
+
+/** Toggle one category on or off, keeping the rest. */
+function toggleActivity(slug: string) {
+  const next = new URLSearchParams(url.search);
+  const current = next.getAll('activity');
+  next.delete('activity');
+  const updated = current.includes(slug) ? current.filter((s) => s !== slug) : [...current, slug];
+  updated.forEach((s) => next.append('activity', s));
+  next.delete('page');
+  const qs = next.toString();
+  return qs ? `/search?${qs}` : '/search';
+}
+
+function pageHref(target: number) {
+  const next = new URLSearchParams(url.search);
+  if (target <= 1) next.delete('page');
+  else next.set('page', String(target));
+  const qs = next.toString();
+  return qs ? `/search?${qs}` : '/search';
+}
+
+const first = response.total === 0 ? 0 : (response.page - 1) * response.perPage + 1;
+const last = Math.min(response.page * response.perPage, response.total);
+const progress = response.total === 0 ? 0 : Math.round((last / response.total) * 100);
+
+/*
+ * Page numbers worth rendering: the first three, the last, and the current
+ * neighbourhood. A crawler follows these; a person uses the button.
+ */
+const pageNumbers: (number | '…')[] = [];
+for (let i = 1; i <= response.pageCount; i += 1) {
+  if (i <= 3 || i === response.pageCount || Math.abs(i - response.page) <= 1) pageNumbers.push(i);
+  else if (pageNumbers[pageNumbers.length - 1] !== '…') pageNumbers.push('…');
+}
+
+const describedFilters = [
+  q ? `"${q}"` : null,
+  activity.length ? activity.map((slug) => withPlaces.find((c) => c.slug === slug)?.name ?? slug).join(', ') : null,
+  kind === 'place' ? 'places' : kind === 'activity' ? 'activities' : null,
+  season ? season : null,
+].filter(Boolean);
+
+const title = describedFilters.length
+  ? `${describedFilters.join(' · ')} — ${response.total} results | LocaStar`
+  : `Search ${response.total} places and activities | LocaStar`;
+
+const description = describedFilters.length
+  ? `${response.total} results for ${describedFilters.join(', ')} on LocaStar — with directions, photos and reviews from people who have been there.`
+  : 'Search every place and activity on LocaStar by what you want to do, where, and which season it works in.';
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+/*
+ * Filtered searches canonicalise to the bare page.
+ *
+ * Same reasoning as the city chips on a category page: these are the same
+ * content sliced, and thousands of near-identical URLs competing dilutes the
+ * pages that should win. robots.txt disallows /search? for the same reason.
+ */
+const canonical = `${origin}/search`;
+---
+
+<Base title={title} description={description} canonical={canonical}>
+  <SiteHeader current="explore" cta="add" />
+
+  <main id="main" class="wrap">
+    <form class="searchbar" action="/search" method="get">
+      <span class="mono glyph" aria-hidden="true">⌕</span>
+      <input name="q" value={q} placeholder="Search a place, an activity, a town…" aria-label="Search" />
+      {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
+      {kind && <input type="hidden" name="kind" value={kind} />}
+      {season && <input type="hidden" name="season" value={season} />}
+      <button type="submit">Search</button>
+    </form>
+
+    <div class="layout">
+      <aside class="rail" aria-label="Filters">
+        <div class="group">
+          <span class="mono group-head">TYPE</span>
+          <div class="pills">
+            <a class={`pill${kind === 'place' ? ' on' : ''}`} href={withParam('kind', kind === 'place' ? null : 'place')}>
+              Places
+            </a>
+            <a
+              class={`pill${kind === 'activity' ? ' on' : ''}`}
+              href={withParam('kind', kind === 'activity' ? null : 'activity')}
+            >
+              Activities
+            </a>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="mono group-head">SEASON</span>
+          <div class="pills">
+            <a
+              class={`pill${season === 'summer' ? ' on' : ''}`}
+              href={withParam('season', season === 'summer' ? null : 'summer')}
+            >
+              Summer
+            </a>
+            <a
+              class={`pill${season === 'winter' ? ' on' : ''}`}
+              href={withParam('season', season === 'winter' ? null : 'winter')}
+            >
+              Winter
+            </a>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="mono group-head">ACTIVITY</span>
+          <div class="cats">
+            {
+              withPlaces.map((row) => {
+                const on = activity.includes(row.slug);
+                return (
+                  <a class={`cat${on ? ' on' : ''}`} href={toggleActivity(row.slug)}>
+                    <span class="box" style={on ? `background:${categoryColor(row.slug)};border-color:transparent` : ''} />
+                    <span class="cat-name">
+                      {row.name} <span class="mono cat-count">{row.count}</span>
+                    </span>
+                  </a>
+                );
+              })
+            }
+          </div>
+        </div>
+      </aside>
+
+      <section class="results" aria-label="Results">
+        <div class="results-head">
+          <span class="mono count">{response.total} RESULTS</span>
+          {
+            (q || activity.length > 0 || kind || season) && (
+              <a class="mono clear" href="/search">
+                CLEAR ALL
+              </a>
+            )
+          }
+        </div>
+
+        {
+          response.results.length === 0 ? (
+            /* Named actions, not just an absence — the handoff's rule for every
+               empty state on the site. */
+            <div class="empty">
+              <p class="empty-lead">Nothing matched that.</p>
+              <p class="empty-sub">
+                Try fewer filters, or a nearby town. If you know somewhere that should be here, it can be added.
+              </p>
+              <div class="empty-actions">
+                <a class="ghost" href="/search">Clear the filters</a>
+                <a class="ghost" href="/add">Add a place</a>
+              </div>
+            </div>
+          ) : (
+            <div class="list">
+              {response.results.map((place) => {
+                const colour = categoryColor(place.categorySlug);
+                const rating = ratingLabel(place.avgRating, place.reviewCount);
+                const cover = publicUrl(place.coverPhotoPath);
+                return (
+                  <article class="row" style={`border-color:${colour}`}>
+                    <a class="row-link" href={`/location/${place.id}`}>
+                      {cover ? (
+                        <div class="row-photo" style={`background-image:url("${cover}")`} />
+                      ) : (
+                        <div class="row-photo flat" style={`background:${colour}`}>
+                          <span class="mono">{place.categoryName ?? ''}</span>
+                        </div>
+                      )}
+                      <div class="row-body">
+                        {place.categoryName && (
+                          <span class="row-badge" style={`background:${colour}`}>
+                            {place.categoryName}
+                          </span>
+                        )}
+                        <span class="row-name">{place.name}</span>
+                        {rating.rated ? (
+                          <span class="mono row-rating">
+                            ★ {rating.avg} <span class="dim">({rating.count} reviews)</span>
+                          </span>
+                        ) : (
+                          <span class="mono row-unrated">NOT RATED YET</span>
+                        )}
+                        <span class="row-where">{[place.address, place.city].filter(Boolean).join(', ')}</span>
+                      </div>
+                    </a>
+                    <div class="row-side">
+                      <a
+                        class="directions"
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        Directions
+                      </a>
+                    </div>
+                  </article>
+                );
+              })}
+
+              <div class="pager">
+                <span class="mono showing">
+                  SHOWING {first}–{last} OF {response.total}
+                </span>
+                <div class="bar" aria-hidden="true">
+                  <div class="bar-fill" style={`width:${progress}%`} />
+                </div>
+                {
+                  response.page < response.pageCount && (
+                    <a class="load-more" href={pageHref(response.page + 1)}>
+                      Load 20 more
+                    </a>
+                  )
+                }
+                {
+                  response.pageCount > 1 && (
+                    <nav class="pages" aria-label="Pagination">
+                      {pageNumbers.map((n) =>
+                        n === '…' ? (
+                          <span class="mono gap">…</span>
+                        ) : (
+                          <a class={`page${n === response.page ? ' on' : ''}`} href={pageHref(n)}>
+                            {n}
+                          </a>
+                        )
+                      )}
+                      {response.page < response.pageCount && (
+                        <a class="page" href={pageHref(response.page + 1)} aria-label="Next page">
+                          →
+                        </a>
+                      )}
+                    </nav>
+                  )
+                }
+                <p class="pager-note">
+                  Numbered pages stay in the markup for search engines and for linking; the button is what people
+                  actually use.
+                </p>
+              </div>
+            </div>
+          )
+        }
+      </section>
+
+      <aside class="map-col" aria-label="Map">
+        <div class="map-slot">
+          <span class="mono">MAP</span>
+          <span class="map-note">
+            The interactive map is not built yet. The result list is the accessible source of truth and works
+            without it.
+          </span>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-top: 24px;
+  }
+
+  /* ---- search field ---- */
+  .searchbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid rgba(244, 246, 245, 0.16);
+    border-radius: 9px;
+    padding: 6px 6px 6px 18px;
+    max-width: 620px;
+  }
+
+  .glyph {
+    font-size: 15px;
+    color: var(--text-55);
+  }
+
+  .searchbar input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 16px;
+    padding-block: 13px;
+    min-width: 0;
+  }
+
+  .searchbar input::placeholder {
+    color: var(--text-42);
+  }
+
+  .searchbar button {
+    background: var(--accent);
+    border: 0;
+    border-radius: 7px;
+    padding: 12px 22px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--page);
+    cursor: pointer;
+  }
+
+  .searchbar button:hover {
+    background: #f0b94e;
+  }
+
+  /* ---- three columns, as drawn ---- */
+  .layout {
+    display: grid;
+    grid-template-columns: 238px 1fr 520px;
+    gap: 0;
+    margin-top: 22px;
+  }
+
+  .rail {
+    border-right: 1px solid rgba(244, 246, 245, 0.08);
+    padding: 24px 22px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .group-head {
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    color: var(--text-42);
+  }
+
+  .pills {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    font-size: 12px;
+    padding: 8px 13px;
+    border-radius: 20px;
+    border: 1px solid rgba(244, 246, 245, 0.2);
+    color: var(--text-70);
+  }
+
+  .pill.on {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--page);
+    font-weight: 500;
+  }
+
+  .pill.on:hover {
+    color: var(--page);
+  }
+
+  .cats {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 460px;
+    overflow-y: auto;
+  }
+
+  .cat {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    color: var(--text-70);
+  }
+
+  .cat.on {
+    color: var(--text);
+  }
+
+  .box {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+    border: 1px solid rgba(244, 246, 245, 0.25);
+    flex: none;
+  }
+
+  .cat-count {
+    font-size: 11px;
+    letter-spacing: 0;
+    color: var(--text-42);
+  }
+
+  /* ---- results ---- */
+  .results {
+    padding: 24px 22px;
+    min-width: 0;
+  }
+
+  .results-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .count {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-55);
+  }
+
+  .clear {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--link);
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .row {
+    display: flex;
+    gap: 15px;
+    background: var(--surface);
+    border: 1px solid;
+    border-radius: 11px;
+    padding: 13px;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .row:hover {
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .row-link {
+    flex: 1;
+    display: flex;
+    gap: 15px;
+    color: var(--text);
+    min-width: 0;
+  }
+
+  .row-link:hover {
+    color: var(--text);
+  }
+
+  .row-photo {
+    width: 150px;
+    height: 104px;
+    border-radius: 7px;
+    flex: none;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .row-photo.flat {
+    display: flex;
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  .row-photo.flat .mono {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .row-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .row-badge {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 8px;
+    border-radius: 4px;
+    color: #fff;
+  }
+
+  .row-name {
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .row-rating {
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .dim {
+    color: var(--text-42);
+  }
+
+  .row-unrated {
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    color: var(--text-42);
+  }
+
+  .row-where {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-55);
+  }
+
+  .row-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    flex: none;
+  }
+
+  .directions {
+    font-weight: 500;
+    font-size: 12.5px;
+    color: var(--page);
+    background: var(--text);
+    border-radius: 7px;
+    padding: 9px 14px;
+    white-space: nowrap;
+  }
+
+  .directions:hover {
+    color: var(--page);
+    background: var(--accent);
+  }
+
+  /* ---- empty ---- */
+  .empty {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 30px;
+  }
+
+  .empty-lead {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 500;
+  }
+
+  .empty-sub {
+    margin: 8px 0 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-55);
+    max-width: 52ch;
+  }
+
+  .empty-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .ghost {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .ghost:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ---- pager ---- */
+  .pager {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 22px 0 6px;
+    border-top: 1px solid rgba(244, 246, 245, 0.08);
+    margin-top: 6px;
+  }
+
+  .showing {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
+  }
+
+  .bar {
+    width: 210px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(244, 246, 245, 0.12);
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .load-more {
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 13px 28px;
+  }
+
+  .load-more:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .pages {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .page {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--text-70);
+    border: 1px solid rgba(244, 246, 245, 0.18);
+    border-radius: 6px;
+    padding: 8px 11px;
+  }
+
+  .page.on {
+    color: var(--page);
+    background: var(--text);
+    border-color: var(--text);
+  }
+
+  .page.on:hover {
+    color: var(--page);
+  }
+
+  .gap {
+    font-size: 12px;
+    color: var(--text-42);
+    padding: 0 4px;
+  }
+
+  .pager-note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-42);
+    text-align: center;
+    max-width: 330px;
+    margin: 0;
+  }
+
+  /* ---- map column ---- */
+  .map-col {
+    border-left: 1px solid rgba(244, 246, 245, 0.08);
+    padding: 24px 0 24px 22px;
+  }
+
+  .map-slot {
+    position: sticky;
+    top: 24px;
+    height: 640px;
+    border-radius: 12px;
+    background: #0b1519;
+    border: 1px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .map-slot .mono {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--text-42);
+  }
+
+  .map-note {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-42);
+    max-width: 30ch;
+  }
+
+  /* 768–1279: the map becomes secondary, filters stay. */
+  @media (max-width: 1279px) {
+    .layout {
+      grid-template-columns: 220px 1fr;
+    }
+
+    .map-col {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+
+    .rail {
+      border-right: 0;
+      border-bottom: 1px solid rgba(244, 246, 245, 0.08);
+      padding-right: 0;
+    }
+
+    .results {
+      padding-inline: 0;
+    }
+
+    .row {
+      flex-direction: column;
+    }
+
+    .row-link {
+      flex-direction: column;
+    }
+
+    .row-photo {
+      width: 100%;
+      height: 150px;
+    }
+
+    .row-side {
+      justify-content: stretch;
+    }
+
+    .directions {
+      text-align: center;
+      padding-block: 13px;
+    }
+  }
+</style>

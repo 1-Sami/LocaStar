@@ -1,3 +1,5 @@
+export { fetchSearchResults } from "./api/siteSearch";
+export type { SearchParams, SearchResult, SearchResponse } from "./api/siteSearch";
 export {
   fetchCategoryBySlug,
   fetchAllCategories,
@@ -6,6 +8,7 @@ export {
   fetchCategoryCounts,
   fetchSitemapEntries,
   fetchLocationTotal,
+  fetchMostLikedPlaces,
 } from "./api/categoryPages";
 export type {
   CategoryCityCount,

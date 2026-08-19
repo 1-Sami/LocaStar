@@ -1,0 +1,9 @@
+# Apple fetches this with no extension and expects application/json. Served as
+# anything else, universal links fail silently — the app never opens, links
+# just go to the browser, and nothing reports an error.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+
+# Android's verifier is less fussy, but be explicit anyway.
+/.well-known/assetlinks.json
+  Content-Type: application/json

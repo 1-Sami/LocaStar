@@ -1,9 +1,8 @@
 ---
 import {
-  fetchCategoryBySlug,
   fetchCategoryCounts,
-  fetchCategoryPlaces,
   fetchLocationTotal,
+  fetchMostLikedPlaces,
   fetchPublicLists,
 } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
@@ -47,19 +46,21 @@ const lists = await fetchPublicLists(supabase).catch((error) => {
 const withPlaces = categoryCounts.filter((row) => row.count > 0);
 
 /*
- * The strip's places.
+ * Most liked: only places somebody has actually reviewed.
  *
- * Ordered by review count, so the ones somebody has actually written about come
- * first — which is the best that can be done on the server, since it has no
- * idea where the visitor is. Making the heading literally true needs the
- * browser's location; see the note on the heading itself.
+ * The server cannot know where a visitor is and a crawler has no location at
+ * all, so "nearest" is not something it can honestly render. Agreed with the
+ * owner: this stays most-liked, and becomes genuinely near-you in the browser
+ * only if the visitor grants location. Declining keeps them here.
+ *
+ * Unreviewed places are excluded for the same reason the app's Most Liked
+ * carousel excludes them — 989 of 998 sit at 0.0, so "most liked" would
+ * otherwise be a random slice.
  */
-const biggest = withPlaces[0];
-const biggestCategory = biggest ? await fetchCategoryBySlug(supabase, biggest.slug).catch(() => null) : null;
-const featured = biggestCategory
-  ? (await fetchCategoryPlaces(supabase, biggestCategory.id, { limit: 4 }).catch(() => ({ places: [], total: 0 })))
-      .places
-  : [];
+const featured = await fetchMostLikedPlaces(supabase, 4).catch((error) => {
+  console.error('Failed to load most liked places', error);
+  return [];
+});
 
 const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
@@ -181,14 +182,14 @@ const jsonLd = [
       featured.length > 0 && (
         <section class="wrap strip">
           <div class="strip-head">
-            <h2>Near you</h2>
+            <h2>Most liked</h2>
             <a class="mono see-all" href="/search">
               SEE ALL {totalPlaces} →
             </a>
           </div>
           <div class="grid-4">
             {featured.map((place) => {
-              const colour = categoryColor(biggest?.slug ?? null);
+              const colour = categoryColor(place.categorySlug ?? null);
               const rating = ratingLabel(place.avgRating, place.reviewCount);
               const cover = publicUrl(place.coverPhotoPath);
               return (
@@ -197,12 +198,12 @@ const jsonLd = [
                     <div class="card-photo" style={`background-image:url("${cover}")`} />
                   ) : (
                     <div class="card-photo flat" style={`background:${colour}`}>
-                      <span class="mono">{biggest?.name ?? ''}</span>
+                      <span class="mono">{place.categoryName ?? ''}</span>
                     </div>
                   )}
                   <div class="card-body">
                     <span class="card-badge" style={`background:${colour}`}>
-                      {biggest?.name ?? ''}
+                      {place.categoryName ?? ''}
                     </span>
                     <span class="card-name">{place.name}</span>
                     {rating.rated ? (

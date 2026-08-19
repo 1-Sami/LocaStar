@@ -20,6 +20,8 @@ export type CategoryPlace = {
   avgRating: number;
   reviewCount: number;
   coverPhotoPath: string | null;
+  categorySlug?: string | null;
+  categoryName?: string | null;
 };
 
 export type CategorySummary = {
@@ -207,4 +209,55 @@ export async function fetchLocationTotal(client: SupabaseClient): Promise<number
   const { count, error } = await client.from("locations").select("*", { count: "exact", head: true });
   if (error) throw error;
   return count ?? 0;
+}
+
+/**
+ * The best-reviewed places, for the website's home strip.
+ *
+ * Only places somebody has actually reviewed. The app's Most Liked carousel
+ * follows the same rule — showing unrated places under "most liked" is
+ * meaningless when 989 of 998 sit at 0.0, and it was changed there for exactly
+ * that reason.
+ *
+ * This is what the server renders and what a crawler indexes. If a visitor
+ * grants location the strip can be re-sorted by distance in the browser; until
+ * then "nearest" is not something the server can honestly claim.
+ */
+export async function fetchMostLikedPlaces(
+  client: SupabaseClient,
+  limit = 4
+): Promise<CategoryPlace[]> {
+  const { data, error } = await client
+    .from("locations")
+    .select(
+      "id, name, address, city, avg_rating, review_count, location_photos(storage_path), location_categories(categories(slug, name))"
+    )
+    .gt("review_count", 0)
+    .order("avg_rating", { ascending: false })
+    .order("review_count", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    name: string;
+    address: string | null;
+    city: string | null;
+    avg_rating: number;
+    review_count: number;
+    location_photos: { storage_path: string }[] | null;
+    location_categories: { categories: { slug: string; name: string } | null }[] | null;
+  };
+
+  return ((data ?? []) as unknown as Row[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    address: row.address,
+    city: row.city,
+    avgRating: row.avg_rating,
+    reviewCount: row.review_count,
+    coverPhotoPath: row.location_photos?.[0]?.storage_path ?? null,
+    categorySlug: row.location_categories?.[0]?.categories?.slug ?? null,
+    categoryName: row.location_categories?.[0]?.categories?.name ?? null,
+  }));
 }
