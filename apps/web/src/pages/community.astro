@@ -1,0 +1,223 @@
+---
+import { fetchPublicLists } from '@locastar/shared';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { anonClient } from '../lib/supabase';
+
+export const prerender = false;
+
+const supabase = anonClient();
+
+let lists;
+try {
+  lists = await fetchPublicLists(supabase);
+} catch (error) {
+  console.error('Failed to load public lists', error);
+  return new Response('Temporarily unavailable', { status: 503, headers: { 'Retry-After': '60' } });
+}
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const title = 'Lists people have shared | LocaStar';
+const description =
+  'Collections of places put together by people using LocaStar — a summer with kids, roads worth the fuel, courts worth the trip.';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Shared lists',
+    url: `${origin}/community`,
+  },
+];
+---
+
+<Base title={title} description={description} canonical={`${origin}/community`} jsonLd={jsonLd}>
+  <SiteHeader current="community" />
+
+  <main id="main" class="wrap">
+    <header class="head">
+      <h1>Lists people have shared</h1>
+      <p class="lead">
+        A list is somebody's own collection — the places they would send a friend to. These ones are public,
+        so anyone can open them.
+      </p>
+    </header>
+
+    {
+      lists.length === 0 ? (
+        <div class="empty">
+          <p class="empty-lead">No public lists yet.</p>
+          <p class="empty-sub">
+            Lists start private. When somebody makes one public, it appears here.
+          </p>
+        </div>
+      ) : (
+        <div class="grid">
+          {lists.map((list) => {
+            const previews = list.previewLocations.slice(0, 3);
+            return (
+              <a class="card" href={`/lists/${list.id}`}>
+                <span class="name">{list.name}</span>
+                <span class="by">by {list.ownerUsername ?? list.ownerDisplayName ?? 'someone on LocaStar'}</span>
+                {list.description && <span class="blurb">{list.description}</span>}
+                <div class="mosaic">
+                  <div
+                    class="m-main"
+                    style={previews[0]?.imageUrl ? `background-image:url("${previews[0].imageUrl}")` : ''}
+                  />
+                  <div class="m-side">
+                    <div
+                      class="m-tile"
+                      style={previews[1]?.imageUrl ? `background-image:url("${previews[1].imageUrl}")` : ''}
+                    />
+                    <div
+                      class="m-tile"
+                      style={previews[2]?.imageUrl ? `background-image:url("${previews[2].imageUrl}")` : ''}
+                    />
+                  </div>
+                </div>
+                <span class="mono count">
+                  {list.itemCount} {list.itemCount === 1 ? 'PLACE' : 'PLACES'} · {list.likeCount}{' '}
+                  {list.likeCount === 1 ? 'LIKE' : 'LIKES'}
+                </span>
+              </a>
+            );
+          })}
+        </div>
+      )
+    }
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-block: 48px 72px;
+  }
+
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+
+  .lead {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 58ch;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--list-surface);
+    border: 1px solid rgba(76, 143, 232, 0.3);
+    border-radius: 11px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    color: var(--text);
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .name {
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .by {
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-55);
+    margin: 6px 0 0;
+  }
+
+  .blurb {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-55);
+    margin-top: 8px;
+  }
+
+  .mosaic {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 5px;
+    height: 110px;
+    margin-top: 14px;
+  }
+
+  .m-side {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .m-main,
+  .m-tile {
+    border-radius: 6px;
+    background-color: rgba(244, 246, 245, 0.06);
+    background-size: cover;
+    background-position: center;
+  }
+
+  .count {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-55);
+    margin-top: 12px;
+  }
+
+  .empty {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 30px;
+  }
+
+  .empty-lead {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 500;
+  }
+
+  .empty-sub {
+    margin: 8px 0 0;
+    font-size: 15px;
+    color: var(--text-55);
+    max-width: 52ch;
+  }
+
+  @media (max-width: 1279px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

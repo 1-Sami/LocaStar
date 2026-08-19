@@ -1,0 +1,200 @@
+---
+import { fetchCategoryCounts, fetchLocationTotal } from '@locastar/shared';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import { categoryColor } from '../lib/format';
+import { anonClient } from '../lib/supabase';
+
+export const prerender = false;
+
+const supabase = anonClient();
+
+let counts;
+let total;
+try {
+  [counts, total] = await Promise.all([fetchCategoryCounts(supabase), fetchLocationTotal(supabase)]);
+} catch (error) {
+  console.error('Failed to load categories', error);
+  return new Response('Temporarily unavailable', { status: 503, headers: { 'Retry-After': '60' } });
+}
+
+const withPlaces = counts.filter((row) => row.count > 0);
+const empty = counts.filter((row) => row.count === 0);
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const title = `Everything you can look for — ${withPlaces.length} categories | LocaStar`;
+const description = `The ${withPlaces.length} kinds of place and activity on LocaStar, from ${withPlaces[0]?.name.toLowerCase() ?? 'courts'} to festivals, across ${total} entries in Sweden.`;
+
+/*
+ * Links to every category page in one place.
+ *
+ * Useful to a person, and it is also how a crawler reaches all 41 category
+ * pages from a single hop off the home page rather than having to guess slugs.
+ */
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Categories',
+    url: `${origin}/categories`,
+  },
+];
+---
+
+<Base title={title} description={description} canonical={`${origin}/categories`} jsonLd={jsonLd}>
+  <SiteHeader current="categories" />
+
+  <main id="main" class="wrap">
+    <header class="head">
+      <h1>Browse by activity</h1>
+      <p class="lead">
+        {withPlaces.length} categories with somewhere to go, across {total} places and activities. Colour carries
+        the family — blue is water, green is nature and trails, warm is sport, purple is built or cultural.
+      </p>
+    </header>
+
+    <div class="grid">
+      {
+        withPlaces.map((row) => (
+          <a class="cat" href={`/activity/${row.slug}`} style={`background:${categoryColor(row.slug)}`}>
+            <span class="cat-name">{row.name}</span>
+            <span class="mono cat-count">{row.count}</span>
+          </a>
+        ))
+      }
+    </div>
+
+    {
+      empty.length > 0 && (
+        /* Named rather than hidden: an empty category is an invitation, and
+           pretending it does not exist means nobody ever fills it. */
+        <section class="waiting">
+          <h2>Nothing here yet</h2>
+          <p class="waiting-lead">
+            {empty.length} categories exist but nobody has added anywhere. If you know one, the map is missing it.
+          </p>
+          <div class="chips">
+            {empty.map((row) => (
+              <a class="chip" href={`/activity/${row.slug}`} style={`border-color:${categoryColor(row.slug)}`}>
+                {row.name}
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-block: 48px 72px;
+  }
+
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+
+  .lead {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 62ch;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+
+  .cat {
+    height: 88px;
+    border-radius: 9px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 3px;
+    color: #fff;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .cat:hover {
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.18);
+  }
+
+  .cat-name {
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.15;
+  }
+
+  .cat-count {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .waiting {
+    margin-top: 56px;
+    padding-top: 32px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .waiting h2 {
+    font-size: 24px;
+  }
+
+  .waiting-lead {
+    margin: 12px 0 18px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-55);
+    max-width: 58ch;
+  }
+
+  .chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-size: 13px;
+    padding: 9px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    color: var(--text-70);
+  }
+
+  .chip:hover {
+    color: var(--text);
+  }
+
+  @media (max-width: 1279px) {
+    .grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
