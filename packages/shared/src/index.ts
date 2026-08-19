@@ -1,3 +1,5 @@
+export { PRIVACY_POLICY, TERMS_OF_SERVICE, DELETE_ACCOUNT_INFO, LEGAL_DOCUMENTS } from "./legal";
+export type { LegalDocument, LegalSectionContent, LegalBlock } from "./legal";
 export { fetchSearchResults } from "./api/siteSearch";
 export type { SearchParams, SearchResult, SearchResponse } from "./api/siteSearch";
 export {

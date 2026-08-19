@@ -1,0 +1,181 @@
+---
+import { LEGAL_DOCUMENTS } from '@locastar/shared';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { SUPPORT_EMAIL } from '../../lib/site';
+
+/*
+ * Frozen URLs. /legal/privacy and /legal/terms are on file with Apple and
+ * Google; /legal/delete-account is required by Google Play and has 404'd
+ * before, which blocked a review. All three must resolve for a stranger with
+ * no account and no app.
+ *
+ * The words come from packages/shared, which is also what the app renders —
+ * two copies of legal text drift, and the copy Apple checks would stop
+ * matching the copy in the app.
+ */
+export const prerender = false;
+
+const { doc } = Astro.params;
+const document = LEGAL_DOCUMENTS.find((d) => d.slug === doc);
+if (!document) return new Response(null, { status: 404 });
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const canonical = `${origin}/legal/${document.slug}`;
+
+/** {{support}} is a placeholder in the shared copy; here it becomes a mailto. */
+function withSupport(text: string): { before: string; after: string } | null {
+  const at = text.indexOf('{{support}}');
+  if (at === -1) return null;
+  return { before: text.slice(0, at), after: text.slice(at + '{{support}}'.length) };
+}
+
+const description =
+  document.slug === 'privacy'
+    ? 'What LocaStar collects, why, where it is stored, and the rights you have over it.'
+    : document.slug === 'terms'
+      ? 'The terms you agree to when you use LocaStar, how moderation works, and what we are and are not responsible for.'
+      : 'How to delete your LocaStar account, what is erased, and what is kept with your name removed.';
+---
+
+<Base title={`${document.title} | LocaStar`} description={description} canonical={canonical}>
+  <SiteHeader />
+
+  <main id="main" class="wrap">
+    <nav class="subnav mono" aria-label="Legal pages">
+      {
+        LEGAL_DOCUMENTS.map((entry) => (
+          <a class={`subnav-link${entry.slug === document.slug ? ' on' : ''}`} href={`/legal/${entry.slug}`}>
+            {entry.slug === 'privacy' ? 'PRIVACY' : entry.slug === 'terms' ? 'TERMS' : 'DELETE ACCOUNT'}
+          </a>
+        ))
+      }
+    </nav>
+
+    <article class="doc">
+      <h1>{document.title}</h1>
+      <p class="mono updated">LAST UPDATED {document.lastUpdated.toUpperCase()}</p>
+
+      {
+        document.sections.map((section) => (
+          <section class="sec">
+            <h2>{section.title}</h2>
+            {section.blocks.map((block) =>
+              block.kind === 'text' ? (
+                <p>
+                  {(() => {
+                    const split = withSupport(block.text);
+                    if (!split) return block.text;
+                    return (
+                      <>
+                        {split.before}
+                        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+                        {split.after}
+                      </>
+                    );
+                  })()}
+                </p>
+              ) : (
+                <ul>
+                  {block.items.map((item) => (
+                    <li>{item}</li>
+                  ))}
+                </ul>
+              )
+            )}
+          </section>
+        ))
+      }
+
+      <p class="foot">
+        Questions about any of this: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+      </p>
+    </article>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  main {
+    padding-top: 32px;
+  }
+
+  .subnav {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+
+  .subnav-link {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-42);
+  }
+
+  .subnav-link.on {
+    color: var(--accent);
+  }
+
+  /* A single narrow column and no marketing furniture — the handoff's rule for
+     these pages. ~68 characters is the comfortable reading measure. */
+  .doc {
+    max-width: 520px;
+    padding-bottom: 72px;
+  }
+
+  h1 {
+    font-size: 38px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+
+  .updated {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-42);
+    margin: 10px 0 0;
+  }
+
+  .sec {
+    margin-top: 34px;
+  }
+
+  h2 {
+    font-size: 17px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--text-70);
+    margin: 0 0 12px;
+  }
+
+  ul {
+    margin: 0 0 12px;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li {
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--text-70);
+  }
+
+  .foot {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--hairline);
+    font-size: 14px;
+    color: var(--text-55);
+  }
+</style>

@@ -1,3 +1,6 @@
+import type { LegalDocument } from '@locastar/shared';
+
+import { SUPPORT_EMAIL } from '@/constants/support';
 import { ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -72,3 +75,33 @@ const styles = StyleSheet.create({
   bulletDot: { lineHeight: 23 },
   bulletText: { flex: 1 },
 });
+
+/**
+ * Renders one of the shared legal documents.
+ *
+ * The text lives in packages/shared so the app and locastar.se say the same
+ * words — Apple and Google hold the website's URLs on file, and two copies of
+ * legal text drift. {{support}} is substituted here because the app shows a
+ * plain address while the website makes it a mailto link.
+ */
+export function LegalDocumentScreen({ document }: { document: LegalDocument }) {
+  return (
+    <LegalPage lastUpdated={document.lastUpdated}>
+      {document.sections.map((section) => (
+        <LegalSection key={section.title} title={section.title}>
+          {section.blocks.map((block, index) =>
+            block.kind === 'text' ? (
+              <LegalText key={index}>{block.text.replace(/\{\{support\}\}/g, SUPPORT_EMAIL)}</LegalText>
+            ) : (
+              block.items.map((item, itemIndex) => (
+                <LegalBullet key={`${index}-${itemIndex}`}>
+                  <LegalText>{item.replace(/\{\{support\}\}/g, SUPPORT_EMAIL)}</LegalText>
+                </LegalBullet>
+              ))
+            )
+          )}
+        </LegalSection>
+      ))}
+    </LegalPage>
+  );
+}
