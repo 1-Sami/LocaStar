@@ -1,3 +1,4 @@
+import { coverPhotoPath } from "./saves";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type LocationKind = "place" | "activity";
@@ -580,6 +581,8 @@ export type MyAddedLocation = {
   kind: LocationKind;
   name: string;
   category_label: string | null;
+  category_slug: string | null;
+  cover_photo_path: string | null;
   avg_rating: number;
   review_count: number;
   is_verified: boolean;
@@ -601,14 +604,20 @@ type MyAddedLocationRow = {
   created_at: string;
   starts_at: string | null;
   expires_at: string | null;
-  location_categories: { categories: { name: string } | null }[];
+  location_categories: { categories: { name: string; slug: string } | null }[];
+  location_photos: { storage_path: string; created_at: string }[];
 };
 
 export async function fetchMyAddedLocations(client: SupabaseClient, userId: string): Promise<MyAddedLocation[]> {
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, avg_rating, review_count, is_verified, visibility, created_at, starts_at, expires_at, location_categories(categories(name))"
+      /*
+       * The photo and the slug are here for the website's "Added by me" rows,
+       * which show a thumbnail and colour it by category. Without them every
+       * row drew an empty tile.
+       */
+      "id, kind, name, avg_rating, review_count, is_verified, visibility, created_at, starts_at, expires_at, location_categories(categories(name, slug)), location_photos(storage_path, created_at)"
     )
     .eq("created_by", userId)
     // "My contributions" means what this person added, not what a bulk import
@@ -622,6 +631,8 @@ export async function fetchMyAddedLocations(client: SupabaseClient, userId: stri
     kind: row.kind,
     name: row.name,
     category_label: row.location_categories?.[0]?.categories?.name ?? null,
+    category_slug: row.location_categories?.[0]?.categories?.slug ?? null,
+    cover_photo_path: coverPhotoPath(row.location_photos),
     avg_rating: row.avg_rating,
     review_count: row.review_count,
     is_verified: row.is_verified,

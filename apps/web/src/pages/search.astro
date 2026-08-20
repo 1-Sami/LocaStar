@@ -28,8 +28,15 @@ const activity = url.searchParams.getAll('activity').filter(Boolean);
 const kindParam = url.searchParams.get('kind');
 const seasonParam = url.searchParams.get('season');
 const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
+/*
+ * A–Z was a filing order, not a reason to pick one place over another — the
+ * owner's point, and true: nobody chooses where to go alphabetically. What is
+ * left are the two orderings that say something about the place itself, each
+ * reversible with the arrow beside them.
+ */
 const sortParam = url.searchParams.get('sort');
-const sort = sortParam === 'name' ? 'name' : 'rating';
+const sort = sortParam === 'reviews' ? 'reviews' : 'rating';
+const direction = url.searchParams.get('dir') === 'asc' ? 'asc' : 'desc';
 
 const kind = kindParam === 'place' || kindParam === 'activity' ? kindParam : null;
 const season = seasonParam === 'summer' || seasonParam === 'winter' ? seasonParam : null;
@@ -38,7 +45,16 @@ let response;
 let categoryCounts;
 try {
   [response, categoryCounts] = await Promise.all([
-    fetchSearchResults(supabase, { query: q, categorySlugs: activity, kind, season, sort, page, perPage: 20 }),
+    fetchSearchResults(supabase, {
+      query: q,
+      categorySlugs: activity,
+      kind,
+      season,
+      sort,
+      direction,
+      page,
+      perPage: 20,
+    }),
     fetchCategoryCounts(supabase),
   ]);
 } catch (error) {
@@ -178,7 +194,7 @@ const canonical = `${origin}/search`;
                 const on = activity.includes(row.slug);
                 return (
                   <a class={`cat${on ? ' on' : ''}`} href={toggleActivity(row.slug)}>
-                    <span class="box" style={on ? `background:${categoryColor(row.slug)};border-color:transparent` : ''} />
+                    <span class="box" />
                     <span class="cat-name">
                       {categoryName(row.slug, lang) ?? row.name} <span class="mono cat-count">{row.count}</span>
                     </span>
@@ -188,6 +204,14 @@ const canonical = `${origin}/search`;
             }
           </div>
         </div>
+
+        {
+          (q || activity.length > 0 || kind || season) && (
+            <a class="clear" href={p('/search')}>
+              {t('common.clearAll')}
+            </a>
+          )
+        }
       </aside>
 
       <section class="results" aria-label="Results">
@@ -195,25 +219,23 @@ const canonical = `${origin}/search`;
           <span class="mono count">{response.total} {t('common.results')}</span>
           <label class="sort">
             <span class="mono sort-label">{t('common.sort')}</span>
-            <select
-              onchange="location.href = this.value"
-              aria-label="Sort results"
-            >
+            <select onchange="location.href = this.value" aria-label={t('search.sortResults')}>
               <option value={withParam('sort', 'rating', false)} selected={sort === 'rating'}>
                 {t('search.sortRating')}
               </option>
-              <option value={withParam('sort', 'name', false)} selected={sort === 'name'}>
-                {t('search.sortName')}
+              <option value={withParam('sort', 'reviews', false)} selected={sort === 'reviews'}>
+                {t('search.sortReviews')}
               </option>
             </select>
+            <a
+              class="flip"
+              href={withParam('dir', direction === 'asc' ? null : 'asc', false)}
+              aria-label={direction === 'asc' ? t('search.showBestFirst') : t('search.showWorstFirst')}
+              title={direction === 'asc' ? t('search.showBestFirst') : t('search.showWorstFirst')}
+            >
+              {direction === 'asc' ? '↑' : '↓'}
+            </a>
           </label>
-          {
-            (q || activity.length > 0 || kind || season) && (
-              <a class="mono clear" href={p("/search")}>
-                {t('common.clearAll')}
-              </a>
-            )
-          }
         </div>
 
         {
@@ -476,6 +498,11 @@ const canonical = `${origin}/search`;
     flex: none;
   }
 
+  .cat.on .box {
+    background: var(--ok);
+    border-color: var(--ok);
+  }
+
   .cat-count {
     font-size: 11px;
     letter-spacing: 0;
@@ -500,6 +527,26 @@ const canonical = `${origin}/search`;
     font-size: 12px;
     letter-spacing: 0.1em;
     color: var(--text-55);
+  }
+
+  /* The arrow is the whole control for direction: one tap, and the same list
+     reads from the other end. */
+  .flip {
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--text-70);
+    flex: none;
+  }
+
+  .flip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .sort {
@@ -530,10 +577,21 @@ const canonical = `${origin}/search`;
     color: var(--text);
   }
 
+  /* Under the filters it is undoing, not next to the sort control it has
+     nothing to do with. */
   .clear {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    color: var(--link);
+    align-self: flex-start;
+    border: 1px solid var(--ok);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ok);
+  }
+
+  .clear:hover {
+    background: var(--ok);
+    color: var(--page);
   }
 
   .list {

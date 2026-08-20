@@ -14,7 +14,9 @@ export type SearchParams = {
   categorySlugs?: string[];
   kind?: "place" | "activity" | null;
   season?: "summer" | "winter" | null;
-  sort?: "rating" | "name";
+  sort?: "rating" | "reviews" | "name";
+  /** Which end of the chosen sort comes first. */
+  direction?: "desc" | "asc";
   page?: number;
   perPage?: number;
 };
@@ -60,7 +62,16 @@ export async function fetchSearchResults(
   client: SupabaseClient,
   params: SearchParams = {}
 ): Promise<SearchResponse> {
-  const { query, categorySlugs = [], kind, season, sort = "rating", page = 1, perPage = 20 } = params;
+  const {
+    query,
+    categorySlugs = [],
+    kind,
+    season,
+    sort = "rating",
+    direction = "desc",
+    page = 1,
+    perPage = 20,
+  } = params;
 
   const safePage = Math.max(1, Math.floor(page));
   const from = (safePage - 1) * perPage;
@@ -96,13 +107,22 @@ export async function fetchSearchResults(
   if (season === "summer") request = request.eq("available_summer", true);
   if (season === "winter") request = request.eq("available_winter", true);
 
-  // Rating first, then review count as the tiebreaker: every unreviewed place
-  // sits at 0.0, so without it the order is arbitrary and changes between
-  // requests, which makes pagination skip and repeat rows.
+  /*
+   * Rating first, then review count as the tiebreaker: every unreviewed place
+   * sits at 0.0, so without it the order is arbitrary and changes between
+   * requests, which makes pagination skip and repeat rows.
+   *
+   * The direction reverses the column being sorted on, not the tiebreakers —
+   * "worst rated" still wants the most-reviewed of the bad ones first, because
+   * one grumpy review is not evidence of anything.
+   */
+  const ascending = direction === "asc";
   if (sort === "rating") {
-    request = request.order("avg_rating", { ascending: false }).order("review_count", { ascending: false });
+    request = request.order("avg_rating", { ascending }).order("review_count", { ascending: false });
+  } else if (sort === "reviews") {
+    request = request.order("review_count", { ascending }).order("avg_rating", { ascending: false });
   }
-  request = request.order("name", { ascending: true }).range(from, from + perPage - 1);
+  request = request.order("name", { ascending: sort === "name" ? !ascending : true }).range(from, from + perPage - 1);
 
   const { data, error, count } = await request;
   if (error) throw error;

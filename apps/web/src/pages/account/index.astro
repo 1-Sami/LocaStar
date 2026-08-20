@@ -1,5 +1,6 @@
 ---
 import {
+  categoryName,
   fetchLists,
   fetchMyAddedLocations,
   fetchMyReviews,
@@ -9,6 +10,7 @@ import {
   fetchSavedLists,
   fetchSavedLocations,
   isModeratorRole,
+  type LocationShare,
 } from '@locastar/shared';
 import ListCard from '../../components/ListCard.astro';
 import PlaceRow from '../../components/PlaceRow.astro';
@@ -30,6 +32,9 @@ if (!user) return Astro.redirect(p('/auth/sign-in'));
 const section = Astro.url.searchParams.get('show') ?? 'saved';
 const listError = Astro.url.searchParams.get('listError');
 const created = Astro.url.searchParams.get('created');
+const avatarSaved = Astro.url.searchParams.get('avatar') === '1';
+const avatarRemoved = Astro.url.searchParams.get('avatar') === 'removed';
+const avatarError = Astro.url.searchParams.get('avatarError');
 
 /*
  * Everything is fetched with the visitor's own session, so RLS returns their
@@ -56,6 +61,16 @@ const [profile, stats, favourites, bookmarks, shares, lists, savedLists, reviews
 const name = profile?.username ?? profile?.display_name ?? user.email ?? 'You';
 const isModerator = isModeratorRole(profile?.role ?? 'user');
 
+/*
+ * A share is only half a fact without the other person. "SENT" told you the
+ * direction and nothing else; the name is what makes the row mean something.
+ */
+const shareAside = (share: LocationShare) => {
+  const who = share.otherPartyUsername ?? share.otherPartyDisplayName;
+  if (!who) return share.direction === 'sent' ? t('acct.sent') : t('acct.received');
+  return share.direction === 'sent' ? t('acct.sentTo', { who }) : t('acct.receivedFrom', { who });
+};
+
 const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
 
@@ -79,7 +94,34 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   <main id="main" class="wrap layout">
     <aside class="side">
       <div class="who">
-        <span class="avatar" aria-hidden="true"></span>
+        <form
+          class="avatar-form"
+          method="post"
+          action={p('/api/avatar')}
+          enctype="multipart/form-data"
+        >
+          {
+            profile?.avatar_url ? (
+              <span class="avatar" style={`background-image:url("${profile.avatar_url}")`} />
+            ) : (
+              <span class="avatar initial">{name.trim().charAt(0).toUpperCase()}</span>
+            )
+          }
+          <input type="hidden" name="back" value={p('/account')} />
+          <span class="avatar-actions">
+            <label class="avatar-edit">
+              <span class="mono">{profile?.avatar_url ? t('acct.changePhoto') : t('acct.addPhoto')}</span>
+              <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" />
+            </label>
+            {
+              profile?.avatar_url && (
+                <button class="mono avatar-remove" type="submit" name="remove" value="1">
+                  {t('acct.removePhoto')}
+                </button>
+              )
+            }
+          </span>
+        </form>
         <div class="who-text">
           <span class="name">{name}</span>
           {
@@ -91,6 +133,22 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           }
         </div>
       </div>
+
+      {avatarSaved && <p class="ok-line">{t('acct.avatarSaved')}</p>}
+      {avatarRemoved && <p class="ok-line">{t('acct.avatarRemoved')}</p>}
+      {
+        avatarError && (
+          <p class="err-line">
+            {avatarError === 'type'
+              ? t('acct.avatarErrType')
+              : avatarError === 'size'
+                ? t('acct.avatarErrSize')
+                : avatarError === 'none'
+                  ? t('acct.avatarErrNone')
+                  : t('acct.avatarErr')}
+          </p>
+        )
+      }
 
       <nav class="side-nav" aria-label={t('acct.navLabel')}>
         {
@@ -145,7 +203,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 <div class="rows">
                   {favourites.map((place) => (
                     <PlaceRow
-                      href={`/location/${place.id}`}
+                      href={p(`/location/${place.location_id}`)}
                       name={place.name}
                       categorySlug={place.category_slug}
                       avgRating={place.avg_rating}
@@ -169,7 +227,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 <div class="rows">
                   {bookmarks.map((place) => (
                     <PlaceRow
-                      href={`/location/${place.id}`}
+                      href={p(`/location/${place.location_id}`)}
                       name={place.name}
                       categorySlug={place.category_slug}
                       avgRating={place.avg_rating}
@@ -193,14 +251,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 <div class="rows">
                   {shares.map((share) => (
                     <PlaceRow
-                      href={`/location/${share.id}`}
+                      href={p(`/location/${share.location_id}`)}
                       name={share.name}
                       categorySlug={share.category_slug}
                       avgRating={share.avg_rating}
                       reviewCount={share.review_count}
                       where={share.city}
                       imageUrl={publicUrl(share.cover_photo_path)}
-                      aside={share.direction === 'sent' ? 'SENT' : 'RECEIVED'}
+                      aside={shareAside(share)}
                     />
                   ))}
                 </div>
@@ -284,12 +342,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               <div class="rows">
                 {added.map((place) => (
                   <PlaceRow
-                    href={`/location/${place.id}`}
+                    href={p(`/location/${place.id}`)}
                     name={place.name}
-                    categoryName={place.category_label}
+                    categorySlug={place.category_slug}
+                    categoryName={categoryName(place.category_slug, lang) ?? place.category_label}
                     avgRating={place.avg_rating}
                     reviewCount={place.review_count}
-                    aside={place.kind === 'activity' ? 'ACTIVITY' : longDate(place.created_at)}
+                    imageUrl={publicUrl(place.cover_photo_path)}
+                    aside={place.kind === 'activity' ? t('loc.activity').toUpperCase() : longDate(place.created_at)}
                   />
                 ))}
               </div>
@@ -329,6 +389,13 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   </main>
 
   <SiteFooter />
+<script>
+  document.querySelectorAll('.avatar-form input[type="file"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      if (input.files && input.files.length > 0) input.form.submit();
+    });
+  });
+</script>
 </Base>
 
 <style>
@@ -358,8 +425,66 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: var(--surface-alt);
+    background-color: var(--surface-alt);
+    background-size: cover;
+    background-position: center;
     flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .avatar.initial {
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--text);
+    background-color: var(--brand);
+  }
+
+  /* The picker is the picture itself: the file input is hidden and the label
+     wraps it, so clicking the avatar opens the file dialog. A separate button
+     would be a second control for one job. */
+  .avatar-form {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar-edit {
+    cursor: pointer;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-42);
+  }
+
+  .avatar-edit:hover {
+    color: var(--accent);
+  }
+
+  .avatar-edit input {
+    display: none;
+  }
+
+  .avatar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .avatar-remove {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-42);
+  }
+
+  .avatar-remove:hover {
+    color: #f0a9a9;
   }
 
   .who-text {
