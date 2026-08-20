@@ -1,5 +1,6 @@
 ---
 import { fetchCategoryCounts, fetchSearchResults } from '@locastar/shared';
+import LeafletMap from '../components/LeafletMap.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
@@ -310,13 +311,26 @@ const canonical = `${origin}/search`;
       </section>
 
       <aside class="map-col" aria-label="Map">
-        <div class="map-slot">
-          <span class="mono">MAP</span>
-          <span class="map-note">
-            The interactive map is not built yet. The result list is the accessible source of truth and works
-            without it.
-          </span>
-        </div>
+        {
+          response.results.length > 0 ? (
+            <LeafletMap
+              pins={response.results.map((place) => ({
+                id: place.id,
+                lat: place.lat,
+                lng: place.lng,
+                name: place.name,
+                colour: categoryColor(place.categorySlug),
+                href: `/location/${place.id}`,
+              }))}
+              height="640px"
+              class="results-map"
+            />
+          ) : (
+            <div class="map-slot">
+              <span class="mono">NOTHING TO SHOW</span>
+            </div>
+          )
+        }
       </aside>
     </div>
   </main>
@@ -777,9 +791,13 @@ const canonical = `${origin}/search`;
     padding: 24px 0 24px 22px;
   }
 
+  .results-map,
   .map-slot {
     position: sticky;
     top: 24px;
+  }
+
+  .map-slot {
     height: 640px;
     border-radius: 12px;
     background: #0b1519;

@@ -1,0 +1,166 @@
+---
+/*
+ * The map, using the same stack the app already runs: Leaflet 1.9.4 from unpkg
+ * with OpenStreetMap tiles. Two different maps in one product would be odd, and
+ * the place data came from OpenStreetMap in the first place.
+ *
+ * Google was priced and rejected for now — its Dynamic Maps cost scales with
+ * page views on exactly the pages the search work exists to attract. Revisit at
+ * v2 or v3, when traffic justifies it.
+ *
+ * ⚠ TILE_URL is deliberately one constant. The public OpenStreetMap tile server
+ * forbids heavy third-party use and will block it, so this has to move to a
+ * proper host before traffic grows. Changing it is one line.
+ */
+export interface MapPin {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  /** Category colour, so a pin matches the card it belongs to. */
+  colour: string;
+  href?: string;
+}
+
+interface Props {
+  pins: MapPin[];
+  /** Height in CSS units. */
+  height?: string;
+  /** Fixed zoom for a single-pin map; omitted means fit all pins. */
+  zoom?: number;
+  class?: string;
+}
+
+const { pins, height = '400px', zoom, class: className = '' } = Astro.props;
+
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+const mapId = `map-${Math.random().toString(36).slice(2, 10)}`;
+const config = JSON.stringify({ pins, zoom: zoom ?? null, tileUrl: TILE_URL, attribution: ATTRIBUTION });
+---
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div
+  id={mapId}
+  class={`leaflet-map ${className}`}
+  style={`height:${height}`}
+  data-map-config={config}
+  role="img"
+  aria-label={pins.length === 1 ? `Map showing ${pins[0].name}` : `Map showing ${pins.length} places`}
+>
+  {/*
+    Shown until Leaflet loads, and left in place if it never does. The map is
+    progressive enhancement — the result list is the accessible source of truth
+    and the page works with the map absent.
+  */}
+  <span class="mono map-fallback">MAP</span>
+</div>
+
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+
+<script is:inline>
+  (function () {
+    function start() {
+      if (typeof window.L === 'undefined') return;
+
+      document.querySelectorAll('.leaflet-map[data-map-config]').forEach(function (el) {
+        if (el.dataset.mapReady) return;
+        el.dataset.mapReady = '1';
+
+        var config;
+        try {
+          config = JSON.parse(el.dataset.mapConfig);
+        } catch (e) {
+          return;
+        }
+        if (!config.pins || config.pins.length === 0) return;
+
+        var fallback = el.querySelector('.map-fallback');
+        if (fallback) fallback.remove();
+
+        var map = window.L.map(el, { scrollWheelZoom: false });
+        window.L.tileLayer(config.tileUrl, { attribution: config.attribution, maxZoom: 19 }).addTo(map);
+
+        var bounds = [];
+        config.pins.forEach(function (pin) {
+          // A circle in the category colour rather than the default blue pin, so
+          // a pin matches the card it belongs to.
+          var marker = window.L.circleMarker([pin.lat, pin.lng], {
+            radius: 8,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: pin.colour,
+            fillOpacity: 1,
+          }).addTo(map);
+
+          var label = pin.href
+            ? '<a href="' + pin.href + '" style="color:#125F6F;font-weight:600">' + pin.name + '</a>'
+            : pin.name;
+          marker.bindPopup(label);
+
+          bounds.push([pin.lat, pin.lng]);
+        });
+
+        if (config.zoom && bounds.length === 1) {
+          map.setView(bounds[0], config.zoom);
+        } else {
+          map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () {
+        // Leaflet is deferred, so it may not be ready at DOMContentLoaded.
+        if (typeof window.L !== 'undefined') start();
+        else window.addEventListener('load', start);
+      });
+    } else {
+      start();
+      if (typeof window.L === 'undefined') window.addEventListener('load', start);
+    }
+  })();
+</script>
+
+<style>
+  .leaflet-map {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #0b1519;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Leaflet's own panes must sit above nothing else on the page. */
+    z-index: 0;
+  }
+
+  .map-fallback {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: rgba(244, 246, 245, 0.42);
+  }
+
+  /* Leaflet's controls and popups default to a light theme that fights the
+     page. Only the chrome is restyled; the tiles are left alone. */
+  .leaflet-map :global(.leaflet-control-attribution) {
+    background: rgba(7, 16, 15, 0.78);
+    color: rgba(244, 246, 245, 0.55);
+    font-size: 10px;
+  }
+
+  .leaflet-map :global(.leaflet-control-attribution a) {
+    color: rgba(244, 246, 245, 0.75);
+  }
+
+  .leaflet-map :global(.leaflet-bar a) {
+    background: #0c1817;
+    color: #f4f6f5;
+    border-bottom-color: rgba(244, 246, 245, 0.12);
+  }
+
+  .leaflet-map :global(.leaflet-bar a:hover) {
+    background: #141f1e;
+  }
+</style>

@@ -6,6 +6,7 @@ import {
   fetchReviews,
   isAlwaysOpen,
 } from '@locastar/shared';
+import LeafletMap from '../../components/LeafletMap.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
@@ -152,18 +153,18 @@ const seasonLabel =
   <main id="main">
     {
       photos.length > 0 ? (
-        <div class="mosaic">
+        <div class={`mosaic count-${Math.min(photos.length, 4)}`}>
           <div class="shot main" style={`background-image:url("${photos[0].url}")`} />
-          {photos.length > 1 && (
+          {photos.length === 2 && <div class="shot" style={`background-image:url("${photos[1].url}")`} />}
+          {photos.length >= 3 && (
             <div class="mosaic-side">
               <div class="shot" style={`background-image:url("${photos[1].url}")`} />
-              {photos.length > 2 && (
+              {photos.length === 3 ? (
+                <div class="shot" style={`background-image:url("${photos[2].url}")`} />
+              ) : (
                 <div class="mosaic-pair">
                   <div class="shot" style={`background-image:url("${photos[2].url}")`} />
-                  <div
-                    class="shot last"
-                    style={photos[3] ? `background-image:url("${photos[3].url}")` : `background:${colour}`}
-                  >
+                  <div class="shot last" style={`background-image:url("${photos[3].url}")`}>
                     {photos.length > 4 && <span class="mono more">+{photos.length - 4}</span>}
                   </div>
                 </div>
@@ -300,7 +301,12 @@ const seasonLabel =
 
       <aside class="col-side">
         <div class="panel">
-          <div class="map-slot mono">Map</div>
+          <LeafletMap
+            pins={[{ id: location.id, lat: location.lat, lng: location.lng, name: location.name, colour }]}
+            zoom={15}
+            height="186px"
+            class="panel-map"
+          />
           <div class="panel-actions">
             <a class="cta" href={mapsHref} rel="noopener noreferrer" target="_blank">Directions</a>
             <div class="secondary">
@@ -378,12 +384,31 @@ const seasonLabel =
     margin-inline: auto;
   }
 
+  /*
+   * The mosaic adapts to how many photos there actually are.
+   *
+   * The mockup draws four. 985 of 998 places have none, and of those that do
+   * most have one or two — laying every case out as a four-photo grid left a
+   * black hole where the missing pictures would have been.
+   */
   .mosaic {
     display: grid;
-    grid-template-columns: 2fr 1fr;
     gap: 6px;
     height: 420px;
     padding: 6px;
+  }
+
+  .mosaic.count-1 {
+    grid-template-columns: 1fr;
+  }
+
+  .mosaic.count-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mosaic.count-3,
+  .mosaic.count-4 {
+    grid-template-columns: 2fr 1fr;
   }
 
   .mosaic-side {
@@ -711,6 +736,10 @@ const seasonLabel =
     border: 1px solid rgba(244, 246, 245, 0.12);
     border-radius: 13px;
     overflow: hidden;
+  }
+
+  .panel-map {
+    border-radius: 0;
   }
 
   .map-slot {
