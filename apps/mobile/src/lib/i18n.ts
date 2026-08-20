@@ -9,6 +9,8 @@ import i18next, { changeLanguage, init, use as registerPlugin } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { Platform } from 'react-native';
 
+import { ABOUT, CATEGORY_NAMES } from '@locastar/shared';
+
 import en from '@/locales/en.json';
 import sv from '@/locales/sv.json';
 
@@ -68,10 +70,19 @@ export function deviceLanguage(): Language {
  * it can.
  */
 registerPlugin(initReactI18next);
+/*
+ * Category names come from packages/shared, merged in here rather than living
+ * in the locale files.
+ *
+ * The website renders the same names and is keyed by the same database slugs;
+ * two copies of 54 translations would drift the first time one is edited. Every
+ * existing t('categories.<slug>') call is unaffected — the keys land in exactly
+ * the same place.
+ */
 init({
   resources: {
-    en: { translation: en },
-    sv: { translation: sv },
+    en: { translation: { ...en, about: ABOUT.en, categories: CATEGORY_NAMES.en } },
+    sv: { translation: { ...sv, about: ABOUT.sv, categories: CATEGORY_NAMES.sv } },
   },
   lng: deviceLanguage(),
   fallbackLng: 'en',

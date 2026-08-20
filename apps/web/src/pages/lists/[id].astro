@@ -4,6 +4,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { categoryColor, ratingLabel } from '../../lib/format';
+import { useTranslations, localePath } from '../../i18n/ui';
 import { anonClient } from '../../lib/supabase';
 
 /*
@@ -15,6 +16,9 @@ export const prerender = false;
 
 const { id } = Astro.params;
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 let meta;
 try {
@@ -48,7 +52,7 @@ const owner = meta.ownerUsername ?? meta.ownerDisplayName ?? 'someone on LocaSta
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const canonical = `${origin}/lists/${meta.id}`;
 
-const title = `${meta.name} — a list by ${owner} | LocaStar`;
+const title = `${meta.name} — ${t('list.byLine', { owner })} | LocaStar`;
 const description =
   meta.description?.trim() ||
   `${items.length} ${items.length === 1 ? 'place' : 'places'} collected by ${owner} on LocaStar, with directions, photos and reviews from people who have been there.`;
@@ -75,19 +79,19 @@ const jsonLd = [
   <main id="main">
     <header class="head">
       <div class="wrap head-inner">
-        <span class="mono kicker">{meta.isPublic ? 'SHARED LIST · PUBLIC' : 'SHARED LIST · PRIVATE'}</span>
+        <span class="mono kicker">{meta.isPublic ? t('list.public') : t('list.private')}</span>
         <h1>{meta.name}</h1>
         {meta.description && <p class="blurb">{meta.description}</p>}
         <div class="byline">
           <span class="avatar" aria-hidden="true"></span>
-          <span class="by">by {owner}</span>
+          <span class="by">{t('community.by', { name: owner })}</span>
           <span class="rule"></span>
-          <span class="mono stat">{items.length} {items.length === 1 ? 'PLACE' : 'PLACES'}</span>
+          <span class="mono stat">{items.length} {items.length === 1 ? t('list.place_one') : t('list.place_other')}</span>
           {
             meta.isPublic && (
               <>
                 <span class="rule" />
-                <span class="mono stat">{likes} {likes === 1 ? 'LIKE' : 'LIKES'}</span>
+                <span class="mono stat">{likes} {likes === 1 ? t('list.like_one') : t('list.like_other')}</span>
               </>
             )
           }
@@ -99,8 +103,8 @@ const jsonLd = [
       {
         items.length === 0 ? (
           <div class="empty">
-            <p class="empty-lead">This list is empty.</p>
-            <p class="empty-sub">Whoever made it has not added anywhere yet.</p>
+            <p class="empty-lead">{t('list.empty')}</p>
+            <p class="empty-sub">{t('list.emptySub')}</p>
           </div>
         ) : (
           <ol class="rows">
@@ -112,7 +116,7 @@ const jsonLd = [
                 .join(' · ');
               return (
                 <li>
-                  <a class="row" href={`/location/${item.locationId}`} style={`border-color:${colour}`}>
+                  <a class="row" href={p(`/location/${item.locationId}`)} style={`border-color:${colour}`}>
                     <span class="mono num">{String(index + 1).padStart(2, '0')}</span>
                     {item.imageUrl ? (
                       <div class="thumb" style={`background-image:url("${item.imageUrl}")`} />
@@ -126,12 +130,12 @@ const jsonLd = [
                           ★ {rating.avg} <span class="dim">({rating.count})</span>
                         </span>
                       ) : (
-                        <span class="mono row-unrated">NOT RATED YET</span>
+                        <span class="mono row-unrated">{t('common.notRated')}</span>
                       )}
                       {where && <span class="row-where">{where}</span>}
                       {item.note && <span class="row-note">{item.note}</span>}
                     </div>
-                    <span class="view">View →</span>
+                    <span class="view">{t('list.view')}</span>
                   </a>
                 </li>
               );

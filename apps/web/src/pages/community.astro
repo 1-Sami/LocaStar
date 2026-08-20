@@ -3,11 +3,15 @@ import { fetchPublicLists } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
 
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 const sortParam = Astro.url.searchParams.get('sort');
 const sort = sortParam === 'most_liked' || sortParam === 'least_liked' ? sortParam : 'newest';
@@ -21,9 +25,9 @@ try {
 }
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const title = 'Lists people have shared | LocaStar';
+const title = t('community.title');
 const description =
-  'Collections of places put together by people using LocaStar — a summer with kids, roads worth the fuel, courts worth the trip.';
+  t('community.metaDesc');
 
 const jsonLd = [
   {
@@ -40,18 +44,17 @@ const jsonLd = [
 
   <main id="main" class="wrap">
     <header class="head">
-      <h1>Lists people have shared</h1>
+      <h1>{t('community.heading')}</h1>
       <p class="lead">
-        A list is somebody's own collection — the places they would send a friend to. These ones are public,
-        so anyone can open them.
+        {t('community.lead')}
       </p>
 
       <label class="sort">
-        <span class="mono sort-label">SORT</span>
-        <select onchange="location.href = this.value" aria-label="Sort lists">
-          <option value="/community" selected={sort === 'newest'}>Newest</option>
-          <option value="/community?sort=most_liked" selected={sort === 'most_liked'}>Most liked</option>
-          <option value="/community?sort=least_liked" selected={sort === 'least_liked'}>Least liked</option>
+        <span class="mono sort-label">{t('common.sort')}</span>
+        <select onchange="location.href = this.value" aria-label={t('community.sortLists')}>
+          <option value={p('/community')} selected={sort === 'newest'}>{t('community.sortNewest')}</option>
+          <option value={p('/community?sort=most_liked')} selected={sort === 'most_liked'}>{t('community.sortMostLiked')}</option>
+          <option value={p('/community?sort=least_liked')} selected={sort === 'least_liked'}>{t('community.sortLeastLiked')}</option>
         </select>
       </label>
     </header>
@@ -59,9 +62,9 @@ const jsonLd = [
     {
       lists.length === 0 ? (
         <div class="empty">
-          <p class="empty-lead">No public lists yet.</p>
+          <p class="empty-lead">{t('community.empty')}</p>
           <p class="empty-sub">
-            Lists start private. When somebody makes one public, it appears here.
+            {t('community.emptySub')}
           </p>
         </div>
       ) : (
@@ -69,9 +72,9 @@ const jsonLd = [
           {lists.map((list) => {
             const previews = list.previewLocations.slice(0, 3);
             return (
-              <a class="card" href={`/lists/${list.id}`}>
+              <a class="card" href={p(`/lists/${list.id}`)}>
                 <span class="name">{list.name}</span>
-                <span class="by">by {list.ownerUsername ?? list.ownerDisplayName ?? 'someone on LocaStar'}</span>
+                <span class="by">{t('community.by', { name: list.ownerUsername ?? list.ownerDisplayName ?? t('community.someone') })}</span>
                 {list.description && <span class="blurb">{list.description}</span>}
                 <div class="mosaic">
                   <div

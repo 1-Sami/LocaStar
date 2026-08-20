@@ -3,6 +3,7 @@ import { LEGAL_DOCUMENTS } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
 import { SUPPORT_EMAIL } from '../../lib/site';
 
 /*
@@ -21,6 +22,9 @@ const { doc } = Astro.params;
 const document = LEGAL_DOCUMENTS.find((d) => d.slug === doc);
 if (!document) return new Response(null, { status: 404 });
 
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const canonical = `${origin}/legal/${document.slug}`;
 
@@ -43,11 +47,15 @@ const description =
   <SiteHeader />
 
   <main id="main" class="wrap">
-    <nav class="subnav mono" aria-label="Legal pages">
+    <nav class="subnav mono" aria-label={t('legal.navLabel')}>
       {
         LEGAL_DOCUMENTS.map((entry) => (
-          <a class={`subnav-link${entry.slug === document.slug ? ' on' : ''}`} href={`/legal/${entry.slug}`}>
-            {entry.slug === 'privacy' ? 'PRIVACY' : entry.slug === 'terms' ? 'TERMS' : 'DELETE ACCOUNT'}
+          <a class={`subnav-link${entry.slug === document.slug ? ' on' : ''}`} href={p(`/legal/${entry.slug}`)}>
+            {entry.slug === 'privacy'
+              ? t('legal.privacy')
+              : entry.slug === 'terms'
+                ? t('legal.terms')
+                : t('legal.deleteAccount')}
           </a>
         ))
       }
@@ -55,7 +63,8 @@ const description =
 
     <article class="doc">
       <h1>{document.title}</h1>
-      <p class="mono updated">LAST UPDATED {document.lastUpdated.toUpperCase()}</p>
+      <p class="mono updated">{t('legal.lastUpdated')} {document.lastUpdated.toUpperCase()}</p>
+      {lang !== 'en' && <p class="lang-note">{t('legal.englishOnly')}</p>}
 
       {
         document.sections.map((section) => (
@@ -98,6 +107,17 @@ const description =
 </Base>
 
 <style>
+  /* Swedish readers get the page in Swedish and the document in English; say
+     so once, quietly, rather than letting it look like a bug. */
+  .lang-note {
+    margin: 0 0 26px;
+    padding: 12px 14px;
+    border-left: 2px solid var(--accent);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-70);
+  }
+
   main {
     padding-top: 32px;
   }

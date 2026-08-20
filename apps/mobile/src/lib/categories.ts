@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-import en from '@/locales/en.json';
+import { CATEGORY_NAMES } from '@locastar/shared';
 
 /**
  * Category names come from the database, so they were never in the catalogue
@@ -26,7 +26,7 @@ export function categoryLabel(t: TFunction, slug: string, fallback: string): str
  * database — falls through to the name itself, which is what was shown before.
  */
 const SLUG_BY_ENGLISH_NAME: Record<string, string> = Object.fromEntries(
-  Object.entries(en.categories as Record<string, string>).map(([slug, name]) => [name, slug])
+  Object.entries(CATEGORY_NAMES.en).map(([slug, name]) => [name, slug])
 );
 
 export function categoryLabelFromName(t: TFunction, name: string): string {

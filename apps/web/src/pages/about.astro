@@ -2,20 +2,25 @@
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { aboutCopy } from '@locastar/shared';
+
+import { useTranslations } from '../i18n/ui';
 import { OSM_ATTRIBUTION, SUPPORT_EMAIL } from '../lib/site';
 
 /*
- * The words are the app's own About copy, from apps/mobile/src/locales/en.json
- * (about.*) — the handoff is explicit that this is the source and that the
- * Swedish translation already exists there under the same keys. It is not
- * rewritten for the web, because the story is the story.
+ * The words are the app's own About copy, now in packages/shared so the app
+ * screen and this page read the same source. It is not rewritten for the web,
+ * because the story is the story — and the Swedish is the app's Swedish.
  */
 export const prerender = false;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const title = 'It started with a basketball — about LocaStar';
-const description =
-  'Map apps are built around businesses. A basketball court is not a listing of its own — it is tucked inside a school or a park. LocaStar exists for the places between the listings.';
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const about = aboutCopy(lang);
+
+const title = `${about.ballTitle} — ${t('about.titleSuffix')}`;
+const description = about.gap1;
 ---
 
 <Base title={title} description={description} canonical={`${origin}/about`}>
@@ -25,58 +30,33 @@ const description =
     <article class="piece">
       <div class="photo" aria-hidden="true"></div>
 
-      <h1>It started with a basketball</h1>
+      <h1>{about.ballTitle}</h1>
 
-      <p>
-        Every time I found myself in a new part of town with a ball under my arm, I hit the same question: where
-        do I actually go and play?
-      </p>
-      <p>
-        The answer was usually out there somewhere. I’d scan the map for nearby schools and parks, guess which
-        ones might have a court, then hope it was open, decent, and worth the trip. Sometimes that worked. Often
-        I’d walk twenty minutes to find a bent rim and no net.
-      </p>
+      <p>{about.ball1}</p>
+      <p>{about.ball2}</p>
 
-      <p class="pull">That’s the whole reason LocaStar exists.</p>
+      <p class="pull">{about.ball3}</p>
 
-      <h2>The places between the listings</h2>
-      <p>
-        Map apps are built around businesses, and they’re very good at it. Activities are just harder to pin down
-        — a basketball court isn’t a listing of its own, it’s tucked inside a school or a park. Finding one means
-        guessing which places might have it, then checking them one by one.
-      </p>
-      <p>
-        So that knowledge stays scattered. A little on a forum, a little in a group chat, and most of it in the
-        heads of people who already live there. If you’re new to an area — or just new to that side of town — it
-        may as well not exist.
-      </p>
-      <p>
-        So we built LocaStar around that gap: one map of things to actually go and do, described by the people who
-        have been there.
-      </p>
-      <p>
-        LocaStar starts from the activity instead. You look for a court, a slope, a trail or a festival, and you
-        get the spot itself: what it’s like, who’s been there, and how to get to it.
-      </p>
+      <h2>{about.gapTitle}</h2>
+      <p>{about.gap1}</p>
+      <p>{about.gap2}</p>
+      <p>{about.gap3}</p>
+      <p>{about.gap4}</p>
 
-      <h2>The map grows with you</h2>
-      <p>
-        LocaStar is young, and we’d rather say so than pretend otherwise: some areas are already full, others are
-        nearly empty. It gets better every time someone adds a place they know.
-      </p>
-      <p>
-        So if you know the good court, the quiet trail, or the slope that’s worth the drive — add it. The next
-        person turning up with a ball under their arm will be glad you did.
-      </p>
+      <h2>{about.growTitle}</h2>
+      <p>{about.grow1}</p>
+      <p>{about.grow2}</p>
 
-      <h2>Need a hand?</h2>
+      <h2>{about.supportTitle}</h2>
       <p>
-        Questions, problems, or something that looks wrong on the map — write to us at{' '}
-        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> and a person will answer.
+        {about.supportPrefix}
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>{about.supportSuffix}
       </p>
 
       <p class="credit">
-        <a href={OSM_ATTRIBUTION.href} rel="noopener noreferrer" target="_blank">{OSM_ATTRIBUTION.text}</a>
+        {about.attributionPrefix}
+        <a href={OSM_ATTRIBUTION.href} rel="noopener noreferrer" target="_blank">{about.attributionLink}</a>
+        {about.attributionSuffix}
       </p>
     </article>
   </main>

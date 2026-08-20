@@ -1,4 +1,5 @@
 ---
+import { useTranslations, localePath } from '../../i18n/ui';
 import { DELETE_ACCOUNT_INFO } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -19,8 +20,12 @@ import { SUPPORT_EMAIL } from '../../lib/site';
  */
 export const prerender = false;
 
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
 const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
-if (!user) return Astro.redirect('/auth/sign-in');
+if (!user) return Astro.redirect(p('/auth/sign-in'));
 
 const deletedSection = DELETE_ACCOUNT_INFO.sections.find((s) => s.title === 'What is deleted');
 const keptSection = DELETE_ACCOUNT_INFO.sections.find((s) => s.title === 'What is kept, and why');
@@ -65,7 +70,7 @@ if (Astro.request.method === 'POST') {
         if (rpcError) throw rpcError;
       }
       await supabase.auth.signOut();
-      return Astro.redirect('/?deleted=1');
+      return Astro.redirect(p('/') + '?deleted=1');
     } catch (deleteError) {
       console.error('Account deletion failed', deleteError);
       error = `That did not go through. Try again, or write to ${SUPPORT_EMAIL} and we will do it for you.`;
@@ -77,8 +82,8 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 ---
 
 <Base
-  title="Delete your account | LocaStar"
-  description="Delete your LocaStar account. Immediate, and it cannot be undone."
+  title={t('del.metaTitle')}
+  description={t('del.metaDesc')}
   canonical={`${origin}/account/delete`}
 >
   <SiteHeader />
@@ -87,24 +92,22 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     <div class="panel">
       <a class="mono back" href="/account">← BACK TO YOUR ACCOUNT</a>
 
-      <h1>Delete your account</h1>
-      <p class="lead">Immediate, and it cannot be undone.</p>
+      <h1>{t('del.heading')}</h1>
+      <p class="lead">{t('del.lead')}</p>
 
       <section class="block">
-        <h2>What is erased</h2>
+        <h2>{t('del.erased')}</h2>
         <ul>
           {deletedItems.map((item) => <li>{item}</li>)}
         </ul>
       </section>
 
       <section class="block">
-        <h2>What is kept</h2>
+        <h2>{t('del.kept')}</h2>
         <p>{keptText}</p>
         <p class="small">
-          The full explanation is on <a href="/legal/delete-account">the deletion page</a>. If you want something
-          you posted removed outright rather than unlinked, write to{' '}
-          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> first — afterwards there is no account to
-          match it to.
+          {t('del.keptSmallPrefix')} <a href={p('/legal/delete-account')}>{t('del.deletionPage')}</a>{t('del.keptSmallMiddle')}{' '}
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> {t('del.keptSmallSuffix')}
         </p>
       </section>
 
@@ -112,13 +115,13 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         {error && <p class="error" role="alert">{error}</p>}
 
         <label class="field">
-          <span class="mono label">TYPE DELETE TO CONFIRM</span>
+          <span class="mono label">{t('del.typeToConfirm')}</span>
           <input name="confirm" autocomplete="off" placeholder="DELETE" required />
         </label>
 
         <div class="actions">
-          <button type="submit">Delete my account</button>
-          <a class="ghost" href="/account">Keep my account</a>
+          <button type="submit">{t('del.confirm')}</button>
+          <a class="ghost" href={p('/account')}>{t('del.keep')}</a>
         </div>
       </form>
     </div>

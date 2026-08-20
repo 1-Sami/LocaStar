@@ -2,6 +2,7 @@
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 
 /*
  * Section 13. It explains the one cause people actually hit — an activity that
@@ -11,11 +12,14 @@ import Base from '../layouts/Base.astro';
 export const prerender = false;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 ---
 
 <Base
-  title="Off the map | LocaStar"
-  description="This page does not exist — or the activity it showed has ended and been removed."
+  title={t('notFound.metaTitle')}
+  description={t('notFound.metaDesc')}
   canonical={`${origin}/404`}
 >
   <SiteHeader />
@@ -23,18 +27,17 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   <main id="main" class="wrap">
     <div class="panel">
       <span class="mono code">404</span>
-      <h1>Off the map</h1>
+      <h1>{t('notFound.title')}</h1>
       <p class="lead">
-        This page doesn’t exist — or the activity it showed has ended and been removed.
+        {t('notFound.lead')}
       </p>
       <p class="sub">
-        Activities are taken down once their last day has passed, so a link to something from last month will
-        land here. Places do not disappear that way.
+        {t('notFound.sub')}
       </p>
       <div class="actions">
-        <a class="cta" href="/search">Search the map</a>
-        <a class="ghost" href="/categories">Browse by activity</a>
-        <a class="ghost" href="/">Start again</a>
+        <a class="cta" href={p('/search')}>{t('notFound.searchMap')}</a>
+        <a class="ghost" href={p('/categories')}>{t('notFound.browse')}</a>
+        <a class="ghost" href={p('/')}>{t('notFound.startAgain')}</a>
       </div>
     </div>
   </main>

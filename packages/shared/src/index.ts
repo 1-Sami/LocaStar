@@ -1,3 +1,6 @@
+export { CATEGORY_NAMES, categoryName } from "./categoryNames";
+export { ABOUT, aboutCopy } from "./about";
+export type { AboutCopy } from "./about";
 export { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, USERNAME_PATTERN, isValidUsername } from "./username";
 export { PRIVACY_POLICY, TERMS_OF_SERVICE, DELETE_ACCOUNT_INFO, LEGAL_DOCUMENTS } from "./legal";
 export type { LegalDocument, LegalSectionContent, LegalBlock } from "./legal";

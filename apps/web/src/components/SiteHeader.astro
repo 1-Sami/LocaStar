@@ -1,6 +1,7 @@
 ---
 import { fetchProfile } from '@locastar/shared';
 
+import { localePath, useTranslations } from '../i18n/ui';
 import { currentUser } from '../lib/auth';
 
 /*
@@ -15,13 +16,17 @@ interface Props {
 }
 
 const { current } = Astro.props;
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const path = Astro.url.pathname;
+const p = (href: string) => localePath(href, lang);
 
 const NAV = [
-  { key: 'explore', label: 'Explore', href: '/search' },
-  { key: 'categories', label: 'Categories', href: '/categories' },
-  { key: 'community', label: 'Community', href: '/community' },
-  { key: 'features', label: 'Features', href: '/features' },
-  { key: 'about', label: 'About', href: '/about' },
+  { key: 'explore', label: t('nav.explore'), href: '/search' },
+  { key: 'categories', label: t('nav.categories'), href: '/categories' },
+  { key: 'community', label: t('nav.community'), href: '/community' },
+  { key: 'features', label: t('nav.features'), href: '/features' },
+  { key: 'about', label: t('nav.about'), href: '/about' },
 ] as const;
 
 /*
@@ -51,7 +56,7 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
 <header class="site-header">
   <div class="wrap inner">
     <div class="left">
-      <a class="brand" href="/">
+      <a class="brand" href={p('/')}>
         <svg width="48" height="48" viewBox="0 0 200 200" aria-hidden="true">
           <rect x="4" y="4" width="192" height="192" rx="42" fill="#125F6F"></rect>
           <g
@@ -79,7 +84,7 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
       <nav class="nav" aria-label="Main">
         {
           NAV.map((item) => (
-            <a class={`nav-link${current === item.key ? ' on' : ''}`} href={item.href}>
+            <a class={`nav-link${current === item.key ? ' on' : ''}`} href={p(item.href)}>
               {item.label}
             </a>
           ))
@@ -88,11 +93,15 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
     </div>
 
     <div class="actions">
-      <span class="mono lang">EN · SV</span>
+      <span class="mono lang">
+        <a class={lang === 'en' ? 'on' : ''} href={localePath(path, 'en')} hreflang="en">EN</a>
+        <span aria-hidden="true"> · </span>
+        <a class={lang === 'sv' ? 'on' : ''} href={localePath(path, 'sv')} hreflang="sv">SV</a>
+      </span>
 
       {
         signedInName ? (
-          <a class="me" href="/account" aria-label={`Your account, signed in as ${signedInName}`}>
+          <a class="me" href={p('/account')} aria-label={`${t('nav.account')} — ${signedInName}`}>
             <span class="me-name">{signedInName}</span>
             {avatarUrl ? (
               <span class="me-avatar" style={`background-image:url("${avatarUrl}")`} />
@@ -101,11 +110,11 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
             )}
           </a>
         ) : (
-          <a class="signin" href="/auth/sign-in">Sign in</a>
+          <a class="signin" href={p('/auth/sign-in')}>{t('nav.signIn')}</a>
         )
       }
 
-      <a class="cta" href="/add">Add a place</a>
+      <a class="cta" href={p('/add')}>{t('nav.addPlace')}</a>
     </div>
   </div>
 </header>
@@ -196,7 +205,19 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
   .lang {
     font-size: 13px;
     letter-spacing: 0.12em;
-    color: var(--text-70);
+    color: var(--text-42);
+  }
+
+  .lang a {
+    color: var(--text-42);
+  }
+
+  .lang a.on {
+    color: var(--text);
+  }
+
+  .lang a:hover {
+    color: var(--accent);
   }
 
   .signin {

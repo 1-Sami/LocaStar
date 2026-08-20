@@ -15,13 +15,17 @@ import PlaceRow from '../../components/PlaceRow.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
 import { longDate } from '../../lib/format';
 import { currentUser } from '../../lib/auth';
 
 export const prerender = false;
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
-if (!user) return Astro.redirect('/auth/sign-in');
+if (!user) return Astro.redirect(p('/auth/sign-in'));
 
 const section = Astro.url.searchParams.get('show') ?? 'saved';
 const listError = Astro.url.searchParams.get('listError');
@@ -56,18 +60,18 @@ const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
 
 const NAV = [
-  { key: 'saved', label: 'Saved', count: favourites.length + bookmarks.length + shares.length },
-  { key: 'lists', label: 'My lists', count: lists.length + savedLists.length },
-  { key: 'added', label: 'Added by me', count: added.length },
-  { key: 'reviews', label: 'My reviews', count: reviews.length },
+  { key: 'saved', label: t('acct.saved'), count: favourites.length + bookmarks.length + shares.length },
+  { key: 'lists', label: t('acct.myLists'), count: lists.length + savedLists.length },
+  { key: 'added', label: t('acct.addedByMe'), count: added.length },
+  { key: 'reviews', label: t('acct.myReviews'), count: reviews.length },
 ] as const;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 ---
 
 <Base
-  title="Your account | LocaStar"
-  description="Your saved places, lists, contributions and reviews."
+  title={t('acct.title')}
+  description={t('acct.metaDesc')}
   canonical={`${origin}/account`}
 >
   <SiteHeader />
@@ -81,17 +85,17 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           {
             stats && (
               <span class="mono contributions">
-                {stats.contributions} {stats.contributions === 1 ? 'CONTRIBUTION' : 'CONTRIBUTIONS'}
+                {stats.contributions} {stats.contributions === 1 ? t('acct.contribution_one') : t('acct.contribution_other')}
               </span>
             )
           }
         </div>
       </div>
 
-      <nav class="side-nav" aria-label="Account">
+      <nav class="side-nav" aria-label={t('acct.navLabel')}>
         {
           NAV.map((item) => (
-            <a class={`side-link${section === item.key ? ' on' : ''}`} href={`/account?show=${item.key}`}>
+            <a class={`side-link${section === item.key ? ' on' : ''}`} href={p(`/account?show=${item.key}`)}>
               <span>{item.label}</span>
               <span class="mono side-count">{item.count}</span>
             </a>
@@ -99,8 +103,8 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         }
       </nav>
 
-      <form method="post" action="/auth/sign-out">
-        <button class="signout" type="submit">Log out</button>
+      <form method="post" action={p('/auth/sign-out')}>
+        <button class="signout" type="submit">{t('acct.logOut')}</button>
       </form>
 
       {/*
@@ -109,9 +113,9 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         setting.
       */}
       <div class="danger">
-        <span class="mono danger-head">DELETE ACCOUNT</span>
-        <p>Immediate, and it cannot be undone.</p>
-        <a class="danger-link" href="/account/delete">Delete my account</a>
+        <span class="mono danger-head">{t('acct.deleteHead')}</span>
+        <p>{t('acct.deleteSub')}</p>
+        <a class="danger-link" href={p('/account/delete')}>{t('acct.deleteLink')}</a>
       </div>
     </aside>
 
@@ -119,11 +123,8 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       {
         isModerator && (
           <div class="mod-note">
-            <span class="mono mod-kicker">MODERATOR</span>
-            <p>
-              Reports, bans, warnings and the moderation log are in the app only. None of it is on the website
-              yet — that is planned for a later version, not missing by accident.
-            </p>
+            <span class="mono mod-kicker">{t('acct.moderator')}</span>
+            <p>{t('acct.moderatorNote')}</p>
           </div>
         )
       }
@@ -131,15 +132,15 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       {
         section === 'saved' && (
           <>
-            <h1>Saved</h1>
+            <h1>{t('acct.saved')}</h1>
 
             <section class="group">
               <div class="group-head">
-                <h2>Favourites</h2>
+                <h2>{t('acct.favourites')}</h2>
                 <span class="mono group-count">{favourites.length}</span>
               </div>
               {favourites.length === 0 ? (
-                <p class="empty-line">Nothing yet. The heart on a place keeps it here.</p>
+                <p class="empty-line">{t('acct.favouritesEmpty')}</p>
               ) : (
                 <div class="rows">
                   {favourites.map((place) => (
@@ -159,11 +160,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
             <section class="group">
               <div class="group-head">
-                <h2>Bookmarks</h2>
+                <h2>{t('acct.bookmarks')}</h2>
                 <span class="mono group-count">{bookmarks.length}</span>
               </div>
               {bookmarks.length === 0 ? (
-                <p class="empty-line">Somewhere you mean to go. The bookmark keeps it here.</p>
+                <p class="empty-line">{t('acct.bookmarksEmpty')}</p>
               ) : (
                 <div class="rows">
                   {bookmarks.map((place) => (
@@ -183,11 +184,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
             <section class="group">
               <div class="group-head">
-                <h2>Shared</h2>
+                <h2>{t('acct.shared')}</h2>
                 <span class="mono group-count">{shares.length}</span>
               </div>
               {shares.length === 0 ? (
-                <p class="empty-line">Places people have sent you, and ones you have sent, show up here.</p>
+                <p class="empty-line">{t('acct.sharedEmpty')}</p>
               ) : (
                 <div class="rows">
                   {shares.map((share) => (
@@ -212,30 +213,31 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       {
         section === 'lists' && (
           <>
-            <h1>My lists</h1>
+            <h1>{t('acct.myLists')}</h1>
 
-            {created && <p class="ok-line">List created.</p>}
-            {listError === 'name' && <p class="err-line">Give the list a name.</p>}
-            {listError === '1' && <p class="err-line">That did not save. Try again.</p>}
+            {created && <p class="ok-line">{t('acct.listCreated')}</p>}
+            {listError === 'name' && <p class="err-line">{t('acct.listNeedsName')}</p>}
+            {listError === '1' && <p class="err-line">{t('acct.listFailed')}</p>}
 
             <form method="post" action="/api/list" class="new-list">
-              <input name="name" placeholder="Name a new list" aria-label="List name" required />
-              <input name="description" placeholder="What is it for? (optional)" aria-label="Description" />
+              <input type="hidden" name="back" value={p('/account')} />
+              <input name="name" placeholder={t('acct.nameNewList')} aria-label={t('acct.listName')} required />
+              <input name="description" placeholder={t('acct.listPurpose')} aria-label={t('acct.description')} />
               <label class="public-toggle">
                 <input type="checkbox" name="isPublic" value="1" />
-                <span>Public</span>
+                <span>{t('acct.public')}</span>
               </label>
-              <button type="submit">Create list</button>
+              <button type="submit">{t('acct.createList')}</button>
             </form>
-            <p class="fine">Private by default. You can share one later.</p>
+            <p class="fine">{t('acct.listFine')}</p>
 
             {lists.length === 0 ? (
-              <p class="empty-line">No lists yet.</p>
+              <p class="empty-line">{t('acct.noLists')}</p>
             ) : (
               <div class="cards">
                 {lists.map((list) => (
                   <ListCard
-                    href={`/lists/${list.id}`}
+                    href={p(`/lists/${list.id}`)}
                     name={list.name}
                     itemCount={list.itemCount}
                     previews={list.previewLocations.slice(0, 3).map((p) => p.imageUrl)}
@@ -248,13 +250,13 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
             {savedLists.length > 0 && (
               <section class="group">
                 <div class="group-head">
-                  <h2>Saved lists</h2>
+                  <h2>{t('acct.savedLists')}</h2>
                   <span class="mono group-count">{savedLists.length}</span>
                 </div>
                 <div class="cards">
                   {savedLists.map((list) => (
                     <ListCard
-                      href={`/lists/${list.id}`}
+                      href={p(`/lists/${list.id}`)}
                       name={list.name}
                       by={list.ownerUsername ?? list.ownerDisplayName}
                       itemCount={list.itemCount}
@@ -271,14 +273,12 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       {
         section === 'added' && (
           <>
-            <h1>Added by me</h1>
+            <h1>{t('acct.addedByMe')}</h1>
             {added.length === 0 ? (
               <div class="empty">
-                <p class="empty-lead">You have not added anywhere yet.</p>
-                <p class="empty-sub">
-                  If you know a court, a trail or a slope the map is missing, it takes a minute.
-                </p>
-                <a class="ghost" href="/add">Add a place</a>
+                <p class="empty-lead">{t('acct.noneAdded')}</p>
+                <p class="empty-sub">{t('acct.noneAddedSub')}</p>
+                <a class="ghost" href={p('/add')}>{t('add.heading')}</a>
               </div>
             ) : (
               <div class="rows">
@@ -301,18 +301,16 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       {
         section === 'reviews' && (
           <>
-            <h1>My reviews</h1>
+            <h1>{t('acct.myReviews')}</h1>
             {reviews.length === 0 ? (
               <div class="empty">
-                <p class="empty-lead">You have not written a review yet.</p>
-                <p class="empty-sub">
-                  A sentence about what a place is actually like is worth more than a star on its own.
-                </p>
+                <p class="empty-lead">{t('acct.noReviews')}</p>
+                <p class="empty-sub">{t('acct.noReviewsSub')}</p>
               </div>
             ) : (
               <div class="rows">
                 {reviews.map((review) => (
-                  <a class="review" href={`/location/${review.location_id}`}>
+                  <a class="review" href={p(`/location/${review.location_id}`)}>
                     <span class="review-place">{review.location_name}</span>
                     <span class="mono review-stars">
                       {'★'.repeat(review.rating)}

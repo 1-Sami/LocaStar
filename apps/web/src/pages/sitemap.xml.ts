@@ -52,11 +52,23 @@ export const GET: APIRoute = async ({ site, url }) => {
     return new Response('Sitemap temporarily unavailable', { status: 503 });
   }
 
-  const urls = [
+  const english = [
     ...STATIC_PATHS.map((path) => ({ path, lastmod: null as string | null })),
     ...entries.categories,
     ...entries.locations,
     ...entries.lists,
+  ];
+
+  /*
+   * Both languages, each as its own URL.
+   *
+   * Google indexes addresses. The hreflang tags on the pages say these are the
+   * same page in two languages rather than duplicates, but the Swedish ones
+   * still have to be listed or nothing crawls them.
+   */
+  const urls = [
+    ...english,
+    ...english.map(({ path, lastmod }) => ({ path: path === '/' ? '/sv/' : `/sv${path}`, lastmod })),
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>

@@ -2,6 +2,7 @@
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
 
 /*
  * Where the confirmation email lands.
@@ -13,6 +14,9 @@ import Base from '../../layouts/Base.astro';
  */
 export const prerender = false;
 const origin = Astro.site?.origin ?? Astro.url.origin;
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 ---
 
 <Base
@@ -23,11 +27,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   <SiteHeader />
   <main id="main" class="wrap">
     <div class="panel">
-      <h1>That's confirmed</h1>
-      <p class="lead">Your email address is verified. You can sign in now, here or in the app.</p>
+      <h1>{t('auth.confirmedTitle')}</h1>
+      <p class="lead">{t('auth.confirmedLead')}</p>
       <div class="actions">
-        <a class="cta" href="/auth/sign-in">Sign in</a>
-        <a class="ghost" href="/search">Look around first</a>
+        <a class="cta" href={p('/auth/sign-in')}>{t('auth.signIn')}</a>
+        <a class="ghost" href={p('/search')}>{t('auth.lookAroundFirst')}</a>
       </div>
     </div>
   </main>

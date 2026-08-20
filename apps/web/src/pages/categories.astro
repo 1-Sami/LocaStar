@@ -1,14 +1,18 @@
 ---
-import { fetchCategoryCounts, fetchLocationTotal } from '@locastar/shared';
+import { categoryName, fetchCategoryCounts, fetchLocationTotal } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { categoryColor } from '../lib/format';
+import { useTranslations, localePath } from '../i18n/ui';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
 
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 let counts;
 let total;
@@ -23,8 +27,12 @@ const withPlaces = counts.filter((row) => row.count > 0);
 const empty = counts.filter((row) => row.count === 0);
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const title = `Everything you can look for — ${withPlaces.length} categories | LocaStar`;
-const description = `The ${withPlaces.length} kinds of place and activity on LocaStar, from ${withPlaces[0]?.name.toLowerCase() ?? 'courts'} to festivals, across ${total} entries in Sweden.`;
+const title = t('cats.title', { count: withPlaces.length });
+const description = t('cats.metaDesc', {
+  count: withPlaces.length,
+  first: (categoryName(withPlaces[0]?.slug ?? null, lang) ?? withPlaces[0]?.name ?? 'courts').toLowerCase(),
+  total,
+});
 
 /*
  * Links to every category page in one place.
@@ -47,18 +55,17 @@ const jsonLd = [
 
   <main id="main" class="wrap">
     <header class="head">
-      <h1>Browse by activity</h1>
+      <h1>{t('cats.heading')}</h1>
       <p class="lead">
-        {withPlaces.length} categories with somewhere to go, across {total} places and activities. Colour carries
-        the family — blue is water, green is nature and trails, warm is sport, purple is built or cultural.
+        {t('cats.lead', { count: withPlaces.length, total })}
       </p>
     </header>
 
     <div class="grid">
       {
         withPlaces.map((row) => (
-          <a class="cat" href={`/activity/${row.slug}`} style={`background:${categoryColor(row.slug)}`}>
-            <span class="cat-name">{row.name}</span>
+          <a class="cat" href={p(`/activity/${row.slug}`)} style={`background:${categoryColor(row.slug)}`}>
+            <span class="cat-name">{categoryName(row.slug, lang) ?? row.name}</span>
             <span class="mono cat-count">{row.count}</span>
           </a>
         ))
@@ -70,14 +77,14 @@ const jsonLd = [
         /* Named rather than hidden: an empty category is an invitation, and
            pretending it does not exist means nobody ever fills it. */
         <section class="waiting">
-          <h2>Nothing here yet</h2>
+          <h2>{t('cats.emptyHeading')}</h2>
           <p class="waiting-lead">
-            {empty.length} categories exist but nobody has added anywhere. If you know one, the map is missing it.
+            {t('cats.emptyLead', { count: empty.length })}
           </p>
           <div class="chips">
             {empty.map((row) => (
-              <a class="chip" href={`/activity/${row.slug}`} style={`border-color:${categoryColor(row.slug)}`}>
-                {row.name}
+              <a class="chip" href={p(`/activity/${row.slug}`)} style={`border-color:${categoryColor(row.slug)}`}>
+                {categoryName(row.slug, lang) ?? row.name}
               </a>
             ))}
           </div>

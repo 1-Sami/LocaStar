@@ -1,4 +1,5 @@
 ---
+import { useTranslations } from '../i18n/ui';
 import { categoryColor, ratingLabel } from '../lib/format';
 
 /*
@@ -35,6 +36,7 @@ const {
   aside = null,
 } = Astro.props;
 
+const t = useTranslations(Astro.locals.lang ?? 'en');
 const colour = categoryColor(categorySlug);
 const rating = ratingLabel(avgRating, reviewCount);
 ---
@@ -55,7 +57,7 @@ const rating = ratingLabel(avgRating, reviewCount);
         rating.rated ? (
           <span class="mono star">★ {rating.avg} <span class="dim">({rating.count})</span></span>
         ) : (
-          <span class="mono unrated">NOT RATED YET</span>
+          <span class="mono unrated">{t('common.notRated')}</span>
         )
       }
       {categoryName && <span class="cat">{categoryName}</span>}

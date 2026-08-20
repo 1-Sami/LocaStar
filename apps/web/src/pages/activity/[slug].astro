@@ -1,5 +1,6 @@
 ---
 import {
+  categoryName,
   fetchAllCategories,
   fetchCategoryBySlug,
   fetchCategoryCityCounts,
@@ -9,6 +10,7 @@ import {
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
 import { categoryColor, ratingLabel } from '../../lib/format';
 import { anonClient } from '../../lib/supabase';
 
@@ -16,6 +18,9 @@ export const prerender = false;
 
 const { slug } = Astro.params;
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 let category;
 try {
@@ -56,6 +61,13 @@ const publicUrl = (path: string | null) =>
 
 const colour = categoryColor(slug);
 /*
+ * The category's name in the reader's language. The row's own name column is
+ * English — it is what the app seeds from — so the shared table is what makes
+ * a Swedish page say Utegym rather than Outdoor gym.
+ */
+const catName = categoryName(slug, lang) ?? category.name;
+const catLower = catName.toLowerCase();
+/*
  * The category total comes from the count function, not from adding up the
  * city facets: 16 places have no city at all, so summing the facets quietly
  * loses them. The same class of mistake as summing category counts for a
@@ -75,10 +87,9 @@ const remainingCities = Math.max(0, cityCounts.length - topCities.length);
  */
 const related = allCategories.filter((c) => c.slug !== slug).slice(0, 10);
 
-const heading = cityParam ? `${category.name} in ${cityParam}` : `${category.name} in Sweden`;
-const title = cityParam
-  ? `${category.name} in ${cityParam} — ${shownTotal} places | LocaStar`
-  : `${category.name} in Sweden — ${shownTotal} places | LocaStar`;
+const where = cityParam ?? t('activity.inSweden');
+const heading = t('activity.headingIn', { name: catName, where });
+const title = `${heading} — ${t('activity.titleSuffix', { count: shownTotal })} | LocaStar`;
 
 /*
  * A description built from what is actually on the page.
@@ -87,14 +98,12 @@ const title = cityParam
  * they tell a reader nothing the title did not. The counts are real, so this
  * changes as the map grows.
  */
-const where = cityParam ? cityParam : 'Sweden';
 const cityBit =
   !cityParam && cityCounts.length > 1
-    ? ` Across ${cityCounts.length} towns and cities, from ${topCities[0].city} downwards.`
+    ? t('activity.leadCities', { count: cityCounts.length, first: topCities[0].city })
     : '';
 const description =
-  `${shownTotal} ${category.name.toLowerCase()} in ${where}, added and described by the people who go to them.` +
-  `${cityBit} Directions, photos and reviews on LocaStar.`;
+  t('activity.lead', { count: shownTotal, name: catLower, where }) + cityBit + t('activity.leadTail');
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const canonical = `${origin}/activity/${slug}`;
@@ -105,7 +114,7 @@ const jsonLd: Record<string, unknown>[] = [
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'LocaStar', item: `${origin}/` },
-      { '@type': 'ListItem', position: 2, name: category.name, item: canonical },
+      { '@type': 'ListItem', position: 2, name: catName, item: canonical },
     ],
   },
   {
@@ -128,18 +137,9 @@ const jsonLd: Record<string, unknown>[] = [
  * on the page — Google treats markup that is not visible as a violation.
  */
 const faqs = [
-  {
-    q: `Is every ${category.name.toLowerCase()} in Sweden listed here?`,
-    a: 'No. The map is young and grows when people add what they know. Most entries came from OpenStreetMap; the descriptions and photos come from people who have been there.',
-  },
-  {
-    q: 'Does it cost anything?',
-    a: 'No. Browsing needs no account at all. An account is only needed to save places, write a review or add somewhere new.',
-  },
-  {
-    q: 'Something here is wrong or gone. What now?',
-    a: 'Every place has a report link on its own page. Reports go to a moderator, and a reported photo is hidden until someone has looked at it.',
-  },
+  { q: t('activity.faq1q', { name: catLower }), a: t('activity.faq1a') },
+  { q: t('activity.faq2q'), a: t('activity.faq2a') },
+  { q: t('activity.faq3q'), a: t('activity.faq3a') },
 ];
 
 jsonLd.push({
@@ -161,16 +161,16 @@ jsonLd.push({
 
     <div class="wrap intro">
       <nav class="mono crumbs" aria-label="Breadcrumb">
-        <a href="/">LocaStar</a>
+        <a href={p('/')}>LocaStar</a>
         <span aria-hidden="true">/</span>
-        <span class="here">{category.name}</span>
+        <span class="here">{catName}</span>
       </nav>
 
       <h1>{heading}</h1>
 
       <p class="lead">
         {shownTotal === 0
-          ? `Nothing here yet — nobody has added ${category.name.toLowerCase()} in ${where}.`
+          ? t('activity.emptyLead', { name: catLower, where })
           : description}
       </p>
 
@@ -179,21 +179,21 @@ jsonLd.push({
           <div class="chips">
             <a
               class={`chip${cityParam ? '' : ' on'}`}
-              href={`/activity/${slug}`}
+              href={p(`/activity/${slug}`)}
               style={cityParam ? '' : `background:${colour};border-color:${colour}`}
             >
-              All {total}
+              {t('activity.all', { count: total })}
             </a>
             {topCities.map((row) => (
               <a
                 class={`chip${cityParam === row.city ? ' on' : ''}`}
-                href={`/activity/${slug}?city=${encodeURIComponent(row.city)}`}
+                href={p(`/activity/${slug}?city=${encodeURIComponent(row.city)}`)}
                 style={cityParam === row.city ? `background:${colour};border-color:${colour}` : ''}
               >
                 {row.city} {row.count}
               </a>
             ))}
-            {remainingCities > 0 && <span class="chip muted">+{remainingCities} more</span>}
+            {remainingCities > 0 && <span class="chip muted">{t('activity.moreCities', { count: remainingCities })}</span>}
           </div>
         )
       }
@@ -201,18 +201,18 @@ jsonLd.push({
 
     <section class="wrap listing">
       <div class="listing-head">
-        <h2>{cityParam ? `In ${cityParam}` : 'Where people have been'}</h2>
+        <h2>{cityParam ? t('activity.inCity', { city: cityParam }) : t('activity.whereBeen')}</h2>
         {listing.total > listing.places.length && (
-          <span class="mono soft">Showing {listing.places.length} of {listing.total}</span>
+          <span class="mono soft">{t('activity.showing', { shown: listing.places.length, total: listing.total })}</span>
         )}
       </div>
 
       {
         listing.places.length === 0 ? (
           <div class="empty">
-            <p class="empty-lead">Nothing here yet.</p>
+            <p class="empty-lead">{t('activity.nothingYet')}</p>
             <p class="sub">
-              If you know {category.name.toLowerCase()} around here, you know something the map does not.
+              {t('activity.nothingSub', { name: catLower })}
             </p>
           </div>
         ) : (
@@ -221,12 +221,12 @@ jsonLd.push({
               const rating = ratingLabel(place.avgRating, place.reviewCount);
               const cover = publicUrl(place.coverPhotoPath);
               return (
-                <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
+                <a class="card" href={p(`/location/${place.id}`)} style={`border-color:${colour}`}>
                   {cover ? (
                     <div class="card-photo" style={`background-image:url("${cover}")`} />
                   ) : (
                     <div class="card-photo flat" style={`background:${colour}`}>
-                      <span class="mono">{category.name}</span>
+                      <span class="mono">{catName}</span>
                     </div>
                   )}
                   <div class="card-body">
@@ -236,7 +236,7 @@ jsonLd.push({
                         ★ {rating.avg} <span class="dim">({rating.count})</span>
                       </span>
                     ) : (
-                      <span class="mono card-unrated">Not rated yet</span>
+                      <span class="mono card-unrated">{t('common.notRated')}</span>
                     )}
                     {(place.address || place.city) && (
                       <span class="card-where">{[place.address, place.city].filter(Boolean).join(' · ')}</span>
@@ -252,7 +252,7 @@ jsonLd.push({
 
     <section class="wrap one-col">
       <div class="faq">
-        <h2>Questions</h2>
+        <h2>{t('activity.questions')}</h2>
         {
           faqs.map((faq) => (
             <details class="faq-item">
@@ -267,11 +267,11 @@ jsonLd.push({
     {
       related.length > 0 && (
         <section class="wrap related">
-          <h2>Other things to do</h2>
+          <h2>{t('activity.other')}</h2>
           <div class="chips">
             {related.map((other) => (
-              <a class="chip" href={`/activity/${other.slug}`} style={`border-color:${categoryColor(other.slug)}`}>
-                {other.name}
+              <a class="chip" href={p(`/activity/${other.slug}`)} style={`border-color:${categoryColor(other.slug)}`}>
+                {categoryName(other.slug, lang) ?? other.name}
               </a>
             ))}
           </div>

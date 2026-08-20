@@ -1,6 +1,7 @@
 import { addLocationToList, createList, setSaved } from '@locastar/shared';
 import type { APIRoute } from 'astro';
 
+import { localePath } from '../../i18n/ui';
 import { currentUser } from '../../lib/auth';
 
 export const prerender = false;
@@ -22,10 +23,12 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const action = String(form.get('action') ?? '');
   const locationId = String(form.get('locationId') ?? '');
   const back = String(form.get('back') ?? '/');
+  // The page that submitted this carries the locale in its own path.
+  const lang = back === '/sv' || back.startsWith('/sv/') ? 'sv' : 'en';
 
   if (!user) {
     // Send them to sign in, then back to the place they were looking at.
-    return redirect(`/auth/sign-in?next=${encodeURIComponent(back)}`);
+    return redirect(`${localePath('/auth/sign-in', lang)}?next=${encodeURIComponent(back)}`);
   }
 
   try {

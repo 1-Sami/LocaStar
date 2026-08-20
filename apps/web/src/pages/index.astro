@@ -8,13 +8,18 @@ import {
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 import { categoryColor, ratingLabel, roundedCount } from '../lib/format';
 import { storeLinksReady, STORE_LINKS } from '../lib/site';
 import { anonClient } from '../lib/supabase';
+import { categoryName } from '@locastar/shared';
 
 export const prerender = false;
 
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 /*
  * The counts are the page, so they are not allowed to fail quietly.
@@ -92,13 +97,14 @@ const jsonLd = [
 
       <div class="hero-inner">
         <span class="mono eyebrow">
-          {roundedCount(totalPlaces)} PLACES AND ACTIVITIES · {roundedCount(withPlaces.length)} CATEGORIES
+          {roundedCount(totalPlaces)} {t('home.eyebrowPlaces')} · {roundedCount(withPlaces.length)}{' '}
+          {t('home.eyebrowCategories')}
         </span>
 
-        <h1>Explore</h1>
+        <h1>{t('home.title')}</h1>
 
         <p class="promise">
-          One map of things to actually go and do — described by the people who have been there.
+          {t('home.promise')}
         </p>
 
         <div class="badges">
@@ -145,24 +151,24 @@ const jsonLd = [
               </>
             )
           }
-          <span class="badge-note">Free · iOS and Android · English and Swedish</span>
+          <span class="badge-note">{t('home.storeSoon')}</span>
         </div>
       </div>
 
-      <form class="finder" action="/search" method="get">
+      <form class="finder" action={p('/search')} method="get">
         <label class="cell activity">
-          <span class="mono cell-label">ACTIVITY</span>
+          <span class="mono cell-label">{t('home.finderActivity')}</span>
           <select name="activity">
-            <option value="">Any activity</option>
-            {withPlaces.map((row) => <option value={row.slug}>{row.name}</option>)}
+            <option value="">{t('home.finderAnyActivity')}</option>
+            {withPlaces.map((row) => <option value={row.slug}>{categoryName(row.slug, lang) ?? row.name}</option>)}
           </select>
         </label>
         <label class="cell">
-          <span class="mono cell-label">WHERE</span>
-          <input name="where" placeholder="Near me" autocomplete="off" />
+          <span class="mono cell-label">{t('home.finderWhere')}</span>
+          <input name="where" placeholder={t('home.finderNearMe')} autocomplete="off" />
         </label>
         <label class="cell narrow">
-          <span class="mono cell-label">TYPE</span>
+          <span class="mono cell-label">{t('home.finderType')}</span>
           <select name="kind">
             <option value="">Place · Activity</option>
             <option value="place">Place</option>
@@ -170,14 +176,14 @@ const jsonLd = [
           </select>
         </label>
         <label class="cell narrow">
-          <span class="mono cell-label">SEASON</span>
+          <span class="mono cell-label">{t('home.finderSeason')}</span>
           <select name="season">
-            <option value="">Any</option>
-            <option value="summer">Summer</option>
-            <option value="winter">Winter</option>
+            <option value="">{t('home.finderAny')}</option>
+            <option value="summer">{t('home.finderSummer')}</option>
+            <option value="winter">{t('home.finderWinter')}</option>
           </select>
         </label>
-        <button class="finder-go" type="submit">Explore</button>
+        <button class="finder-go" type="submit">{t('home.finderGo')}</button>
       </form>
     </section>
 
@@ -185,9 +191,9 @@ const jsonLd = [
       featured.length > 0 && (
         <section class="wrap strip">
           <div class="strip-head">
-            <h2>Most liked</h2>
-            <a class="mono see-all" href="/search">
-              SEE ALL {roundedCount(totalPlaces)} →
+            <h2>{t('home.mostLiked')}</h2>
+            <a class="mono see-all" href={p('/search')}>
+              {t('home.seeAll')} {roundedCount(totalPlaces)} →
             </a>
           </div>
           <div class="grid-4">
@@ -196,17 +202,17 @@ const jsonLd = [
               const rating = ratingLabel(place.avgRating, place.reviewCount);
               const cover = publicUrl(place.coverPhotoPath);
               return (
-                <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
+                <a class="card" href={p(`/location/${place.id}`)} style={`border-color:${colour}`}>
                   {cover ? (
                     <div class="card-photo" style={`background-image:url("${cover}")`} />
                   ) : (
                     <div class="card-photo flat" style={`background:${colour}`}>
-                      <span class="mono">{place.categoryName ?? ''}</span>
+                      <span class="mono">{categoryName(place.categorySlug ?? null, lang) ?? place.categoryName ?? ''}</span>
                     </div>
                   )}
                   <div class="card-body">
                     <span class="card-badge" style={`background:${colour}`}>
-                      {place.categoryName ?? ''}
+                      {categoryName(place.categorySlug ?? null, lang) ?? place.categoryName ?? ''}
                     </span>
                     <span class="card-name">{place.name}</span>
                     {rating.rated ? (
@@ -214,7 +220,7 @@ const jsonLd = [
                         ★ {rating.avg} <span class="dim">({rating.count})</span>
                       </span>
                     ) : (
-                      <span class="mono card-unrated">NOT RATED YET</span>
+                      <span class="mono card-unrated">{t('common.notRated')}</span>
                     )}
                     {place.city && <span class="card-where">{place.city}</span>}
                   </div>
@@ -228,22 +234,22 @@ const jsonLd = [
 
     <section class="wrap browse">
       <div class="strip-head tight">
-        <h2>Browse by activity</h2>
-        <span class="soft">{roundedCount(withPlaces.length)} categories, grouped the way the map is</span>
+        <h2>{t('home.browse')}</h2>
+        <span class="soft">{roundedCount(withPlaces.length)} {t('home.browseSub')}</span>
       </div>
       <div class="cat-grid">
         {
           withPlaces.slice(0, 23).map((row) => (
-            <a class="cat" href={`/activity/${row.slug}`} style={`background:${categoryColor(row.slug)}`}>
-              <span class="cat-name">{row.name}</span>
+            <a class="cat" href={p(`/activity/${row.slug}`)} style={`background:${categoryColor(row.slug)}`}>
+              <span class="cat-name">{categoryName(row.slug, lang) ?? row.name}</span>
               <span class="mono cat-count">{row.count}</span>
             </a>
           ))
         }
         {
           withPlaces.length > 23 && (
-            <a class="cat more" href="/categories">
-              <span class="cat-name">+{withPlaces.length - 23} more</span>
+            <a class="cat more" href={p('/categories')}>
+              <span class="cat-name">+{withPlaces.length - 23} {t('home.more')}</span>
             </a>
           )
         }
@@ -254,16 +260,16 @@ const jsonLd = [
       lists.length > 0 && (
         <section class="wrap strip">
           <div class="strip-head">
-            <h2>Lists people have shared</h2>
-            <a class="mono see-all" href="/community">
-              COMMUNITY →
+            <h2>{t('home.sharedLists')}</h2>
+            <a class="mono see-all" href={p('/community')}>
+              {t('home.community')}
             </a>
           </div>
           <div class="grid-4">
             {lists.slice(0, 4).map((list) => {
               const previews = list.previewLocations.slice(0, 3);
               return (
-                <a class="list-card" href={`/lists/${list.id}`}>
+                <a class="list-card" href={p(`/lists/${list.id}`)}>
                   <span class="list-name">{list.name}</span>
                   <span class="list-by">
                     by {list.ownerUsername ?? list.ownerDisplayName ?? 'someone on LocaStar'}
@@ -285,7 +291,7 @@ const jsonLd = [
                     </div>
                   </div>
                   <span class="mono list-count">
-                    {list.itemCount} {list.itemCount === 1 ? 'PLACE' : 'PLACES'} · {list.likeCount} LIKES
+                    {list.itemCount} {list.itemCount === 1 ? t('common.place') : t('common.places')}
                   </span>
                 </a>
               );
@@ -298,7 +304,7 @@ const jsonLd = [
     <section class="wrap" id="get-the-app">
       <div class="band">
         <div class="band-copy">
-          <h2>The whole map, in your pocket</h2>
+          <h2>{t('home.bandTitle')}</h2>
           <p>
             Directions from where you actually are, places saved for later, and a reminder before something you
             wanted to see starts.
@@ -319,15 +325,15 @@ const jsonLd = [
               </span>
             </span>
           </div>
-          <p class="band-note">Free, no ads. Works in English and Swedish.</p>
+          <p class="band-note">{t('home.bandNote')}</p>
         </div>
 
         <div class="band-art">
           <div class="phone tall">
-            <img src="/app/screen-1.jpg" alt="The LocaStar app showing places near you" loading="lazy" />
+            <img src="/app/screen-1.jpg" alt={t('home.shot1Alt')} loading="lazy" />
           </div>
           <div class="phone short">
-            <img src="/app/screen-2.jpg" alt="The LocaStar app showing a place in detail" loading="lazy" />
+            <img src="/app/screen-2.jpg" alt={t('home.shot2Alt')} loading="lazy" />
           </div>
         </div>
       </div>

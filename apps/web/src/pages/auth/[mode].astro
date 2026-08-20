@@ -3,6 +3,7 @@ import { isValidUsername } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
 import { currentUser, sessionClient } from '../../lib/auth';
 
 export const prerender = false;
@@ -10,9 +11,12 @@ export const prerender = false;
 const { mode } = Astro.params;
 if (mode !== 'sign-in' && mode !== 'sign-up') return new Response(null, { status: 404 });
 const isSignUp = mode === 'sign-up';
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 const { user } = await currentUser(Astro.cookies, Astro.request.headers);
-if (user) return Astro.redirect('/account');
+if (user) return Astro.redirect(p('/account'));
 
 let error: string | null = null;
 let sentTo: string | null = null;
@@ -26,7 +30,7 @@ if (Astro.request.method === 'POST') {
   const supabase = sessionClient(Astro.cookies, Astro.request.headers);
 
   if (!email || !password) {
-    error = 'Enter your email address and a password.';
+    error = t('auth.errBoth');
   } else if (isSignUp) {
     /*
      * The same username rule the app and the database use, checked here so a
@@ -35,7 +39,7 @@ if (Astro.request.method === 'POST') {
      */
     const badUsername = username !== '' && !isValidUsername(username);
     if (badUsername) {
-      error = 'That username will not work — 3 to 20 characters, letters, numbers and underscores.';
+      error = t('auth.errUsername');
     } else {
       const { error: signUpError } = await supabase.auth.signUp({
         email,
@@ -59,18 +63,16 @@ if (Astro.request.method === 'POST') {
   } else {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
-      error = 'That email and password did not match. Check both and try again.';
+      error = t('auth.errCredentials');
     } else {
-      return Astro.redirect('/account');
+      return Astro.redirect(p('/account'));
     }
   }
 }
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const title = isSignUp ? 'Create an account | LocaStar' : 'Sign in | LocaStar';
-const description = isSignUp
-  ? 'An account lets you save places, build lists and add somewhere new. Browsing LocaStar needs nothing.'
-  : 'Sign in to LocaStar to reach your saved places, lists and reviews.';
+const title = isSignUp ? t('auth.signUpTitle') : t('auth.signInTitle');
+const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
 ---
 
 <Base title={title} description={description} canonical={`${origin}/auth/${mode}`}>
@@ -99,29 +101,24 @@ const description = isSignUp
         </svg>
 
         <div class="intro">
-          <h1>{isSignUp ? 'Create an account' : 'Welcome back'}</h1>
+          <h1>{isSignUp ? t('auth.createAccount') : t('auth.welcomeBack')}</h1>
           <p>
             {
-              isSignUp
-                ? 'You only need one to save places, build lists and add somewhere new. Browsing needs nothing.'
-                : 'Your saved places, lists and reviews are the same ones as in the app.'
+              isSignUp ? t('auth.signUpIntro') : t('auth.signInIntro')
             }
           </p>
         </div>
 
         <div class="segmented">
-          <a class={`seg${isSignUp ? ' on' : ''}`} href="/auth/sign-up">Sign up</a>
-          <a class={`seg${isSignUp ? '' : ' on'}`} href="/auth/sign-in">Sign in</a>
+          <a class={`seg${isSignUp ? ' on' : ''}`} href={p('/auth/sign-up')}>{t('auth.signUp')}</a>
+          <a class={`seg${isSignUp ? '' : ' on'}`} href={p('/auth/sign-in')}>{t('auth.signIn')}</a>
         </div>
 
         {
           sentTo ? (
             <div class="sent">
-              <p class="sent-lead">Check your email.</p>
-              <p class="sent-sub">
-                If {sentTo} can have an account, a confirmation link is on its way. Opening it on your phone
-                opens the app, if you have it installed.
-              </p>
+              <p class="sent-lead">{t('auth.checkEmail')}</p>
+              <p class="sent-sub">{t('auth.sentSub', { email: sentTo })}</p>
             </div>
           ) : (
             <form method="post" class="form">
@@ -129,13 +126,13 @@ const description = isSignUp
 
               {isSignUp && (
                 <label class="field">
-                  <span class="mono label">USERNAME</span>
+                  <span class="mono label">{t('auth.username')}</span>
                   <input name="username" autocomplete="username" placeholder="sam_86" />
                 </label>
               )}
 
               <label class="field">
-                <span class="mono label">EMAIL</span>
+                <span class="mono label">{t('auth.email')}</span>
                 <input
                   name="email"
                   type="email"
@@ -146,30 +143,27 @@ const description = isSignUp
               </label>
 
               <label class="field">
-                <span class="mono label">PASSWORD</span>
+                <span class="mono label">{t('auth.password')}</span>
                 <input
                   name="password"
                   type="password"
                   required
                   minlength="8"
                   autocomplete={isSignUp ? 'new-password' : 'current-password'}
-                  placeholder={isSignUp ? 'At least 8 characters, letters and numbers' : ''}
+                  placeholder={isSignUp ? t('auth.passwordHint') : ''}
                 />
               </label>
 
-              <button type="submit">{isSignUp ? 'Create account' : 'Sign in'}</button>
+              <button type="submit">{isSignUp ? t('auth.submitSignUp') : t('auth.signIn')}</button>
 
               {
                 isSignUp ? (
                   <p class="fine">
-                    By creating an account you agree to the <a href="/legal/terms">Terms of Service</a> and the{' '}
-                    <a href="/legal/privacy">Privacy Policy</a>. The confirmation link opens the app if you have
-                    it installed.
+                    {t('auth.fineSignUpPrefix')} <a href={p('/legal/terms')}>{t('contact.terms')}</a>{' '}
+                    {t('auth.fineSignUpMiddle')} <a href={p('/legal/privacy')}>{t('contact.privacy')}</a>{t('auth.fineSignUpSuffix')}
                   </p>
                 ) : (
-                  <p class="fine">
-                    Forgotten your password? Reset it from the app, or write to us and we will help.
-                  </p>
+                  <p class="fine">{t('auth.fineSignIn')}</p>
                 )
               }
             </form>

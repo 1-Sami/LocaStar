@@ -2,6 +2,7 @@
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 import { SUPPORT_EMAIL } from '../lib/site';
 
 /*
@@ -13,9 +14,11 @@ import { SUPPORT_EMAIL } from '../lib/site';
 export const prerender = false;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const title = 'Contact and support | LocaStar';
-const description =
-  'Email a person at support@locastar.se — about something wrong on the map, claiming a business you run, or deleting your account.';
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+const title = t('contact.title');
+const description = t('contact.metaDesc');
 ---
 
 <Base title={title} description={description} canonical={`${origin}/contact`}>
@@ -23,47 +26,37 @@ const description =
 
   <main id="main" class="wrap">
     <header class="head">
-      <h1>Contact and support</h1>
-      <p class="lead">One address, read by a person. There is no ticket system and no bot.</p>
+      <h1>{t('contact.heading')}</h1>
+      <p class="lead">{t('contact.lead')}</p>
       <a class="email" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
     </header>
 
     <div class="cards">
       <section class="card" id="report">
-        <h2>Something is wrong on the map</h2>
-        <p>
-          A place that has closed, an address in the wrong spot, a review that should not be there. Every place
-          has a report link on its own page, which goes straight to a moderator — that is faster than email.
-        </p>
-        <p class="small">
-          Reported photos are hidden the moment they are reported, before anyone has looked at them.
-        </p>
+        <h2>{t('contact.wrongTitle')}</h2>
+        <p>{t('contact.wrongBody')}</p>
+        <p class="small">{t('contact.wrongSmall')}</p>
       </section>
 
       <section class="card" id="claim">
-        <h2>You run a place that is listed</h2>
-        <p>
-          Claiming it lets you keep the details right — hours, contact, description. Write to us from an address
-          at the organisation and say which place it is.
-        </p>
-        <p class="small">Claiming does not let you remove reviews or hide what people have written.</p>
+        <h2>{t('contact.claimTitle')}</h2>
+        <p>{t('contact.claimBody')}</p>
+        <p class="small">{t('contact.claimSmall')}</p>
       </section>
 
       <section class="card">
-        <h2>Delete your account</h2>
-        <p>
-          You can do it yourself in the app, in Settings, and it takes effect immediately. If you cannot sign in
-          or no longer have the app, email us from the address on the account.
-        </p>
+        <h2>{t('contact.deleteTitle')}</h2>
+        <p>{t('contact.deleteBody')}</p>
         <p class="small">
-          <a href="/legal/delete-account">What is deleted, and what is kept →</a>
+          <a href={p('/legal/delete-account')}>{t('contact.deleteLink')}</a>
         </p>
       </section>
     </div>
 
     <p class="who">
-      LocaStar is operated by Sadek Mirza, Stockholm, Sweden. See the{' '}
-      <a href="/legal/privacy">Privacy Policy</a> and <a href="/legal/terms">Terms of Service</a>.
+      {t('contact.operatedBy')}{' '}
+      <a href={p('/legal/privacy')}>{t('contact.privacy')}</a> {t('contact.and')}{' '}
+      <a href={p('/legal/terms')}>{t('contact.terms')}</a>.
     </p>
   </main>
 

@@ -19,7 +19,25 @@ interface Props {
   jsonLd?: unknown[];
 }
 
-const { title, description, canonical, lang = 'en', jsonLd = [] } = Astro.props;
+const { title, description, canonical, jsonLd = [] } = Astro.props;
+
+/*
+ * The language comes from the URL, via middleware, not from a prop each page
+ * has to remember to pass.
+ *
+ * hreflang tells Google these are the same page in two languages rather than
+ * duplicates competing with each other, and which to show a Swedish searcher.
+ * x-default points at English for everyone else.
+ */
+const lang = Astro.locals.lang ?? 'en';
+const bare = Astro.url.pathname.startsWith('/sv/')
+  ? Astro.url.pathname.slice(3)
+  : Astro.url.pathname === '/sv'
+    ? '/'
+    : Astro.url.pathname;
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const enHref = origin + bare;
+const svHref = origin + (bare === '/' ? '/sv/' : '/sv' + bare);
 ---
 
 <!doctype html>
@@ -29,7 +47,10 @@ const { title, description, canonical, lang = 'en', jsonLd = [] } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    <link rel="canonical" href={lang === 'sv' ? svHref : canonical} />
+    <link rel="alternate" hreflang="en" href={enHref} />
+    <link rel="alternate" hreflang="sv" href={svHref} />
+    <link rel="alternate" hreflang="x-default" href={enHref} />
 
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />

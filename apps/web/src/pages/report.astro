@@ -3,6 +3,7 @@ import { fetchLocationById, reportLocation, reportReview } from '@locastar/share
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 import { currentUser } from '../lib/auth';
 import { anonClient } from '../lib/supabase';
 
@@ -21,14 +22,19 @@ export const prerender = false;
 
 const REASON_OTHER = 'Other';
 
+/*
+ * The value written to the database is English in both languages, exactly as
+ * the app does it. A moderator queue holding two spellings of "Spam" is a
+ * queue nobody can filter, and the rows already there are English.
+ */
 const LOCATION_REASONS = [
-  'Spam',
-  'Inappropriate content',
-  "Doesn't exist / permanently closed",
-  'Incorrect information',
-  'Duplicate of another listing',
-  REASON_OTHER,
-];
+  { value: 'Spam', key: 'reason.spam' },
+  { value: 'Inappropriate content', key: 'reason.inappropriate' },
+  { value: "Doesn't exist / permanently closed", key: 'reason.closed' },
+  { value: 'Incorrect information', key: 'reason.incorrect' },
+  { value: 'Duplicate of another listing', key: 'reason.duplicate' },
+  { value: REASON_OTHER, key: 'reason.other' },
+] as const;
 
 /*
  * A review has fewer honest complaints available than a listing does.
@@ -36,17 +42,25 @@ const LOCATION_REASONS = [
  * somebody's opinion of it — offering them invites reports a moderator can
  * only dismiss. Same reasoning, and same list, as the app.
  */
-const REVIEW_REASONS = ['Spam', 'Inappropriate content', REASON_OTHER];
+const REVIEW_REASONS = [
+  { value: 'Spam', key: 'reason.spam' },
+  { value: 'Inappropriate content', key: 'reason.inappropriate' },
+  { value: REASON_OTHER, key: 'reason.other' },
+] as const;
 
 /** Words, not characters: "bad" and "no" are not a reason anyone can act on. */
 const MIN_OTHER_WORDS = 3;
 const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
 const locationId = Astro.url.searchParams.get('location');
 const reviewId = Astro.url.searchParams.get('review');
 const isReview = Boolean(reviewId);
 
-if (!locationId && !reviewId) return Astro.redirect('/');
+if (!locationId && !reviewId) return Astro.redirect(p('/'));
 
 const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
 
@@ -60,17 +74,17 @@ let done = false;
 
 if (Astro.request.method === 'POST') {
   if (!user) {
-    error = 'You need to be signed in to report something.';
+    error = t('report.errSignedIn');
   } else {
     const form = await Astro.request.formData();
     const reason = String(form.get('reason') ?? '');
     const details = String(form.get('details') ?? '').trim();
 
     const allowed = isReview ? REVIEW_REASONS : LOCATION_REASONS;
-    if (!allowed.includes(reason)) {
-      error = 'Choose a reason.';
+    if (!allowed.some((entry) => entry.value === reason)) {
+      error = t('report.errReason');
     } else if (reason === REASON_OTHER && countWords(details) < MIN_OTHER_WORDS) {
-      error = `Tell us what is wrong — at least ${MIN_OTHER_WORDS} words, so a moderator can act on it.`;
+      error = t('report.errWords', { count: MIN_OTHER_WORDS });
     } else {
       try {
         if (isReview) {
@@ -91,7 +105,7 @@ if (Astro.request.method === 'POST') {
         done = true;
       } catch (submitError) {
         console.error('Failed to file report', submitError);
-        error = 'That did not send. Try again in a moment.';
+        error = t('report.errSend');
       }
     }
   }
@@ -114,31 +128,22 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       {
         done ? (
           <>
-            <h1>Thank you — that is with a moderator</h1>
-            <p class="lead">
-              Somebody will look at it. If it breaks the rules it comes down; if it does not, the report is
-              closed and nothing changes.
-            </p>
-            <a class="cta" href={backHref}>Back to the place</a>
+            <h1>{t('report.thanks')}</h1>
+            <p class="lead">{t('report.thanksBody')}</p>
+            <a class="cta" href={backHref}>{t('report.back')}</a>
           </>
         ) : (
           <>
-            <h1>{isReview ? 'Report a review' : 'Report this place'}</h1>
+            <h1>{isReview ? t('report.headingReview') : t('report.headingPlace')}</h1>
             {context && <p class="what">{context.name}</p>}
-            <p class="lead">
-              Reports go to a moderator, not to whoever posted it. They can dismiss it, remove the content,
-              warn the author, or restrict the account behind it.
-            </p>
+            <p class="lead">{t('report.lead')}</p>
 
             {!user ? (
               <div class="signin-first">
-                <p>
-                  You need an account to report something — so we can tell you what happened, and so one person
-                  cannot file a hundred.
-                </p>
+                <p>{t('report.needAccount')}</p>
                 <div class="actions">
-                  <a class="cta" href="/auth/sign-in">Sign in</a>
-                  <a class="ghost" href="/auth/sign-up">Create an account</a>
+                  <a class="cta" href={p('/auth/sign-in')}>{t('auth.signIn')}</a>
+                  <a class="ghost" href={p('/auth/sign-up')}>{t('auth.createAccount')}</a>
                 </div>
               </div>
             ) : (
@@ -146,29 +151,26 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 {error && <p class="error" role="alert">{error}</p>}
 
                 <fieldset class="reasons">
-                  <legend class="mono label">WHAT IS WRONG</legend>
+                  <legend class="mono label">{t('report.whatIsWrong')}</legend>
                   {reasons.map((reason, index) => (
                     <label class="radio">
-                      <input type="radio" name="reason" value={reason} required checked={index === 0} />
-                      <span>{reason}</span>
+                      <input type="radio" name="reason" value={reason.value} required checked={index === 0} />
+                      <span>{t(reason.key)}</span>
                     </label>
                   ))}
                 </fieldset>
 
                 <label class="field">
-                  <span class="mono label">ANYTHING ELSE (OPTIONAL, UNLESS YOU CHOSE OTHER)</span>
-                  <textarea name="details" rows="4" placeholder="What should a moderator know?"></textarea>
+                  <span class="mono label">{t('report.details')}</span>
+                  <textarea name="details" rows="4" placeholder={t('report.detailsPlaceholder')}></textarea>
                 </label>
 
                 <div class="actions">
-                  <button type="submit">Send report</button>
-                  <a class="ghost" href={backHref}>Cancel</a>
+                  <button type="submit">{t('report.send')}</button>
+                  <a class="ghost" href={backHref}>{t('report.cancel')}</a>
                 </div>
 
-                <p class="fine">
-                  A reported photo is hidden straight away, before anyone has looked at it. Everything else stays
-                  visible until a moderator decides.
-                </p>
+                <p class="fine">{t('report.fine')}</p>
               </form>
             )}
           </>

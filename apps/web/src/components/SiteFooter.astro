@@ -1,4 +1,10 @@
 ---
+import { localePath, useTranslations } from '../i18n/ui';
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
 /*
  * Footer as drawn in section 01: four columns, mono column headings, and the
  * OpenStreetMap attribution in the first one.
@@ -42,24 +48,24 @@
     </div>
 
     <div class="col">
-      <span class="mono col-head">Explore</span>
-      <a href="/categories">Categories</a>
-      <a href="/community">Community lists</a>
-      <a href="/add">Add a place</a>
+      <span class="mono col-head">{t('footer.explore')}</span>
+      <a href={p('/categories')}>{t('footer.categories')}</a>
+      <a href={p('/community')}>{t('footer.communityLists')}</a>
+      <a href={p('/add')}>{t('footer.addPlace')}</a>
     </div>
 
     <div class="col">
-      <span class="mono col-head">LocaStar</span>
-      <a href="/about">About</a>
-      <a href="/features">Features</a>
-      <a href="/contact">Contact &amp; support</a>
+      <span class="mono col-head">{t('footer.locastar')}</span>
+      <a href={p('/about')}>{t('footer.about')}</a>
+      <a href={p('/features')}>{t('footer.features')}</a>
+      <a href={p('/contact')}>{t('footer.contact')}</a>
     </div>
 
     <div class="col">
-      <span class="mono col-head">Legal</span>
-      <a href="/legal/privacy">Privacy policy</a>
-      <a href="/legal/terms">Terms of service</a>
-      <a href="/legal/delete-account">Delete your account</a>
+      <span class="mono col-head">{t('footer.legal')}</span>
+      <a href={p('/legal/privacy')}>{t('footer.privacy')}</a>
+      <a href={p('/legal/terms')}>{t('footer.terms')}</a>
+      <a href={p('/legal/delete-account')}>{t('footer.deleteAccount')}</a>
     </div>
   </div>
 </footer>

@@ -1,5 +1,6 @@
 ---
 import {
+  categoryName,
   fetchLocationById,
   fetchLocationPhotos,
   fetchNearbyLocations,
@@ -12,6 +13,7 @@ import LeafletMap from '../../components/LeafletMap.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
 import { categoryColor, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
 import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
@@ -20,6 +22,9 @@ export const prerender = false;
 
 const { id } = Astro.params;
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 
 /*
  * A frozen URL — every "Copy link" in the shipped app points here, so it has to
@@ -80,11 +85,11 @@ const rating = ratingLabel(location.avg_rating, location.review_count);
 const alwaysOpen = location.hours ? isAlwaysOpen(location.hours) : false;
 const hasHours = Boolean(location.hours && Object.keys(location.hours).length > 0);
 
-const category = location.category_label;
+const category = categoryName(location.category_slug, lang) ?? location.category_label;
 const city = location.city;
 
 const title =
-  [location.name, category ? `— ${category}` : null, city ? `in ${city}` : null].filter(Boolean).join(' ') +
+  [location.name, category ? `— ${category}` : null, city ? t('loc.inCity', { city }) : null].filter(Boolean).join(' ') +
   ' | LocaStar';
 const description = metaDescription(location.description, { name: location.name, category, city });
 const origin = Astro.site?.origin ?? Astro.url.origin;
@@ -165,18 +170,18 @@ if (hasSession) {
   }
 }
 
-const backHere = `/location/${location.id}`;
+const backHere = p(`/location/${location.id}`);
 const saved = Astro.url.searchParams.get('saved');
 
 const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`;
 const seasonLabel =
   location.available_summer && location.available_winter
-    ? 'All year'
+    ? t('loc.allYear')
     : location.available_summer
-      ? 'Summer'
+      ? t('loc.summer')
       : location.available_winter
-        ? 'Winter'
-        : 'Not stated';
+        ? t('loc.winter')
+        : t('loc.notStated');
 ---
 
 <Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
@@ -219,7 +224,7 @@ const seasonLabel =
         <header class="head">
           <div class="badges">
             {category && <span class="badge" style={`background:${colour}`}>{category}</span>}
-            {location.kind === 'activity' && <span class="badge outline">Activity</span>}
+            {location.kind === 'activity' && <span class="badge outline">{t('loc.activity')}</span>}
             {(location.available_summer || location.available_winter) && (
               <span class="mono season">
                 {[location.available_summer && 'Summer', location.available_winter && 'Winter']
@@ -243,7 +248,7 @@ const seasonLabel =
               ) : (
                 /* Not empty stars — those read as "rated badly" rather than
                    "nobody has been yet". */
-                <span class="mono unrated">Not rated yet</span>
+                <span class="mono unrated">{t('common.notRated')}</span>
               )
             }
             {location.address && (
@@ -259,17 +264,17 @@ const seasonLabel =
 
         <div class="info">
           <div class="card">
-            <span class="mono label">Opening hours</span>
-            <div class="value">{alwaysOpen ? 'Open 24/7' : hasHours ? 'Varies by day' : 'Not stated'}</div>
+            <span class="mono label">{t('loc.openingHours')}</span>
+            <div class="value">{alwaysOpen ? t('loc.open247') : hasHours ? t('loc.variesByDay') : t('loc.notStated')}</div>
           </div>
           <div class="card">
-            <span class="mono label">Season</span>
+            <span class="mono label">{t('loc.season')}</span>
             <div class="value">{seasonLabel}</div>
           </div>
           <div class="card">
-            <span class="mono label">Added by</span>
+            <span class="mono label">{t('loc.addedBy')}</span>
             <div class="value">
-              {location.creator_visible && location.creator_username ? location.creator_username : 'Someone on LocaStar'}
+              {location.creator_visible && location.creator_username ? location.creator_username : t('loc.someone')}
             </div>
             <span class="sub">{longDate(location.created_at)}</span>
           </div>
@@ -279,15 +284,15 @@ const seasonLabel =
 
         <section class="reviews">
           <div class="reviews-head">
-            <h2>Reviews</h2>
-            {reviews.length > 1 && <span class="mono soft">Most recent</span>}
+            <h2>{t('loc.reviews')}</h2>
+            {reviews.length > 1 && <span class="mono soft">{t('loc.mostRecent')}</span>}
           </div>
 
           {
             reviews.length === 0 ? (
               <div class="empty">
-                <p class="empty-lead">Nobody has reviewed this yet.</p>
-                <p class="sub">If you have been here, you know something the map does not.</p>
+                <p class="empty-lead">{t('loc.noReviews')}</p>
+                <p class="sub">{t('loc.noReviewsSub')}</p>
               </div>
             ) : (
               <div class="review-list">
@@ -340,7 +345,7 @@ const seasonLabel =
             class="panel-map"
           />
           <div class="panel-actions">
-            <a class="cta" href={mapsHref} rel="noopener noreferrer" target="_blank">Directions</a>
+            <a class="cta" href={mapsHref} rel="noopener noreferrer" target="_blank">{t('common.directions')}</a>
             <div class="secondary">
               <form method="post" action="/api/save">
                 <input type="hidden" name="action" value="favorite" />
@@ -348,7 +353,7 @@ const seasonLabel =
                 <input type="hidden" name="on" value={isFavourite ? '0' : '1'} />
                 <input type="hidden" name="back" value={backHere} />
                 <button class={`ghost${isFavourite ? ' on' : ''}`} type="submit">
-                  {isFavourite ? '♥ Saved' : '♡ Save'}
+                  {isFavourite ? `♥ ${t('loc.saved')}` : `♡ ${t('loc.save')}`}
                 </button>
               </form>
 
@@ -358,12 +363,12 @@ const seasonLabel =
                 <input type="hidden" name="on" value={isBookmarked ? '0' : '1'} />
                 <input type="hidden" name="back" value={backHere} />
                 <button class={`ghost${isBookmarked ? ' on' : ''}`} type="submit">
-                  {isBookmarked ? '🔖 Bookmarked' : 'Bookmark'}
+                  {isBookmarked ? `🔖 ${t('loc.bookmarked')}` : t('loc.bookmark')}
                 </button>
               </form>
 
               <button class="ghost narrow" type="button" data-share={canonical} data-name={location.name}>
-                Share
+                {t('loc.share')}
               </button>
             </div>
 
@@ -373,47 +378,37 @@ const seasonLabel =
                   <input type="hidden" name="action" value="add-to-list" />
                   <input type="hidden" name="locationId" value={location.id} />
                   <input type="hidden" name="back" value={backHere} />
-                  <select name="listId" aria-label="Add to a list">
+                  <select name="listId" aria-label={t('loc.chooseList')}>
                     {myLists.map((l) => (
                       <option value={l.id}>{l.name}</option>
                     ))}
-                    <option value="__new">+ New list…</option>
+                    <option value="__new">{t('loc.newList')}</option>
                   </select>
                   <input
                     name="newListName"
-                    placeholder="Name the new list"
-                    aria-label="Name for a new list"
+                    placeholder={t('loc.nameNewList')}
+                    aria-label={t('loc.nameForNewList')}
                     class="new-list"
                   />
-                  <button class="ghost" type="submit">Add to list</button>
+                  <button class="ghost" type="submit">{t('loc.addToList')}</button>
                 </form>
               ) : (
-                <span class="note">Saving needs an account — free, in the app or here.</span>
+                <span class="note">{t('loc.needAccount')}</span>
               )
             }
 
-            {saved === 'favorite' && <span class="note done">Saved to your favourites.</span>}
-            {saved === 'bucket_list' && <span class="note done">Added to your bookmarks.</span>}
-            {saved === 'add-to-list' && <span class="note done">Added to your list.</span>}
+            {saved === 'favorite' && <span class="note done">{t('loc.doneFavourite')}</span>}
+            {saved === 'bucket_list' && <span class="note done">{t('loc.doneBookmark')}</span>}
+            {saved === 'add-to-list' && <span class="note done">{t('loc.doneList')}</span>}
           </div>
         </div>
 
         <div class="panel quiet">
-          Want distance from where you are, and turn-by-turn? <a href="/">Get the LocaStar app →</a>
+          {t('loc.getApp')} <a href={p('/')}>{t('loc.getAppLink')}</a>
         </div>
 
-        {
-          !location.is_verified && (
-            <div class="panel quiet">
-              <strong>Do you run this place?</strong>
-              <span>Claim it to keep the details right.</span>
-              <a class="quiet-link" href="/contact#claim">Claim this place →</a>
-            </div>
-          )
-        }
-
         <div class="panel quiet">
-          Something wrong or gone? <a href={`/report?location=${location.id}`}>Report it</a>
+          {t('loc.wrong')} <a href={p(`/report?location=${location.id}`)}>{t('loc.reportIt')}</a>
         </div>
       </aside>
     </div>
@@ -421,7 +416,7 @@ const seasonLabel =
     {
       nearby.length > 0 && (
         <section class="wrap nearby">
-          <h2>More {category ? category.toLowerCase() : 'places'} nearby</h2>
+          <h2>{t('loc.nearby', { name: category ? category.toLowerCase() : t('loc.nearbyPlaces') })}</h2>
           <div class="nearby-grid">
             {nearby.map((place) => {
               const placeColour = categoryColor(place.category_slug);
@@ -439,7 +434,7 @@ const seasonLabel =
                   <div class="near-body">
                     <span class="near-name">{place.name}</span>
                     <span class="mono near-meta">
-                      {placeRating.rated ? `★ ${placeRating.avg}` : 'Not rated yet'}
+                      {placeRating.rated ? `★ ${placeRating.avg}` : t('common.notRated')}
                       {` · ${(place.distance_m / 1000).toFixed(1)} km`}
                     </span>
                   </div>

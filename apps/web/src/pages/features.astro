@@ -2,6 +2,8 @@
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { aboutCopy } from '@locastar/shared';
+import { useTranslations } from '../i18n/ui';
 import { storeLinksReady, STORE_LINKS } from '../lib/site';
 
 /*
@@ -12,27 +14,24 @@ import { storeLinksReady, STORE_LINKS } from '../lib/site';
 export const prerender = false;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const title = 'What LocaStar does';
-const description =
-  'Find places worth going to, save and organise them, plan something private, and leave something behind for the next person. Free, on iOS and Android.';
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+
+/*
+ * The four bands are the app's own "what you can do here" copy, which already
+ * exists in both languages — writing a second set of four sentences saying the
+ * same thing is how two descriptions of one product start to disagree.
+ */
+const about = aboutCopy(lang);
+
+const title = t('features.title');
+const description = t('features.metaDesc');
 
 const bands = [
-  {
-    lead: 'Find places worth going to.',
-    body: 'Search by activity or browse what’s near you, with ratings, photos and directions from people who actually showed up.',
-  },
-  {
-    lead: 'Save and organise.',
-    body: 'Keep favourites, build a “want to go” list, and group places into lists you can keep private or share with everyone.',
-  },
-  {
-    lead: 'Plan something private.',
-    body: 'Organising a party, a wedding, or a film shoot? Create it as a private activity and share it only with the people you invite.',
-  },
-  {
-    lead: 'Leave something behind.',
-    body: 'Add a rating, a photo, or a spot nobody has listed yet.',
-  },
+  { lead: about.findLead, body: about.findBody },
+  { lead: about.saveLead, body: about.saveBody },
+  { lead: about.privateLead, body: about.privateBody },
+  { lead: about.contributeLead, body: about.contributeBody },
 ];
 ---
 
@@ -41,11 +40,8 @@ const bands = [
 
   <main id="main">
     <header class="wrap head">
-      <h1>What you can do here</h1>
-      <p class="lead">
-        LocaStar starts from the activity. You look for a court, a slope, a trail or a festival, and you get the
-        spot itself: what it’s like, who’s been there, and how to get to it.
-      </p>
+      <h1>{about.doTitle}</h1>
+      <p class="lead">{about.gap4}</p>
     </header>
 
     {
@@ -64,11 +60,8 @@ const bands = [
 
     <section class="wrap closing">
       <div class="closing-inner">
-        <h2>Free, on both stores</h2>
-        <p>
-          Browsing needs no account at all. One is only needed to save places, write a review, or add somewhere
-          new. English and Swedish, no ads.
-        </p>
+        <h2>{t('features.freeTitle')}</h2>
+        <p>{t('features.freeBody')}</p>
         <div class="badges">
           {
             storeLinksReady ? (
@@ -76,14 +69,14 @@ const bands = [
                 <a class="store" href={STORE_LINKS.appStore}>
                   <span class="store-mark" aria-hidden="true" />
                   <span class="store-text">
-                    <span class="mono over">DOWNLOAD ON THE</span>
+                    <span class="mono over">{t('features.appStoreOver')}</span>
                     <span class="store-name">App Store</span>
                   </span>
                 </a>
                 <a class="store" href={STORE_LINKS.googlePlay}>
                   <span class="store-mark" aria-hidden="true" />
                   <span class="store-text">
-                    <span class="mono over">GET IT ON</span>
+                    <span class="mono over">{t('features.googlePlayOver')}</span>
                     <span class="store-name">Google Play</span>
                   </span>
                 </a>
@@ -93,14 +86,14 @@ const bands = [
                 <span class="store waiting">
                   <span class="store-mark" aria-hidden="true" />
                   <span class="store-text">
-                    <span class="mono over">DOWNLOAD ON THE</span>
+                    <span class="mono over">{t('features.appStoreOver')}</span>
                     <span class="store-name">App Store</span>
                   </span>
                 </span>
                 <span class="store waiting">
                   <span class="store-mark" aria-hidden="true" />
                   <span class="store-text">
-                    <span class="mono over">GET IT ON</span>
+                    <span class="mono over">{t('features.googlePlayOver')}</span>
                     <span class="store-name">Google Play</span>
                   </span>
                 </span>

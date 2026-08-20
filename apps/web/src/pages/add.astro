@@ -2,6 +2,7 @@
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 import { currentUser } from '../lib/auth';
 
 /*
@@ -16,47 +17,44 @@ export const prerender = false;
 
 const { user } = await currentUser(Astro.cookies, Astro.request.headers);
 const origin = Astro.site?.origin ?? Astro.url.origin;
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 ---
 
 <Base
-  title="Add a place | LocaStar"
-  description="Add a court, a trail, a slope or a festival the map is missing. It goes live the moment you submit — there is no approval queue."
+  title={t('add.metaTitle')}
+  description={t('add.metaDesc')}
   canonical={`${origin}/add`}
 >
   <SiteHeader />
 
   <main id="main" class="wrap">
     <header class="head">
-      <h1>Add a place</h1>
-      <p class="lead">
-        If you know a court, a trail, a slope or a festival the map is missing, it takes a minute. It goes live
-        the moment you submit — there is no approval queue.
-      </p>
+      <h1>{t('add.heading')}</h1>
+      <p class="lead">{t('add.lead')}</p>
     </header>
 
     <div class="cards">
       <div class="entry place">
-        <span class="mono kind">A PLACE</span>
-        <p>Somewhere that is simply there — a court, a beach, an outdoor gym, a trail.</p>
+        <span class="mono kind">{t('add.aPlace')}</span>
+        <p>{t('add.aPlaceBody')}</p>
       </div>
       <div class="entry activity">
-        <span class="mono kind">AN ACTIVITY</span>
-        <p>Something with dates — a festival, a market, a tournament. It retires itself once it has passed.</p>
+        <span class="mono kind">{t('add.anActivity')}</span>
+        <p>{t('add.anActivityBody')}</p>
       </div>
     </div>
 
     <div class="notice">
-      <h2>For now, adding happens in the app</h2>
-      <p>
-        Placing the pin needs a proper map, and that part of the website is not finished. The app does it
-        already, and anything you add there shows up here straight away — it is the same map.
-      </p>
+      <h2>{t('add.noticeTitle')}</h2>
+      <p>{t('add.noticeBody')}</p>
       <p class="small">
-        {user ? 'You are signed in, so it will be under your account.' : 'You will need an account, which is free.'}
+        {user ? t('add.signedIn') : t('add.needAccount')}
       </p>
       <div class="actions">
-        <a class="ghost" href="/search">Look around instead</a>
-        {!user && <a class="ghost" href="/auth/sign-up">Create an account</a>}
+        <a class="ghost" href={p('/search')}>{t('add.lookAround')}</a>
+        {!user && <a class="ghost" href={p('/auth/sign-up')}>{t('auth.createAccount')}</a>}
       </div>
     </div>
   </main>

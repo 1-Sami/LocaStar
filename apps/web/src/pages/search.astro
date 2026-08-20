@@ -1,15 +1,19 @@
 ---
-import { fetchCategoryCounts, fetchSearchResults } from '@locastar/shared';
+import { categoryName, fetchCategoryCounts, fetchSearchResults } from '@locastar/shared';
 import LeafletMap from '../components/LeafletMap.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
+import { useTranslations, localePath } from '../i18n/ui';
 import { categoryColor, ratingLabel, roundedCount } from '../lib/format';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
 
 const supabase = anonClient();
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
 const url = Astro.url;
 
 /*
@@ -55,7 +59,7 @@ function withParam(name: string, value: string | null, resetPage = true) {
   else next.set(name, value);
   if (resetPage) next.delete('page');
   const qs = next.toString();
-  return qs ? `/search?${qs}` : '/search';
+  return qs ? `${p('/search')}?${qs}` : p('/search');
 }
 
 /** Toggle one category on or off, keeping the rest. */
@@ -67,7 +71,7 @@ function toggleActivity(slug: string) {
   updated.forEach((s) => next.append('activity', s));
   next.delete('page');
   const qs = next.toString();
-  return qs ? `/search?${qs}` : '/search';
+  return qs ? `${p('/search')}?${qs}` : p('/search');
 }
 
 function pageHref(target: number) {
@@ -75,7 +79,7 @@ function pageHref(target: number) {
   if (target <= 1) next.delete('page');
   else next.set('page', String(target));
   const qs = next.toString();
-  return qs ? `/search?${qs}` : '/search';
+  return qs ? `${p('/search')}?${qs}` : p('/search');
 }
 
 const first = response.total === 0 ? 0 : (response.page - 1) * response.perPage + 1;
@@ -94,7 +98,7 @@ for (let i = 1; i <= response.pageCount; i += 1) {
 
 const describedFilters = [
   q ? `"${q}"` : null,
-  activity.length ? activity.map((slug) => withPlaces.find((c) => c.slug === slug)?.name ?? slug).join(', ') : null,
+  activity.length ? activity.map((slug) => categoryName(slug, lang) ?? withPlaces.find((c) => c.slug === slug)?.name ?? slug).join(', ') : null,
   kind === 'place' ? 'places' : kind === 'activity' ? 'activities' : null,
   season ? season : null,
 ].filter(Boolean);
@@ -122,34 +126,34 @@ const canonical = `${origin}/search`;
   <SiteHeader current="explore" />
 
   <main id="main" class="wrap">
-    <form class="searchbar" action="/search" method="get">
+    <form class="searchbar" action={p("/search")} method="get">
       <span class="mono glyph" aria-hidden="true">⌕</span>
-      <input name="q" value={q} placeholder="Search a place, an activity, a town…" aria-label="Search" />
+      <input name="q" value={q} placeholder={t('search.placeholder')} aria-label="Search" />
       {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
       {kind && <input type="hidden" name="kind" value={kind} />}
       {season && <input type="hidden" name="season" value={season} />}
-      <button type="submit">Search</button>
+      <button type="submit">{t('common.search')}</button>
     </form>
 
     <div class="layout">
       <aside class="rail" aria-label="Filters">
         <div class="group">
-          <span class="mono group-head">TYPE</span>
+          <span class="mono group-head">{t('search.type')}</span>
           <div class="pills">
             <a class={`pill${kind === 'place' ? ' on' : ''}`} href={withParam('kind', kind === 'place' ? null : 'place')}>
-              Places
+              {t('search.places')}
             </a>
             <a
               class={`pill${kind === 'activity' ? ' on' : ''}`}
               href={withParam('kind', kind === 'activity' ? null : 'activity')}
             >
-              Activities
+              {t('search.activities')}
             </a>
           </div>
         </div>
 
         <div class="group">
-          <span class="mono group-head">SEASON</span>
+          <span class="mono group-head">{t('search.season')}</span>
           <div class="pills">
             <a
               class={`pill${season === 'summer' ? ' on' : ''}`}
@@ -167,7 +171,7 @@ const canonical = `${origin}/search`;
         </div>
 
         <div class="group">
-          <span class="mono group-head">ACTIVITY</span>
+          <span class="mono group-head">{t('search.activity')}</span>
           <div class="cats">
             {
               withPlaces.map((row) => {
@@ -176,7 +180,7 @@ const canonical = `${origin}/search`;
                   <a class={`cat${on ? ' on' : ''}`} href={toggleActivity(row.slug)}>
                     <span class="box" style={on ? `background:${categoryColor(row.slug)};border-color:transparent` : ''} />
                     <span class="cat-name">
-                      {row.name} <span class="mono cat-count">{row.count}</span>
+                      {categoryName(row.slug, lang) ?? row.name} <span class="mono cat-count">{row.count}</span>
                     </span>
                   </a>
                 );
@@ -188,25 +192,25 @@ const canonical = `${origin}/search`;
 
       <section class="results" aria-label="Results">
         <div class="results-head">
-          <span class="mono count">{response.total} RESULTS</span>
+          <span class="mono count">{response.total} {t('common.results')}</span>
           <label class="sort">
-            <span class="mono sort-label">SORT</span>
+            <span class="mono sort-label">{t('common.sort')}</span>
             <select
               onchange="location.href = this.value"
               aria-label="Sort results"
             >
               <option value={withParam('sort', 'rating', false)} selected={sort === 'rating'}>
-                Best rated
+                {t('search.sortRating')}
               </option>
               <option value={withParam('sort', 'name', false)} selected={sort === 'name'}>
-                Name, A–Z
+                {t('search.sortName')}
               </option>
             </select>
           </label>
           {
             (q || activity.length > 0 || kind || season) && (
-              <a class="mono clear" href="/search">
-                CLEAR ALL
+              <a class="mono clear" href={p("/search")}>
+                {t('common.clearAll')}
               </a>
             )
           }
@@ -217,13 +221,13 @@ const canonical = `${origin}/search`;
             /* Named actions, not just an absence — the handoff's rule for every
                empty state on the site. */
             <div class="empty">
-              <p class="empty-lead">Nothing matched that.</p>
+              <p class="empty-lead">{t('search.emptyLead')}</p>
               <p class="empty-sub">
                 Try fewer filters, or a nearby town. If you know somewhere that should be here, it can be added.
               </p>
               <div class="empty-actions">
-                <a class="ghost" href="/search">Clear the filters</a>
-                <a class="ghost" href="/add">Add a place</a>
+                <a class="ghost" href={p('/search')}>{t('search.clearFilters')}</a>
+                <a class="ghost" href={p("/add")}>{t("nav.addPlace")}</a>
               </div>
             </div>
           ) : (
@@ -234,18 +238,18 @@ const canonical = `${origin}/search`;
                 const cover = publicUrl(place.coverPhotoPath);
                 return (
                   <article class="row" style={`border-color:${colour}`}>
-                    <a class="row-link" href={`/location/${place.id}`}>
+                    <a class="row-link" href={p(`/location/${place.id}`)}>
                       {cover ? (
                         <div class="row-photo" style={`background-image:url("${cover}")`} />
                       ) : (
                         <div class="row-photo flat" style={`background:${colour}`}>
-                          <span class="mono">{place.categoryName ?? ''}</span>
+                          <span class="mono">{categoryName(place.categorySlug, lang) ?? place.categoryName ?? ''}</span>
                         </div>
                       )}
                       <div class="row-body">
                         {place.categoryName && (
                           <span class="row-badge" style={`background:${colour}`}>
-                            {place.categoryName}
+                            {categoryName(place.categorySlug, lang) ?? place.categoryName}
                           </span>
                         )}
                         <span class="row-name">{place.name}</span>
@@ -254,7 +258,7 @@ const canonical = `${origin}/search`;
                             ★ {rating.avg} <span class="dim">({rating.count} reviews)</span>
                           </span>
                         ) : (
-                          <span class="mono row-unrated">NOT RATED YET</span>
+                          <span class="mono row-unrated">{t('common.notRated')}</span>
                         )}
                         <span class="row-where">{[place.address, place.city].filter(Boolean).join(', ')}</span>
                       </div>
@@ -266,7 +270,7 @@ const canonical = `${origin}/search`;
                         rel="noopener noreferrer"
                         target="_blank"
                       >
-                        Directions
+                        {t('common.directions')}
                       </a>
                     </div>
                   </article>
@@ -275,7 +279,7 @@ const canonical = `${origin}/search`;
 
               <div class="pager">
                 <span class="mono showing">
-                  SHOWING {first}–{last} OF {response.total}
+                  {t('search.showing')} {first}–{last} {t('search.of')} {response.total}
                 </span>
                 <div class="bar" aria-hidden="true">
                   <div class="bar-fill" style={`width:${progress}%`} />
