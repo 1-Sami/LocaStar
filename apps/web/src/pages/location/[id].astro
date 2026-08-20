@@ -4,6 +4,8 @@ import {
   fetchLocationPhotos,
   fetchNearbyLocations,
   fetchReviews,
+  fetchLists,
+  fetchSavedLocationIds,
   isAlwaysOpen,
 } from '@locastar/shared';
 import LeafletMap from '../../components/LeafletMap.astro';
@@ -11,6 +13,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { categoryColor, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
+import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
 
 export const prerender = false;
@@ -135,6 +138,35 @@ const jsonLd: Record<string, unknown>[] = [
     ],
   },
 ];
+
+/*
+ * The visitor's own state for this place: is it a favourite, is it bookmarked,
+ * and which of their lists could it go in. Only asked for when a session cookie
+ * exists, so a signed-out reader — and a crawler — pays nothing.
+ */
+const hasSession = (Astro.request.headers.get('cookie') ?? '').includes('sb-');
+let viewerId: string | null = null;
+let isFavourite = false;
+let isBookmarked = false;
+let myLists: { id: string; name: string }[] = [];
+
+if (hasSession) {
+  const { user, supabase: authed } = await currentUser(Astro.cookies, Astro.request.headers);
+  if (user) {
+    viewerId = user.id;
+    const [favIds, bucketIds, lists] = await Promise.all([
+      fetchSavedLocationIds(authed, user.id, 'favorite').catch(() => new Set<string>()),
+      fetchSavedLocationIds(authed, user.id, 'bucket_list').catch(() => new Set<string>()),
+      fetchLists(authed, user.id).catch(() => []),
+    ]);
+    isFavourite = favIds.has(location.id);
+    isBookmarked = bucketIds.has(location.id);
+    myLists = lists.map((l) => ({ id: l.id, name: l.name }));
+  }
+}
+
+const backHere = `/location/${location.id}`;
+const saved = Astro.url.searchParams.get('saved');
 
 const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`;
 const seasonLabel =
@@ -310,11 +342,59 @@ const seasonLabel =
           <div class="panel-actions">
             <a class="cta" href={mapsHref} rel="noopener noreferrer" target="_blank">Directions</a>
             <div class="secondary">
-              <a class="ghost" href="/auth/sign-in">Save</a>
-              <a class="ghost" href="/auth/sign-in">Add to list</a>
-              <a class="ghost narrow" href={`/location/${location.id}`}>Share</a>
+              <form method="post" action="/api/save">
+                <input type="hidden" name="action" value="favorite" />
+                <input type="hidden" name="locationId" value={location.id} />
+                <input type="hidden" name="on" value={isFavourite ? '0' : '1'} />
+                <input type="hidden" name="back" value={backHere} />
+                <button class={`ghost${isFavourite ? ' on' : ''}`} type="submit">
+                  {isFavourite ? '♥ Saved' : '♡ Save'}
+                </button>
+              </form>
+
+              <form method="post" action="/api/save">
+                <input type="hidden" name="action" value="bucket_list" />
+                <input type="hidden" name="locationId" value={location.id} />
+                <input type="hidden" name="on" value={isBookmarked ? '0' : '1'} />
+                <input type="hidden" name="back" value={backHere} />
+                <button class={`ghost${isBookmarked ? ' on' : ''}`} type="submit">
+                  {isBookmarked ? '🔖 Bookmarked' : 'Bookmark'}
+                </button>
+              </form>
+
+              <button class="ghost narrow" type="button" data-share={canonical} data-name={location.name}>
+                Share
+              </button>
             </div>
-            <span class="note">Saving needs an account — free, in the app or here.</span>
+
+            {
+              viewerId ? (
+                <form method="post" action="/api/save" class="to-list">
+                  <input type="hidden" name="action" value="add-to-list" />
+                  <input type="hidden" name="locationId" value={location.id} />
+                  <input type="hidden" name="back" value={backHere} />
+                  <select name="listId" aria-label="Add to a list">
+                    {myLists.map((l) => (
+                      <option value={l.id}>{l.name}</option>
+                    ))}
+                    <option value="__new">+ New list…</option>
+                  </select>
+                  <input
+                    name="newListName"
+                    placeholder="Name the new list"
+                    aria-label="Name for a new list"
+                    class="new-list"
+                  />
+                  <button class="ghost" type="submit">Add to list</button>
+                </form>
+              ) : (
+                <span class="note">Saving needs an account — free, in the app or here.</span>
+              )
+            }
+
+            {saved === 'favorite' && <span class="note done">Saved to your favourites.</span>}
+            {saved === 'bucket_list' && <span class="note done">Added to your bookmarks.</span>}
+            {saved === 'add-to-list' && <span class="note done">Added to your list.</span>}
           </div>
         </div>
 
@@ -373,6 +453,38 @@ const seasonLabel =
     <SiteFooter />
   </main>
 </Base>
+
+<script is:inline>
+  /*
+   * Share: the native sheet where the browser has one, the clipboard
+   * otherwise. The URL is on screen either way, so nothing is lost if both
+   * are unavailable.
+   */
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-share]');
+    if (!button) return;
+
+    var url = button.dataset.share;
+    var name = button.dataset.name || 'LocaStar';
+    var say = function (text) {
+      button.textContent = text;
+      setTimeout(function () { button.textContent = 'Share'; }, 2000);
+    };
+
+    if (navigator.share) {
+      navigator.share({ title: name, url: url }).catch(function () {
+        /* Dismissing the sheet is not a failure worth reporting. */
+      });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(
+        function () { say('Link copied'); },
+        function () { say('Press Ctrl+C'); }
+      );
+    } else {
+      say(url);
+    }
+  });
+</script>
 
 <style>
   /* ---- photo mosaic, 2fr/1fr at 420px as the mockup sets it ---- */
@@ -787,6 +899,53 @@ const seasonLabel =
     gap: 9px;
   }
 
+  .secondary form {
+    flex: 1;
+    display: flex;
+  }
+
+  .to-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  .to-list select,
+  .to-list .new-list {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface-alt);
+    border: 1px solid rgba(244, 246, 245, 0.22);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    padding: 10px 11px;
+  }
+
+  .to-list select option {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .to-list .new-list {
+    flex-basis: 100%;
+  }
+
+  .to-list button {
+    flex-basis: 100%;
+  }
+
+  .note.done {
+    color: var(--ok);
+  }
+
+  .ghost.on {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   .ghost {
     flex: 1;
     border: 1px solid rgba(244, 246, 245, 0.22);
@@ -801,6 +960,13 @@ const seasonLabel =
   .ghost:hover {
     color: var(--accent);
     border-color: var(--accent);
+  }
+
+  button.ghost {
+    width: 100%;
+    background: transparent;
+    font-family: var(--font-display);
+    cursor: pointer;
   }
 
   .ghost.narrow {

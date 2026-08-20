@@ -1,0 +1,99 @@
+---
+/*
+ * A list, drawn the way the home page draws them: the blue surface and the
+ * 2fr/1fr photo mosaic of what is inside.
+ *
+ * The account area was rendering lists as plain text cards, so the same list
+ * looked like two different things depending on which page you were on.
+ */
+interface Props {
+  href: string;
+  name: string;
+  by?: string | null;
+  itemCount: number;
+  /** Up to three cover images from the list's places. */
+  previews?: (string | null)[];
+  /** "PUBLIC" / "PRIVATE", or a like count — whatever belongs under the mosaic. */
+  note?: string | null;
+}
+
+const { href, name, by = null, itemCount, previews = [], note = null } = Astro.props;
+const [first, second, third] = previews;
+---
+
+<a class="list-card" href={href}>
+  <span class="name">{name}</span>
+  {by && <span class="by">by {by}</span>}
+
+  <span class="mosaic">
+    <span class="m-main" style={first ? `background-image:url("${first}")` : ''}></span>
+    <span class="m-side">
+      <span class="m-tile" style={second ? `background-image:url("${second}")` : ''}></span>
+      <span class="m-tile" style={third ? `background-image:url("${third}")` : ''}></span>
+    </span>
+  </span>
+
+  <span class="mono count">
+    {itemCount} {itemCount === 1 ? 'PLACE' : 'PLACES'}{note ? ` · ${note}` : ''}
+  </span>
+</a>
+
+<style>
+  .list-card {
+    background: var(--list-surface);
+    border: 1px solid rgba(76, 143, 232, 0.3);
+    border-radius: 11px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    color: var(--text);
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .list-card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .name {
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .by {
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-55);
+    margin-top: 6px;
+  }
+
+  .mosaic {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 5px;
+    height: 110px;
+    margin-top: 14px;
+  }
+
+  .m-side {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .m-main,
+  .m-tile {
+    border-radius: 6px;
+    background-color: rgba(244, 246, 245, 0.06);
+    background-size: cover;
+    background-position: center;
+  }
+
+  .count {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-55);
+    margin-top: 12px;
+  }
+</style>

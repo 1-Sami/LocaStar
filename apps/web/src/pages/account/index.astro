@@ -3,15 +3,19 @@ import {
   fetchLists,
   fetchMyAddedLocations,
   fetchMyReviews,
+  fetchMyShares,
   fetchProfile,
   fetchProfileStats,
+  fetchSavedLists,
   fetchSavedLocations,
   isModeratorRole,
 } from '@locastar/shared';
+import ListCard from '../../components/ListCard.astro';
+import PlaceRow from '../../components/PlaceRow.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
-import { categoryColor, ratingLabel } from '../../lib/format';
+import { longDate } from '../../lib/format';
 import { currentUser } from '../../lib/auth';
 
 export const prerender = false;
@@ -20,37 +24,40 @@ const { user, supabase } = await currentUser(Astro.cookies, Astro.request.header
 if (!user) return Astro.redirect('/auth/sign-in');
 
 const section = Astro.url.searchParams.get('show') ?? 'saved';
+const listError = Astro.url.searchParams.get('listError');
+const created = Astro.url.searchParams.get('created');
 
 /*
  * Everything is fetched with the visitor's own session, so RLS returns their
  * rows and nobody else's — the same authorisation the app relies on, not a
  * check written again here.
+ *
+ * Favourites, bookmarks and shares are kept apart rather than merged, because
+ * the app keeps them apart and they mean different things: a favourite is
+ * somewhere you rate, a bookmark is somewhere you intend to go, and a share is
+ * somewhere another person sent you.
  */
-const [profile, stats, favourites, bucketList, lists, reviews, added] = await Promise.all([
+const [profile, stats, favourites, bookmarks, shares, lists, savedLists, reviews, added] = await Promise.all([
   fetchProfile(supabase, user.id).catch(() => null),
   fetchProfileStats(supabase, user.id).catch(() => null),
   fetchSavedLocations(supabase, user.id, 'favorite').catch(() => []),
   fetchSavedLocations(supabase, user.id, 'bucket_list').catch(() => []),
+  fetchMyShares(supabase, user.id).catch(() => []),
   fetchLists(supabase, user.id).catch(() => []),
+  fetchSavedLists(supabase, user.id).catch(() => []),
   fetchMyReviews(supabase, user.id).catch(() => []),
   fetchMyAddedLocations(supabase, user.id).catch(() => []),
 ]);
 
 const name = profile?.username ?? profile?.display_name ?? user.email ?? 'You';
-
-/*
- * Moderators get told plainly that the tools are not here.
- *
- * Reports, bans and the moderation log all work in the app and none of it is
- * on the website — agreed to revisit for v2. A moderator signing in here and
- * finding nothing would reasonably assume it was broken.
- */
 const isModerator = isModeratorRole(profile?.role ?? 'user');
-const saved = [...favourites, ...bucketList];
+
+const publicUrl = (path: string | null) =>
+  path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
 
 const NAV = [
-  { key: 'saved', label: 'Saved', count: saved.length },
-  { key: 'lists', label: 'My lists', count: lists.length },
+  { key: 'saved', label: 'Saved', count: favourites.length + bookmarks.length + shares.length },
+  { key: 'lists', label: 'My lists', count: lists.length + savedLists.length },
   { key: 'added', label: 'Added by me', count: added.length },
   { key: 'reviews', label: 'My reviews', count: reviews.length },
 ] as const;
@@ -92,11 +99,19 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         }
       </nav>
 
-      <div class="side-foot">
-        <form method="post" action="/auth/sign-out">
-          <button class="signout" type="submit">Log out</button>
-        </form>
-        <a class="delete-link" href="/account/delete">Delete your account</a>
+      <form method="post" action="/auth/sign-out">
+        <button class="signout" type="submit">Log out</button>
+      </form>
+
+      {/*
+        A red box rather than a quiet link, matching the app. This is the one
+        control here that destroys something, and it should not look like a
+        setting.
+      */}
+      <div class="danger">
+        <span class="mono danger-head">DELETE ACCOUNT</span>
+        <p>Immediate, and it cannot be undone.</p>
+        <a class="danger-link" href="/account/delete">Delete my account</a>
       </div>
     </aside>
 
@@ -112,47 +127,84 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           </div>
         )
       }
+
       {
         section === 'saved' && (
           <>
             <h1>Saved</h1>
-            {saved.length === 0 ? (
-              <div class="empty">
-                <p class="empty-lead">Nothing saved yet.</p>
-                <p class="empty-sub">
-                  The heart keeps a favourite; the bookmark builds a “want to go” list. Both show up here.
-                </p>
-                <a class="ghost" href="/search">Find somewhere</a>
+
+            <section class="group">
+              <div class="group-head">
+                <h2>Favourites</h2>
+                <span class="mono group-count">{favourites.length}</span>
               </div>
-            ) : (
-              <div class="grid">
-                {saved.map((place) => {
-                  const colour = categoryColor(place.category_slug ?? null);
-                  const rating = ratingLabel(place.avg_rating, place.review_count);
-                  return (
-                    <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
-                      {place.cover_photo_path ? (
-                        <div
-                          class="card-photo"
-                          style={`background-image:url("${supabase.storage.from('media').getPublicUrl(place.cover_photo_path).data.publicUrl}")`}
-                        />
-                      ) : (
-                        <div class="card-photo flat" style={`background:${colour}`} />
-                      )}
-                      <div class="card-body">
-                        <span class="card-name">{place.name}</span>
-                        {rating.rated ? (
-                          <span class="mono card-rating">★ {rating.avg}</span>
-                        ) : (
-                          <span class="mono card-unrated">NOT RATED YET</span>
-                        )}
-                        {place.city && <span class="card-where">{place.city}</span>}
-                      </div>
-                    </a>
-                  );
-                })}
+              {favourites.length === 0 ? (
+                <p class="empty-line">Nothing yet. The heart on a place keeps it here.</p>
+              ) : (
+                <div class="rows">
+                  {favourites.map((place) => (
+                    <PlaceRow
+                      href={`/location/${place.id}`}
+                      name={place.name}
+                      categorySlug={place.category_slug}
+                      avgRating={place.avg_rating}
+                      reviewCount={place.review_count}
+                      where={place.city}
+                      imageUrl={publicUrl(place.cover_photo_path)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section class="group">
+              <div class="group-head">
+                <h2>Bookmarks</h2>
+                <span class="mono group-count">{bookmarks.length}</span>
               </div>
-            )}
+              {bookmarks.length === 0 ? (
+                <p class="empty-line">Somewhere you mean to go. The bookmark keeps it here.</p>
+              ) : (
+                <div class="rows">
+                  {bookmarks.map((place) => (
+                    <PlaceRow
+                      href={`/location/${place.id}`}
+                      name={place.name}
+                      categorySlug={place.category_slug}
+                      avgRating={place.avg_rating}
+                      reviewCount={place.review_count}
+                      where={place.city}
+                      imageUrl={publicUrl(place.cover_photo_path)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section class="group">
+              <div class="group-head">
+                <h2>Shared</h2>
+                <span class="mono group-count">{shares.length}</span>
+              </div>
+              {shares.length === 0 ? (
+                <p class="empty-line">Places people have sent you, and ones you have sent, show up here.</p>
+              ) : (
+                <div class="rows">
+                  {shares.map((share) => (
+                    <PlaceRow
+                      href={`/location/${share.id}`}
+                      name={share.name}
+                      categorySlug={share.category_slug}
+                      avgRating={share.avg_rating}
+                      reviewCount={share.review_count}
+                      where={share.city}
+                      imageUrl={publicUrl(share.cover_photo_path)}
+                      aside={share.direction === 'sent' ? 'SENT' : 'RECEIVED'}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
           </>
         )
       }
@@ -161,23 +213,56 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         section === 'lists' && (
           <>
             <h1>My lists</h1>
+
+            {created && <p class="ok-line">List created.</p>}
+            {listError === 'name' && <p class="err-line">Give the list a name.</p>}
+            {listError === '1' && <p class="err-line">That did not save. Try again.</p>}
+
+            <form method="post" action="/api/list" class="new-list">
+              <input name="name" placeholder="Name a new list" aria-label="List name" required />
+              <input name="description" placeholder="What is it for? (optional)" aria-label="Description" />
+              <label class="public-toggle">
+                <input type="checkbox" name="isPublic" value="1" />
+                <span>Public</span>
+              </label>
+              <button type="submit">Create list</button>
+            </form>
+            <p class="fine">Private by default. You can share one later.</p>
+
             {lists.length === 0 ? (
-              <div class="empty">
-                <p class="empty-lead">No lists yet.</p>
-                <p class="empty-sub">Private by default. Share one later if you want to.</p>
-              </div>
+              <p class="empty-line">No lists yet.</p>
             ) : (
-              <div class="grid">
+              <div class="cards">
                 {lists.map((list) => (
-                  <a class="list-card" href={`/lists/${list.id}`}>
-                    <span class="card-name">{list.name}</span>
-                    <span class="mono card-unrated">
-                      {list.itemCount} {list.itemCount === 1 ? 'PLACE' : 'PLACES'} ·{' '}
-                      {list.isPublic ? 'PUBLIC' : 'PRIVATE'}
-                    </span>
-                  </a>
+                  <ListCard
+                    href={`/lists/${list.id}`}
+                    name={list.name}
+                    itemCount={list.itemCount}
+                    previews={list.previewLocations.slice(0, 3).map((p) => p.imageUrl)}
+                    note={list.isPublic ? 'PUBLIC' : 'PRIVATE'}
+                  />
                 ))}
               </div>
+            )}
+
+            {savedLists.length > 0 && (
+              <section class="group">
+                <div class="group-head">
+                  <h2>Saved lists</h2>
+                  <span class="mono group-count">{savedLists.length}</span>
+                </div>
+                <div class="cards">
+                  {savedLists.map((list) => (
+                    <ListCard
+                      href={`/lists/${list.id}`}
+                      name={list.name}
+                      by={list.ownerUsername ?? list.ownerDisplayName}
+                      itemCount={list.itemCount}
+                      previews={list.previewLocations.slice(0, 3).map((p) => p.imageUrl)}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
           </>
         )
@@ -196,24 +281,17 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 <a class="ghost" href="/add">Add a place</a>
               </div>
             ) : (
-              <div class="grid">
-                {added.map((place) => {
-                  const colour = categoryColor(null);
-                  const rating = ratingLabel(place.avg_rating, place.review_count);
-                  return (
-                    <a class="card" href={`/location/${place.id}`} style={`border-color:${colour}`}>
-                      <div class="card-photo flat" style={`background:${colour}`} />
-                      <div class="card-body">
-                        <span class="card-name">{place.name}</span>
-                        {rating.rated ? (
-                          <span class="mono card-rating">★ {rating.avg}</span>
-                        ) : (
-                          <span class="mono card-unrated">NOT RATED YET</span>
-                        )}
-                      </div>
-                    </a>
-                  );
-                })}
+              <div class="rows">
+                {added.map((place) => (
+                  <PlaceRow
+                    href={`/location/${place.id}`}
+                    name={place.name}
+                    categoryName={place.category_label}
+                    avgRating={place.avg_rating}
+                    reviewCount={place.review_count}
+                    aside={place.kind === 'activity' ? 'ACTIVITY' : longDate(place.created_at)}
+                  />
+                ))}
               </div>
             )}
           </>
@@ -232,11 +310,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 </p>
               </div>
             ) : (
-              <div class="reviews">
+              <div class="rows">
                 {reviews.map((review) => (
                   <a class="review" href={`/location/${review.location_id}`}>
-                    <span class="card-name">{review.location_name}</span>
-                    <span class="mono card-rating">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                    <span class="review-place">{review.location_name}</span>
+                    <span class="mono review-stars">
+                      {'★'.repeat(review.rating)}
+                      {'☆'.repeat(5 - review.rating)}
+                    </span>
                     {review.title && <strong class="review-title">{review.title}</strong>}
                     {review.body && <p class="review-body">{review.body}</p>}
                   </a>
@@ -263,7 +344,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .side {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 22px;
     align-self: start;
     position: sticky;
     top: 24px;
@@ -290,7 +371,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     min-width: 0;
   }
 
-  .name {
+  .who .name {
     font-weight: 500;
     font-size: 16px;
   }
@@ -327,45 +408,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     color: var(--text-42);
   }
 
-  .side-foot {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    align-items: flex-start;
-  }
-
-  .delete-link {
-    font-size: 13px;
-    color: var(--text-42);
-  }
-
-  .delete-link:hover {
-    color: #e05252;
-  }
-
-  .mod-note {
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-left: 3px solid var(--accent);
-    border-radius: 9px;
-    padding: 16px 18px;
-    margin-bottom: 24px;
-  }
-
-  .mod-kicker {
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    color: var(--accent);
-  }
-
-  .mod-note p {
-    margin: 8px 0 0;
-    font-size: 14.5px;
-    line-height: 1.6;
-    color: var(--text-70);
-    max-width: 60ch;
-  }
-
   .signout {
     background: transparent;
     border: 1px solid var(--border);
@@ -376,11 +418,46 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     font-size: 14px;
     color: var(--text);
     cursor: pointer;
+    width: 100%;
   }
 
   .signout:hover {
     color: var(--accent);
     border-color: var(--accent);
+  }
+
+  .danger {
+    border: 1px solid rgba(224, 82, 82, 0.45);
+    background: rgba(224, 82, 82, 0.08);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .danger-head {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: #f0a9a9;
+  }
+
+  .danger p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-55);
+  }
+
+  .danger-link {
+    font-weight: 600;
+    font-size: 14px;
+    color: #f0a9a9;
+  }
+
+  .danger-link:hover {
+    color: #ff8484;
   }
 
   .body {
@@ -394,95 +471,144 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     margin-bottom: 22px;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+  .group {
+    margin-bottom: 34px;
   }
 
-  .card,
-  .list-card {
-    border-radius: 11px;
-    overflow: hidden;
-    background: var(--surface);
-    color: var(--text);
+  .group-head {
     display: flex;
-    flex-direction: column;
-    transition: box-shadow 120ms ease-out;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
   }
 
-  .card {
-    border: 1px solid;
+  .group-head h2 {
+    font-size: 20px;
   }
 
-  .list-card {
-    background: var(--list-surface);
-    border: 1px solid rgba(76, 143, 232, 0.3);
-    padding: 18px;
-    gap: 8px;
-  }
-
-  .card:hover,
-  .list-card:hover {
-    color: var(--text);
-    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
-  }
-
-  .card-photo {
-    height: 132px;
-    background-size: cover;
-    background-position: center;
-  }
-
-  .card-body {
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .card-name {
-    font-weight: 500;
-    font-size: 16px;
-    line-height: 1.2;
-  }
-
-  .card-rating {
-    font-size: 11.5px;
-    color: var(--accent);
-  }
-
-  .card-unrated {
+  .group-count {
     font-size: 11px;
     letter-spacing: 0.12em;
     color: var(--text-42);
   }
 
-  .card-where {
-    font-size: 13px;
-    color: var(--text-55);
-  }
-
-  .reviews {
+  .rows {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .empty-line {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-42);
+  }
+
+  .ok-line {
+    margin: 0 0 14px;
+    font-size: 14.5px;
+    color: var(--ok);
+  }
+
+  .err-line {
+    margin: 0 0 14px;
+    font-size: 14.5px;
+    color: #f0a9a9;
+  }
+
+  .new-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .new-list input[type='text'],
+  .new-list input:not([type]) {
+    flex: 1;
+    min-width: 180px;
+    background: var(--surface);
+    border: 1px solid rgba(244, 246, 245, 0.24);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 14.5px;
+    padding: 12px 13px;
+  }
+
+  .new-list input::placeholder {
+    color: var(--text-42);
+  }
+
+  .public-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-70);
+  }
+
+  .public-toggle input {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+  }
+
+  .new-list button {
+    background: var(--accent);
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--page);
+    cursor: pointer;
+  }
+
+  .new-list button:hover {
+    background: #f0b94e;
+  }
+
+  .fine {
+    margin: 0 0 24px;
+    font-size: 12.5px;
+    color: var(--text-42);
   }
 
   .review {
     background: var(--surface);
     border: 1px solid var(--hairline);
     border-radius: 11px;
-    padding: 18px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
     color: var(--text);
   }
 
   .review:hover {
     color: var(--text);
     box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .review-place {
+    font-weight: 500;
+    font-size: 15.5px;
+  }
+
+  .review-stars {
+    font-size: 11.5px;
+    color: var(--accent);
   }
 
   .review-title {
@@ -492,7 +618,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
   .review-body {
     margin: 0;
-    font-size: 15px;
+    font-size: 14.5px;
     line-height: 1.6;
     color: var(--text-70);
   }
@@ -536,6 +662,29 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     border-color: var(--accent);
   }
 
+  .mod-note {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--accent);
+    border-radius: 9px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+  }
+
+  .mod-kicker {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .mod-note p {
+    margin: 8px 0 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-70);
+    max-width: 60ch;
+  }
+
   @media (max-width: 1000px) {
     .layout {
       grid-template-columns: 1fr;
@@ -546,13 +695,13 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       position: static;
     }
 
-    .grid {
+    .cards {
       grid-template-columns: repeat(2, 1fr);
     }
   }
 
   @media (max-width: 640px) {
-    .grid {
+    .cards {
       grid-template-columns: 1fr;
     }
   }
