@@ -186,7 +186,7 @@ const canonical = `${origin}/search`;
           </div>
         </div>
 
-        <div class="group">
+        <div class="group activity-group">
           <span class="mono group-head">{t('search.activity')}</span>
           <div class="cats">
             {
@@ -346,9 +346,9 @@ const canonical = `${origin}/search`;
                 lng: place.lng,
                 name: place.name,
                 colour: categoryColor(place.categorySlug),
-                href: `/location/${place.id}`,
+                href: p(`/location/${place.id}`),
               }))}
-              height="640px"
+              height="100%"
               class="results-map"
             />
           ) : (
@@ -884,6 +884,84 @@ const canonical = `${origin}/search`;
     line-height: 1.6;
     color: var(--text-42);
     max-width: 30ch;
+  }
+
+  /*
+   * Desktop: the results scroll inside their own column, so the map never
+   * leaves the screen. It is the activity filter's own scrollbar applied to
+   * the list — the owner's comparison, and the right one.
+   *
+   * Deliberately only here. Below 1280 the map is hidden altogether (the next
+   * block), and on a phone there is no room to show a map and a list at once;
+   * a viewport-height pane inside a scrolling page is worse than either. So
+   * the small screens keep an ordinary page that scrolls, and this is the
+   * second layout rather than a variation on one.
+   *
+   * 208px is the header plus the search bar. Measured rather than guessed,
+   * and identical at 1280, 1440 and 1920 — the search bar is one row at every
+   * width this applies to.
+   */
+  @media (min-width: 1280px) {
+    .layout {
+      height: calc(100vh - 208px);
+      min-height: 520px;
+    }
+
+    .results {
+      overflow-y: auto;
+      /* Reaching the end of the list must not start scrolling the page
+         behind it. */
+      overscroll-behavior: contain;
+    }
+
+    /*
+     * The count and the sort stay reachable from anywhere in the list.
+     *
+     * The column's own top padding is moved into this bar. Left where it was,
+     * rows scrolled up into the 24px above the sticky bar and showed through
+     * as a sliver of the previous card; and the bar has to bleed over the
+     * side padding or rows pass either side of it.
+     */
+    .results {
+      padding-top: 0;
+    }
+
+    .results-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--page);
+      margin-inline: -22px;
+      padding: 20px 22px 14px;
+    }
+
+    /*
+     * The categories take whatever height is left instead of a fixed 460, so
+     * Clear all filters stays pinned under them however tall the window is.
+     *
+     * The growth has to be on the group: .cats sits inside it, so making
+     * .cats itself flex:1 did nothing, and the list simply overflowed the
+     * rail and was clipped — taking the clear button off screen with it.
+     */
+    .rail {
+      overflow: hidden;
+    }
+
+    .activity-group {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .cats {
+      max-height: none;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .map-col {
+      display: grid;
+      overflow: hidden;
+    }
   }
 
   /* 768–1279: the map becomes secondary, filters stay. */

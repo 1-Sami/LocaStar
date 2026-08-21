@@ -108,6 +108,22 @@ const config = JSON.stringify({ pins, zoom: zoom ?? null, tileUrl: TILE_URL, att
         } else {
           map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
         }
+
+        /*
+         * On the search page the map is as tall as the window, so resizing it
+         * changes the map's size rather than just the page's. Leaflet caches
+         * the container size at init and paints grey where it thinks there is
+         * nothing, until something tells it otherwise.
+         */
+        if (typeof ResizeObserver !== 'undefined') {
+          var pending;
+          new ResizeObserver(function () {
+            clearTimeout(pending);
+            pending = setTimeout(function () {
+              map.invalidateSize();
+            }, 120);
+          }).observe(el);
+        }
       });
     }
 
