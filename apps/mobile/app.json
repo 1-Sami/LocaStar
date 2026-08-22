@@ -6,7 +6,7 @@
       "en": "./locales/en.json",
       "sv": "./locales/sv.json"
     },
-    "version": "1.0.0",
+    "version": "1.0.51",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "locastar",
