@@ -16,12 +16,16 @@ import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { categoryColor, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
+import { isUuid } from '../../lib/ids';
 import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
 
 export const prerender = false;
 
 const { id } = Astro.params;
+// A string that cannot be an id is a page that does not exist, not an outage.
+if (!isUuid(id)) return new Response(null, { status: 404 });
+
 const supabase = anonClient();
 const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
@@ -36,7 +40,7 @@ const p = (href: string) => localePath(href, lang);
  */
 let location;
 try {
-  location = id ? await fetchLocationById(supabase, id) : null;
+  location = await fetchLocationById(supabase, id);
 } catch (error) {
   /*
    * A failed request is not a missing page.
@@ -120,7 +124,15 @@ const jsonLd: Record<string, unknown>[] = [
         }
       : {}),
     geo: { '@type': 'GeoCoordinates', latitude: location.lat, longitude: location.lng },
-    ...(photos.length ? { photo: photos.map((photo) => photo.url) } : {}),
+    url: canonical,
+    /*
+     * Both keys, deliberately. `photo` is the schema.org property; `image` is
+     * the one Google's structured-data documentation actually reads, and
+     * without it a place with pictures shows none in a rich result.
+     */
+    ...(photos.length
+      ? { image: photos.map((photo) => photo.url), photo: photos.map((photo) => photo.url) }
+      : {}),
     ...(location.website ? { sameAs: location.website } : {}),
     ...(rating.rated
       ? {
@@ -194,7 +206,13 @@ const seasonLabel =
         : t('loc.notStated');
 ---
 
-<Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
+<Base
+  title={title}
+  description={description}
+  canonical={canonical}
+  image={photos[0]?.url ?? null}
+  jsonLd={jsonLd}
+>
   <SiteHeader />
 
   <main id="main">
@@ -555,8 +573,9 @@ const seasonLabel =
     <span class="mono gallery-count" data-gallery-count></span>
   </div>
 
-  <SiteFooter />
   </main>
+
+  <SiteFooter />
 </Base>
 
 <script is:inline>

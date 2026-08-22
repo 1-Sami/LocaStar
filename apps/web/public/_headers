@@ -7,3 +7,11 @@
 # Android's verifier is less fussy, but be explicit anyway.
 /.well-known/assetlinks.json
   Content-Type: application/json
+
+# Fingerprinted by content, not by filename — a font or a vendored library only
+# changes when it is deliberately replaced, and then the path changes with it.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable

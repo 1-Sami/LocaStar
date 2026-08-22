@@ -5,29 +5,31 @@ described by the people who have been there. Native app for iOS and Android.
 
 ## Layout
 
-pnpm workspace. Three places code lives, and the split matters:
+pnpm workspace. Four places code lives, and the split matters:
 
 | Path | What belongs here |
 |---|---|
 | `apps/mobile/src/app/` | Screens. File-based routes (Expo Router). |
 | `apps/mobile/src/components/` | Shared UI. |
+| `apps/web/src/pages/` | The website. Astro, file-based routes, server-rendered on Cloudflare. |
 | `packages/shared/src/api/` | **Every Supabase query.** Screens call these, never `supabase.from(...)` directly. |
 | `supabase/migrations/` | Schema and RLS, numbered `NNNN_name.sql`. |
 | `apps/mobile/scripts/` | Node build tooling — not app code. |
 | `tools/` | One-off data tooling, e.g. the OpenStreetMap importer. Never shipped. |
 
 `packages/shared` has no React and no DOM. It targets ES2020, so `console` is
-not available there.
+not available there. Both the app and the website import from it, so a change
+there lands in two products — including the legal text, which is deliberately
+stored once so the copy Apple reviewed cannot drift from the copy on the site.
 
 ## Commands
 
 ```
-npm run typecheck        # both workspaces — run this after every change
-npm run lint             # ESLint via expo lint
+npm run typecheck        # all three workspaces — run this after every change
+npm run lint             # ESLint via expo lint (apps/mobile only)
 cd apps/mobile && npm run release            # bump APP_RELEASE + publish OTA
 cd apps/mobile && npm run release -- minor   # or major
-cd apps/mobile && npm run build:web          # static export into apps/mobile/dist
-npx wrangler@latest deploy                   # from the repo root — publishes that dist
+cd apps/web && npm run deploy                # astro build + wrangler deploy
 ```
 
 ## The one thing that catches everyone
@@ -36,12 +38,18 @@ npx wrangler@latest deploy                   # from the repo root — publishes 
 pipelines from the same source, and pushing drives none of them:
 
 - `git push` → GitHub only. Nothing deploys.
-- `npm run build:web` + `npx wrangler deploy` → `locastar.se`
+- `cd apps/web && npm run deploy` → the Astro site
 - `npm run release` → EAS publishes a JS bundle to phones
 
-`wrangler.jsonc` serves `./apps/mobile/dist`, and that directory is
-gitignored — so there is nothing in the repo for anything to build from. The
-site only changes when somebody exports and deploys it by hand.
+**There are two web Workers, and the domain is still on the old one.** The
+root `wrangler.jsonc` defines `locastar`, which serves the prerendered Expo
+export in `apps/mobile/dist` and is what `locastar.se` currently resolves to.
+`apps/web/wrangler.jsonc` defines `locastar-web`, the Astro rebuild, which
+lives on its `workers.dev` address until somebody points the domain at it.
+
+Until that cutover happens, a change to `apps/web` is not on `locastar.se`
+however many times it is deployed. Check which Worker you are looking at before
+concluding a fix did not work.
 
 This file used to say pushing rebuilt the website, and that cost an afternoon:
 three files added during the day were live in the repo, absent from the site,

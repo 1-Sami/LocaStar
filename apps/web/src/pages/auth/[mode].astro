@@ -5,6 +5,7 @@ import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { currentUser, sessionClient } from '../../lib/auth';
+import { safePath } from '../../lib/redirects';
 
 export const prerender = false;
 
@@ -15,8 +16,21 @@ const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
 const p = (href: string) => localePath(href, lang);
 
+/*
+ * Where to go once they are in.
+ *
+ * api/save.ts sends a signed-out saver here with ?next=<the place they were
+ * looking at>. For a while nothing read it and everyone landed in their
+ * account instead, with the place gone and the save never made.
+ *
+ * safePath is what makes carrying it around safe — it is a caller-supplied
+ * address, and forwarding to an arbitrary one after sign-in is exactly the
+ * redirect a phishing link wants.
+ */
+const next = safePath(Astro.url.searchParams.get('next'), p('/account'));
+
 const { user } = await currentUser(Astro.cookies, Astro.request.headers);
-if (user) return Astro.redirect(p('/account'));
+if (user) return Astro.redirect(next);
 
 let error: string | null = null;
 let sentTo: string | null = null;
@@ -65,10 +79,13 @@ if (Astro.request.method === 'POST') {
     if (signInError) {
       error = t('auth.errCredentials');
     } else {
-      return Astro.redirect(p('/account'));
+      return Astro.redirect(next);
     }
   }
 }
+
+/** Carried across the sign-in / sign-up toggle so switching tabs keeps it. */
+const keep = next === p('/account') ? '' : `?next=${encodeURIComponent(next)}`;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const title = isSignUp ? t('auth.signUpTitle') : t('auth.signInTitle');
@@ -110,8 +127,8 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
         </div>
 
         <div class="segmented">
-          <a class={`seg${isSignUp ? ' on' : ''}`} href={p('/auth/sign-up')}>{t('auth.signUp')}</a>
-          <a class={`seg${isSignUp ? '' : ' on'}`} href={p('/auth/sign-in')}>{t('auth.signIn')}</a>
+          <a class={`seg${isSignUp ? ' on' : ''}`} href={p('/auth/sign-up') + keep}>{t('auth.signUp')}</a>
+          <a class={`seg${isSignUp ? '' : ' on'}`} href={p('/auth/sign-in') + keep}>{t('auth.signIn')}</a>
         </div>
 
         {

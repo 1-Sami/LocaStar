@@ -72,10 +72,13 @@ const publicUrl = (path: string | null) =>
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 
-const title = 'LocaStar — a map of things to actually go and do';
-const description =
-  `${roundedCount(totalPlaces)} places and activities across Sweden — courts, trails, slopes, playgrounds and festivals, ` +
-  'described by the people who have been there. Free, and you can browse without an account.';
+/*
+ * Translated, like every other page's. The home page kept an English title on
+ * /sv/ long after the body was Swedish — and the title is the line a Swedish
+ * searcher actually reads in the results.
+ */
+const title = t('home.metaTitle');
+const description = t('home.metaDesc', { count: roundedCount(totalPlaces) });
 
 const jsonLd = [
   {
@@ -339,8 +342,9 @@ const jsonLd = [
       </div>
     </section>
 
-    <SiteFooter />
   </main>
+
+  <SiteFooter />
 </Base>
 
 <style>

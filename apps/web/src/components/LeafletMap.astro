@@ -1,8 +1,13 @@
 ---
 /*
- * The map, using the same stack the app already runs: Leaflet 1.9.4 from unpkg
- * with OpenStreetMap tiles. Two different maps in one product would be odd, and
- * the place data came from OpenStreetMap in the first place.
+ * The map, using the same stack the app already runs: Leaflet 1.9.4 with
+ * OpenStreetMap tiles. Two different maps in one product would be odd, and the
+ * place data came from OpenStreetMap in the first place.
+ *
+ * Leaflet is served from public/vendor rather than a CDN. It used to come from
+ * unpkg, which put an unfunded third party in the load path of the two busiest
+ * templates on the site — and with no integrity hash, a bad response there
+ * would have run on a page that also renders somebody's signed-in state.
  *
  * Google was priced and rejected for now — its Dynamic Maps cost scales with
  * page views on exactly the pages the search work exists to attract. Revisit at
@@ -12,6 +17,8 @@
  * forbids heavy third-party use and will block it, so this has to move to a
  * proper host before traffic grows. Changing it is one line.
  */
+import { useTranslations } from '../i18n/ui';
+
 export interface MapPin {
   id: string;
   lat: number;
@@ -32,6 +39,7 @@ interface Props {
 }
 
 const { pins, height = '400px', zoom, class: className = '' } = Astro.props;
+const t = useTranslations(Astro.locals.lang ?? 'en');
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -40,7 +48,7 @@ const mapId = `map-${Math.random().toString(36).slice(2, 10)}`;
 const config = JSON.stringify({ pins, zoom: zoom ?? null, tileUrl: TILE_URL, attribution: ATTRIBUTION });
 ---
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
 
 <div
   id={mapId}
@@ -48,7 +56,11 @@ const config = JSON.stringify({ pins, zoom: zoom ?? null, tileUrl: TILE_URL, att
   style={`height:${height}`}
   data-map-config={config}
   role="img"
-  aria-label={pins.length === 1 ? `Map showing ${pins[0].name}` : `Map showing ${pins.length} places`}
+  aria-label={
+    pins.length === 1
+      ? t('map.showingOne', { name: pins[0].name })
+      : t('map.showingMany', { count: String(pins.length) })
+  }
 >
   {/*
     Shown until Leaflet loads, and left in place if it never does. The map is
@@ -58,7 +70,7 @@ const config = JSON.stringify({ pins, zoom: zoom ?? null, tileUrl: TILE_URL, att
   <span class="mono map-fallback">MAP</span>
 </div>
 
-<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script is:inline src="/vendor/leaflet/leaflet.js" defer></script>
 
 <script is:inline>
   (function () {

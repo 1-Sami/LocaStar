@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro';
 
 import { localePath } from '../../i18n/ui';
 import { currentUser } from '../../lib/auth';
+import { safePath } from '../../lib/redirects';
 
 export const prerender = false;
 
@@ -22,7 +23,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
   const action = String(form.get('action') ?? '');
   const locationId = String(form.get('locationId') ?? '');
-  const back = String(form.get('back') ?? '/');
+  // Caller-supplied, so it is checked before it reaches redirect().
+  const back = safePath(String(form.get('back') ?? '/'));
   // The page that submitted this carries the locale in its own path.
   const lang = back === '/sv' || back.startsWith('/sv/') ? 'sv' : 'en';
 

@@ -4,6 +4,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { categoryColor, ratingLabel } from '../../lib/format';
+import { isUuid } from '../../lib/ids';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { anonClient } from '../../lib/supabase';
 
@@ -15,6 +16,9 @@ import { anonClient } from '../../lib/supabase';
 export const prerender = false;
 
 const { id } = Astro.params;
+// A string that cannot be an id is a page that does not exist, not an outage.
+if (!isUuid(id)) return new Response(null, { status: 404 });
+
 const supabase = anonClient();
 const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
@@ -31,19 +35,24 @@ try {
 if (!meta) return new Response(null, { status: 404 });
 
 const [items, likes, categories] = await Promise.all([
-  fetchListItems(supabase, id!).catch((error) => {
+  fetchListItems(supabase, id!).catch((error): Awaited<ReturnType<typeof fetchListItems>> => {
     console.error('Failed to load list items', id, error);
     return [];
   }),
-  // fetchListMeta does not carry a like count and the design shows one.
-  supabase
-    .from('list_likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('list_id', id!)
+  /*
+   * fetchListMeta does not carry a like count and the design shows one.
+   *
+   * Wrapped in Promise.resolve because a supabase query builder is a thenable
+   * rather than a real Promise — it has .then but no .catch, so the .catch that
+   * used to sit here was never going to run.
+   */
+  Promise.resolve(
+    supabase.from('list_likes').select('*', { count: 'exact', head: true }).eq('list_id', id!)
+  )
     .then((r) => r.count ?? 0)
     .catch(() => 0),
   // Item rows carry a category slug but not its name.
-  fetchCategoryCounts(supabase).catch(() => []),
+  fetchCategoryCounts(supabase).catch((): Awaited<ReturnType<typeof fetchCategoryCounts>> => []),
 ]);
 
 const categoryName = new Map(categories.map((c) => [c.slug, c.name]));

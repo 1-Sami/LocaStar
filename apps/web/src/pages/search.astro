@@ -1,11 +1,11 @@
 ---
-import { categoryName, fetchCategoryCounts, fetchSearchResults } from '@locastar/shared';
+import { categoryName, fetchCategoryCounts, fetchSearchResults, SearchPageOutOfRange } from '@locastar/shared';
 import LeafletMap from '../components/LeafletMap.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
-import { categoryColor, ratingLabel, roundedCount } from '../lib/format';
+import { categoryColor, ratingLabel } from '../lib/format';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
@@ -24,6 +24,12 @@ const url = Astro.url;
  * would cost the crawlability the whole project is built around.
  */
 const q = url.searchParams.get('q')?.trim() || '';
+/*
+ * The home page's finder posts this, and for a while nothing read it — you
+ * typed a town, got the unfiltered list back, and nothing said otherwise.
+ * A filter that silently does nothing is worse than no filter.
+ */
+const where = url.searchParams.get('where')?.trim() || '';
 const activity = url.searchParams.getAll('activity').filter(Boolean);
 const kindParam = url.searchParams.get('kind');
 const seasonParam = url.searchParams.get('season');
@@ -47,6 +53,7 @@ try {
   [response, categoryCounts] = await Promise.all([
     fetchSearchResults(supabase, {
       query: q,
+      where,
       categorySlugs: activity,
       kind,
       season,
@@ -58,7 +65,12 @@ try {
     fetchCategoryCounts(supabase),
   ]);
 } catch (error) {
-  // A failed search is not an empty one — see the note on the location page.
+  /*
+   * A page past the last one is a page that does not exist, so it 404s. Only a
+   * genuine failure gets the 503 — and a failed search is never rendered as an
+   * empty one, per the note on the location page.
+   */
+  if (error instanceof SearchPageOutOfRange) return new Response(null, { status: 404 });
   console.error('Search failed', error);
   return new Response('Temporarily unavailable', { status: 503, headers: { 'Retry-After': '60' } });
 }
@@ -114,18 +126,24 @@ for (let i = 1; i <= response.pageCount; i += 1) {
 
 const describedFilters = [
   q ? `"${q}"` : null,
+  where || null,
   activity.length ? activity.map((slug) => categoryName(slug, lang) ?? withPlaces.find((c) => c.slug === slug)?.name ?? slug).join(', ') : null,
-  kind === 'place' ? 'places' : kind === 'activity' ? 'activities' : null,
-  season ? season : null,
+  kind === 'place' ? t('search.places') : kind === 'activity' ? t('search.activities') : null,
+  season === 'summer' ? t('season.summer') : season === 'winter' ? t('season.winter') : null,
 ].filter(Boolean);
 
+/*
+ * Both of these are what a Swedish searcher reads in the results list, so both
+ * have to be Swedish. They were hardcoded English while every other page on
+ * /sv was translated, which quietly undid the translation where it counted.
+ */
 const title = describedFilters.length
-  ? `${describedFilters.join(' · ')} — ${response.total} results | LocaStar`
-  : `Search ${response.total} places and activities | LocaStar`;
+  ? t('search.metaTitleFiltered', { filters: describedFilters.join(' · '), count: String(response.total) })
+  : t('search.metaTitle', { count: String(response.total) });
 
 const description = describedFilters.length
-  ? `${response.total} results for ${describedFilters.join(', ')} on LocaStar — with directions, photos and reviews from people who have been there.`
-  : 'Search every place and activity on LocaStar by what you want to do, where, and which season it works in.';
+  ? t('search.metaDescFiltered', { filters: describedFilters.join(', '), count: String(response.total) })
+  : t('search.metaDesc');
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 /*
@@ -144,7 +162,8 @@ const canonical = `${origin}/search`;
   <main id="main" class="wrap">
     <form class="searchbar" action={p("/search")} method="get">
       <span class="mono glyph" aria-hidden="true">⌕</span>
-      <input name="q" value={q} placeholder={t('search.placeholder')} aria-label="Search" />
+      <input name="q" value={q} placeholder={t('search.placeholder')} aria-label={t('common.search')} />
+      <input name="where" value={where} placeholder={t('search.wherePlaceholder')} aria-label={t('search.where')} class="where" />
       {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
       {kind && <input type="hidden" name="kind" value={kind} />}
       {season && <input type="hidden" name="season" value={season} />}
@@ -152,7 +171,7 @@ const canonical = `${origin}/search`;
     </form>
 
     <div class="layout">
-      <aside class="rail" aria-label="Filters">
+      <aside class="rail" aria-label={t('search.filters')}>
         <div class="group">
           <span class="mono group-head">{t('search.type')}</span>
           <div class="pills">
@@ -175,13 +194,13 @@ const canonical = `${origin}/search`;
               class={`pill${season === 'summer' ? ' on' : ''}`}
               href={withParam('season', season === 'summer' ? null : 'summer')}
             >
-              Summer
+              {t('season.summer')}
             </a>
             <a
               class={`pill${season === 'winter' ? ' on' : ''}`}
               href={withParam('season', season === 'winter' ? null : 'winter')}
             >
-              Winter
+              {t('season.winter')}
             </a>
           </div>
         </div>
@@ -206,7 +225,7 @@ const canonical = `${origin}/search`;
         </div>
 
         {
-          (q || activity.length > 0 || kind || season) && (
+          (q || where || activity.length > 0 || kind || season) && (
             <a class="clear" href={p('/search')}>
               {t('common.clearAll')}
             </a>
@@ -214,7 +233,7 @@ const canonical = `${origin}/search`;
         }
       </aside>
 
-      <section class="results" aria-label="Results">
+      <section class="results" aria-label={t('common.results')}>
         <div class="results-head">
           <span class="mono count">{response.total} {t('common.results')}</span>
           <label class="sort">
@@ -245,7 +264,7 @@ const canonical = `${origin}/search`;
             <div class="empty">
               <p class="empty-lead">{t('search.emptyLead')}</p>
               <p class="empty-sub">
-                Try fewer filters, or a nearby town. If you know somewhere that should be here, it can be added.
+                {t('search.emptySub')}
               </p>
               <div class="empty-actions">
                 <a class="ghost" href={p('/search')}>{t('search.clearFilters')}</a>
@@ -398,7 +417,34 @@ const canonical = `${origin}/search`;
   }
 
   .searchbar input::placeholder {
-    color: var(--text-42);
+    color: var(--text-55);
+  }
+
+  /*
+   * The town sits in the same bar as the name, divided by a hairline rather
+   * than a second box: they are one question asked in two halves, and the home
+   * page's finder already pairs them that way.
+   */
+  .searchbar .where {
+    flex: 0 1 34%;
+    border-left: 1px solid var(--hairline);
+    padding-left: 14px;
+  }
+
+  @media (max-width: 560px) {
+    .searchbar {
+      flex-wrap: wrap;
+      padding: 6px;
+    }
+    .searchbar input {
+      flex-basis: 100%;
+      padding-inline: 12px;
+    }
+    .searchbar .where {
+      border-left: 0;
+      border-top: 1px solid var(--hairline);
+      padding-left: 12px;
+    }
   }
 
   .searchbar button {

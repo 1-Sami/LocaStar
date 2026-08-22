@@ -18,7 +18,15 @@
   --text: #f4f6f5;
   --text-70: rgba(244, 246, 245, 0.7);
   --text-55: rgba(244, 246, 245, 0.55);
-  --text-42: rgba(244, 246, 245, 0.42);
+  /*
+   * Raised from 0.42, which measured 3.85:1 on --page where body text needs
+   * 4.5:1. It carried the input placeholders and .fine — the line on the
+   * sign-up form naming the Terms and the Privacy Policy, which is the worst
+   * sentence on the site to make hard to read. 0.52 measures 5.3:1.
+   *
+   * The name is kept so nothing has to be renamed to benefit.
+   */
+  --text-42: rgba(244, 246, 245, 0.52);
   --hairline: rgba(244, 246, 245, 0.09);
   --border: rgba(244, 246, 245, 0.28);
   --list-surface: #141f2e;

@@ -81,7 +81,7 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
         </span>
       </a>
 
-      <nav class="nav" aria-label="Main">
+      <nav class="nav" aria-label={t('nav.menuLabel')}>
         {
           NAV.map((item) => (
             <a class={`nav-link${current === item.key ? ' on' : ''}`} href={p(item.href)}>
@@ -115,6 +115,34 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
       }
 
       <a class="cta" href={p('/add')}>{t('nav.addPlace')}</a>
+
+      {/*
+        The same links again, for the widths where the row above does not fit.
+
+        <details> rather than a button and a script: the menu has to work on the
+        first paint of a server-rendered page, and every one of these links is a
+        plain anchor. Nothing here needs JavaScript, so nothing here uses it.
+      */}
+      <details class="menu">
+        <summary aria-label={t('nav.menu')}>
+          <span class="bars" aria-hidden="true"></span>
+        </summary>
+        <nav class="menu-panel" aria-label={t('nav.menuLabel')}>
+          {
+            NAV.map((item) => (
+              <a class={`menu-link${current === item.key ? ' on' : ''}`} href={p(item.href)}>
+                {item.label}
+              </a>
+            ))
+          }
+          <span class="menu-rule" aria-hidden="true"></span>
+          <span class="mono menu-lang">
+            <a class={lang === 'en' ? 'on' : ''} href={localePath(path, 'en')} hreflang="en">EN</a>
+            <span aria-hidden="true"> · </span>
+            <a class={lang === 'sv' ? 'on' : ''} href={localePath(path, 'sv')} hreflang="sv">SV</a>
+          </span>
+        </nav>
+      </details>
     </div>
   </div>
 </header>
@@ -123,6 +151,13 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
   .site-header {
     border-bottom: 1px solid var(--hairline);
     background: rgba(7, 16, 15, 0.9);
+    /*
+     * Above the sticky results bar the search page puts at the top of its
+     * column, so the open menu is never drawn underneath it — and below the
+     * photo lightbox at 60, which is meant to cover everything.
+     */
+    position: relative;
+    z-index: 30;
   }
 
   .inner {
@@ -278,9 +313,112 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
     background: #f0b94e;
   }
 
+  /* ---- the narrow-screen menu ---- */
+
+  .menu {
+    display: none;
+    position: relative;
+  }
+
+  .menu > summary {
+    list-style: none;
+    cursor: pointer;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Three rules drawn from one element, so there is no extra markup. */
+  .bars,
+  .bars::before,
+  .bars::after {
+    display: block;
+    width: 17px;
+    height: 1.5px;
+    background: var(--text);
+    content: '';
+  }
+
+  .bars {
+    position: relative;
+  }
+
+  .bars::before {
+    position: absolute;
+    top: -5.5px;
+  }
+
+  .bars::after {
+    position: absolute;
+    top: 5.5px;
+  }
+
+  .menu[open] > summary {
+    border-color: var(--accent);
+  }
+
+  .menu-panel {
+    position: absolute;
+    top: calc(100% + 9px);
+    right: 0;
+    z-index: 20;
+    min-width: 208px;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+  }
+
+  .menu-link {
+    padding: 11px 13px;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .menu-link:hover {
+    color: var(--accent);
+    background: var(--surface-alt);
+  }
+
+  .menu-link.on {
+    color: var(--accent);
+  }
+
+  .menu-rule {
+    height: 1px;
+    margin: 7px 5px;
+    background: var(--hairline);
+  }
+
+  .menu-lang {
+    padding: 4px 13px 7px;
+    font-size: 11.5px;
+    color: var(--text-55);
+  }
+
+  .menu-lang .on {
+    color: var(--text);
+  }
+
   @media (max-width: 1100px) {
     .nav {
       display: none;
+    }
+
+    /* Only now, so the button never sits beside the row it stands in for. */
+    .menu {
+      display: block;
     }
   }
 

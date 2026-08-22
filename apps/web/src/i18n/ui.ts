@@ -18,6 +18,10 @@ export const LANGS: Lang[] = ['en', 'sv'];
 
 export const ui = {
   en: {
+    'home.metaTitle': 'LocaStar — a map of things to actually go and do',
+    'home.metaDesc':
+      '{count} places and activities across Sweden — courts, trails, slopes, playgrounds and festivals, described by the people who have been there. Free, and you can browse without an account.',
+
     'nav.explore': 'Explore',
     'nav.categories': 'Categories',
     'nav.community': 'Community',
@@ -26,6 +30,10 @@ export const ui = {
     'nav.signIn': 'Sign in',
     'nav.addPlace': 'Add a place',
     'nav.account': 'Your account',
+    'map.showingOne': 'Map showing {name}',
+    'map.showingMany': 'Map showing {count} places',
+    'nav.menu': 'Menu',
+    'nav.menuLabel': 'Main',
 
     'footer.explore': 'Explore',
     'footer.locastar': 'LocaStar',
@@ -84,6 +92,17 @@ export const ui = {
     'home.bandNote': 'Free, no ads. Works in English and Swedish.',
 
     'search.placeholder': 'Search a place, an activity, a town…',
+    'search.where': 'Where',
+    'search.wherePlaceholder': 'Town or address',
+    'search.filters': 'Filters',
+    'search.metaTitle': 'Search {count} places and activities | LocaStar',
+    'search.metaTitleFiltered': '{filters} — {count} results | LocaStar',
+    'search.metaDesc':
+      'Search every place and activity on LocaStar by what you want to do, where, and which season it works in.',
+    'search.metaDescFiltered':
+      '{count} results for {filters} on LocaStar — with directions, photos and reviews from people who have been there.',
+    'season.summer': 'Summer',
+    'season.winter': 'Winter',
     'search.type': 'TYPE',
     'search.places': 'Places',
     'search.activities': 'Activities',
@@ -284,7 +303,8 @@ export const ui = {
     'contact.claimBody': 'Claiming it lets you keep the details right — hours, contact, description. Write to us from an address at the organisation and say which place it is.',
     'contact.claimSmall': 'Claiming does not let you remove reviews or hide what people have written.',
     'contact.deleteTitle': 'Delete your account',
-    'contact.deleteBody': 'You can do it yourself in the app, in Settings, and it takes effect immediately. If you cannot sign in or no longer have the app, email us from the address on the account.',
+    'contact.deleteBody': 'You can do it yourself, here on the website or in the app, and it takes effect immediately. If you cannot sign in, email us from the address on the account.',
+    'contact.deleteHere': 'Delete your account here →',
     'contact.deleteLink': 'What is deleted, and what is kept →',
     'contact.operatedBy': 'LocaStar is operated by Sadek Mirza, Stockholm, Sweden. See the',
     'contact.privacy': 'Privacy Policy',
@@ -445,6 +465,10 @@ export const ui = {
   },
 
   sv: {
+    'home.metaTitle': 'LocaStar — en karta över saker att faktiskt göra',
+    'home.metaDesc':
+      '{count} platser och aktiviteter i Sverige — planer, leder, backar, lekplatser och festivaler, beskrivna av dem som varit där. Gratis, och du kan titta runt utan konto.',
+
     'nav.explore': 'Utforska',
     'nav.categories': 'Kategorier',
     'nav.community': 'Gemenskap',
@@ -453,6 +477,10 @@ export const ui = {
     'nav.signIn': 'Logga in',
     'nav.addPlace': 'Lägg till plats',
     'nav.account': 'Ditt konto',
+    'map.showingOne': 'Karta som visar {name}',
+    'map.showingMany': 'Karta som visar {count} platser',
+    'nav.menu': 'Meny',
+    'nav.menuLabel': 'Huvudmeny',
 
     'footer.explore': 'Utforska',
     'footer.locastar': 'LocaStar',
@@ -511,6 +539,17 @@ export const ui = {
     'home.bandNote': 'Gratis, inga annonser. Fungerar på svenska och engelska.',
 
     'search.placeholder': 'Sök en plats, en aktivitet, en ort…',
+    'search.where': 'Var',
+    'search.wherePlaceholder': 'Ort eller adress',
+    'search.filters': 'Filter',
+    'search.metaTitle': 'Sök bland {count} platser och aktiviteter | LocaStar',
+    'search.metaTitleFiltered': '{filters} — {count} träffar | LocaStar',
+    'search.metaDesc':
+      'Sök bland alla platser och aktiviteter på LocaStar — efter vad du vill göra, var, och vilken årstid det passar.',
+    'search.metaDescFiltered':
+      '{count} träffar för {filters} på LocaStar — med vägbeskrivning, foton och omdömen från dem som varit där.',
+    'season.summer': 'Sommar',
+    'season.winter': 'Vinter',
     'search.type': 'TYP',
     'search.places': 'Platser',
     'search.activities': 'Aktiviteter',
@@ -711,7 +750,8 @@ export const ui = {
     'contact.claimBody': 'Genom att göra anspråk på den kan du hålla uppgifterna rätt — öppettider, kontakt, beskrivning. Skriv till oss från en adress hos organisationen och berätta vilken plats det gäller.',
     'contact.claimSmall': 'Anspråk ger dig inte rätt att ta bort omdömen eller dölja vad folk har skrivit.',
     'contact.deleteTitle': 'Radera ditt konto',
-    'contact.deleteBody': 'Du kan göra det själv i appen, under Inställningar, och det gäller omedelbart. Kan du inte logga in eller har du inte kvar appen — mejla oss från adressen på kontot.',
+    'contact.deleteBody': 'Du kan göra det själv, här på webbplatsen eller i appen, och det gäller omedelbart. Kan du inte logga in — mejla oss från adressen på kontot.',
+    'contact.deleteHere': 'Radera ditt konto här →',
     'contact.deleteLink': 'Vad som raderas och vad som sparas →',
     'contact.operatedBy': 'LocaStar drivs av Sadek Mirza, Stockholm, Sverige. Se',
     'contact.privacy': 'integritetspolicyn',

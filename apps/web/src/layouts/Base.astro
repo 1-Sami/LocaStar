@@ -14,12 +14,31 @@ interface Props {
   title: string;
   description: string;
   canonical: string;
-  lang?: 'en' | 'sv';
+  /**
+   * The picture a share card shows. A place's own photo where there is one,
+   * absolute URL. Falls back to the site card.
+   */
+  image?: string | null;
+  /**
+   * True for a page that exists in English only.
+   *
+   * The legal documents are the English text whichever URL you reach them at,
+   * so /sv/legal/privacy is a second address for one page, not a translation.
+   * Claiming otherwise with hreflang points Google at duplicate content.
+   */
+  englishOnly?: boolean;
   /** JSON-LD objects. Emitted verbatim, so build them where the data is. */
   jsonLd?: unknown[];
 }
 
-const { title, description, canonical, jsonLd = [] } = Astro.props;
+const {
+  title,
+  description,
+  canonical,
+  image = null,
+  englishOnly = false,
+  jsonLd = [],
+} = Astro.props;
 
 /*
  * The language comes from the URL, via middleware, not from a prop each page
@@ -38,6 +57,16 @@ const bare = Astro.url.pathname.startsWith('/sv/')
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const enHref = origin + bare;
 const svHref = origin + (bare === '/' ? '/sv/' : '/sv' + bare);
+
+/*
+ * The address this page is at, in the language it is in.
+ *
+ * og:url used to be the `canonical` prop, which every page builds in English —
+ * so a Swedish page shared on Facebook resolved to the English one. It has to
+ * agree with the canonical link right below it.
+ */
+const selfHref = lang === 'sv' && !englishOnly ? svHref : canonical;
+const shareImage = image ?? origin + '/share-card.png';
 ---
 
 <!doctype html>
@@ -47,22 +76,58 @@ const svHref = origin + (bare === '/' ? '/sv/' : '/sv' + bare);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={lang === 'sv' ? svHref : canonical} />
-    <link rel="alternate" hreflang="en" href={enHref} />
-    <link rel="alternate" hreflang="sv" href={svHref} />
-    <link rel="alternate" hreflang="x-default" href={enHref} />
+    <link rel="canonical" href={selfHref} />
+    {
+      !englishOnly && (
+        <>
+          <link rel="alternate" hreflang="en" href={enHref} />
+          <link rel="alternate" hreflang="sv" href={svHref} />
+          <link rel="alternate" hreflang="x-default" href={enHref} />
+        </>
+      )
+    }
 
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LocaStar" />
+    <meta property="og:locale" content={lang === 'sv' ? 'sv_SE' : 'en_GB'} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    <meta property="og:url" content={selfHref} />
+    <meta property="og:image" content={shareImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={shareImage} />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    {/*
+      An SVG favicon covers every current browser; the PNG is only there for
+      iOS home screens, which still will not read SVG.
+    */}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#07100f" />
+
+    {/*
+      Served from this origin, not fonts.googleapis.com — see the note in
+      public/fonts/fonts.css. The latin face of each is preloaded because both
+      are used above the fold on every page, and a preload started here beats
+      one discovered part-way through the stylesheet.
+    */}
     <link
-      href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/spline-sans-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
+    <link
+      rel="preload"
+      href="/fonts/jetbrains-mono-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
 
     {
       jsonLd.map((block) => (

@@ -11,12 +11,14 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "astro": "7.2.3",
     "@astrojs/cloudflare": "14.2.2",
     "@locastar/shared": "workspace:*",
-    "@supabase/ssr": "0.12.4"
+    "@supabase/ssr": "0.12.4",
+    "astro": "7.2.3"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "~6.0.3",
     "wrangler": "4.124.0"
   }
 }

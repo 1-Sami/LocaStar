@@ -1,0 +1,8 @@
+{
+  // Without this file `astro check` picks up no source at all — which is how
+  // the whole workspace went unchecked while the root script only ever
+  // filtered to shared and mobile.
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*.ts", "**/*.astro"],
+  "exclude": ["dist", ".wrangler", "node_modules"]
+}

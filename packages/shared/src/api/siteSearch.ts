@@ -9,8 +9,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * `/search?activity=basketball&page=3` is a real, linkable, indexable URL.
  */
 
+/**
+ * Thrown when the requested page sits past the last one.
+ *
+ * PostgREST answers an out-of-range offset with an error rather than an empty
+ * list, and the caller needs to tell that apart from "the database is down":
+ * ?page=99999 is a page that does not exist, which is a 404, not an outage.
+ */
+export class SearchPageOutOfRange extends Error {
+  constructor(page: number) {
+    super(`Search page ${page} is past the last page of results`);
+    this.name = "SearchPageOutOfRange";
+  }
+}
+
 export type SearchParams = {
   query?: string | null;
+  /** A town or address fragment, matched separately from the name. */
+  where?: string | null;
   categorySlugs?: string[];
   kind?: "place" | "activity" | null;
   season?: "summer" | "winter" | null;
@@ -64,6 +80,7 @@ export async function fetchSearchResults(
 ): Promise<SearchResponse> {
   const {
     query,
+    where,
     categorySlugs = [],
     kind,
     season,
@@ -100,6 +117,19 @@ export async function fetchSearchResults(
     }
   }
 
+  /*
+   * `where` is a second, independent match on city and address.
+   *
+   * Kept apart from `query` rather than folded into it: the two are ANDed, so
+   * "basket" in the name box and "Solna" in the where box means a basketball
+   * court in Solna. Concatenated into one string it would instead mean a place
+   * whose name contains both words, which matches nothing.
+   */
+  const place = where?.trim().replace(/[%_,()]/g, " ").trim();
+  if (place) {
+    request = request.or(`city.ilike.%${place}%,address.ilike.%${place}%`);
+  }
+
   if (categorySlugs.length > 0) {
     request = request.in("location_categories.categories.slug", categorySlugs);
   }
@@ -125,7 +155,11 @@ export async function fetchSearchResults(
   request = request.order("name", { ascending: sort === "name" ? !ascending : true }).range(from, from + perPage - 1);
 
   const { data, error, count } = await request;
-  if (error) throw error;
+  if (error) {
+    // PGRST103 is "requested range not satisfiable" — an offset past the end.
+    if (error.code === "PGRST103") throw new SearchPageOutOfRange(safePage);
+    throw error;
+  }
 
   const total = count ?? 0;
   return {

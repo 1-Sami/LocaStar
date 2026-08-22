@@ -390,11 +390,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
   <SiteFooter />
 <script>
-  document.querySelectorAll('.avatar-form input[type="file"]').forEach(function (input) {
-    input.addEventListener('change', function () {
-      if (input.files && input.files.length > 0) input.form.submit();
+  // Picking a file submits straight away — there is no separate Save to press.
+  document
+    .querySelectorAll<HTMLInputElement>('.avatar-form input[type="file"]')
+    .forEach(function (input) {
+      input.addEventListener('change', function () {
+        if (input.files && input.files.length > 0) input.form?.submit();
+      });
     });
-  });
 </script>
 </Base>
 

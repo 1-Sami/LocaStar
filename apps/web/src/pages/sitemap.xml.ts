@@ -17,8 +17,33 @@ export const prerender = false;
  * comes back is exactly what a stranger can open.
  */
 
-/** The pages that always exist, independent of any data. */
-const STATIC_PATHS = ['/', '/search', '/about', '/features', '/contact', '/legal/privacy', '/legal/terms'];
+/**
+ * The pages that always exist, independent of any data.
+ *
+ * /categories is the hub every activity page hangs off, so leaving it out was
+ * the costliest of the three omissions here.
+ */
+const STATIC_PATHS = [
+  '/',
+  '/search',
+  '/categories',
+  '/community',
+  '/about',
+  '/features',
+  '/contact',
+  '/legal/privacy',
+  '/legal/terms',
+  '/legal/delete-account',
+];
+
+/*
+ * Pages with no Swedish version.
+ *
+ * The legal documents are published in English only — the version Apple and
+ * Google reviewed. /sv/legal/privacy renders that same English text, so listing
+ * it would be offering Google a second address for one page.
+ */
+const ENGLISH_ONLY = ['/legal/privacy', '/legal/terms', '/legal/delete-account'];
 
 const escapeXml = (value: string) =>
   value.replace(/[<>&'"]/g, (char) => {
@@ -68,7 +93,9 @@ export const GET: APIRoute = async ({ site, url }) => {
    */
   const urls = [
     ...english,
-    ...english.map(({ path, lastmod }) => ({ path: path === '/' ? '/sv/' : `/sv${path}`, lastmod })),
+    ...english
+      .filter(({ path }) => !ENGLISH_ONLY.includes(path))
+      .map(({ path, lastmod }) => ({ path: path === '/' ? '/sv/' : `/sv${path}`, lastmod })),
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
