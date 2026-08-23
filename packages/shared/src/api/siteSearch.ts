@@ -25,8 +25,6 @@ export class SearchPageOutOfRange extends Error {
 
 export type SearchParams = {
   query?: string | null;
-  /** A town or address fragment, matched separately from the name. */
-  where?: string | null;
   categorySlugs?: string[];
   kind?: "place" | "activity" | null;
   season?: "summer" | "winter" | null;
@@ -80,7 +78,6 @@ export async function fetchSearchResults(
 ): Promise<SearchResponse> {
   const {
     query,
-    where,
     categorySlugs = [],
     kind,
     season,
@@ -115,19 +112,6 @@ export async function fetchSearchResults(
     if (escaped) {
       request = request.or(`name.ilike.%${escaped}%,address.ilike.%${escaped}%,city.ilike.%${escaped}%`);
     }
-  }
-
-  /*
-   * `where` is a second, independent match on city and address.
-   *
-   * Kept apart from `query` rather than folded into it: the two are ANDed, so
-   * "basket" in the name box and "Solna" in the where box means a basketball
-   * court in Solna. Concatenated into one string it would instead mean a place
-   * whose name contains both words, which matches nothing.
-   */
-  const place = where?.trim().replace(/[%_,()]/g, " ").trim();
-  if (place) {
-    request = request.or(`city.ilike.%${place}%,address.ilike.%${place}%`);
   }
 
   if (categorySlugs.length > 0) {

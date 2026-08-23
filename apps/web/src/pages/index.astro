@@ -183,11 +183,15 @@ const jsonLd = [
         <label class="cell">
           <span class="mono cell-label">{t('home.finderWhere')}</span>
           {/*
-            Says "City", not "Near me". The latter promised a search from the
-            visitor's own position, which nothing here does — the box matches a
-            town against city and address.
+            Posts as q, which is the name of the one box on the search page —
+            so what you type here is still in the box when you arrive, and can
+            be edited rather than retyped. q matches city and address as well
+            as the name, so a town typed here filters by town.
+
+            It says "City" and not "Near me": the latter promised a search from
+            the visitor's own position, which nothing here does.
           */}
-          <input name="where" placeholder={t('home.finderCity')} autocomplete="off" />
+          <input name="q" placeholder={t('home.finderCity')} autocomplete="off" />
         </label>
         <label class="cell narrow">
           <span class="mono cell-label">{t('home.finderType')}</span>

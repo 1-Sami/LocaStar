@@ -93,10 +93,8 @@ export const ui = {
     'home.bandNote': 'Free, no ads. Works in English and Swedish.',
 
     'search.placeholder': 'Search a place, an activity, a town…',
-    'search.where': 'Where',
     'search.pagination': 'Pagination',
     'search.nextPage': 'Next page',
-    'search.wherePlaceholder': 'Town or address',
     'search.filters': 'Filters',
     'search.metaTitle': 'Search {count} places and activities | LocaStar',
     'search.metaTitleFiltered': '{filters} — {count} results | LocaStar',
@@ -543,10 +541,8 @@ export const ui = {
     'home.bandNote': 'Gratis, inga annonser. Fungerar på svenska och engelska.',
 
     'search.placeholder': 'Sök en plats, en aktivitet, en ort…',
-    'search.where': 'Var',
     'search.pagination': 'Sidnavigering',
     'search.nextPage': 'Nästa sida',
-    'search.wherePlaceholder': 'Ort eller adress',
     'search.filters': 'Filter',
     'search.metaTitle': 'Sök bland {count} platser och aktiviteter | LocaStar',
     'search.metaTitleFiltered': '{filters} — {count} träffar | LocaStar',

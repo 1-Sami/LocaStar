@@ -23,13 +23,21 @@ const url = Astro.url;
  * link, bookmark and index — the handoff is explicit that endless scroll alone
  * would cost the crawlability the whole project is built around.
  */
-const q = url.searchParams.get('q')?.trim() || '';
 /*
- * The home page's finder posts this, and for a while nothing read it — you
- * typed a town, got the unfiltered list back, and nothing said otherwise.
- * A filter that silently does nothing is worse than no filter.
+ * One box, matched against name, address and city at once.
+ *
+ * There were briefly two — a name box and a town box, ANDed. One is what the
+ * owner asked for, and it costs nothing: q already searched all three columns,
+ * so "Eskilstuna" returned the same 13 places through either of them. The
+ * pairing that actually mattered — an activity in a town — is expressed by the
+ * category filter beside the box, which is a better control for it than a
+ * second thing to type into.
+ *
+ * ?where= is still read so that links and cached pages carrying the two-box
+ * version keep working. It simply becomes q.
  */
-const where = url.searchParams.get('where')?.trim() || '';
+const q =
+  url.searchParams.get('q')?.trim() || url.searchParams.get('where')?.trim() || '';
 const activity = url.searchParams.getAll('activity').filter(Boolean);
 const kindParam = url.searchParams.get('kind');
 const seasonParam = url.searchParams.get('season');
@@ -53,7 +61,6 @@ try {
   [response, categoryCounts] = await Promise.all([
     fetchSearchResults(supabase, {
       query: q,
-      where,
       categorySlugs: activity,
       kind,
       season,
@@ -140,7 +147,6 @@ for (let i = 1; i <= response.pageCount; i += 1) {
 
 const describedFilters = [
   q ? `"${q}"` : null,
-  where || null,
   activity.length ? activity.map((slug) => categoryName(slug, lang) ?? withPlaces.find((c) => c.slug === slug)?.name ?? slug).join(', ') : null,
   kind === 'place' ? t('search.places') : kind === 'activity' ? t('search.activities') : null,
   season === 'summer' ? t('season.summer') : season === 'winter' ? t('season.winter') : null,
@@ -177,7 +183,6 @@ const canonical = `${origin}/search`;
     <form class="searchbar" action={p("/search")} method="get">
       <span class="mono glyph" aria-hidden="true">⌕</span>
       <input name="q" value={q} placeholder={t('search.placeholder')} aria-label={t('common.search')} />
-      <input name="where" value={where} placeholder={t('search.wherePlaceholder')} aria-label={t('search.where')} class="where" />
       {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
       {kind && <input type="hidden" name="kind" value={kind} />}
       {season && <input type="hidden" name="season" value={season} />}
@@ -239,7 +244,7 @@ const canonical = `${origin}/search`;
         </div>
 
         {
-          (q || where || activity.length > 0 || kind || season) && (
+          (q || activity.length > 0 || kind || season) && (
             <a class="clear" href={p('/search')}>
               {t('common.clearAll')}
             </a>
@@ -440,32 +445,6 @@ const canonical = `${origin}/search`;
     color: var(--text-55);
   }
 
-  /*
-   * The town sits in the same bar as the name, divided by a hairline rather
-   * than a second box: they are one question asked in two halves, and the home
-   * page's finder already pairs them that way.
-   */
-  .searchbar .where {
-    flex: 0 1 34%;
-    border-left: 1px solid var(--hairline);
-    padding-left: 14px;
-  }
-
-  @media (max-width: 560px) {
-    .searchbar {
-      flex-wrap: wrap;
-      padding: 6px;
-    }
-    .searchbar input {
-      flex-basis: 100%;
-      padding-inline: 12px;
-    }
-    .searchbar .where {
-      border-left: 0;
-      border-top: 1px solid var(--hairline);
-      padding-left: 12px;
-    }
-  }
 
   .searchbar button {
     background: var(--accent);
