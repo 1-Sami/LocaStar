@@ -119,6 +119,7 @@ const CATEGORIES = {
     filters: ['["leisure"="pitch"]["sport"="volleyball"]', '["leisure"="pitch"]["sport"="beachvolleyball"]'],
   },
   cricket: { filters: ['["leisure"="pitch"]["sport"="cricket"]'] },
+  baseball: { filters: ['["leisure"="pitch"]["sport"="baseball"]'] },
   'amerikan-fotball': { filters: ['["leisure"="pitch"]["sport"="american_football"]'] },
   // OSM spells it boules; pétanque is recorded underneath as a variant.
   boule: { filters: ['["leisure"="pitch"]["sport"="boules"]'] },
@@ -135,6 +136,22 @@ const CATEGORIES = {
   camping: { filters: ['["tourism"="camp_site"]'] },
   'disc-golf-frisbee': { filters: ['["leisure"="disc_golf_course"]'] },
   paintball: { filters: ['["sport"="paintball"]'] },
+  // A pier, jetty or bank OSM has specifically marked for it — not every
+  // shoreline, which would be most of the country.
+  fishing: { filters: ['["leisure"="fishing"]'] },
+  // tourism=artwork is sculptures, murals and monuments alike; OSM does not
+  // split them further and neither do we.
+  'public-art': { filters: ['["tourism"="artwork"]'] },
+  // leisure=bird_hide, not tourism=hide (zero results for Sweden — not how
+  // this gets tagged here) and not man_made=tower + tower:type=observation
+  // (real "fågeltorn" show up under that, but so do fire lookout towers and
+  // plain scenic viewpoints — the same pitch/sport problem in a new shape).
+  birdwatching: { filters: ['["leisure"="bird_hide"]'] },
+  // Same shop exclusion as climbing, and for the same reason: sport=scuba_diving
+  // is tagged on both dive sites and the dive centres that sell gear for them.
+  // office!~"." too — Reel Diving in Mölndal is a dive-gear distributor tagged
+  // office=scuba_diving with no shop key at all, so shop!~"." alone let it through.
+  'diving-spots': { filters: ['["sport"="scuba_diving"]["shop"!~"."]["office"!~"."]'] },
   /*
    * historical-ruins-places is deliberately absent.
    *
@@ -171,6 +188,10 @@ const CATEGORIES = {
   'rc-race-track': { filters: ['["sport"="rc_car"]', '["leisure"="track"]["sport"="rc_car"]'] },
   // Racing and trotting tracks, not riding schools — "track" is the word.
   'horse-track': { filters: ['["sport"="horse_racing"]', '["leisure"="track"]["sport"="equestrian"]'] },
+  // sport=motocross specifically, not sport=motor — that value is already
+  // race-tracks-vehicle and the two tags don't overlap in practice.
+  'motocross-atv-tracks': { filters: ['["leisure"="track"]["sport"="motocross"]'] },
+  bmx: { filters: ['["sport"="bmx"]', '["leisure"="track"]["sport"="bmx"]'] },
   // Split out of archery-ranges, which had quietly become every kind of range.
   // Requires a leisure tag for the same reason archery does: without it,
   // sport=shooting matches gun shops.
@@ -202,7 +223,89 @@ const CATEGORIES = {
       ['building', 'yes'],
     ],
   },
+
+  /*
+   * Trails: relations, not points, and pinned at the trail's own start —
+   * mean of the first way's vertices, via toRow's plain relation fallback,
+   * same as any other unanchored relation. Not the trailhead: a real anchor
+   * search (parking/signpost within range of the whole route, the golf
+   * clubhouse idea adapted for a line instead of a polygon) was built and
+   * worked, but even for one city it needed full geometry for every matching
+   * relation and every one of its ways before it could even start looking —
+   * confirmed against the live API to not return in two minutes for
+   * Stockholm alone. A Swedish hiking-route relation commonly has 100+
+   * member ways (Upplands-Broleden, a fairly ordinary local trail, has 124),
+   * so that cost is real, not a fluke. A pin on the trail itself is worse
+   * than a pin at its car park, but it is never off the feature the way a
+   * polygon centroid can be — good enough to ship now. The anchor version
+   * is a viable upgrade later, done as one small query per trail rather than
+   * one big one per city, if this is ever worth revisiting.
+   *
+   * distance/roundtrip filtered server-side, in the query itself, not after
+   * — the same reason: fetching a relation's full geometry only to throw it
+   * away for being 270 km long is the expensive part. distance is free text
+   * ("270 km", "48", "3.7" all occur) so the regex is loose: one or two
+   * digits, optional decimal, optional " km" — everything from "0" to "30".
+   * Anything that doesn't match and isn't roundtrip=yes is simply never
+   * fetched, the same "no confirmed measurement, don't import it" call this
+   * tool makes everywhere else.
+   *
+   * Only relations with route=X, not the individual highway=path ways
+   * underneath — those are the terrain the route is drawn on, not something
+   * with its own name or its own "go there" identity.
+   */
+  hiking: {
+    filters: [
+      '["route"="hiking"]["distance"~"^([0-9]|[12][0-9]|30)(\\.[0-9]+)?( ?km)?$"]',
+      '["route"="hiking"]["roundtrip"="yes"]',
+    ],
+    primaryElement: 'relation',
+  },
+  // network~"lcn|rcn": local and regional cycle routes only. The national
+  // network (ncn) includes things like Kattegattleden, 390 km end to end —
+  // the distance filter would drop most of it anyway, so this just avoids
+  // querying relations that can only ever be rejected.
+  'bike-trails': {
+    filters: [
+      '["route"="bicycle"]["network"~"lcn|rcn"]["distance"~"^([0-9]|[12][0-9]|30)(\\.[0-9]+)?( ?km)?$"]',
+      '["route"="bicycle"]["network"~"lcn|rcn"]["roundtrip"="yes"]',
+    ],
+    primaryElement: 'relation',
+  },
+  // route=running, not route=hiking with a short distance — Swedish mappers
+  // use both for the same lit exercise loops ("elljusspår"), and there's no
+  // tag-based way to tell a jogging loop from a short hiking loop once they
+  // both land under route=hiking. Taking only the dedicated tag undercounts
+  // rather than guesses; a missing trail is an invitation to add one.
+  'jogging-trails': {
+    filters: [
+      '["route"="running"]["distance"~"^([0-9]|[12][0-9]|30)(\\.[0-9]+)?( ?km)?$"]',
+      '["route"="running"]["roundtrip"="yes"]',
+    ],
+    primaryElement: 'relation',
+  },
+
+  // leisure=slipway: a launch point for a small craft — kayak, canoe, or a
+  // car-trailered boat. kayak=yes exists as a sub-tag but only 14 nodes in
+  // the whole country carry it, so it can't be the filter; slipway itself is
+  // the closest real OSM concept to "somewhere to put a small boat in the
+  // water" and doesn't need a shop exclusion, since a launch point is a
+  // physical structure, not a business.
+  'water-activities': { filters: ['["leisure"="slipway"]'] },
 };
+
+/*
+ * Categories with no entry above, on purpose — this list exists so the
+ * question "why hasn't X been done yet" isn't re-asked from scratch:
+ *
+ *   - scenic-place, festival: not physical venues in OSM's model. A festival
+ *     is an event, not a place, and "scenic" is a judgement no tag makes; both
+ *     would need curation, not a query.
+ *   - obstacle-course: no OSM tag distinct from action-parks' sport=climbing_adventure
+ *     or gyms-outside's fitness_station. Guessing one risks the exact
+ *     misclassification golf's clubhouse rule and the pitch/sport split exist
+ *     to prevent.
+ */
 
 /**
  * Bounding boxes as Overpass wants them: south,west,north,east.
@@ -259,20 +362,34 @@ const NATIONWIDE = [
  * assigned back to their city afterwards by checking which box contains them,
  * which the coordinates already answer.
  */
-function buildQuery(filters, bboxes, anchors = null) {
+function buildQuery(category, bboxes) {
   const boxes = Array.isArray(bboxes) ? bboxes : [bboxes];
+  const element = category.primaryElement ?? null;
+  const elementTypes = element ? [element] : ['node', 'way', 'relation'];
   const parts = boxes
     .flatMap((bbox) =>
-      filters.flatMap((f) => [`node${f}(${bbox});`, `way${f}(${bbox});`, `relation${f}(${bbox});`])
+      category.filters.flatMap((f) => elementTypes.map((t) => `${t}${f}(${bbox});`))
     )
     .join('\n  ');
 
-  // `out geom` rather than `out center`. Overpass's "center" is the middle of
-  // the bounding box, which it documents as possibly falling outside the object
-  // — for an L-shaped building or a pitch on an odd plot, the pin lands off the
-  // thing it is supposed to mark. With the real vertex list we can compute a
-  // proper centroid instead.
-  if (!anchors) return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout geom tags;`;
+  /*
+   * `out body geom;`, not `out geom tags;`.
+   *
+   * Both include full geometry on a way or node, so the difference is
+   * invisible for most categories — but a relation only gets a `members`
+   * array with per-member geometry embedded (what ringsOf reads) under
+   * `body` verbosity. Under `tags`, a relation comes back as bounds and tags
+   * only — no members key at all — and every function downstream that reads
+   * el.members silently sees an empty list and either falls back to the
+   * bounding-box centre or drops the row as unplaceable. Confirmed against
+   * the live API: golf or a nature reserve mapped as a relation rather than
+   * a plain closed way has been hitting this since those categories were
+   * written, silently, because most of them happen to be ways. Every
+   * hiking/bike-trail/jogging-trail primary is a relation, and the plain
+   * mean-of-members pin toRow already falls back to needed this fixed before
+   * it could produce anything but a dropped row.
+   */
+  if (!category.anchors) return `[out:json][timeout:180];\n(\n  ${parts}\n);\nout body geom;`;
 
   /*
    * Anchors are fetched inside the matched polygons, not across the bounding
@@ -284,7 +401,7 @@ function buildQuery(filters, bboxes, anchors = null) {
    * only ever looks at car parks that are already on a golf course, and the
    * answer comes back in seconds.
    */
-  const anchorParts = anchors
+  const anchorParts = category.anchors
     .map(([key, value]) => `nwr["${key}"="${value}"](area.courses);`)
     .join('\n  ');
   return (
@@ -292,7 +409,7 @@ function buildQuery(filters, bboxes, anchors = null) {
     `(\n  ${parts}\n)->.primary;\n` +
     `.primary map_to_area ->.courses;\n` +
     `(\n  ${anchorParts}\n)->.anchors;\n` +
-    `(.primary; .anchors;);\nout geom tags;`
+    `(.primary; .anchors;);\nout body geom;`
   );
 }
 
@@ -684,10 +801,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * rows about seventeen minutes. Run it per city, per category, and let it take
  * the time.
  */
-async function geocodeMissing(rows, onProgress) {
+/**
+ * verifyCountry forces a Nominatim lookup on every row, not just the ones
+ * missing an address, and stamps row.countryCode from the reply.
+ *
+ * Needed only for the `sweden` bbox. It is a bounding rectangle, not the
+ * actual border, so it also covers a strip of Norway, part of Denmark
+ * (Bornholm came back in one run), Åland, and a reach of the Baltic coast
+ * across the sea in Finland, Estonia, Latvia and Lithuania — all with real
+ * addresses that read as perfectly plausible until you notice the town name.
+ * A city bbox from AREAS never crosses a border, so this only turns on for
+ * the whole-country run, which is the one place a plain address filter
+ * cannot catch a location that is simply in the wrong country.
+ */
+async function geocodeMissing(rows, onProgress, verifyCountry = false) {
   let done = 0;
   for (const row of rows) {
-    if (row.address && row.name) continue;
+    if (!verifyCountry && row.address && row.name) continue;
 
     try {
       const url =
@@ -697,6 +827,7 @@ async function geocodeMissing(rows, onProgress) {
       });
       if (response.ok) {
         const a = (await response.json()).address ?? {};
+        if (verifyCountry) row.countryCode = a.country_code ?? null;
         const area = a.suburb ?? a.city_district ?? a.neighbourhood ?? a.village ?? null;
         // Nominatim falls back to the municipality when a point sits outside any
         // named town, and Swedish municipalities carry the word: "Botkyrka
@@ -847,23 +978,15 @@ async function main() {
   const category = CATEGORIES[slug];
   console.log(`Overpass: ${slug} across ${areaKeys.length} areas, ${perArea} each`);
   const elements =
-    (
-      await queryOverpass(
-        buildQuery(
-          category.filters,
-          areaKeys.map((k) => AREAS[k].bbox),
-          category.anchors ?? null
-        )
-      )
-    ).elements ?? [];
+    (await queryOverpass(buildQuery(category, areaKeys.map((k) => AREAS[k].bbox)))).elements ?? [];
   console.log(`  ${elements.length} elements in ${((Date.now() - started) / 1000).toFixed(1)}s\n`);
 
   let allRows;
   if (!category.anchors) {
     allRows = elements.map((el) => toRow(el, slug, batch)).filter(Boolean);
   } else {
-    // One response holds both the courses and the things inside them; the
-    // primary predicate is what tells them apart.
+    // One response holds both the primary features and the things near/inside
+    // them; the primary predicate is what tells them apart.
     const isPrimary = (el) => category.primary(el.tags ?? {});
     const rank = (el) =>
       category.anchors.findIndex(([key, value]) => (el.tags ?? {})[key] === value);
@@ -872,16 +995,16 @@ async function main() {
       .map((el) => ({ rank: rank(el), point: coordsOf(el) }))
       .filter((a) => a.rank >= 0 && a.point);
 
-    const courses = elements.filter(isPrimary);
-    allRows = courses
+    const primaries = elements.filter(isPrimary);
+    allRows = primaries
       .map((el) => {
         const point = anchorPointFor(el, anchorPoints);
         return point ? toRow(el, slug, batch, point) : null;
       })
       .filter(Boolean);
     console.log(
-      `  ${courses.length} courses, ${anchorPoints.length} anchors → ` +
-        `${allRows.length} placeable, ${courses.length - allRows.length} dropped (nothing to pin to)\n`
+      `  ${primaries.length} courses, ${anchorPoints.length} anchors → ` +
+        `${allRows.length} placeable, ${primaries.length - allRows.length} dropped (nothing to pin to)\n`
     );
   }
 
@@ -923,24 +1046,59 @@ async function main() {
   // the even split leaves a remainder.
   const candidates = pickSpread(named, maxRows);
 
+  // The `sweden` bbox is a rectangle, not the border — see geocodeMissing's
+  // verifyCountry doc. Every row has to be checked, not just the ones missing
+  // an address, so this can't reuse the plain `needing` count below.
+  const verifyCountry = areaKeys.includes('sweden');
+
   const needing = candidates.filter((r) => !r.address || !r.name).length;
-  if (needing > 0) {
-    if (!geocode) {
-      console.log(`  ${needing} lack an address or a name in OSM`);
-      console.log(`\n  Pass --geocode to fill those in from their coordinates.`);
-      console.log(`  That is one request a second to Nominatim, so about ${Math.ceil((needing * 1.1) / 60)} min.`);
-    } else {
-      console.log(`  ${needing} need lookup — about ${Math.ceil((needing * 1.1) / 60)} min at 1 req/sec`);
-      await geocodeMissing(candidates, (n) => console.log(`    ${n}/${needing}…`));
-    }
+  if (verifyCountry && !geocode) {
+    console.log(
+      `\n  sweden is a bounding box, not the actual border — it also covers parts of\n` +
+        `  Norway, Denmark, Åland and the Baltic coast. Pass --geocode so every row can\n` +
+        `  be checked against where it actually reverse-geocodes to; refusing to write\n` +
+        `  output without that check.`
+    );
+  } else if (geocode && (needing > 0 || verifyCountry)) {
+    const label = verifyCountry ? candidates.length : needing;
+    console.log(
+      verifyCountry
+        ? `  checking country for all ${label} rows (sweden bbox) — about ${Math.ceil((label * 1.1) / 60)} min at 1 req/sec`
+        : `  ${label} need lookup — about ${Math.ceil((label * 1.1) / 60)} min at 1 req/sec`
+    );
+    await geocodeMissing(candidates, (n) => console.log(`    ${n}/${label}…`), verifyCountry);
+  } else if (needing > 0) {
+    console.log(`  ${needing} lack an address or a name in OSM`);
+    console.log(`\n  Pass --geocode to fill those in from their coordinates.`);
+    console.log(`  That is one request a second to Nominatim, so about ${Math.ceil((needing * 1.1) / 60)} min.`);
   }
 
   const addressed = candidates.filter((r) => r.address && r.name);
-  const { kept: rows, dropped } = dedupe(addressed);
+  // Kept only on a *confirmed* 'se' from Nominatim — not on the absence of a
+  // foreign code. Without --geocode, or if a single lookup errored, countryCode
+  // is left unset, and unset has to mean "unverified, drop it", the same as a
+  // wrong country would. The one bbox this matters for is also the one where
+  // failing open would put a Norwegian pitch on the map as Swedish.
+  const inSweden = verifyCountry ? addressed.filter((r) => r.countryCode === 'se') : addressed;
+  const outsideSweden = verifyCountry ? addressed.filter((r) => r.countryCode !== 'se') : [];
+  const { kept: rows, dropped } = dedupe(inSweden);
 
   console.log(`  ${candidates.length - addressed.length} skipped (still no address)`);
+  if (verifyCountry && !geocode) {
+    console.log(`  ${outsideSweden.length} dropped (country unverified — sweden bbox needs --geocode)`);
+  } else if (verifyCountry) {
+    console.log(`  ${outsideSweden.length} dropped (reverse-geocodes outside Sweden)`);
+  }
   console.log(`  ${dropped.length} merged (same name within ${MERGE_RADIUS_M} m)`);
   console.log(`  ${rows.length} importable`);
+
+  if (outsideSweden.length > 0 && geocode) {
+    console.log(`\n  Outside Sweden (dropped):`);
+    for (const r of outsideSweden.slice(0, 10)) {
+      console.log(`    ${r.name}  (${r.countryCode ?? 'lookup failed'})  ${r.address}`);
+    }
+    if (outsideSweden.length > 10) console.log(`    … and ${outsideSweden.length - 10} more`);
+  }
 
   if (dropped.length > 0) {
     console.log(`\n  Merged — each of these was dropped in favour of the one kept (< ${MERGE_RADIUS_M} m):`);
