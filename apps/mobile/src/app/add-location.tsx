@@ -192,11 +192,23 @@ export default function AddLocationScreen() {
   // split its reviews and rating across two listings. We can't reliably detect
   // a duplicate automatically (names vary, one park can hold several courts),
   // so show what's already nearby and let the person decide.
+  //
+  // Filtered to the category being added: a café and a bus stop 50m apart
+  // are not the same listing, and warning about both just trains people to
+  // ignore the warning. Until a category is picked there is nothing to match
+  // it against, so the check stays silent rather than showing everything
+  // nearby regardless of what it is.
   const checkForNearbyDuplicates = (coords: MapCoords) => {
+    const categorySlugs = categories.filter((c) => categoryIds.includes(c.id)).map((c) => c.slug);
+    if (categorySlugs.length === 0) {
+      setNearbyExisting([]);
+      return;
+    }
     fetchNearbyLocations(supabase, {
       lat: coords.latitude,
       lng: coords.longitude,
       radiusM: DUPLICATE_RADIUS_M,
+      categorySlugs,
     })
       .then((rows) => setNearbyExisting(rows.slice(0, 5)))
       .catch(() => setNearbyExisting([]));
@@ -245,6 +257,15 @@ export default function AddLocationScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords]);
+
+  // The pin is usually placed by GPS before any category is picked, so the
+  // duplicate check above skips it for lack of a category to match. Once one
+  // is chosen, re-run the check at the pin's current spot rather than waiting
+  // for the pin to move again.
+  useEffect(() => {
+    if (pinCoords) checkForNearbyDuplicates(pinCoords);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryIds]);
 
   /**
    * Moves the pin to the address that was typed.
@@ -513,6 +534,23 @@ export default function AddLocationScreen() {
             style={[styles.input, styles.lightInput]}
           />
 
+          <Pressable style={[styles.input, styles.lightInput, styles.categoryInput]} onPress={() => setPickerVisible(true)}>
+            <ThemedText type="default" style={[styles.categoryInputText, !selectedCategoryLabel && styles.lightPlaceholderText]} numberOfLines={1}>
+              {selectedCategoryLabel || t('form.categoryPlaceholder')}
+            </ThemedText>
+            <Ionicons name="chevron-down" size={16} color="#000000" />
+          </Pressable>
+
+          {hasOtherCategory && (
+            <TextInput
+              value={otherCategoryDetail}
+              onChangeText={setOtherCategoryDetail}
+              placeholder={t(`addLocation.whatKind.${kindKey}`)}
+              placeholderTextColor={LIGHT_PLACEHOLDER}
+              style={[styles.input, styles.lightInput]}
+            />
+          )}
+
           <ThemedText type="smallBold" style={styles.mapLabel}>
             {t('form.pinExact')}
           </ThemedText>
@@ -600,23 +638,6 @@ export default function AddLocationScreen() {
             <ThemedText type="small" style={styles.addressWarning}>
               {t('addLocation.geocodeFailed')}
             </ThemedText>
-          )}
-
-          <Pressable style={[styles.input, styles.lightInput, styles.categoryInput]} onPress={() => setPickerVisible(true)}>
-            <ThemedText type="default" style={[styles.categoryInputText, !selectedCategoryLabel && styles.lightPlaceholderText]} numberOfLines={1}>
-              {selectedCategoryLabel || t('form.categoryPlaceholder')}
-            </ThemedText>
-            <Ionicons name="chevron-down" size={16} color="#000000" />
-          </Pressable>
-
-          {hasOtherCategory && (
-            <TextInput
-              value={otherCategoryDetail}
-              onChangeText={setOtherCategoryDetail}
-              placeholder={t(`addLocation.whatKind.${kindKey}`)}
-              placeholderTextColor={LIGHT_PLACEHOLDER}
-              style={[styles.input, styles.lightInput]}
-            />
           )}
 
           <View style={styles.seasonRow}>
