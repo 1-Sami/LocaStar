@@ -79,3 +79,30 @@ export function roundedCount(value: number): string {
   const floored = Math.floor(value / step) * step;
   return `${floored}+`;
 }
+
+/**
+ * Categories in the order a filter list should offer them.
+ *
+ * Alphabetical by the name actually on screen, not by slug — the slugs are
+ * English, so sorting on them puts the Swedish list in an order that looks
+ * random ("Utomhusgym" filed under g).
+ *
+ * localeCompare with the page's language, because Swedish sorts å, ä and ö
+ * after z rather than beside a and o. A plain `<` comparison gets that wrong
+ * for exactly the letters a Swedish reader would notice.
+ *
+ * "Others" is pushed to the end whatever it is called. It is the bucket for
+ * everything that did not fit, so it belongs after the real answers rather
+ * than alphabetised into the middle of them.
+ */
+export function byCategoryName<T extends { slug: string; name: string }>(
+  rows: readonly T[],
+  lang: 'en' | 'sv',
+  displayName: (row: T) => string
+): T[] {
+  return [...rows].sort((a, b) => {
+    if (a.slug === 'other') return 1;
+    if (b.slug === 'other') return -1;
+    return displayName(a).localeCompare(displayName(b), lang);
+  });
+}

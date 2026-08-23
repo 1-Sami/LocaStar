@@ -9,7 +9,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
-import { categoryColor, ratingLabel, roundedCount } from '../lib/format';
+import { byCategoryName, categoryColor, ratingLabel, roundedCount } from '../lib/format';
 import { storeLinksReady, STORE_LINKS } from '../lib/site';
 import { anonClient } from '../lib/supabase';
 import { categoryName } from '@locastar/shared';
@@ -49,6 +49,20 @@ const lists = await fetchPublicLists(supabase).catch((error) => {
 });
 
 const withPlaces = categoryCounts.filter((row) => row.count > 0);
+
+/*
+ * Alphabetical for the finder's dropdown, with Others last.
+ *
+ * The browse grid below keeps its own order — biggest first — because the
+ * counts are on the tiles and the point there is what the map is mostly made
+ * of. A dropdown has no counts and gets scanned for a word, so the two want
+ * opposite orders from the same list.
+ */
+const finderCategories = byCategoryName(
+  withPlaces,
+  lang,
+  (row) => categoryName(row.slug, lang) ?? row.name
+);
 
 /*
  * Most liked: only places somebody has actually reviewed.
@@ -163,19 +177,24 @@ const jsonLd = [
           <span class="mono cell-label">{t('home.finderActivity')}</span>
           <select name="activity">
             <option value="">{t('home.finderAnyActivity')}</option>
-            {withPlaces.map((row) => <option value={row.slug}>{categoryName(row.slug, lang) ?? row.name}</option>)}
+            {finderCategories.map((row) => <option value={row.slug}>{categoryName(row.slug, lang) ?? row.name}</option>)}
           </select>
         </label>
         <label class="cell">
           <span class="mono cell-label">{t('home.finderWhere')}</span>
-          <input name="where" placeholder={t('home.finderNearMe')} autocomplete="off" />
+          {/*
+            Says "City", not "Near me". The latter promised a search from the
+            visitor's own position, which nothing here does — the box matches a
+            town against city and address.
+          */}
+          <input name="where" placeholder={t('home.finderCity')} autocomplete="off" />
         </label>
         <label class="cell narrow">
           <span class="mono cell-label">{t('home.finderType')}</span>
           <select name="kind">
-            <option value="">Place · Activity</option>
-            <option value="place">Place</option>
-            <option value="activity">Activity</option>
+            <option value="">{t('home.finderAnyType')}</option>
+            <option value="place">{t('search.places')}</option>
+            <option value="activity">{t('search.activities')}</option>
           </select>
         </label>
         <label class="cell narrow">

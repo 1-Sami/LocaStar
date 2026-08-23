@@ -136,6 +136,14 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
             ))
           }
           <span class="menu-rule" aria-hidden="true"></span>
+          {/*
+            Sign in leaves the action row on a phone — see the note on
+            .signin below — so it has to be reachable from in here.
+          */}
+          <a class="menu-link menu-account" href={signedInName ? p('/account') : p('/auth/sign-in')}>
+            {signedInName ?? t('nav.signIn')}
+          </a>
+          <span class="menu-rule" aria-hidden="true"></span>
           <span class="mono menu-lang">
             <a class={lang === 'en' ? 'on' : ''} href={localePath(path, 'en')} hreflang="en">EN</a>
             <span aria-hidden="true"> · </span>
@@ -422,10 +430,50 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
     }
   }
 
+  /*
+   * Below 640 the row cannot hold everything.
+   *
+   * Measured, not guessed: brand plus Sign in plus Add a place plus the menu
+   * button came to roughly 490px of content in a 420px viewport, so the menu
+   * button — the one thing that makes the rest of the site reachable — was
+   * pushed off the right edge. The overflow also widened the page, which is
+   * why the search bar underneath ran past the screen too.
+   *
+   * So the tagline and Sign in step out of the row. Sign in is not lost; it
+   * moves into the menu, which is where a phone expects to find an account
+   * anyway. What is left is the brand, Add a place, and the way out.
+   */
   @media (max-width: 640px) {
     .lang,
-    .me-name {
+    .me-name,
+    .tagline,
+    .signin {
       display: none;
     }
+
+    .actions {
+      gap: 12px;
+    }
+
+    .inner {
+      gap: 12px;
+      padding-block: 16px;
+    }
+
+    .cta {
+      padding-inline: 15px;
+    }
+  }
+
+  /* Narrower still: the mark alone carries the brand. */
+  @media (max-width: 380px) {
+    .wordmark {
+      display: none;
+    }
+  }
+
+  /* In the menu it is a link like the others, but it is who you are. */
+  .menu-account {
+    color: var(--text-70);
   }
 </style>

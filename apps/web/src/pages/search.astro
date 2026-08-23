@@ -5,7 +5,7 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
-import { categoryColor, ratingLabel } from '../lib/format';
+import { byCategoryName, categoryColor, ratingLabel } from '../lib/format';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
@@ -79,6 +79,20 @@ const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
 
 const withPlaces = categoryCounts.filter((row) => row.count > 0);
+
+/*
+ * The filter list is alphabetical, with Others at the end.
+ *
+ * Counts decide what the home page's browse grid leads with — there the size
+ * of a category is the point. Here it is not: somebody scanning a filter list
+ * is looking for a word they already have in mind, and hunting for it down a
+ * list ordered by popularity means reading all forty-three.
+ */
+const filterCategories = byCategoryName(
+  withPlaces,
+  lang,
+  (row) => categoryName(row.slug, lang) ?? row.name
+);
 
 /** A URL with one parameter changed, everything else preserved. */
 function withParam(name: string, value: string | null, resetPage = true) {
@@ -209,7 +223,7 @@ const canonical = `${origin}/search`;
           <span class="mono group-head">{t('search.activity')}</span>
           <div class="cats">
             {
-              withPlaces.map((row) => {
+              filterCategories.map((row) => {
                 const on = activity.includes(row.slug);
                 return (
                   <a class={`cat${on ? ' on' : ''}`} href={toggleActivity(row.slug)}>
@@ -272,7 +286,8 @@ const canonical = `${origin}/search`;
               </div>
             </div>
           ) : (
-            <div class="list">
+            <>
+              <div class="list">
               {response.results.map((place) => {
                 const colour = categoryColor(place.categorySlug);
                 const rating = ratingLabel(place.avgRating, place.reviewCount);
@@ -296,7 +311,10 @@ const canonical = `${origin}/search`;
                         <span class="row-name">{place.name}</span>
                         {rating.rated ? (
                           <span class="mono row-rating">
-                            ★ {rating.avg} <span class="dim">({rating.count} reviews)</span>
+                            ★ {rating.avg}{' '}
+                            <span class="dim">
+                              ({rating.count} {rating.count === 1 ? t('common.review') : t('common.reviews')})
+                            </span>
                           </span>
                         ) : (
                           <span class="mono row-unrated">{t('common.notRated')}</span>
@@ -317,40 +335,42 @@ const canonical = `${origin}/search`;
                   </article>
                 );
               })}
-
-              <div class="pager">
-                <span class="mono showing">
-                  {t('search.showing')} {first}–{last} {t('search.of')} {response.total}
-                </span>
-                <div class="bar" aria-hidden="true">
-                  <div class="bar-fill" style={`width:${progress}%`} />
-                </div>
-                {
-                  response.pageCount > 1 && (
-                    <nav class="pages" aria-label="Pagination">
-                      {pageNumbers.map((n) =>
-                        n === '…' ? (
-                          <span class="mono gap">…</span>
-                        ) : (
-                          <a class={`page${n === response.page ? ' on' : ''}`} href={pageHref(n)}>
-                            {n}
-                          </a>
-                        )
-                      )}
-                      {response.page < response.pageCount && (
-                        <a class="page" href={pageHref(response.page + 1)} aria-label="Next page">
-                          →
-                        </a>
-                      )}
-                    </nav>
-                  )
-                }
-                <p class="pager-note">
-                  Numbered pages stay in the markup for search engines and for linking; the button is what people
-                  actually use.
-                </p>
-              </div>
             </div>
+
+            <div class="pager">
+              <span class="mono showing">
+                {t('search.showing')} {first}–{last} {t('search.of')} {response.total}
+              </span>
+              <div class="bar" aria-hidden="true">
+                <div class="bar-fill" style={`width:${progress}%`} />
+              </div>
+              {/*
+                Real numbered links, not a script. A crawler follows these, and
+                somebody can link page 3 — which is the whole reason the search
+                page is server-rendered rather than an endless scroll.
+              */}
+              {
+                response.pageCount > 1 && (
+                  <nav class="pages" aria-label={t('search.pagination')}>
+                    {pageNumbers.map((n) =>
+                      n === '…' ? (
+                        <span class="mono gap">…</span>
+                      ) : (
+                        <a class={`page${n === response.page ? ' on' : ''}`} href={pageHref(n)}>
+                          {n}
+                        </a>
+                      )
+                    )}
+                    {response.page < response.pageCount && (
+                      <a class="page next" href={pageHref(response.page + 1)} aria-label={t('search.nextPage')}>
+                        →
+                      </a>
+                    )}
+                  </nav>
+                )
+              }
+            </div>
+            </>
           )
         }
       </section>
@@ -835,20 +855,6 @@ const canonical = `${origin}/search`;
     background: var(--accent);
   }
 
-  .load-more {
-    font-weight: 500;
-    font-size: 14px;
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 13px 28px;
-  }
-
-  .load-more:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-  }
-
   .pages {
     display: flex;
     align-items: center;
@@ -882,15 +888,6 @@ const canonical = `${origin}/search`;
     font-size: 12px;
     color: var(--text-42);
     padding: 0 4px;
-  }
-
-  .pager-note {
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--text-42);
-    text-align: center;
-    max-width: 330px;
-    margin: 0;
   }
 
   /* ---- map column ---- */
@@ -953,32 +950,41 @@ const canonical = `${origin}/search`;
       min-height: 520px;
     }
 
+    /*
+     * Three fixed bands: the count and sort, then the places, then the pager.
+     * Only the middle one scrolls.
+     *
+     * It used to be the whole column that scrolled, which put the pager below
+     * twenty cards where nobody found it — you could not tell there was a page
+     * two without scrolling to the bottom of page one. Making it a grid row
+     * instead of a sticky footer means it is simply always there, and the
+     * scrollbar belongs to the list it actually moves.
+     */
     .results {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+
+    .list {
       overflow-y: auto;
       /* Reaching the end of the list must not start scrolling the page
          behind it. */
       overscroll-behavior: contain;
+      /* Room for the scrollbar so it never sits on top of a card's edge. */
+      padding-right: 6px;
+      margin-right: -6px;
     }
 
-    /*
-     * The count and the sort stay reachable from anywhere in the list.
-     *
-     * The column's own top padding is moved into this bar. Left where it was,
-     * rows scrolled up into the 24px above the sticky bar and showed through
-     * as a sliver of the previous card; and the bar has to bleed over the
-     * side padding or rows pass either side of it.
-     */
-    .results {
-      padding-top: 0;
+    /* The empty state is the middle band when there are no results at all. */
+    .empty {
+      min-height: 0;
     }
 
-    .results-head {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: var(--page);
-      margin-inline: -22px;
-      padding: 20px 22px 14px;
+    .pager {
+      /* Against the bottom of the column rather than trailing the last card. */
+      margin-top: 0;
+      padding-bottom: 0;
     }
 
     /*
