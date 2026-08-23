@@ -204,6 +204,7 @@ export type ListMeta = {
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
+  ownerId: string;
   ownerUsername: string | null;
   ownerDisplayName: string | null;
 };
@@ -215,6 +216,7 @@ type ListMetaRow = {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  user_id: string;
   owner: { username: string | null; display_name: string | null } | null;
 };
 
@@ -233,7 +235,7 @@ export async function fetchListMeta(
   const { data, error } = await client
     .from("lists")
     .select(
-      "id, name, description, is_public, created_at, updated_at, owner:profiles!lists_user_id_fkey(username, display_name)"
+      "id, name, description, is_public, created_at, updated_at, user_id, owner:profiles!lists_user_id_fkey(username, display_name)"
     )
     .eq("id", listId)
     .maybeSingle();
@@ -248,6 +250,7 @@ export async function fetchListMeta(
     isPublic: row.is_public,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ownerId: row.user_id,
     ownerUsername: row.owner?.username ?? null,
     ownerDisplayName: row.owner?.display_name ?? null,
   };

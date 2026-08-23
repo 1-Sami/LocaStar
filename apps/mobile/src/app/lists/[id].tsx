@@ -57,7 +57,6 @@ export default function ListDetailScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const { isModerator } = useSharedProfile();
-  const isSharedView = shared === '1';
 
   const [items, setItems] = useState<ListItemLocation[]>([]);
   const [meta, setMeta] = useState<ListMeta | null>(null);
@@ -74,6 +73,17 @@ export default function ListDetailScreen() {
   const [shareRecipients, setShareRecipients] = useState<ListShareRecipient[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+
+  /*
+   * Every screen that links here passes shared:'1' whenever the list came
+   * from a "public"/"shared" section — including your own list, if you made
+   * it public. That made your own list open read-only, looking like someone
+   * else's. Route params are only a hint for the first paint, before the
+   * list's real owner has loaded; once fetchListMeta resolves, the actual
+   * owner id decides, overriding whatever the caller guessed.
+   */
+  const isOwner = meta ? meta.ownerId === session?.user?.id : null;
+  const isSharedView = isOwner === null ? shared === '1' : !isOwner;
 
   // Only meaningful on someone else's list — you can't "save" your own.
   const reloadSavedState = useCallback(() => {
