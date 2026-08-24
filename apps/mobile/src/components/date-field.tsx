@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useThemeMode } from '@/lib/theme-mode-context';
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -24,6 +25,7 @@ export function DateField({
   placeholder?: string;
 }) {
   const { t } = useTranslation();
+  const { resolvedScheme } = useThemeMode();
   const [showPicker, setShowPicker] = useState(false);
 
   const handleChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -57,6 +59,13 @@ export function DateField({
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
           minimumDate={minimumDate}
           onChange={handleChange}
+          // iOS only, and it does not follow the app's own dark-mode
+          // override — only the OS setting, unless told otherwise. The
+          // inline picker's background is transparent, so when the two
+          // disagree its text renders in whatever the OS expects, sitting on
+          // whatever background the app actually drew: dark-on-dark or
+          // light-on-light depending on which way the mismatch runs.
+          themeVariant={resolvedScheme}
         />
       )}
     </View>

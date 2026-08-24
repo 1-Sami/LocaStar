@@ -1,13 +1,23 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { useNotificationsBadge } from '@/lib/notifications-context';
+import { useThemeMode } from '@/lib/theme-mode-context';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  /*
+   * useColorScheme() reads the OS setting directly, but the app has its own
+   * light/dark override in Settings that can disagree with it. The two only
+   * matched when nobody had touched that setting, which is why the tab bar
+   * flashed between the wrong colour and the right one on some presses —
+   * every re-render (the badge count, most navigation) reread the OS value
+   * and briefly disagreed with the rest of the app, which is themed from
+   * resolvedScheme. Same source everywhere fixes the mismatch, not just hides
+   * a symptom of it.
+   */
+  const { resolvedScheme } = useThemeMode();
+  const colors = Colors[resolvedScheme];
   const { unreadCount } = useNotificationsBadge();
   const { t } = useTranslation();
 

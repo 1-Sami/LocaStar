@@ -111,6 +111,15 @@ export function MapPinPicker({
         originWhitelist={['*']}
         source={{ html }}
         style={styles.webview}
+        // Android-only, ignored on iOS. Android's WebView defaults to
+        // software-rendered compositing, which visibly lags behind a
+        // pinch/pan on something as busy as a Leaflet map; "hardware" hands
+        // that to the GPU, which is what iOS's WKWebView already does by
+        // default — closing the gap the owner noticed between the two.
+        // overScrollMode stops the edge-of-content bounce/glow from fighting
+        // a pinch gesture that starts near the map's border.
+        androidLayerType="hardware"
+        overScrollMode="never"
         onLoadEnd={() => {
           loaded.current = true;
           if (pending.current) {

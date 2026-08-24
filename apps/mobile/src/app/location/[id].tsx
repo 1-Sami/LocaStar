@@ -1353,7 +1353,17 @@ export default function LocationDetailScreen() {
             </View>
             <ScrollView contentContainerStyle={styles.galleryGrid}>
               {photos.map((photo, index) => (
-                <Pressable key={index} style={styles.galleryThumbWrapper} onPress={() => openViewerAt(index)}>
+                <Pressable
+                  key={index}
+                  style={styles.galleryThumbWrapper}
+                  onPress={() => {
+                    // Two Modals visible at once breaks safe-area inset
+                    // computation for the second one, so the close button on
+                    // the full viewer ends up unpadded against the notch —
+                    // sometimes unreachable, sometimes just visibly wrong.
+                    setGalleryVisible(false);
+                    openViewerAt(index);
+                  }}>
                   <Image source={{ uri: photo.url }} style={styles.galleryThumb} contentFit="cover" />
                 </Pressable>
               ))}

@@ -51,7 +51,15 @@ function ThemedNavigation() {
       {/* The banner is a sibling in normal flow, so it takes its own strip at
           the bottom rather than covering the tab bar or a screen header. */}
       <View style={{ flex: 1 }}>
-        <Stack>
+        <Stack
+          screenOptions={{
+            // Otherwise the back button falls back to the previous screen's
+            // route name when nothing else is set — which for anything pushed
+            // from within the tab bar is '(tabs)', the Expo Router group
+            // folder, showing up as literal text on every back button in the
+            // app. A chevron with no label is standard iOS 13+ style anyway.
+            headerBackButtonDisplayMode: 'minimal',
+          }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="sign-in" options={{ presentation: 'modal', title: t('nav.logIn') }} />
           <Stack.Screen name="sign-up" options={{ presentation: 'modal', title: t('nav.signUp') }} />

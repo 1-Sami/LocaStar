@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, StyleSheet, TextInput } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
@@ -46,7 +47,7 @@ const REVIEW_REASONS: { value: string; labelKey: string }[] = [
 const MIN_OTHER_WORDS = 3;
 
 function countWords(text: string): number {
-  return text.trim().split(/s+/).filter(Boolean).length;
+  return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
 export function ReportModal({
@@ -139,9 +140,19 @@ export function ReportModal({
             </>
           ) : (
             <>
-              <ThemedText type="subtitle" style={styles.modalTitle}>
-                {title}
-              </ThemedText>
+              <View style={styles.titleRow}>
+                <ThemedText type="subtitle" style={styles.modalTitle}>
+                  {title}
+                </ThemedText>
+                {/*
+                  The only other way out was tapping the dimmed backdrop, which
+                  the keyboard shrinks to almost nothing once the 'Other' field
+                  is focused -- someone who changed their mind had no way back.
+                */}
+                <Pressable onPress={handleClose} hitSlop={8} style={styles.closeButton}>
+                  <Ionicons name="close" size={22} color={theme.text} />
+                </Pressable>
+              </View>
               {children}
               {reasons.map((r) => (
                 <Pressable key={r.value} style={styles.modalRow} onPress={() => setReason(r.value)}>
@@ -193,10 +204,22 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.two,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
   modalTitle: {
+    flex: 1,
     fontSize: 20,
     lineHeight: 26,
-    marginBottom: Spacing.two,
+  },
+  closeButton: {
+    padding: Spacing.half,
+    marginTop: -Spacing.half,
+    marginRight: -Spacing.half,
   },
   modalRow: {
     flexDirection: 'row',
