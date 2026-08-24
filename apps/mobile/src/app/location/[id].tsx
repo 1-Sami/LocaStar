@@ -1013,8 +1013,10 @@ export default function LocationDetailScreen() {
               <>
                 <View style={styles.ratingSummaryRow}>
                   <View style={styles.ratingSummaryLeft}>
-                    <ThemedText style={styles.ratingSummaryNumber}>{location.avg_rating.toFixed(1)}</ThemedText>
-                    <StarRating rating={location.avg_rating} size={14} />
+                    <View style={styles.ratingSummaryTopRow}>
+                      <ThemedText style={styles.ratingSummaryNumber}>{location.avg_rating.toFixed(1)}</ThemedText>
+                      <StarRating rating={location.avg_rating} size={14} />
+                    </View>
                     <ThemedText type="small" themeColor="textSecondary">
                       {reviews.length} {t('reviewCount.label', { count: reviews.length })}
                     </ThemedText>
@@ -1932,10 +1934,18 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   ratingSummaryLeft: {
-    width: 84,
+    // No fixed width: the widest thing here used to be "N reviews" stacked
+    // under the number, now it's the number and the stars sitting in one
+    // row, and that row is wider than 84 ever was. Sizing to content keeps
+    // it centered under itself either way rather than clipping the stars.
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.half,
+  },
+  ratingSummaryTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   ratingSummaryNumber: {
     fontSize: 26,
