@@ -180,7 +180,9 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
                     {t('auth.fineSignUpMiddle')} <a href={p('/legal/privacy')}>{t('contact.privacy')}</a>{t('auth.fineSignUpSuffix')}
                   </p>
                 ) : (
-                  <p class="fine">{t('auth.fineSignIn')}</p>
+                  <p class="fine">
+                    <a href={p('/auth/forgot-password')}>{t('forgot.link')}</a>
+                  </p>
                 )
               }
             </form>

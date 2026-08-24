@@ -67,6 +67,13 @@ const RETIRED: Record<string, string> = {
   // No language page here — the EN · SV switch sits in the header of every
   // page, so the home page is where that intention is already satisfied.
   '/settings/language': '/',
+  /*
+   * The old export served this; the request form now lives under /auth with
+   * the rest of it. Note the *reset* page is not in this map and must not be:
+   * /reset-password is a real page here, because that exact URL is compiled
+   * into every installed app and is where reset emails land.
+   */
+  '/forgot-password': '/auth/forgot-password',
 };
 
 function retiredRoute(pathname: string): string | null {

@@ -14,6 +14,7 @@
     "@astrojs/cloudflare": "14.2.2",
     "@locastar/shared": "workspace:*",
     "@supabase/ssr": "0.12.4",
+    "@supabase/supabase-js": "2.110.2",
     "astro": "7.2.3"
   },
   "devDependencies": {
