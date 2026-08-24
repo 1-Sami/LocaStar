@@ -756,6 +756,7 @@
     "reasonIncorrect": "Felaktig information",
     "reasonDuplicate": "Dubblett av en annan listning",
     "reasonOther": "Övrigt",
+    "chooseAReason": "Välj en anledning",
     "shared": "Delat!",
     "sharedBody": "{{name}} ser det {{where}}.",
     "theyFallback": "Personen",

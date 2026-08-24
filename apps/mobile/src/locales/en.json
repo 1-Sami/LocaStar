@@ -756,6 +756,7 @@
     "reasonIncorrect": "Incorrect information",
     "reasonDuplicate": "Duplicate of another listing",
     "reasonOther": "Other",
+    "chooseAReason": "Choose a reason",
     "shared": "Shared!",
     "sharedBody": "{{name}} will see it {{where}}.",
     "theyFallback": "They",

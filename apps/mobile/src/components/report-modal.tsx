@@ -73,6 +73,7 @@ export function ReportModal({
   const theme = useTheme();
   const { session } = useAuth();
   const [reason, setReason] = useState<string | null>(null);
+  const [reasonPickerOpen, setReasonPickerOpen] = useState(false);
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -81,6 +82,7 @@ export function ReportModal({
   const handleClose = () => {
     onClose();
     setReason(null);
+    setReasonPickerOpen(false);
     setDetails('');
     setSubmitted(false);
     setError(null);
@@ -96,6 +98,7 @@ export function ReportModal({
    * which it starts being something a moderator can act on.
    */
   const reasons = target === 'review' ? REVIEW_REASONS : LOCATION_REASONS;
+  const selectedReason = reasons.find((r) => r.value === reason);
   const needsExplanation = reason === REASON_OTHER;
   const isValid = Boolean(reason) && (!needsExplanation || countWords(details) >= MIN_OTHER_WORDS);
 
@@ -154,12 +157,44 @@ export function ReportModal({
                 </Pressable>
               </View>
               {children}
-              {reasons.map((r) => (
-                <Pressable key={r.value} style={styles.modalRow} onPress={() => setReason(r.value)}>
-                  <ThemedText type="default">{t(r.labelKey)}</ThemedText>
-                  <ThemedText type="default">{reason === r.value ? '✓' : ''}</ThemedText>
-                </Pressable>
-              ))}
+              {/*
+                A collapsed field rather than a second Modal: the sheet
+                itself is already a Modal, and a Modal opened from inside
+                another one gets its safe-area insets wrong on iOS -- the
+                exact bug fixed on the photo viewer's close button. An
+                in-place list needs none of that.
+              */}
+              <Pressable
+                style={[styles.input, styles.reasonSelect, { borderColor: theme.backgroundSelected }]}
+                onPress={() => setReasonPickerOpen((open) => !open)}>
+                <ThemedText
+                  type="default"
+                  style={!selectedReason && styles.reasonPlaceholder}
+                  numberOfLines={1}>
+                  {selectedReason ? t(selectedReason.labelKey) : t('components.chooseAReason')}
+                </ThemedText>
+                <Ionicons
+                  name={reasonPickerOpen ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+              {reasonPickerOpen && (
+                <View style={[styles.reasonList, { borderColor: theme.backgroundSelected }]}>
+                  {reasons.map((r) => (
+                    <Pressable
+                      key={r.value}
+                      style={styles.modalRow}
+                      onPress={() => {
+                        setReason(r.value);
+                        setReasonPickerOpen(false);
+                      }}>
+                      <ThemedText type="default">{t(r.labelKey)}</ThemedText>
+                      <ThemedText type="default">{reason === r.value ? '✓' : ''}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
               <TextInput
                 value={details}
                 onChangeText={setDetails}
@@ -225,6 +260,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: Spacing.two,
+  },
+  reasonSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    // Overriding the multiline TextInput sizing the base .input style
+    // carries — this is one line, not a text box.
+    height: 48,
+    textAlignVertical: 'center',
+  },
+  reasonPlaceholder: {
+    opacity: 0.6,
+  },
+  reasonList: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,

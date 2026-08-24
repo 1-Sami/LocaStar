@@ -27,7 +27,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -222,6 +222,33 @@ export default function LocationDetailScreen() {
   const [viewerWidth, setViewerWidth] = useState(() => Dimensions.get('window').width);
   const heroScrollRef = useRef<ScrollView>(null);
   const viewerScrollRef = useRef<ScrollView>(null);
+  /*
+   * Positions the viewer's ScrollView at viewerIndex — but only when the
+   * viewer opens or the device rotates, never when viewerIndex changes on
+   * its own. It also changes on every onScroll frame while someone is
+   * mid-swipe, and this used to be a JSX contentOffset prop derived straight
+   * from that live value: RN re-applies contentOffset whenever the number
+   * changes, so every drag was fighting a scroll-to back toward wherever the
+   * rounded index had just landed — reported on iOS as the swipe getting
+   * stuck between two photos.
+   *
+   * viewerIndex is read here, not depended on, so a swipe-driven change at
+   * an unchanged width does not retrigger this. Only the open transition
+   * (viewerIndex !== null flips) and a genuine width change (rotation) do —
+   * and rotation should reposition to whatever photo is *currently* on
+   * screen, which reading the latest viewerIndex gives for free.
+   *
+   * Declared here rather than beside openViewerAt, for the same reason
+   * reportingPhoto's state sits up here: this screen returns early while
+   * loading and when the place is missing, so a hook declared beside the
+   * logic that uses it further down would be called conditionally.
+   */
+  useEffect(() => {
+    if (viewerIndex === null || viewerWidth <= 0) return;
+    viewerScrollRef.current?.scrollTo({ x: viewerIndex * viewerWidth, y: 0, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerWidth, viewerIndex !== null]);
+
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -1385,7 +1412,6 @@ export default function LocationDetailScreen() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: (viewerIndex ?? 0) * viewerWidth, y: 0 }}
             onScroll={(e) => {
               if (viewerWidth > 0) {
                 setViewerIndex(Math.round(e.nativeEvent.contentOffset.x / viewerWidth));

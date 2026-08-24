@@ -105,8 +105,13 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
         </View>
       ))}
       <Pressable style={styles.slot} onPress={handleAdd}>
-        <View style={styles.addSlot}>
-          <Ionicons name="add" size={28} color="#ffffff" />
+        {/* White border and a white "+" only ever worked against the app's
+            dark background — in light mode both nearly vanished against a
+            white slot. fieldBorder exists for exactly this: a border that
+            reads as a border on either theme, not just the one this was
+            designed against. */}
+        <View style={[styles.addSlot, { borderColor: theme.fieldBorder }]}>
+          <Ionicons name="add" size={28} color={theme.text} />
         </View>
       </Pressable>
 
@@ -199,7 +204,6 @@ const styles = StyleSheet.create({
   addSlot: {
     flex: 1,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.6)',
     borderRadius: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
