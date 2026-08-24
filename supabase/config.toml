@@ -413,6 +413,13 @@ verify_jwt = true
 [functions.send-activity-reminders]
 verify_jwt = false
 
+# Same reasoning as send-activity-reminders directly above: called by
+# pg_cron with only the anon key, no user token to check, and who receives a
+# push is decided by claim_pending_notification_pushes() in SQL, not by
+# anything this function is trusted with.
+[functions.send-social-notification-pushes]
+verify_jwt = false
+
 [experimental]
 # Configures Postgres storage engine to use OrioleDB (S3)
 orioledb_version = ""
