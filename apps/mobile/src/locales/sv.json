@@ -346,6 +346,8 @@
     "nameOfActivity": "*Aktivitetens namn",
     "nameOfLocation": "*Platsens namn",
     "categoryPlaceholder": "*Typ av plats/kategori",
+    "streetAddress": "*Gatuadress",
+    "postalCodeAndCity": "*Postnummer och ort",
     "photoHintPlace": "Läggs till på platsen när du sparar. Foton som redan finns hanteras från dess galleri.",
     "photoHintActivity": "Läggs till på aktiviteten när du sparar. Foton som redan finns hanteras från dess galleri."
   },

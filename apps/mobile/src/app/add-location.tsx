@@ -613,7 +613,7 @@ export default function AddLocationScreen() {
               setAddressLine1(text);
             }}
             onBlur={handleAddressBlur}
-            placeholder={geocoding ? 'Looking up address…' : '*Street address'}
+            placeholder={geocoding ? t('form.lookingUpAddress') : t('form.streetAddress')}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
           />
@@ -626,7 +626,7 @@ export default function AddLocationScreen() {
               setAddressLine2(text);
             }}
             onBlur={handleAddressBlur}
-            placeholder={geocoding ? 'Looking up address…' : '*Postal code and city'}
+            placeholder={geocoding ? t('form.lookingUpAddress') : t('form.postalCodeAndCity')}
             placeholderTextColor={LIGHT_PLACEHOLDER}
             style={[styles.input, styles.lightInput]}
           />

@@ -346,6 +346,8 @@
     "nameOfActivity": "*Name of activity",
     "nameOfLocation": "*Name of location",
     "categoryPlaceholder": "*Location type/Category",
+    "streetAddress": "*Street address",
+    "postalCodeAndCity": "*Postal code and city",
     "photoHintPlace": "Added to this location when you save. Photos already on it are managed from its gallery.",
     "photoHintActivity": "Added to this activity when you save. Photos already on it are managed from its gallery."
   },
