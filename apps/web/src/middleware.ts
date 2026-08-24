@@ -18,6 +18,9 @@ import { defineMiddleware } from 'astro:middleware';
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
 
+  const gone = retiredRoute(pathname);
+  if (gone) return context.redirect(gone, 301);
+
   let response: Response;
 
   if (pathname === '/sv' || pathname.startsWith('/sv/')) {
@@ -38,6 +41,54 @@ export const onRequest = defineMiddleware(async (context, next) => {
   applyHeaders(context.url, context.request, response);
   return response;
 });
+
+/*
+ * Routes the old site had and this one does not.
+ *
+ * locastar.se used to serve the Expo web export, where the whole app ran in
+ * the browser — so /profile, /favorites, /lists and /settings were real pages.
+ * This site deliberately does not reimplement the app; that material lives in
+ * one place, /account, under its four sections.
+ *
+ * Without these, every one of those addresses becomes a 404 the moment the
+ * domain moves. They are 301s because the old routes are not coming back, and
+ * a permanent redirect is what retires a URL cleanly rather than leaving it in
+ * the index as a dead end.
+ *
+ * Both languages, because the switch is in the header of every page and there
+ * is no reason a Swedish visitor should land in English for following a stale
+ * link.
+ */
+const RETIRED: Record<string, string> = {
+  '/profile': '/account',
+  '/favorites': '/account?show=saved',
+  '/lists': '/account?show=lists',
+  '/settings': '/account',
+  // No language page here — the EN · SV switch sits in the header of every
+  // page, so the home page is where that intention is already satisfied.
+  '/settings/language': '/',
+};
+
+function retiredRoute(pathname: string): string | null {
+  const sv = pathname === '/sv' || pathname.startsWith('/sv/');
+  const bare = sv ? pathname.slice(3) || '/' : pathname;
+
+  /*
+   * Trailing slash stripped first: the old site answered /lists with a 307 to
+   * /lists/, so both spellings are in circulation and both have to land.
+   */
+  const key = bare.length > 1 && bare.endsWith('/') ? bare.slice(0, -1) : bare;
+
+  /*
+   * Only the bare route. /lists/<id> is a live page on this site — a public
+   * list's share link — and redirecting that to the account area would break
+   * the one URL the app has been handing out.
+   */
+  const target = RETIRED[key];
+  if (!target) return null;
+
+  return sv ? (target === '/' ? '/sv/' : `/sv${target}`) : target;
+}
 
 /*
  * Headers for rendered pages.
