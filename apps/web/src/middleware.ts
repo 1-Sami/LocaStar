@@ -18,6 +18,25 @@ import { defineMiddleware } from 'astro:middleware';
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
 
+  /*
+   * One hostname, not two.
+   *
+   * Both www and the apex are attached to this Worker as custom domains, so
+   * without this they answer 200 each and every page exists at two addresses.
+   * The canonical tags already name the apex, so Google was never going to be
+   * confused — but anything people link, paste or share to www stays split
+   * from the apex otherwise, and a 301 is what pools it back.
+   *
+   * Done here rather than as a Cloudflare redirect rule so it lives with the
+   * code that depends on it, and so the deploy carries it.
+   */
+  const host = context.url.hostname;
+  if (host.startsWith('www.')) {
+    const apex = new URL(context.url);
+    apex.hostname = host.slice(4);
+    return context.redirect(apex.href, 301);
+  }
+
   const gone = retiredRoute(pathname);
   if (gone) return context.redirect(gone, 301);
 

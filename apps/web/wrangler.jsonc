@@ -1,5 +1,14 @@
 {
   "name": "locastar-web",
   "compatibility_date": "2026-08-19",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The live domain. A custom domain belongs to exactly one Worker, so this
+  // is also what takes locastar.se off the old `locastar` Worker that served
+  // the Expo export. That Worker is left in place, unrouted, as the rollback:
+  // putting the domain back on it is the whole undo.
+  "routes": [
+    { "pattern": "locastar.se", "custom_domain": true },
+    { "pattern": "www.locastar.se", "custom_domain": true }
+  ]
 }
