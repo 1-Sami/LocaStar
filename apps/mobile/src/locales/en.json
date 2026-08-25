@@ -96,7 +96,7 @@
     "friendAcceptedTitle": "{{name}} accepted your friend request",
     "friendAcceptedBody": "You can now share places and lists with each other.",
     "reminderTitle": "{{name}} starts tomorrow",
-    "reminderFallbackName": "An activity",
+    "reminderFallbackName": "An event",
     "reminderBody": "You saved this. Tap to see the details.",
     "listShared": "Shared the list “{{name}}” with you",
     "listSharedFallback": "Untitled",
@@ -119,14 +119,14 @@
     "signedOut": "You need an account to add to the map.",
     "placeTitle": "A place",
     "placeBody": "A court, a trail, a gym, a swimming spot — somewhere that is always there.",
-    "activityTitle": "An activity",
+    "activityTitle": "An event",
     "activityBody": "A festival, a match, a meet-up — something happening on a date."
   },
   "menu": {
     "myLists": "My lists",
     "friends": "Friends",
     "addLocation": "Add location",
-    "addActivity": "Add activity",
+    "addActivity": "Add event",
     "settings": "Settings",
     "about": "About",
     "reports": "Reports",
@@ -159,7 +159,7 @@
     "statReviews": "Reviews",
     "statAdded": "Added",
     "statLists": "My lists",
-    "statActivities": "Activities",
+    "statActivities": "Events",
     "contributionsTotal_one": "{{count}} contribution in total",
     "contributionsTotal_other": "{{count}} contributions in total"
   },
@@ -176,7 +176,7 @@
     "thatsAll": "THAT’S ALL {{count}}",
     "filterTitle": "Filter",
     "show": "SHOW",
-    "onlyActivities": "Activities",
+    "onlyActivities": "Events",
     "onlyPlaces": "Places",
     "season": "SEASON",
     "summer": "Summer",
@@ -193,18 +193,18 @@
     "showMore": "Show more",
     "statsTitle": "Your activity at a glance",
     "ctaTitle": "Create an account and do more:",
-    "activities": "Activities",
-    "activitiesEmpty": "No activities nearby yet.",
+    "activities": "Events",
+    "activitiesEmpty": "No events nearby yet.",
     "boosted": "Boosted / Paid placement",
     "boostedEmpty": "Nothing boosted yet.",
     "sharedLists": "Community shared lists",
     "sharedListsEmpty": "No public lists yet.",
     "mostLiked": "Most liked places",
     "mostLikedEmpty": "Nothing to show yet.",
-    "summer": "List of summer activities",
-    "summerEmpty": "No summer activities added yet.",
-    "winter": "List of winter activities",
-    "winterEmpty": "No winter activities added yet.",
+    "summer": "List of summer events",
+    "summerEmpty": "No summer events added yet.",
+    "winter": "List of winter events",
+    "winterEmpty": "No winter events added yet.",
     "cta": {
       "favorites": {
         "line1": "Save",
@@ -220,7 +220,7 @@
       },
       "activity": {
         "line1": "Create a private",
-        "line2": "activity"
+        "line2": "event"
       },
       "share": {
         "line1": "Share with",
@@ -294,7 +294,7 @@
     "durationMinutes_other": "{{count}} minutes",
     "creatorWindow": "You added this — you can edit it for {{time}} more.",
     "deletePlaceTitle": "Delete this place?",
-    "deleteActivityTitle": "Delete this activity?",
+    "deleteActivityTitle": "Delete this event?",
     "deleteLocationBody": "This permanently deletes “{{name}}” and everything tied to it — reviews, photos, saves, and shares, including anything the people you invited added. This can’t be undone.",
     "notFound": "This location couldn’t be found.",
     "claimPending": "Claim pending review",
@@ -308,14 +308,14 @@
     "reportPhoto": "Report photo",
     "reportPhotoTitle": "Report this photo",
     "reportPhotoConfirm": "Thanks — a moderator will look at this photo.",
-    "activityEndedOnlyYou": "This activity has ended. Only you can see it now — it is out of search and off the map. Its reviews and photos have been removed. Delete it whenever you like.",
+    "activityEndedOnlyYou": "This event has ended. Only you can see it now — it is out of search and off the map. Its reviews and photos have been removed. Delete it whenever you like.",
     "distanceAway": "{{distance}} away"
   },
   "form": {
     "nameLabel": "Name/Title",
     "namePlaceholder": "Name",
     "nameRequired": "A name is required — this is what people see and search for.",
-    "activity": "Activity",
+    "activity": "Event",
     "street": "Street",
     "streetPlaceholder": "Street name and number",
     "area": "Area",
@@ -343,30 +343,30 @@
     "done": "Done",
     "picturesAdmin": "Pictures (optional for admins)",
     "picturesRequired": "*Mandatory: at least 1 picture",
-    "nameOfActivity": "*Name of activity",
+    "nameOfActivity": "*Name of event",
     "nameOfLocation": "*Name of location",
     "categoryPlaceholder": "*Location type/Category",
     "streetAddress": "*Street address",
     "postalCodeAndCity": "*Postal code and city",
     "photoHintPlace": "Added to this location when you save. Photos already on it are managed from its gallery.",
-    "photoHintActivity": "Added to this activity when you save. Photos already on it are managed from its gallery."
+    "photoHintActivity": "Added to this event when you save. Photos already on it are managed from its gallery."
   },
   "addLocation": {
     "disclaimerPlace": "Locations go live as soon as you submit them, and are moderated afterwards. Anyone can report a location that is misleading, unlawful, or in the wrong place, and reported locations are reviewed and can be hidden or removed. Adding locations in violation of the rules will result in a warning — repeated invalid submissions will get your account blocked from creating new locations.",
-    "disclaimerActivity": "Any activity that is unlawful or not created by its rightful owner will result in a block on creating future activities. All activities must follow the rules — violations may result in a ban and could lead to legal action from the rightful owner.",
+    "disclaimerActivity": "Any event that is unlawful or not created by its rightful owner will result in a block on creating future events. All events must follow the rules — violations may result in a ban and could lead to legal action from the rightful owner.",
     "alreadyHere": "Already on the map here",
     "alreadyHereBody": "If one of these is the same place, open it and add a review instead — that keeps all the ratings and photos together.",
     "metresAway": "{{metres}} m away",
     "geocodeFailed": "We couldn’t find that address on the map, so the pin hasn’t moved. Check the spelling, or drag the pin to the right spot yourself — the pin is what decides where this place actually is.",
     "whatKind": {
       "place": "*What kind of place is this?",
-      "activity": "*What kind of activity is this?"
+      "activity": "*What kind of event is this?"
     },
     "areYouOwner": {
       "place": "*Are you the owner of the place?",
-      "activity": "*Are you the owner of the activity?"
+      "activity": "*Are you the owner of the event?"
     },
-    "publicOrPrivate": "*Should this activity be public or private? Private is only visible to people you share it with (e.g. a party or wedding).",
+    "publicOrPrivate": "*Should this event be public or private? Private is only visible to people you share it with (e.g. a party or wedding).",
     "private": "PRIVATE",
     "public": "PUBLIC",
     "startDate": "*Start date",
@@ -375,50 +375,50 @@
     "endDatePlaceholder": "When does it end?",
     "publishDate": "Publish date (optional)",
     "publishDatePlaceholder": "Publish immediately once approved",
-    "publishDateHint": "Leave the publish date blank to make this activity visible as soon as it’s approved — or pick a later date to schedule when it should go live.",
+    "publishDateHint": "Leave the publish date blank to make this event visible as soon as it’s approved — or pick a later date to schedule when it should go live.",
     "visibleAsCreator": "*Do you want to be visible as the creator?",
     "endBeforeStart": "The end date must be after the start date.",
-    "tooLong": "Activities can only run for up to {{days}} days — choose an earlier end date.",
+    "tooLong": "Events can only run for up to {{days}} days — choose an earlier end date.",
     "publishAfterEnd": "The publish date can’t be after the end date.",
     "thanks": "Thanks!",
     "liveNow": {
       "place": "Your place is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.",
-      "activity": "Your activity is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules."
+      "activity": "Your event is live now. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules."
     },
     "scheduled": {
       "place": "Your place is saved and will go live on {{date}}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules.",
-      "activity": "Your activity is saved and will go live on {{date}}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules."
+      "activity": "Your event is saved and will go live on {{date}}. Moderation happens afterwards — it can be hidden or removed if it turns out to break the rules."
     },
     "claimFailed": {
       "place": "Your place was saved, but we couldn’t register your ownership claim. Open the place and use “Claim this business” to try again.",
-      "activity": "Your activity was saved, but we couldn’t register your ownership claim. Open the activity and use “Claim this business” to try again."
+      "activity": "Your event was saved, but we couldn’t register your ownership claim. Open the event and use “Claim this business” to try again."
     },
     "discardWarning": {
       "place": "Your place hasn’t been submitted yet. Everything you’ve filled in will be lost.",
-      "activity": "Your activity hasn’t been submitted yet. Everything you’ve filled in will be lost."
+      "activity": "Your event hasn’t been submitted yet. Everything you’ve filled in will be lost."
     },
     "photoRetry": {
       "place": "Your place was saved, but its photos didn’t finish uploading. Tap submit again to retry — that won’t create a second place.",
-      "activity": "Your activity was saved, but its photos didn’t finish uploading. Tap submit again to retry — that won’t create a second activity."
+      "activity": "Your event was saved, but its photos didn’t finish uploading. Tap submit again to retry — that won’t create a second event."
     },
     "submitError": {
       "place": "Something went wrong submitting your place. Try again.",
-      "activity": "Something went wrong submitting your activity. Try again."
+      "activity": "Something went wrong submitting your event. Try again."
     },
     "tapDragPin": {
       "place": "Tap or drag the pin to set exactly where this place is.",
-      "activity": "Tap or drag the pin to set exactly where this activity is."
+      "activity": "Tap or drag the pin to set exactly where this event is."
     },
     "whenAvailable": {
       "place": "When is this place available? (optional)",
-      "activity": "When is this activity available? (optional)"
+      "activity": "When is this event available? (optional)"
     },
     "submitButton": {
       "place": "Submit place",
-      "activity": "Submit activity"
+      "activity": "Submit event"
     },
     "submitting": "Submitting…",
-    "endsAndDisappears": "When the activity ends it is removed, along with any reviews and photos people added to it."
+    "endsAndDisappears": "When the event ends it is removed, along with any reviews and photos people added to it."
   },
   "editLocation": {
     "saveError": "Something went wrong saving your changes. Try again.",
@@ -433,8 +433,8 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeSystem": "Match system",
-    "notifRemindersLabel": "Activity reminders",
-    "notifRemindersDesc": "The day before an activity you saved starts",
+    "notifRemindersLabel": "Event reminders",
+    "notifRemindersDesc": "The day before an event you saved starts",
     "notifReviewsLabel": "Reviews",
     "notifReviewsDesc": "Replies and likes on your reviews",
     "notifSharesLabel": "Shares",
@@ -557,7 +557,7 @@
     "submit": "Submit review",
     "reviewing": "Reviewing {{name}}",
     "submitError": "Something went wrong submitting your review. Try again.",
-    "activityReviewIsTemporary": "This is an activity — your review and photos are removed when it ends."
+    "activityReviewIsTemporary": "This is an event — your review and photos are removed when it ends."
   },
   "listDetail": {
     "removeTitle": "Remove from list?",
@@ -803,10 +803,10 @@
     "sortLeastLiked": "Least liked"
   },
   "myContributions": {
-    "noLocations": "You haven’t added any locations or activities yet.",
+    "noLocations": "You haven’t added any locations or events yet.",
     "ended": "Ended",
     "noReviews": "You haven’t written any reviews yet.",
-    "kindActivity": "Activity",
+    "kindActivity": "Event",
     "kindPlace": "Location"
   },
   "crashes": {

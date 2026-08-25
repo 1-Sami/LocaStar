@@ -96,7 +96,7 @@
     "friendAcceptedTitle": "{{name}} accepterade din vänförfrågan",
     "friendAcceptedBody": "Nu kan ni dela platser och listor med varandra.",
     "reminderTitle": "{{name}} börjar i morgon",
-    "reminderFallbackName": "En aktivitet",
+    "reminderFallbackName": "Ett evenemang",
     "reminderBody": "Du har sparat den här. Tryck för att se detaljerna.",
     "listShared": "Delade listan ”{{name}}” med dig",
     "listSharedFallback": "Namnlös",
@@ -119,14 +119,14 @@
     "signedOut": "Du behöver ett konto för att lägga till på kartan.",
     "placeTitle": "En plats",
     "placeBody": "En basketplan, en skatepark, ett gym, ett badställe — något som alltid finns där.",
-    "activityTitle": "En aktivitet",
+    "activityTitle": "Ett evenemang",
     "activityBody": "En festival, en match, en träff, privat fest — något som händer ett visst datum."
   },
   "menu": {
     "myLists": "Mina listor",
     "friends": "Vänner",
     "addLocation": "Lägg till plats",
-    "addActivity": "Lägg till aktivitet",
+    "addActivity": "Lägg till evenemang",
     "settings": "Inställningar",
     "about": "Om",
     "reports": "Anmälningar",
@@ -159,7 +159,7 @@
     "statReviews": "Recensioner",
     "statAdded": "Tillagt",
     "statLists": "Mina listor",
-    "statActivities": "Aktiviteter",
+    "statActivities": "Evenemang",
     "contributionsTotal_one": "{{count}} bidrag totalt",
     "contributionsTotal_other": "{{count}} bidrag totalt"
   },
@@ -176,7 +176,7 @@
     "thatsAll": "DET VAR ALLA {{count}}",
     "filterTitle": "Filter",
     "show": "VISA",
-    "onlyActivities": "Aktiviteter",
+    "onlyActivities": "Evenemang",
     "onlyPlaces": "Platser",
     "season": "SÄSONG",
     "summer": "Sommar",
@@ -193,18 +193,18 @@
     "showMore": "Visa fler",
     "statsTitle": "Din aktivitet i korthet",
     "ctaTitle": "Skapa ett konto och gör mer:",
-    "activities": "Aktiviteter",
-    "activitiesEmpty": "Inga aktiviteter i närheten än.",
+    "activities": "Evenemang",
+    "activitiesEmpty": "Inga evenemang i närheten än.",
     "boosted": "Utvald / Betald placering",
     "boostedEmpty": "Inget utvalt än.",
     "sharedLists": "Listor delade av andra",
     "sharedListsEmpty": "Inga offentliga listor än.",
     "mostLiked": "Mest omtyckta platser",
     "mostLikedEmpty": "Inget att visa än.",
-    "summer": "Sommaraktiviteter",
-    "summerEmpty": "Inga sommaraktiviteter tillagda än.",
-    "winter": "Vinteraktiviteter",
-    "winterEmpty": "Inga vinteraktiviteter tillagda än.",
+    "summer": "Sommarevenemang",
+    "summerEmpty": "Inga sommarevenemang tillagda än.",
+    "winter": "Vinterevenemang",
+    "winterEmpty": "Inga vinterevenemang tillagda än.",
     "cta": {
       "favorites": {
         "line1": "Spara",
@@ -219,8 +219,8 @@
         "line2": "utflykt"
       },
       "activity": {
-        "line1": "Skapa en privat",
-        "line2": "aktivitet"
+        "line1": "Skapa ett privat",
+        "line2": "evenemang"
       },
       "share": {
         "line1": "Dela med",
@@ -294,7 +294,7 @@
     "durationMinutes_other": "{{count}} minuter",
     "creatorWindow": "Du lade till den här — du kan redigera den i {{time}} till.",
     "deletePlaceTitle": "Radera den här platsen?",
-    "deleteActivityTitle": "Radera den här aktiviteten?",
+    "deleteActivityTitle": "Radera det här evenemanget?",
     "deleteLocationBody": "Detta raderar ”{{name}}” permanent, tillsammans med allt som hör till den — recensioner, foton, sparningar och delningar, inklusive det personerna du bjudit in har lagt till. Det går inte att ångra.",
     "notFound": "Platsen kunde inte hittas.",
     "claimPending": "Anspråket granskas",
@@ -308,14 +308,14 @@
     "reportPhoto": "Anmäl bild",
     "reportPhotoTitle": "Anmäl den här bilden",
     "reportPhotoConfirm": "Tack — en moderator tittar på bilden.",
-    "activityEndedOnlyYou": "Aktiviteten är slut. Bara du kan se den nu — den syns inte i sökningen eller på kartan. Recensioner och bilder är borttagna. Radera den när du vill.",
+    "activityEndedOnlyYou": "Evenemanget är slut. Bara du kan se det nu — det syns inte i sökningen eller på kartan. Recensioner och bilder är borttagna. Radera det när du vill.",
     "distanceAway": "{{distance}} bort"
   },
   "form": {
     "nameLabel": "Namn/Titel",
     "namePlaceholder": "Namn",
     "nameRequired": "Ett namn krävs — det är det folk ser och söker på.",
-    "activity": "Aktivitet",
+    "activity": "Evenemang",
     "street": "Gata",
     "streetPlaceholder": "Gatunamn och nummer",
     "area": "Område",
@@ -343,30 +343,30 @@
     "done": "Klar",
     "picturesAdmin": "Bilder (valfritt för administratörer)",
     "picturesRequired": "*Obligatoriskt: minst 1 bild",
-    "nameOfActivity": "*Aktivitetens namn",
+    "nameOfActivity": "*Evenemangets namn",
     "nameOfLocation": "*Platsens namn",
     "categoryPlaceholder": "*Typ av plats/kategori",
     "streetAddress": "*Gatuadress",
     "postalCodeAndCity": "*Postnummer och ort",
     "photoHintPlace": "Läggs till på platsen när du sparar. Foton som redan finns hanteras från dess galleri.",
-    "photoHintActivity": "Läggs till på aktiviteten när du sparar. Foton som redan finns hanteras från dess galleri."
+    "photoHintActivity": "Läggs till på evenemanget när du sparar. Foton som redan finns hanteras från dess galleri."
   },
   "addLocation": {
     "disclaimerPlace": "Platser publiceras direkt när du skickar in dem och modereras i efterhand. Vem som helst kan anmäla en plats som är vilseledande, olaglig eller felplacerad, och anmälda platser granskas och kan döljas eller tas bort. Att lägga till platser i strid med reglerna ger en varning — upprepade felaktiga inlägg gör att ditt konto blockeras från att skapa nya platser.",
-    "disclaimerActivity": "Aktiviteter som är olagliga eller inte skapade av rättmätig ägare leder till blockering från att skapa framtida aktiviteter. Alla aktiviteter måste följa reglerna — överträdelser kan leda till spärr och till rättsliga åtgärder från den rättmätiga ägaren.",
+    "disclaimerActivity": "Evenemang som är olagliga eller inte skapade av rättmätig ägare leder till blockering från att skapa framtida evenemang. Alla evenemang måste följa reglerna — överträdelser kan leda till spärr och till rättsliga åtgärder från den rättmätiga ägaren.",
     "alreadyHere": "Redan på kartan här",
     "alreadyHereBody": "Om någon av dem är samma ställe, öppna den och skriv en recension i stället — då hålls alla betyg och foton samlade.",
     "metresAway": "{{metres}} m bort",
     "geocodeFailed": "Vi hittade inte adressen på kartan, så nålen har inte flyttats. Kontrollera stavningen, eller dra nålen till rätt ställe själv — det är nålen som avgör var platsen faktiskt ligger.",
     "whatKind": {
       "place": "*Vad för slags plats är det här?",
-      "activity": "*Vad för slags aktivitet är det här?"
+      "activity": "*Vad för slags evenemang är det här?"
     },
     "areYouOwner": {
       "place": "*Är du ägare till platsen?",
-      "activity": "*Är du ägare till aktiviteten?"
+      "activity": "*Är du ägare till evenemanget?"
     },
-    "publicOrPrivate": "*Ska aktiviteten vara offentlig eller privat? En privat aktivitet syns bara för dem du delar den med (t.ex. en fest eller ett bröllop).",
+    "publicOrPrivate": "*Ska evenemanget vara offentligt eller privat? Ett privat evenemang syns bara för dem du delar det med (t.ex. en fest eller ett bröllop).",
     "private": "PRIVAT",
     "public": "OFFENTLIG",
     "startDate": "*Startdatum",
@@ -375,50 +375,50 @@
     "endDatePlaceholder": "När slutar det?",
     "publishDate": "Publiceringsdatum (valfritt)",
     "publishDatePlaceholder": "Publicera direkt när den godkänts",
-    "publishDateHint": "Lämna publiceringsdatumet tomt så syns aktiviteten så snart den godkänts — eller välj ett senare datum för att schemalägga när den ska gå live.",
+    "publishDateHint": "Lämna publiceringsdatumet tomt så syns evenemanget så snart det godkänts — eller välj ett senare datum för att schemalägga när det ska gå live.",
     "visibleAsCreator": "*Vill du synas som skapare?",
     "endBeforeStart": "Slutdatumet måste vara efter startdatumet.",
-    "tooLong": "Aktiviteter kan pågå i högst {{days}} dagar — välj ett tidigare slutdatum.",
+    "tooLong": "Evenemang kan pågå i högst {{days}} dagar — välj ett tidigare slutdatum.",
     "publishAfterEnd": "Publiceringsdatumet kan inte ligga efter slutdatumet.",
     "thanks": "Tack!",
     "liveNow": {
       "place": "Din plats är publicerad. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna.",
-      "activity": "Din aktivitet är publicerad. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna."
+      "activity": "Ditt evenemang är publicerat. Moderering sker i efterhand — det kan döljas eller tas bort om det visar sig bryta mot reglerna."
     },
     "scheduled": {
       "place": "Din plats är sparad och publiceras den {{date}}. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna.",
-      "activity": "Din aktivitet är sparad och publiceras den {{date}}. Moderering sker i efterhand — den kan döljas eller tas bort om den visar sig bryta mot reglerna."
+      "activity": "Ditt evenemang är sparat och publiceras den {{date}}. Moderering sker i efterhand — det kan döljas eller tas bort om det visar sig bryta mot reglerna."
     },
     "claimFailed": {
       "place": "Din plats sparades, men vi kunde inte registrera ditt ägaranspråk. Öppna platsen och använd ”Gör anspråk på verksamheten” för att försöka igen.",
-      "activity": "Din aktivitet sparades, men vi kunde inte registrera ditt ägaranspråk. Öppna aktiviteten och använd ”Gör anspråk på verksamheten” för att försöka igen."
+      "activity": "Ditt evenemang sparades, men vi kunde inte registrera ditt ägaranspråk. Öppna evenemanget och använd ”Gör anspråk på verksamheten” för att försöka igen."
     },
     "discardWarning": {
       "place": "Din plats är inte inskickad än. Allt du fyllt i går förlorat.",
-      "activity": "Din aktivitet är inte inskickad än. Allt du fyllt i går förlorat."
+      "activity": "Ditt evenemang är inte inskickat än. Allt du fyllt i går förlorat."
     },
     "photoRetry": {
       "place": "Din plats sparades, men fotona blev inte färdiguppladdade. Tryck på skicka igen för att försöka på nytt — det skapar ingen andra plats.",
-      "activity": "Din aktivitet sparades, men fotona blev inte färdiguppladdade. Tryck på skicka igen för att försöka på nytt — det skapar ingen andra aktivitet."
+      "activity": "Ditt evenemang sparades, men fotona blev inte färdiguppladdade. Tryck på skicka igen för att försöka på nytt — det skapar inget annat evenemang."
     },
     "submitError": {
       "place": "Något gick fel när platsen skickades in. Försök igen.",
-      "activity": "Något gick fel när aktiviteten skickades in. Försök igen."
+      "activity": "Något gick fel när evenemanget skickades in. Försök igen."
     },
     "tapDragPin": {
       "place": "Tryck eller dra i nålen för att sätta exakt var platsen ligger.",
-      "activity": "Tryck eller dra i nålen för att sätta exakt var aktiviteten är."
+      "activity": "Tryck eller dra i nålen för att sätta exakt var evenemanget är."
     },
     "whenAvailable": {
       "place": "När är platsen tillgänglig? (valfritt)",
-      "activity": "När är aktiviteten tillgänglig? (valfritt)"
+      "activity": "När är evenemanget tillgängligt? (valfritt)"
     },
     "submitButton": {
       "place": "Skicka in plats",
-      "activity": "Skicka in aktivitet"
+      "activity": "Skicka in evenemang"
     },
     "submitting": "Skickar…",
-    "endsAndDisappears": "När aktiviteten är slut tas den bort, tillsammans med de recensioner och bilder som lagts till på den."
+    "endsAndDisappears": "När evenemanget är slut tas det bort, tillsammans med de recensioner och bilder som lagts till på det."
   },
   "editLocation": {
     "saveError": "Något gick fel när ändringarna sparades. Försök igen.",
@@ -433,8 +433,8 @@
     "themeLight": "Ljust",
     "themeDark": "Mörkt",
     "themeSystem": "Följ systemet",
-    "notifRemindersLabel": "Påminnelser om aktiviteter",
-    "notifRemindersDesc": "Dagen innan en aktivitet du sparat börjar",
+    "notifRemindersLabel": "Påminnelser om evenemang",
+    "notifRemindersDesc": "Dagen innan ett evenemang du sparat börjar",
     "notifReviewsLabel": "Recensioner",
     "notifReviewsDesc": "Svar och gillamarkeringar på dina recensioner",
     "notifSharesLabel": "Delningar",
@@ -557,7 +557,7 @@
     "submit": "Skicka recension",
     "reviewing": "Recenserar {{name}}",
     "submitError": "Något gick fel när recensionen skickades. Försök igen.",
-    "activityReviewIsTemporary": "Det här är en aktivitet — din recension och dina bilder tas bort när den är slut."
+    "activityReviewIsTemporary": "Det här är ett evenemang — din recension och dina bilder tas bort när det är slut."
   },
   "listDetail": {
     "removeTitle": "Ta bort från listan?",
@@ -803,10 +803,10 @@
     "sortLeastLiked": "Minst omtyckta"
   },
   "myContributions": {
-    "noLocations": "Du har inte lagt till några platser eller aktiviteter än.",
+    "noLocations": "Du har inte lagt till några platser eller evenemang än.",
     "ended": "Avslutad",
     "noReviews": "Du har inte skrivit några recensioner än.",
-    "kindActivity": "Aktivitet",
+    "kindActivity": "Evenemang",
     "kindPlace": "Plats"
   },
   "crashes": {
