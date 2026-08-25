@@ -2,6 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+import { APP_RELEASE } from '@/constants/release';
+import { SUPPORT_EMAIL } from '@/constants/support';
+
+/*
+ * What OSM's tile servers see when this map loads tiles.
+ *
+ * Their usage policy asks for "a clear, unique User-Agent string that names
+ * your app" and rules out library and browser defaults by name. A WebView
+ * sends a stock Chrome or Safari string otherwise, which looks exactly like
+ * a scraper from the server's side — and being indistinguishable from a
+ * scraper is what gets an address blocked with no warning and no way to ask
+ * why. The contact address is the part that lets them write instead.
+ */
+const TILE_USER_AGENT = `LocaStar/${APP_RELEASE} (+https://locastar.se; contact: ${SUPPORT_EMAIL})`;
+
 export type MapCoords = { latitude: number; longitude: number };
 
 /** Same point, allowing for float noise on the round trip through the WebView. */
@@ -22,7 +37,7 @@ function buildMapHtml(lat: number, lng: number): string {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   var map = L.map('map', { zoomControl: true }).setView([${lat}, ${lng}], 16);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
@@ -120,6 +135,17 @@ export function MapPinPicker({
         // a pinch gesture that starts near the map's border.
         androidLayerType="hardware"
         overScrollMode="never"
+        /*
+         * The OSM tile usage policy requires "a clear, unique User-Agent
+         * string that names your app" and explicitly rules out library or
+         * browser defaults. A WebView otherwise sends a stock Chrome/Safari
+         * string, which is indistinguishable from a scraper — the one thing
+         * that gets an IP blocked without notice.
+         *
+         * Naming the app and a contact address is what the policy asks for
+         * and what lets them mail us instead of blocking us.
+         */
+        userAgent={TILE_USER_AGENT}
         onLoadEnd={() => {
           loaded.current = true;
           if (pending.current) {
