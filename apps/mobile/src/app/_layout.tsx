@@ -1,5 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -47,6 +48,17 @@ function ThemedNavigation() {
   }, [pathname]);
   return (
     <ThemeProvider value={resolvedScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {/*
+       * Without this, the system status bar (clock, battery, carrier icons)
+       * followed the phone's own OS-level appearance instead of LocaStar's own
+       * theme setting — nothing here ever called expo-status-bar, so it just
+       * fell back to whatever the OS chose. Someone whose phone is in dark
+       * mode but who set the app itself to light got white system icons on a
+       * white app background: invisible. Tying it to resolvedScheme (the
+       * app's own resolved choice, already accounting for a "system" override)
+       * is what makes it agree with what the screen is actually showing.
+       */}
+      <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
       <AnimatedSplashOverlay />
       {/* The banner is a sibling in normal flow, so it takes its own strip at
           the bottom rather than covering the tab bar or a screen header. */}

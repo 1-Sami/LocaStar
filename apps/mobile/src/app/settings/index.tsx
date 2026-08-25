@@ -12,10 +12,12 @@ import { useAuth } from '@/lib/auth-context';
  * Translation keys, not labels — the row order is fixed here and the words come
  * from the catalogue at render time so they follow a language change.
  *
- * `requiresAccount` marks the rows that cannot mean anything without one. Signed
- * out, what is left is language, theme and the two legal documents: exactly what
- * somebody deciding whether to sign up needs to be able to reach, and read in
- * their own language, before handing over an email address.
+ * `requiresAccount` marks the rows that cannot mean anything without one.
+ *
+ * Privacy Policy and Terms of Service used to live here too. Removed — this
+ * list was getting long, and both are one tap away on the About screen
+ * (profile.tsx's SECONDARY_MENU_ITEMS puts About right next to Settings, so
+ * nothing signed-out loses reach to them before signing up).
  */
 const rows: { key: string; href: string; requiresAccount?: boolean }[] = [
   { key: 'nav.changePassword', href: '/settings/password', requiresAccount: true },
@@ -24,8 +26,6 @@ const rows: { key: string; href: string; requiresAccount?: boolean }[] = [
   { key: 'nav.theme', href: '/settings/theme' },
   { key: 'nav.notifications', href: '/settings/notifications', requiresAccount: true },
   { key: 'nav.blockedUsers', href: '/settings/blocked', requiresAccount: true },
-  { key: 'nav.privacyPolicy', href: '/legal/privacy' },
-  { key: 'nav.termsOfService', href: '/legal/terms' },
 ];
 
 export default function SettingsMenuScreen() {

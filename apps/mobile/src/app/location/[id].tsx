@@ -933,7 +933,7 @@ export default function LocationDetailScreen() {
                 <Ionicons
                   name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
                   size={22}
-                  color={isBucketListed ? '#F5C242' : '#ffffff'}
+                  color={isBucketListed ? '#F5C242' : theme.text}
                 />
               </Pressable>
               <Pressable
@@ -1727,8 +1727,14 @@ const styles = StyleSheet.create({
     color: '#4CD37A',
     fontSize: 22,
   },
+  /*
+   * No color here on purpose. Unlike the bookmark/favorite cards, this button
+   * sits on theme.backgroundElement, not a fixed dark scrim over a photo —
+   * a hardcoded white was invisible in light mode. ThemedText already
+   * defaults to theme.text when no themeColor is given, which is correct in
+   * both themes; this style only needs to set the size.
+   */
   squareActionIcon: {
-    color: '#ffffff',
     fontSize: 22,
   },
   body: {
