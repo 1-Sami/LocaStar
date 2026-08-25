@@ -495,6 +495,8 @@ export const ui = {
     'reset.errSave': 'That did not save. Ask for a fresh link and try again.',
     'loc.mapSoon': 'A map is coming to the website soon. Directions open in your maps app.',
     'auth.usernameHint': 'Optional — 3 to 20 characters',
+    'acct.removePhotoConfirm': 'Remove your profile picture? This cannot be undone.',
+    'reset.linkExpiredNow': 'That link has expired. Ask for a new one and your password will save first time.',
   },
 
   sv: {
@@ -975,6 +977,8 @@ export const ui = {
     'reset.errSave': 'Det sparades inte. Be om en ny länk och försök igen.',
     'loc.mapSoon': 'En karta kommer till webbplatsen snart. Vägbeskrivningen öppnas i din kartapp.',
     'auth.usernameHint': 'Frivilligt — 3 till 20 tecken',
+    'acct.removePhotoConfirm': 'Ta bort din profilbild? Det går inte att ångra.',
+    'reset.linkExpiredNow': 'Länken har gått ut. Be om en ny så sparas lösenordet direkt.',
   },
 } as const;
 

@@ -93,13 +93,20 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
   <main id="main" class="wrap layout">
     <aside class="side">
-      <div class="who">
-        <form
-          class="avatar-form"
-          method="post"
-          action={p('/api/avatar')}
-          enctype="multipart/form-data"
-        >
+      {/*
+        The photo controls sit under the row, not inside it. Beside the avatar
+        they competed with the name for a fixed-width rail, and "ADD A PHOTO"
+        is far wider than "CHANGE" — so the contribution count wrapped onto two
+        lines, but only for people who had not set a picture. Underneath, the
+        label can be any length without moving anything else.
+      */}
+      <form
+        class="who"
+        method="post"
+        action={p('/api/avatar')}
+        enctype="multipart/form-data"
+      >
+        <div class="who-row">
           {
             profile?.avatar_url ? (
               <span class="avatar" style={`background-image:url("${profile.avatar_url}")`} />
@@ -107,32 +114,40 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               <span class="avatar initial">{name.trim().charAt(0).toUpperCase()}</span>
             )
           }
-          <input type="hidden" name="back" value={p('/account')} />
-          <span class="avatar-actions">
-            <label class="avatar-edit">
-              <span class="mono">{profile?.avatar_url ? t('acct.changePhoto') : t('acct.addPhoto')}</span>
-              <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" />
-            </label>
+          <span class="who-text">
+            <span class="name">{name}</span>
             {
-              profile?.avatar_url && (
-                <button class="mono avatar-remove" type="submit" name="remove" value="1">
-                  {t('acct.removePhoto')}
-                </button>
+              stats && (
+                <span class="mono contributions">
+                  {stats.contributions} {stats.contributions === 1 ? t('acct.contribution_one') : t('acct.contribution_other')}
+                </span>
               )
             }
           </span>
-        </form>
-        <div class="who-text">
-          <span class="name">{name}</span>
+        </div>
+
+        <input type="hidden" name="back" value={p('/account')} />
+
+        <span class="avatar-actions">
+          <label class="avatar-edit">
+            <span class="mono">{profile?.avatar_url ? t('acct.changePhoto') : t('acct.addPhoto')}</span>
+            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" />
+          </label>
           {
-            stats && (
-              <span class="mono contributions">
-                {stats.contributions} {stats.contributions === 1 ? t('acct.contribution_one') : t('acct.contribution_other')}
-              </span>
+            profile?.avatar_url && (
+              <button
+                class="mono avatar-remove"
+                type="submit"
+                name="remove"
+                value="1"
+                data-confirm={t('acct.removePhotoConfirm')}
+              >
+                {t('acct.removePhoto')}
+              </button>
             )
           }
-        </div>
-      </div>
+        </span>
+      </form>
 
       {avatarSaved && <p class="ok-line">{t('acct.avatarSaved')}</p>}
       {avatarRemoved && <p class="ok-line">{t('acct.avatarRemoved')}</p>}
@@ -390,14 +405,29 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
   <SiteFooter />
 <script>
-  // Picking a file submits straight away — there is no separate Save to press.
-  document
-    .querySelectorAll<HTMLInputElement>('.avatar-form input[type="file"]')
-    .forEach(function (input) {
-      input.addEventListener('change', function () {
-        if (input.files && input.files.length > 0) input.form?.submit();
-      });
+  /*
+   * Selected by field name, not by the form's class. This broke once already:
+   * the form was renamed for a layout fix and the old '.avatar-form' selector
+   * silently matched nothing, so choosing a picture quietly did nothing. The
+   * name is what the endpoint reads, so it cannot drift for styling reasons.
+   */
+  document.querySelectorAll<HTMLInputElement>('input[name="avatar"]').forEach((input) => {
+    // Picking a file submits straight away — there is no separate Save to press.
+    input.addEventListener('change', () => {
+      if (input.files && input.files.length > 0) input.form?.submit();
     });
+  });
+
+  /*
+   * Removing a picture was one unguarded click, and the file is deleted from
+   * storage as well as the profile — there is nothing to undo it with. The
+   * app has always asked first; this brings the website in line.
+   */
+  document.querySelectorAll<HTMLButtonElement>('[data-confirm]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      if (!window.confirm(button.dataset.confirm)) event.preventDefault();
+    });
+  });
 </script>
 </Base>
 
@@ -419,6 +449,12 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   }
 
   .who {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .who-row {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -447,12 +483,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   /* The picker is the picture itself: the file input is hidden and the label
      wraps it, so clicking the avatar opens the file dialog. A separate button
      would be a second control for one job. */
-  .avatar-form {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
   .avatar-edit {
     cursor: pointer;
     font-size: 10.5px;
@@ -468,11 +498,12 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     display: none;
   }
 
+  /* A row now that it has the full width to itself, rather than a stack
+     squeezed in beside the avatar. */
   .avatar-actions {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-start;
+    gap: 14px;
+    align-items: center;
   }
 
   .avatar-remove {
@@ -495,6 +526,12 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+  }
+
+  /* Two short words that belong together. Nothing about "12 CONTRIBUTIONS"
+     reads correctly broken across lines. */
+  .contributions {
+    white-space: nowrap;
   }
 
   .who .name {
