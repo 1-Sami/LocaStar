@@ -28,10 +28,10 @@ const title = t('features.title');
 const description = t('features.metaDesc');
 
 const bands = [
-  { lead: about.findLead, body: about.findBody },
-  { lead: about.saveLead, body: about.saveBody },
-  { lead: about.privateLead, body: about.privateBody },
-  { lead: about.contributeLead, body: about.contributeBody },
+  { lead: about.findLead, body: about.findBody, image: '01-find' },
+  { lead: about.saveLead, body: about.saveBody, image: '02-save' },
+  { lead: about.privateLead, body: about.privateBody, image: '03-plan' },
+  { lead: about.contributeLead, body: about.contributeBody, image: '04-contribute' },
 ];
 ---
 
@@ -52,7 +52,17 @@ const bands = [
               <h2>{band.lead}</h2>
               <p>{band.body}</p>
             </div>
-            <div class="band-art" aria-hidden="true" />
+            <picture class="band-art">
+              <source srcset={`/images/features/${band.image}.webp`} type="image/webp" />
+              <img
+                src={`/images/features/${band.image}.png`}
+                alt={band.lead}
+                width="1304"
+                height="880"
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchpriority={index === 0 ? 'high' : undefined}
+              />
+            </picture>
           </div>
         </section>
       ))
@@ -167,14 +177,25 @@ const bands = [
     max-width: 50ch;
   }
 
-  /* A coloured panel rather than a screenshot: the app's screens are on the
-     home page's download band, and repeating them here would say less. */
+  /*
+   * aspect-ratio, not a fixed height: the source illustrations are 1304x880.
+   * A fixed height on a fluid-width column meant the rendered box almost never
+   * matched that ratio, so the image was stretched or cropped depending on
+   * viewport width. object-fit: cover is just the safety net for the rare
+   * in-between size, not the mechanism doing the work.
+   */
   .band-art {
-    height: 260px;
+    aspect-ratio: 1304 / 880;
     border-radius: 13px;
-    background:
-      radial-gradient(420px 200px at 30% 20%, rgba(43, 163, 163, 0.22), transparent 65%),
-      linear-gradient(150deg, #125f6f, #0a2a31);
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .band-art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .closing {
@@ -261,10 +282,6 @@ const bands = [
       grid-template-columns: 1fr;
       direction: ltr;
       gap: 24px;
-    }
-
-    .band-art {
-      height: 180px;
     }
   }
 </style>
