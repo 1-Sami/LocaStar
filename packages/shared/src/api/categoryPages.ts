@@ -168,24 +168,68 @@ export type SitemapEntry = {
  * It understates freshness when a review is added later; lastmod is a hint to
  * crawlers rather than a promise, so that is acceptable.
  */
+/*
+ * PostgREST caps every response at db-max-rows regardless of what .limit()
+ * asks for, and says nothing about it — the reply just stops, with the real
+ * total only in a Content-Range header nobody was reading. `.limit(10000)`
+ * therefore returned 1,000 rows, so the sitemap advertised 1,000 of 6,857
+ * places and 85% of the site was invisible to search. On a rebuild whose
+ * entire purpose is search traffic, silently.
+ *
+ * Pages until a short page proves the end. PAGE deliberately matches the
+ * server cap: asking for more just gets trimmed back to it.
+ */
+const PAGE = 1000;
+
+async function fetchAllPages<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = data ?? [];
+    all.push(...batch);
+    if (batch.length < PAGE) return all;
+  }
+}
+
 export async function fetchSitemapEntries(
   client: SupabaseClient
 ): Promise<{ locations: SitemapEntry[]; lists: SitemapEntry[]; categories: SitemapEntry[] }> {
-  const [locationsResult, listsResult, counts] = await Promise.all([
-    client.from("locations").select("id, created_at").order("created_at", { ascending: false }).limit(10000),
-    client.from("lists").select("id, updated_at").eq("is_public", true).limit(10000),
+  const [locationRows, listRows, counts] = await Promise.all([
+    fetchAllPages<{ id: string; created_at: string }>((from, to) =>
+      client
+        .from("locations")
+        .select("id, created_at")
+        .order("created_at", { ascending: false })
+        // Tiebreak on the primary key, or the paging is unsound: the import
+        // wrote 6,857 rows across 97 timestamps, so hundreds share one value
+        // and Postgres is free to order them differently per query. Rows then
+        // repeat across page boundaries and others are skipped entirely — 290
+        // duplicates and the same number missing, the first time this ran.
+        .order("id", { ascending: true })
+        .range(from, to)
+    ),
+    fetchAllPages<{ id: string; updated_at: string | null }>((from, to) =>
+      client
+        .from("lists")
+        .select("id, updated_at")
+        .eq("is_public", true)
+        // Same reasoning, and worse without it: no ORDER BY at all means no
+        // ordering guarantee whatsoever between the paged queries.
+        .order("id", { ascending: true })
+        .range(from, to)
+    ),
     fetchCategoryCounts(client),
   ]);
 
-  if (locationsResult.error) throw locationsResult.error;
-  if (listsResult.error) throw listsResult.error;
-
   return {
-    locations: ((locationsResult.data ?? []) as { id: string; created_at: string }[]).map((row) => ({
+    locations: locationRows.map((row) => ({
       path: `/location/${row.id}`,
       lastmod: row.created_at,
     })),
-    lists: ((listsResult.data ?? []) as { id: string; updated_at: string | null }[]).map((row) => ({
+    lists: listRows.map((row) => ({
       path: `/lists/${row.id}`,
       lastmod: row.updated_at,
     })),
