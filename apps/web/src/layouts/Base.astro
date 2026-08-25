@@ -129,6 +129,29 @@ const shareImage = image ?? origin + '/share-card.png';
     />
     <link rel="stylesheet" href="/fonts/fonts.css" />
 
+    {/*
+      On every page, not just the home page's own WebSite block — this is what
+      tells Google what "LocaStar" the entity actually is (a map/directory
+      app and site), independent of any other company that happens to share
+      or resemble the name. It has no sameAs yet: the App Store and Play Store
+      links aren't live (see STORE_LINKS in lib/site.ts), and there's no social
+      profile to point at. Add both as sameAs the moment either exists — that
+      is what actually strengthens the disambiguation, this on its own is a
+      starting signal, not a fix.
+    */}
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'LocaStar',
+        url: origin + '/',
+        logo: origin + '/apple-touch-icon.png',
+        description:
+          'LocaStar is a map of things to actually go and do in Sweden — courts, trails, slopes and festivals, described by the people who have been there.',
+      })}
+    />
+
     {
       jsonLd.map((block) => (
         <script type="application/ld+json" set:html={JSON.stringify(block)} />
