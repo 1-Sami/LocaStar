@@ -10,7 +10,6 @@ import {
   fetchSavedLocationIds,
   isAlwaysOpen,
 } from '@locastar/shared';
-import LeafletMap from '../../components/LeafletMap.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
@@ -435,12 +434,13 @@ const seasonLabel =
 
       <aside class="col-side">
         <div class="panel">
-          <LeafletMap
-            pins={[{ id: location.id, lat: location.lat, lng: location.lng, name: location.name, colour }]}
-            zoom={15}
-            height="186px"
-            class="panel-map"
-          />
+          {/*
+            The map is out for v1 — see the note on the search page. What
+            actually gets somebody here is the Directions button below, which
+            is a plain link to Google or Apple Maps: no key, no tile server,
+            no cost, and on a phone it opens the maps app directly.
+          */}
+          <p class="map-soon">{t('loc.mapSoon')}</p>
           <div class="panel-actions">
             <a class="cta" href={mapsHref} rel="noopener noreferrer" target="_blank">{t('common.directions')}</a>
             <div class="secondary">
@@ -1056,18 +1056,13 @@ const seasonLabel =
     overflow: hidden;
   }
 
-  .panel-map {
-    border-radius: 0;
-  }
-
-  .map-slot {
-    height: 186px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--surface-alt);
-    font-size: 10px;
-    color: var(--text-42);
+  /* Where the map was. Sized to read as a note rather than a hole. */
+  .map-soon {
+    margin: 0;
+    padding: 16px 20px 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-55);
   }
 
   .panel-actions {

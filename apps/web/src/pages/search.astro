@@ -1,6 +1,5 @@
 ---
 import { categoryName, fetchCategoryCounts, fetchSearchResults, SearchPageOutOfRange } from '@locastar/shared';
-import LeafletMap from '../components/LeafletMap.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
@@ -380,28 +379,18 @@ const canonical = `${origin}/search`;
         }
       </section>
 
-      <aside class="map-col" aria-label="Map">
-        {
-          response.results.length > 0 ? (
-            <LeafletMap
-              pins={response.results.map((place) => ({
-                id: place.id,
-                lat: place.lat,
-                lng: place.lng,
-                name: place.name,
-                colour: categoryColor(place.categorySlug),
-                href: p(`/location/${place.id}`),
-              }))}
-              height="100%"
-              class="results-map"
-            />
-          ) : (
-            <div class="map-slot">
-              <span class="mono">NOTHING TO SHOW</span>
-            </div>
-          )
-        }
-      </aside>
+      {/*
+        No map here for v1. The only tile server we may use for free is
+        OpenStreetMap's, whose usage policy does not cover a commercial site
+        putting a map on its two busiest templates — and every paid host is a
+        subscription this does not need to carry before it has any visitors.
+        Coming back in v2 on a real tile host.
+
+        components/LeafletMap.astro and public/vendor/leaflet are deliberately
+        left in place: restoring this is re-adding the element, not rebuilding
+        the map. Directions are untouched and never depended on the map — they
+        are a plain google.com/maps/dir link with no key and no cost.
+      */}
     </div>
   </main>
 
@@ -462,10 +451,12 @@ const canonical = `${origin}/search`;
     background: #f0b94e;
   }
 
-  /* ---- three columns, as drawn ---- */
+  /* ---- two columns: filters, then results ----
+     Was three, with a 520px map on the right. The map is out for v1 (see the
+     note in the markup) and the results take the width back. */
   .layout {
     display: grid;
-    grid-template-columns: 238px 1fr 520px;
+    grid-template-columns: 238px 1fr;
     gap: 0;
     margin-top: 22px;
   }
@@ -869,38 +860,6 @@ const canonical = `${origin}/search`;
     padding: 0 4px;
   }
 
-  /* ---- map column ---- */
-  .map-col {
-    border-left: 1px solid rgba(244, 246, 245, 0.08);
-    padding: 24px 0 24px 22px;
-  }
-
-  .results-map,
-  .map-slot {
-    position: sticky;
-    top: 24px;
-  }
-
-  .map-slot {
-    height: 640px;
-    border-radius: 12px;
-    background: #0b1519;
-    border: 1px solid var(--hairline);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 24px;
-    text-align: center;
-  }
-
-  .map-slot .mono {
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    color: var(--text-42);
-  }
-
   .map-note {
     font-size: 13px;
     line-height: 1.6;
@@ -989,20 +948,13 @@ const canonical = `${origin}/search`;
       min-height: 0;
     }
 
-    .map-col {
-      display: grid;
-      overflow: hidden;
-    }
   }
 
-  /* 768–1279: the map becomes secondary, filters stay. */
+  /* 768–1279: a narrower rail, and the page scrolls normally again — the
+     fixed-height panes above only earn their complexity on a big screen. */
   @media (max-width: 1279px) {
     .layout {
       grid-template-columns: 220px 1fr;
-    }
-
-    .map-col {
-      display: none;
     }
   }
 

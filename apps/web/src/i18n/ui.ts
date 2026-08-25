@@ -493,6 +493,7 @@ export const ui = {
     'reset.linkInvalidSub': 'Reset links last an hour and work once. Ask for a fresh one and it will work.',
     'reset.askAgain': 'Send a new link',
     'reset.errSave': 'That did not save. Ask for a fresh link and try again.',
+    'loc.mapSoon': 'A map is coming to the website soon. Directions open in your maps app.',
   },
 
   sv: {
@@ -971,6 +972,7 @@ export const ui = {
     'reset.linkInvalidSub': 'Återställningslänkar gäller en timme och fungerar en gång. Be om en ny så fungerar den.',
     'reset.askAgain': 'Skicka en ny länk',
     'reset.errSave': 'Det sparades inte. Be om en ny länk och försök igen.',
+    'loc.mapSoon': 'En karta kommer till webbplatsen snart. Vägbeskrivningen öppnas i din kartapp.',
   },
 } as const;
 
