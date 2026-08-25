@@ -183,6 +183,8 @@ export const ui = {
     'auth.username': 'USERNAME',
     'auth.email': 'EMAIL',
     'auth.password': 'PASSWORD',
+    'auth.showPassword': 'Show password',
+    'auth.hidePassword': 'Hide password',
 
     'notFound.code': '404',
     'notFound.title': 'Off the map',
@@ -665,6 +667,8 @@ export const ui = {
     'auth.username': 'ANVÄNDARNAMN',
     'auth.email': 'E-POST',
     'auth.password': 'LÖSENORD',
+    'auth.showPassword': 'Visa lösenord',
+    'auth.hidePassword': 'Dölj lösenord',
 
     'notFound.code': '404',
     'notFound.title': 'Utanför kartan',

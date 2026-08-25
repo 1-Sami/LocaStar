@@ -38,6 +38,23 @@ export async function removeAvatarFile(avatarUrl: string | null): Promise<void> 
   }
 }
 
+/*
+ * iOS hands back photos in their original format by default, and that is
+ * HEIC for anything shot on the device's own camera since iOS 11 — the
+ * picker's `quality` option only controls re-encoding when it re-encodes at
+ * all, so a HEIC asset can pass straight through untouched even at 0.7.
+ * uploadImageToMedia() below always tags the upload `image/jpeg` regardless
+ * of what it actually received, which turned a handful of iPhone review
+ * photos into files that report themselves as JPEG but are undecodable HEIC
+ * everywhere except iOS's own native image stack — invisible on the website,
+ * on Android, in any browser. This forces iOS to hand back a real JPEG
+ * instead of its most-compatible-storage choice. No effect on Android, which
+ * already returns JPEG.
+ */
+const FORCE_COMPATIBLE_FORMAT = {
+  preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+};
+
 export async function pickImage(): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
@@ -47,6 +64,7 @@ export async function pickImage(): Promise<string | null> {
     quality: 0.7,
     allowsEditing: true,
     aspect: [1, 1],
+    ...FORCE_COMPATIBLE_FORMAT,
   });
   if (result.canceled || result.assets.length === 0) return null;
   return result.assets[0].uri;
@@ -59,6 +77,7 @@ export async function takePhoto(): Promise<string | null> {
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
     quality: 0.7,
+    ...FORCE_COMPATIBLE_FORMAT,
   });
   if (result.canceled || result.assets.length === 0) return null;
   return result.assets[0].uri;
@@ -73,6 +92,7 @@ export async function pickImages(): Promise<string[]> {
     quality: 0.7,
     allowsMultipleSelection: true,
     selectionLimit: 0,
+    ...FORCE_COMPATIBLE_FORMAT,
   });
   if (result.canceled || result.assets.length === 0) return [];
   return result.assets.map((asset) => asset.uri);

@@ -406,6 +406,50 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   <SiteFooter />
 <script>
   /*
+   * Downscaled in the browser before it ever leaves it, rather than rejected
+   * with "too big, try again" — a phone photo straight off the camera routinely
+   * clears the API route's 8 MiB cap, and telling someone to go find a smaller
+   * picture is not a real option on most devices. The app never hits this: the
+   * OS picker re-encodes at quality 0.7 on the way out. The browser's <input
+   * type=file> hands back the original bytes untouched, so the web has to do
+   * that step itself.
+   *
+   * Longest side capped at 1200px and always re-encoded as JPEG — an avatar is
+   * never displayed anywhere near full camera resolution, and matching the
+   * app's fixed JPEG output means one code path (not one per source format)
+   * has to satisfy the 8 MiB check server-side.
+   */
+  const AVATAR_MAX_DIMENSION = 1200;
+  const AVATAR_MAX_BYTES = 8 * 1024 * 1024;
+
+  async function shrinkAvatar(file: File): Promise<File> {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, AVATAR_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('2D canvas context unavailable');
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    // Step down in quality only on the rare image a first pass doesn't clear —
+    // most photos are well under the cap after the resize above.
+    for (const quality of [0.85, 0.7, 0.55, 0.4]) {
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (!blob) continue;
+      if (blob.size <= AVATAR_MAX_BYTES || quality === 0.4) {
+        return new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      }
+    }
+    // Unreachable in practice — the 0.4-quality pass above always returns.
+    return file;
+  }
+
+  /*
    * Selected by field name, not by the form's class. This broke once already:
    * the form was renamed for a layout fix and the old '.avatar-form' selector
    * silently matched nothing, so choosing a picture quietly did nothing. The
@@ -413,8 +457,22 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
    */
   document.querySelectorAll<HTMLInputElement>('input[name="avatar"]').forEach((input) => {
     // Picking a file submits straight away — there is no separate Save to press.
-    input.addEventListener('change', () => {
-      if (input.files && input.files.length > 0) input.form?.submit();
+    input.addEventListener('change', async () => {
+      const original = input.files?.[0];
+      if (!original) return;
+
+      try {
+        const shrunk = await shrinkAvatar(original);
+        const transfer = new DataTransfer();
+        transfer.items.add(shrunk);
+        input.files = transfer.files;
+      } catch (error) {
+        // A picture that fails to decode in canvas still deserves an attempt —
+        // the server's own checks are what report back if it truly can't work.
+        console.error('Could not shrink the avatar client-side, uploading as-is', error);
+      }
+
+      input.form?.submit();
     });
   });
 
