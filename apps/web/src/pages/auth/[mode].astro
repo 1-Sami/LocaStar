@@ -1,5 +1,5 @@
 ---
-import { isValidUsername } from '@locastar/shared';
+import { isValidUsername, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
@@ -144,7 +144,21 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
               {isSignUp && (
                 <label class="field">
                   <span class="mono label">{t('auth.username')}</span>
-                  <input name="username" autocomplete="username" placeholder="sam_86" />
+                  {/*
+                    Not an example handle. This read as though the box came
+                    prefilled with somebody's account — it was the owner's own
+                    username, hardcoded — and a grey string in an empty field
+                    is indistinguishable from a value at a glance. The rule is
+                    more use than a specimen anyway, and it says out loud that
+                    the field is optional, which nothing else on the form did.
+                  */}
+                  <input
+                    name="username"
+                    autocomplete="username"
+                    minlength={USERNAME_MIN_LENGTH}
+                    maxlength={USERNAME_MAX_LENGTH}
+                    placeholder={t('auth.usernameHint')}
+                  />
                 </label>
               )}
 

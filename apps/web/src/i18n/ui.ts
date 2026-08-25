@@ -494,6 +494,7 @@ export const ui = {
     'reset.askAgain': 'Send a new link',
     'reset.errSave': 'That did not save. Ask for a fresh link and try again.',
     'loc.mapSoon': 'A map is coming to the website soon. Directions open in your maps app.',
+    'auth.usernameHint': 'Optional — 3 to 20 characters',
   },
 
   sv: {
@@ -973,6 +974,7 @@ export const ui = {
     'reset.askAgain': 'Skicka en ny länk',
     'reset.errSave': 'Det sparades inte. Be om en ny länk och försök igen.',
     'loc.mapSoon': 'En karta kommer till webbplatsen snart. Vägbeskrivningen öppnas i din kartapp.',
+    'auth.usernameHint': 'Frivilligt — 3 till 20 tecken',
   },
 } as const;
 
