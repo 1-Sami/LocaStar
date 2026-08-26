@@ -28,7 +28,10 @@ const description = about.gap1;
 
   <main id="main" class="wrap">
     <article class="piece">
-      <div class="photo" aria-hidden="true"></div>
+      <picture class="photo">
+        <source srcset="/images/about/hero.webp" type="image/webp" />
+        <img src="/images/about/hero.png" alt="" width="1800" height="560" loading="eager" fetchpriority="high" />
+      </picture>
 
       <h1>{about.ballTitle}</h1>
 
@@ -75,13 +78,26 @@ const description = about.gap1;
     max-width: 760px;
   }
 
+  /*
+   * aspect-ratio, not a fixed height — same reasoning as the Features page
+   * bands: the source illustration is 1800x560, and a flat height on a
+   * fluid-width column meant the rendered box didn't match that ratio outside
+   * one exact viewport width.
+   */
   .photo {
-    height: 280px;
+    display: block;
+    aspect-ratio: 1800 / 560;
     border-radius: 13px;
+    overflow: hidden;
     margin-bottom: 34px;
-    background:
-      radial-gradient(600px 260px at 30% 10%, rgba(43, 163, 163, 0.25), transparent 65%),
-      linear-gradient(150deg, #125f6f, #0a2a31);
+    background: var(--surface);
+  }
+
+  .photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   h1 {
