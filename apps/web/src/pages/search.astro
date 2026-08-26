@@ -432,6 +432,7 @@ const canonical = `${origin}/search`;
     border-radius: 9px;
     padding: 6px 6px 6px 18px;
     flex: 1 1 260px;
+    max-width: 620px;
   }
 
   .glyph {
@@ -526,7 +527,7 @@ const canonical = `${origin}/search`;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 230px;
+    max-height: 460px;
     overflow-y: auto;
   }
 
@@ -902,6 +903,18 @@ const canonical = `${origin}/search`;
     .layout {
       height: calc(100vh - 212px);
       min-height: 520px;
+    }
+
+    /*
+     * .layout is height-constrained here (it wasn't below 1280px, where the
+     * whole page just scrolls). The activity list's fixed 460px plus its
+     * label and the rail's padding can exceed that on a short, wide screen
+     * (a 1366x768 laptop, say) — this clips it rather than letting it push
+     * out of the grid row and visibly break the layout. It still scrolls
+     * inside its own 460px box regardless.
+     */
+    .rail {
+      overflow: hidden;
     }
 
     /*
