@@ -523,12 +523,55 @@ const canonical = `${origin}/search`;
     color: var(--page);
   }
 
+  /*
+   * 780px, not a round number — measured against the real row pitch
+   * (31.59px, gap included) rather than guessed, so it lands on exactly 25
+   * full rows with the 26th just peeking in as the "there's more" cue,
+   * instead of a 25th row cut off mid-line.
+   *
+   * The min() with a viewport term matters at >=1280px, where .layout is
+   * itself capped to calc(100vh - 212px): 780px does not fit inside that on
+   * an ordinary laptop screen, and this list has no scroll ancestor to hide
+   * behind — .rail isn't clipped, so a flat 780px would just push the rail
+   * taller than the results column instead of quietly losing rows to an
+   * overflow:hidden nobody could reach. 288px is .cats's own offset from the
+   * top of the viewport (262px, measured) plus the rail's bottom padding
+   * (24px) — so this always leaves exactly that much room. Below 1280px the
+   * calc() term is moot; the page just scrolls, so 780px applies outright.
+   */
   .cats {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 460px;
+    max-height: min(780px, calc(100vh - 288px));
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) var(--surface-alt);
+  }
+
+  /* Firefox gets the colour pair above; this is Chrome/Safari/Edge, which
+     is most of the traffic and the only engine that lets a scrollbar look
+     like an actual pill rather than a bare thumb-and-track colour swap. */
+  .cats::-webkit-scrollbar {
+    width: 14px;
+  }
+
+  .cats::-webkit-scrollbar-track {
+    background: var(--surface-alt);
+    border-radius: 999px;
+  }
+
+  .cats::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 999px;
+    /* Same colour as the track, not transparent — border-clip is padding-box
+       by default for scrollbar thumbs, so this reads as empty space around a
+       narrower pill rather than a border you can see. */
+    border: 3px solid var(--surface-alt);
+  }
+
+  .cats::-webkit-scrollbar-thumb:hover {
+    background: #f0b94e;
   }
 
   .cat {
@@ -903,18 +946,6 @@ const canonical = `${origin}/search`;
     .layout {
       height: calc(100vh - 212px);
       min-height: 520px;
-    }
-
-    /*
-     * .layout is height-constrained here (it wasn't below 1280px, where the
-     * whole page just scrolls). The activity list's fixed 460px plus its
-     * label and the rail's padding can exceed that on a short, wide screen
-     * (a 1366x768 laptop, say) — this clips it rather than letting it push
-     * out of the grid row and visibly break the layout. It still scrolls
-     * inside its own 460px box regardless.
-     */
-    .rail {
-      overflow: hidden;
     }
 
     /*
