@@ -49,7 +49,7 @@ export const CATEGORY_NAMES: Record<"en" | "sv", Record<string, string>> = {
     "nature-reserves": "Nature reserves",
     "obstacle-course": "Obstacle course",
     "other": "Others",
-    "outdoor": "Outdoor recreation area (Friluftsplats)",
+    "outdoor": "Outdoor recreation area",
     "paintball": "Paintball",
     "parkour": "Parkour",
     "picknick-parks": "Picnic parks",

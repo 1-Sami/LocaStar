@@ -972,6 +972,30 @@ const canonical = `${origin}/search`;
       /* Room for the scrollbar so it never sits on top of a card's edge. */
       padding-right: 6px;
       margin-right: -6px;
+      /* Same amber pill as the activity filter's scrollbar, not the
+         browser default — the two lists sit side by side, so a mismatched
+         scrollbar between them would look like an oversight. */
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--surface-alt);
+    }
+
+    .list::-webkit-scrollbar {
+      width: 14px;
+    }
+
+    .list::-webkit-scrollbar-track {
+      background: var(--surface-alt);
+      border-radius: 999px;
+    }
+
+    .list::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 999px;
+      border: 3px solid var(--surface-alt);
+    }
+
+    .list::-webkit-scrollbar-thumb:hover {
+      background: #f0b94e;
     }
 
     /* The empty state is the middle band when there are no results at all. */
