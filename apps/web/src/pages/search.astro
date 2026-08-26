@@ -179,50 +179,69 @@ const canonical = `${origin}/search`;
   <SiteHeader current="explore" />
 
   <main id="main" class="wrap">
-    <form class="searchbar" action={p("/search")} method="get">
-      <span class="mono glyph" aria-hidden="true">⌕</span>
-      <input name="q" value={q} placeholder={t('search.placeholder')} aria-label={t('common.search')} />
-      {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
-      {kind && <input type="hidden" name="kind" value={kind} />}
-      {season && <input type="hidden" name="season" value={season} />}
-      <button type="submit">{t('common.search')}</button>
-    </form>
+    {/*
+      Type, Season, the search box and Clear all in one row, above the
+      layout — not split across a full-width search bar and a sidebar
+      underneath it. They're all doing the same job (narrowing the list),
+      so they read as one control now instead of two unrelated ones.
+      Only Activity stays below: 43 categories were never going to fit
+      in this row, and it is the one filter people actually scan rather
+      than glance at.
+    */}
+    <div class="filterbar">
+      <div class="group">
+        <span class="mono group-head">{t('search.type')}</span>
+        <div class="pills">
+          <a class={`pill${kind === 'place' ? ' on' : ''}`} href={withParam('kind', kind === 'place' ? null : 'place')}>
+            {t('search.places')}
+          </a>
+          <a
+            class={`pill${kind === 'activity' ? ' on' : ''}`}
+            href={withParam('kind', kind === 'activity' ? null : 'activity')}
+          >
+            {t('search.activities')}
+          </a>
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="mono group-head">{t('search.season')}</span>
+        <div class="pills">
+          <a
+            class={`pill${season === 'summer' ? ' on' : ''}`}
+            href={withParam('season', season === 'summer' ? null : 'summer')}
+          >
+            {t('season.summer')}
+          </a>
+          <a
+            class={`pill${season === 'winter' ? ' on' : ''}`}
+            href={withParam('season', season === 'winter' ? null : 'winter')}
+          >
+            {t('season.winter')}
+          </a>
+        </div>
+      </div>
+
+      <form class="searchbar" action={p("/search")} method="get">
+        <span class="mono glyph" aria-hidden="true">⌕</span>
+        <input name="q" value={q} placeholder={t('search.placeholder')} aria-label={t('common.search')} />
+        {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
+        {kind && <input type="hidden" name="kind" value={kind} />}
+        {season && <input type="hidden" name="season" value={season} />}
+        <button type="submit">{t('common.search')}</button>
+      </form>
+
+      {
+        (q || activity.length > 0 || kind || season) && (
+          <a class="clear" href={p('/search')}>
+            {t('common.clearAll')}
+          </a>
+        )
+      }
+    </div>
 
     <div class="layout">
       <aside class="rail" aria-label={t('search.filters')}>
-        <div class="group">
-          <span class="mono group-head">{t('search.type')}</span>
-          <div class="pills">
-            <a class={`pill${kind === 'place' ? ' on' : ''}`} href={withParam('kind', kind === 'place' ? null : 'place')}>
-              {t('search.places')}
-            </a>
-            <a
-              class={`pill${kind === 'activity' ? ' on' : ''}`}
-              href={withParam('kind', kind === 'activity' ? null : 'activity')}
-            >
-              {t('search.activities')}
-            </a>
-          </div>
-        </div>
-
-        <div class="group">
-          <span class="mono group-head">{t('search.season')}</span>
-          <div class="pills">
-            <a
-              class={`pill${season === 'summer' ? ' on' : ''}`}
-              href={withParam('season', season === 'summer' ? null : 'summer')}
-            >
-              {t('season.summer')}
-            </a>
-            <a
-              class={`pill${season === 'winter' ? ' on' : ''}`}
-              href={withParam('season', season === 'winter' ? null : 'winter')}
-            >
-              {t('season.winter')}
-            </a>
-          </div>
-        </div>
-
         <div class="group activity-group">
           <span class="mono group-head">{t('search.activity')}</span>
           <div class="cats">
@@ -241,14 +260,6 @@ const canonical = `${origin}/search`;
             }
           </div>
         </div>
-
-        {
-          (q || activity.length > 0 || kind || season) && (
-            <a class="clear" href={p('/search')}>
-              {t('common.clearAll')}
-            </a>
-          )
-        }
       </aside>
 
       <section class="results" aria-label={t('common.results')}>
@@ -402,6 +413,15 @@ const canonical = `${origin}/search`;
     padding-top: 24px;
   }
 
+  /* ---- top bar: type, season, search, clear all ---- */
+  .filterbar {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 22px;
+  }
+
   /* ---- search field ---- */
   .searchbar {
     display: flex;
@@ -411,7 +431,7 @@ const canonical = `${origin}/search`;
     border: 1px solid rgba(244, 246, 245, 0.16);
     border-radius: 9px;
     padding: 6px 6px 6px 18px;
-    max-width: 620px;
+    flex: 1 1 260px;
   }
 
   .glyph {
@@ -458,15 +478,11 @@ const canonical = `${origin}/search`;
     display: grid;
     grid-template-columns: 238px 1fr;
     gap: 0;
-    margin-top: 22px;
   }
 
   .rail {
     border-right: 1px solid rgba(244, 246, 245, 0.08);
     padding: 24px 22px 24px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 26px;
   }
 
   .group {
@@ -510,7 +526,7 @@ const canonical = `${origin}/search`;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 460px;
+    max-height: 230px;
     overflow-y: auto;
   }
 
@@ -613,16 +629,16 @@ const canonical = `${origin}/search`;
     color: var(--text);
   }
 
-  /* Under the filters it is undoing, not next to the sort control it has
+  /* In the filter row it is undoing, not next to the sort control it has
      nothing to do with. */
   .clear {
-    align-self: flex-start;
     border: 1px solid var(--ok);
     border-radius: 999px;
     padding: 9px 18px;
     font-size: 13px;
     font-weight: 500;
     color: var(--ok);
+    white-space: nowrap;
   }
 
   .clear:hover {
@@ -878,13 +894,13 @@ const canonical = `${origin}/search`;
    * the small screens keep an ordinary page that scrolls, and this is the
    * second layout rather than a variation on one.
    *
-   * 208px is the header plus the search bar. Measured rather than guessed,
-   * and identical at 1280, 1440 and 1920 — the search bar is one row at every
-   * width this applies to.
+   * 212px is the header plus the filter row (type, season, search, clear
+   * all). Measured rather than guessed, and identical at 1280, 1440 and
+   * 1920 — the filter row wraps to one line at every width this applies to.
    */
   @media (min-width: 1280px) {
     .layout {
-      height: calc(100vh - 208px);
+      height: calc(100vh - 212px);
       min-height: 520px;
     }
 
@@ -923,29 +939,6 @@ const canonical = `${origin}/search`;
       /* Against the bottom of the column rather than trailing the last card. */
       margin-top: 0;
       padding-bottom: 0;
-    }
-
-    /*
-     * The categories take whatever height is left instead of a fixed 460, so
-     * Clear all filters stays pinned under them however tall the window is.
-     *
-     * The growth has to be on the group: .cats sits inside it, so making
-     * .cats itself flex:1 did nothing, and the list simply overflowed the
-     * rail and was clipped — taking the clear button off screen with it.
-     */
-    .rail {
-      overflow: hidden;
-    }
-
-    .activity-group {
-      flex: 1;
-      min-height: 0;
-    }
-
-    .cats {
-      max-height: none;
-      flex: 1;
-      min-height: 0;
     }
 
   }
