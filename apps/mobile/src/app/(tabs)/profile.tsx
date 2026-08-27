@@ -12,7 +12,7 @@ import {
   type UserRole,
   type UserWarning,
 } from '@locastar/shared';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,9 +20,10 @@ import { Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View }
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
+import { MenuRow, MENU_ROW_WIDTH } from '@/components/menu-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MENU_ICONS, type MenuId } from '@/constants/menu-icons';
+import type { MenuId } from '@/constants/menu-icons';
 import { SUPPORT_EMAIL } from '@/constants/support';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -55,15 +56,6 @@ const EMPTY_STATS: ProfileStats = {
  */
 const STAT_TILE_COUNT = 5;
 const STAT_TILE_GAP = 6;
-/*
- * The menu rows' width, frozen as the number it has always evaluated to.
- *
- * It used to be written as (91 * 3 + STAT_TILE_GAP * 2) * 0.8, which tied the
- * menu to the spacing between the stat tiles for no reason beyond the two
- * having once been designed together — narrowing that gap quietly narrowed
- * every row below it.
- */
-const MENU_ROW_WIDTH = 234.4;
 
 /*
  * Stat tiles and menu rows are identified by id and *labelled* by translation.
@@ -111,52 +103,6 @@ const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
 // Not for the account's sake — feedback is stored with nothing identifying on
 // it — but because requiring one is the whole of the spam defence.
 const ACCOUNT_MENU_ITEMS: MenuId[] = ['sendFeedback'];
-// Kept in their own group so moderation tools don't sit flush against About.
-const MODERATOR_MENU_ITEMS: MenuId[] = ['reports', 'peopleAndBans', 'moderationLog'];
-// Admin-only, and separate from the list above: superusers moderate content,
-// they do not need to know which build is throwing.
-const ADMIN_MENU_ITEMS: MenuId[] = ['crashes', 'feedbackInbox'];
-
-function MenuRow({
-  item,
-  badgeCount,
-  onPress,
-}: {
-  item: MenuId;
-  badgeCount?: number;
-  onPress: () => void;
-}) {
-  const { t } = useTranslation();
-  const iconConfig = MENU_ICONS[item];
-  return (
-    <Pressable onPress={onPress}>
-      <ThemedView type="backgroundElement" style={styles.menuItem}>
-        <View style={styles.menuItemLeft}>
-          <View style={[styles.menuIcon, { backgroundColor: `${iconConfig.color}33` }]}>
-            {iconConfig.family === 'material' ? (
-              <MaterialCommunityIcons name={iconConfig.icon} size={17} color={iconConfig.color} />
-            ) : (
-              <Ionicons name={iconConfig.icon} size={17} color={iconConfig.color} />
-            )}
-          </View>
-          <ThemedText type="default" style={styles.menuItemText}>
-            {t(`menu.${item}`)}
-          </ThemedText>
-          {badgeCount !== undefined && badgeCount > 0 && (
-            <View style={styles.reportsBadge}>
-              <ThemedText type="small" style={styles.reportsBadgeText}>
-                {badgeCount}
-              </ThemedText>
-            </View>
-          )}
-        </View>
-        <ThemedText themeColor="textSecondary" style={styles.menuChevron}>
-          ›
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
-}
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
@@ -260,12 +206,8 @@ export default function ProfileScreen() {
     if (item === 'addActivity') router.push({ pathname: '/add-location', params: { kind: 'activity' } });
     if (item === 'settings') router.push('/settings' as never);
     if (item === 'about') router.push('/about');
-    if (item === 'reports') router.push('/admin-reports');
-    if (item === 'peopleAndBans') router.push('/admin-users' as never);
-    if (item === 'moderationLog') router.push('/admin-audit' as never);
-    if (item === 'crashes') router.push('/crash-reports' as never);
     if (item === 'sendFeedback') router.push('/send-feedback' as never);
-    if (item === 'feedbackInbox') router.push('/feedback-inbox' as never);
+    if (item === 'admin') router.push('/admin' as never);
   };
 
   const handleStatPress = (id: StatId) => {
@@ -477,24 +419,15 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {/* Reports, People & bans, Moderation log, Crash reports and Feedback
+            used to each get their own row here — five rows that only a
+            moderator or admin ever saw, on a screen already carrying the
+            stat tiles above. One row into the Admin hub screen instead;
+            the open-reports count still surfaces here so it's visible
+            without a tap. */}
         {isModerator && (
           <View style={[styles.menu, styles.menuGroupGap]}>
-            {MODERATOR_MENU_ITEMS.map((item) => (
-              <MenuRow
-                key={item}
-                item={item}
-                badgeCount={item === 'reports' ? openReportsCount : undefined}
-                onPress={() => handleMenuPress(item)}
-              />
-            ))}
-          </View>
-        )}
-
-        {myRole === 'admin' && (
-          <View style={[styles.menu, styles.menuGroupGap]}>
-            {ADMIN_MENU_ITEMS.map((item) => (
-              <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
-            ))}
+            <MenuRow item="admin" badgeCount={openReportsCount} onPress={() => handleMenuPress('admin')} />
           </View>
         )}
       </SafeAreaView>
@@ -686,47 +619,5 @@ const styles = StyleSheet.create({
     color: '#1A1400',
     textDecorationLine: 'underline',
     marginTop: Spacing.one,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRadius: Spacing.two,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  menuItemText: {
-    fontSize: 19,
-    lineHeight: 26,
-  },
-  reportsBadge: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    backgroundColor: '#E05252',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reportsBadgeText: {
-    color: '#ffffff',
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '700',
-  },
-  menuChevron: {
-    fontSize: 19,
-  },
-  menuIcon: {
-    width: 29,
-    height: 29,
-    borderRadius: Spacing.one,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

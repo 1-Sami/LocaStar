@@ -19,6 +19,7 @@ export type MenuId =
   | 'settings'
   | 'about'
   | 'sendFeedback'
+  | 'admin'
   | 'feedbackInbox'
   | 'reports'
   | 'peopleAndBans'
@@ -54,6 +55,11 @@ export const MENU_ICONS: Record<MenuId, MenuIcon> = {
   settings: { icon: 'settings-outline', color: '#B0B4BA' },
   about: { icon: 'information-circle-outline', color: '#14747A' },
   sendFeedback: { icon: 'bulb-outline', color: '#4CD37A' },
+  // Green, matching the Admin role pill on the profile header — the one visual
+  // thread tying the row to the badge that explains why it's there at all.
+  // shield-outline rather than peopleAndBans' shield-checkmark-outline, so the
+  // two don't read as the same destination at a glance.
+  admin: { icon: 'shield-outline', color: '#4CD37A' },
   // Distinct from `reports`, which is the moderation queue. This one is a pile
   // of opinions about the app, not a pile of complaints about people.
   feedbackInbox: { icon: 'chatbubble-ellipses-outline', color: '#7C6BE8' },

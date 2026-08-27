@@ -138,6 +138,7 @@
     "notifications": "Notifications",
     "crashes": "Crash reports",
     "sendFeedback": "Send feedback",
+    "admin": "Admin",
     "feedbackInbox": "Feedback"
   },
   "profile": {
