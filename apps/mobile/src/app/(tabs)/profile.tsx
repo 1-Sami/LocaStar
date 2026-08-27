@@ -1,7 +1,6 @@
 import {
   acknowledgeWarning,
   fetchMyActiveBan,
-  fetchOpenReportsCount,
   fetchPendingFriendRequestCount,
   fetchProfile,
   fetchProfileStats,
@@ -31,6 +30,7 @@ import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { useNotificationsBadge } from '@/lib/notifications-context';
 import { supabase } from '@/lib/supabase';
+import { useAdminAlerts } from '@/lib/use-admin-alerts';
 
 const EMPTY_STATS: ProfileStats = {
   favorites: 0,
@@ -123,8 +123,9 @@ export default function ProfileScreen() {
   const [username, setUsername] = useState<string | null>(null);
   const [isModerator, setIsModerator] = useState(false);
   const [myRole, setMyRole] = useState<UserRole>('user');
-  const [openReportsCount, setOpenReportsCount] = useState(0);
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
+  // Reports, crashes and new feedback in one number — see use-admin-alerts.
+  const adminAlerts = useAdminAlerts(isModerator);
   const [myBan, setMyBan] = useState<UserBan | null>(null);
   const [myWarnings, setMyWarnings] = useState<UserWarning[]>([]);
 
@@ -171,17 +172,7 @@ export default function ProfileScreen() {
           setUsername(profile.username);
           setMyRole(profile.role);
           // Superusers moderate too, so the reports queue isn't admin-only.
-          const moderator = isModeratorRole(profile.role);
-          setIsModerator(moderator);
-          if (moderator) {
-            fetchOpenReportsCount(supabase)
-              .then((count) => {
-                if (!cancelled) setOpenReportsCount(count);
-              })
-              .catch(() => {
-                if (!cancelled) setOpenReportsCount(0);
-              });
-          }
+          setIsModerator(isModeratorRole(profile.role));
         })
         .catch(() => {});
       return () => {
@@ -422,12 +413,13 @@ export default function ProfileScreen() {
         {/* Reports, People & bans, Moderation log, Crash reports and Feedback
             used to each get their own row here — five rows that only a
             moderator or admin ever saw, on a screen already carrying the
-            stat tiles above. One row into the Admin hub screen instead;
-            the open-reports count still surfaces here so it's visible
-            without a tap. */}
+            stat tiles above. One row into the Admin hub screen instead.
+            The badge is everything waiting behind it added together, so
+            folding those rows away doesn't also hide that they need
+            attention — which is the one thing a hub row can cost you. */}
         {isModerator && (
           <View style={[styles.menu, styles.menuGroupGap]}>
-            <MenuRow item="admin" badgeCount={openReportsCount} onPress={() => handleMenuPress('admin')} />
+            <MenuRow item="admin" badgeCount={adminAlerts.total} onPress={() => handleMenuPress('admin')} />
           </View>
         )}
       </SafeAreaView>

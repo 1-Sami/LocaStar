@@ -25,10 +25,17 @@ export type {
 } from "./api/categoryPages";
 export { CategoryColors } from "./categoryColors";
 export { createSupabaseClient } from "./supabaseClient";
-export { reportCrash, fetchCrashReports, type CrashReport, type CrashReportRow } from "./api/crashes";
+export {
+  reportCrash,
+  fetchCrashReports,
+  fetchCrashCountSince,
+  type CrashReport,
+  type CrashReportRow,
+} from "./api/crashes";
 export {
   submitFeedback,
   fetchFeedback,
+  fetchFeedbackCountSince,
   FeedbackDailyLimitReached,
   FEEDBACK_CATEGORIES,
   FEEDBACK_DAILY_LIMIT,

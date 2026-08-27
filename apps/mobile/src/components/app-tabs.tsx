@@ -1,5 +1,4 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
@@ -7,19 +6,6 @@ import { useNotificationsBadge } from '@/lib/notifications-context';
 import { useThemeMode } from '@/lib/theme-mode-context';
 
 export default function AppTabs() {
-  /*
-   * unstable-native-tabs is exactly that — unstable. On iOS the tab bar's
-   * first commit sometimes reaches the OS with icons but no label text; the
-   * labels only appear once something forces a second commit, which is why
-   * tapping a tab "fixes" it. Forcing that second commit ourselves, once,
-   * right after mount, means nobody has to tap a tab first to see labels.
-   */
-  const [, forceRelabel] = useState(0);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => forceRelabel((n) => n + 1));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
   /*
    * useColorScheme() reads the OS setting directly, but the app has its own
    * light/dark override in Settings that can disagree with it. The two only
@@ -45,6 +31,16 @@ export default function AppTabs() {
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
       labelVisibilityMode="labeled"
+      /*
+       * iOS 26 shrinks the tab bar while you scroll, and the labels go with
+       * it — on the Home screen, whose carousels are the first thing anyone
+       * touches, the bar arrived already minimised and read "Sea…", "Co…",
+       * "Prof…". Tapping a tab expanded it again, which is why it looked
+       * like the labels were failing to render rather than being squeezed.
+       * The default is 'automatic'; this is the opt-out, and it costs
+       * nothing on older iOS or on Android, where the prop is ignored.
+       */
+      minimizeBehavior="never"
       labelStyle={{ selected: { color: colors.text } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tabs.home')}</NativeTabs.Trigger.Label>

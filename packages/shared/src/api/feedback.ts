@@ -87,6 +87,24 @@ export type FeedbackRow = {
  * through, and if two hundred is not enough to see what people keep asking
  * for, the repetition is itself the answer.
  */
+/**
+ * How much feedback has arrived since `since`, for the Admin menu badge.
+ *
+ * Same shape as the crash count, and for the same reason: `feedback` has no
+ * read column, deliberately — the table carries nothing about who sent what,
+ * so per-admin state cannot live on the row. It lives on the device instead.
+ */
+export async function fetchFeedbackCountSince(
+  client: SupabaseClient,
+  since: string | null
+): Promise<number> {
+  let query = client.from("feedback").select("*", { count: "exact", head: true });
+  if (since) query = query.gt("created_at", since);
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function fetchFeedback(client: SupabaseClient, limit = 200): Promise<FeedbackRow[]> {
   const { data, error } = await client
     .from("feedback")

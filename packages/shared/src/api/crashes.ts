@@ -58,6 +58,25 @@ export type CrashReportRow = {
  * now", and if two hundred reports are not enough to answer it, the answer is
  * yes and the detail is in the repetition.
  */
+/**
+ * How many crashes have arrived since `since`, for the Admin menu badge.
+ *
+ * `crash_reports` has no read or resolved column — a crash is a fact, not a
+ * task — so "new" can only mean "since this admin last opened the screen",
+ * which the app remembers on the device. A null `since` means it never has,
+ * and every report counts as new.
+ */
+export async function fetchCrashCountSince(
+  client: SupabaseClient,
+  since: string | null
+): Promise<number> {
+  let query = client.from("crash_reports").select("*", { count: "exact", head: true });
+  if (since) query = query.gt("created_at", since);
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function fetchCrashReports(client: SupabaseClient, limit = 200): Promise<CrashReportRow[]> {
   const { data, error } = await client
     .from("crash_reports")

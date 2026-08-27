@@ -1,6 +1,4 @@
-import { fetchOpenReportsCount } from '@locastar/shared';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,7 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import type { MenuId } from '@/constants/menu-icons';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSharedProfile } from '@/lib/profile-context';
-import { supabase } from '@/lib/supabase';
+import { markAdminSurfaceSeen, useAdminAlerts } from '@/lib/use-admin-alerts';
 
 // Kept in their own group so moderation tools don't sit flush against the
 // admin-only rows below. Superusers moderate content too, they just don't
@@ -22,31 +20,29 @@ const ADMIN_ONLY_MENU_ITEMS: MenuId[] = ['crashes', 'feedbackInbox'];
 export default function AdminMenuScreen() {
   const router = useRouter();
   const { isModerator, role } = useSharedProfile();
-  const [openReportsCount, setOpenReportsCount] = useState(0);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!isModerator) return;
-      let cancelled = false;
-      fetchOpenReportsCount(supabase)
-        .then((count) => {
-          if (!cancelled) setOpenReportsCount(count);
-        })
-        .catch(() => {
-          if (!cancelled) setOpenReportsCount(0);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [isModerator])
-  );
+  const alerts = useAdminAlerts(isModerator);
 
   const handlePress = (item: MenuId) => {
     if (item === 'reports') router.push('/admin-reports');
     if (item === 'peopleAndBans') router.push('/admin-users' as never);
     if (item === 'moderationLog') router.push('/admin-audit' as never);
-    if (item === 'crashes') router.push('/crash-reports' as never);
-    if (item === 'feedbackInbox') router.push('/feedback-inbox' as never);
+    /*
+     * Marked seen on the way in rather than inside the two screens.
+     *
+     * Both are plain lists that show everything they have, so opening one is
+     * the whole of reading it — there is no further "handled" step to hang
+     * this off. Doing it here also keeps the two screens unaware of the badge
+     * that summarises them. Refreshing on focus means the count is already
+     * gone by the time this screen is visible again.
+     */
+    if (item === 'crashes') {
+      markAdminSurfaceSeen('crashes');
+      router.push('/crash-reports' as never);
+    }
+    if (item === 'feedbackInbox') {
+      markAdminSurfaceSeen('feedbackInbox');
+      router.push('/feedback-inbox' as never);
+    }
   };
 
   return (
@@ -59,7 +55,7 @@ export default function AdminMenuScreen() {
                 <MenuRow
                   key={item}
                   item={item}
-                  badgeCount={item === 'reports' ? openReportsCount : undefined}
+                  badgeCount={item === 'reports' ? alerts.reports : undefined}
                   onPress={() => handlePress(item)}
                 />
               ))}
@@ -69,7 +65,12 @@ export default function AdminMenuScreen() {
           {role === 'admin' && (
             <View style={[styles.menu, styles.menuGroupGap]}>
               {ADMIN_ONLY_MENU_ITEMS.map((item) => (
-                <MenuRow key={item} item={item} onPress={() => handlePress(item)} />
+                <MenuRow
+                  key={item}
+                  item={item}
+                  badgeCount={item === 'crashes' ? alerts.crashes : alerts.feedbackInbox}
+                  onPress={() => handlePress(item)}
+                />
               ))}
             </View>
           )}
