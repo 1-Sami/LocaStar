@@ -136,7 +136,9 @@
     "myReviews": "Mina recensioner",
     "myContributions": "Mina bidrag",
     "notifications": "Aviseringar",
-    "crashes": "Kraschrapporter"
+    "crashes": "Kraschrapporter",
+    "sendFeedback": "Skicka feedback",
+    "feedbackInbox": "Feedback"
   },
   "profile": {
     "title": "Profil",
@@ -813,6 +815,28 @@
     "empty": "Inget har kraschat de senaste 30 dagarna.",
     "seenOn": "Setts i {{releases}}",
     "currentRelease": "finns kvar i nuvarande version"
+  },
+  "feedback": {
+    "scopeNotePrefix": "Idéer och önskemål om appen. Något som inte fungerar, eller problem med ditt konto? ",
+    "scopeNoteLink": "Mejla oss i stället",
+    "scopeNoteSuffix": " — där kan vi svara.",
+    "kind": "Vad gäller det?",
+    "category": {
+      "general": "Allmän feedback",
+      "feature_request": "Önska en funktion",
+      "feature_removal": "Ta bort en funktion"
+    },
+    "message": "Ditt meddelande",
+    "placeholder": "Vad vill du att LocaStar ska göra?",
+    "needsWords": "Skriv några ord till, så vi förstår vad du menar.",
+    "anonymous": "Skickas anonymt. Vi kan inte se vem du är och kan därför inte svara.",
+    "send": "Skicka",
+    "sending": "Skickar…",
+    "thanks": "Tack",
+    "thanksBody": "Vi läser allt som kommer in. Något svar kommer inte — men allt påverkar vad som byggs härnäst.",
+    "tooMany": "Du har redan skickat några i dag. Försök igen i morgon.",
+    "failed": "Det gick inte att skicka. Kontrollera din anslutning och försök igen.",
+    "empty": "Ingen har skickat någon feedback än."
   },
   "placeCount": {
     "label_one": "plats",

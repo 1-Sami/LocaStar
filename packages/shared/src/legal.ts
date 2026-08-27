@@ -33,7 +33,7 @@ export type LegalDocument = {
 export const PRIVACY_POLICY: LegalDocument = {
   slug: "privacy",
   title: "Privacy Policy",
-  lastUpdated: "17 August 2026",
+  lastUpdated: "26 August 2026",
   sections: [
     {
       title: "Who we are",
@@ -57,6 +57,7 @@ export const PRIVACY_POLICY: LegalDocument = {
             "Content you create — locations and activities you add (including their address, map position and photos), reviews and ratings, photos, lists, saved places, and friend connections.",
             "Safety records — reports you file or that concern your content, and any warnings or restrictions applied to your account, together with the moderator action log.",
             "Technical error reports — if the app fails, it sends us the error, the screen it happened on, your app version and your platform. These contain nothing that identifies you or your account, and they are deleted after 30 days.",
+            "Feedback you send us — if you use Send feedback in the app, we receive the message you write, the category you choose, your app version and your platform. You need an account to send it, which is only there to keep out spam: the message is saved without your account, so we cannot tell who sent it and we cannot reply to it. Please do not put personal details in the message.",
           ],
         },
         {
@@ -114,6 +115,10 @@ export const PRIVACY_POLICY: LegalDocument = {
         {
           kind: "text",
           text: "Records of moderation decisions — such as a removed location or a ban — are kept for up to two years so we can enforce our rules consistently and handle appeals, even after an account is gone.",
+        },
+        {
+          kind: "text",
+          text: "Feedback sent through Send feedback has no account attached to it, so deleting your account does not affect it and we have no way to find it on request. We keep it for as long as it is useful in deciding what to build.",
         },
       ],
     },

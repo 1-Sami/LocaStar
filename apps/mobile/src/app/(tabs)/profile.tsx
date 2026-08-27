@@ -106,11 +106,16 @@ const STAT_SECTIONS: Partial<Record<StatId, string>> = {
 // screen reads as a mistake rather than a convenience.
 const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends', 'addLocation', 'addActivity'];
 const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
+// Its own group rather than an entry in the list above, because that list is
+// deliberately shared with the signed-out branch and this needs an account.
+// Not for the account's sake — feedback is stored with nothing identifying on
+// it — but because requiring one is the whole of the spam defence.
+const ACCOUNT_MENU_ITEMS: MenuId[] = ['sendFeedback'];
 // Kept in their own group so moderation tools don't sit flush against About.
 const MODERATOR_MENU_ITEMS: MenuId[] = ['reports', 'peopleAndBans', 'moderationLog'];
 // Admin-only, and separate from the list above: superusers moderate content,
 // they do not need to know which build is throwing.
-const ADMIN_MENU_ITEMS: MenuId[] = ['crashes'];
+const ADMIN_MENU_ITEMS: MenuId[] = ['crashes', 'feedbackInbox'];
 
 function MenuRow({
   item,
@@ -259,6 +264,8 @@ export default function ProfileScreen() {
     if (item === 'peopleAndBans') router.push('/admin-users' as never);
     if (item === 'moderationLog') router.push('/admin-audit' as never);
     if (item === 'crashes') router.push('/crash-reports' as never);
+    if (item === 'sendFeedback') router.push('/send-feedback' as never);
+    if (item === 'feedbackInbox') router.push('/feedback-inbox' as never);
   };
 
   const handleStatPress = (id: StatId) => {
@@ -460,6 +467,12 @@ export default function ProfileScreen() {
 
         <View style={[styles.menu, styles.menuGroupGap]}>
           {SECONDARY_MENU_ITEMS.map((item) => (
+            <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
+          ))}
+        </View>
+
+        <View style={[styles.menu, styles.menuGroupGap]}>
+          {ACCOUNT_MENU_ITEMS.map((item) => (
             <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
           ))}
         </View>

@@ -104,6 +104,8 @@ function ThemedNavigation() {
           <Stack.Screen name="admin-users" options={{ headerTitle: () => <ScreenTitle titleKey="peopleAndBans" /> }} />
           <Stack.Screen name="admin-audit" options={{ headerTitle: () => <ScreenTitle titleKey="moderationLog" /> }} />
           <Stack.Screen name="crash-reports" options={{ headerTitle: () => <ScreenTitle titleKey="crashes" /> }} />
+          <Stack.Screen name="send-feedback" options={{ headerTitle: () => <ScreenTitle titleKey="sendFeedback" /> }} />
+          <Stack.Screen name="feedback-inbox" options={{ headerTitle: () => <ScreenTitle titleKey="feedbackInbox" /> }} />
           <Stack.Screen name="lists/index" options={{ headerTitle: () => <ScreenTitle titleKey="myLists" /> }} />
           <Stack.Screen name="lists/[id]" options={{ title: t('nav.list') }} />
           <Stack.Screen name="friends" options={{ headerTitle: () => <ScreenTitle titleKey="friends" /> }} />

@@ -136,7 +136,9 @@
     "myReviews": "My reviews",
     "myContributions": "My contributions",
     "notifications": "Notifications",
-    "crashes": "Crash reports"
+    "crashes": "Crash reports",
+    "sendFeedback": "Send feedback",
+    "feedbackInbox": "Feedback"
   },
   "profile": {
     "title": "Profile",
@@ -813,6 +815,28 @@
     "empty": "Nothing has crashed in the last 30 days.",
     "seenOn": "Seen on {{releases}}",
     "currentRelease": "still on the current release"
+  },
+  "feedback": {
+    "scopeNotePrefix": "Ideas and requests for the app. Something broken, or trouble with your account? ",
+    "scopeNoteLink": "Email us instead",
+    "scopeNoteSuffix": " — we can answer there.",
+    "kind": "What kind?",
+    "category": {
+      "general": "General feedback",
+      "feature_request": "Request a feature",
+      "feature_removal": "Remove a feature"
+    },
+    "message": "Your message",
+    "placeholder": "What would you like LocaStar to do?",
+    "needsWords": "A few more words, so we know what you mean.",
+    "anonymous": "Sent anonymously. We can't see who you are, so we can't reply.",
+    "send": "Send",
+    "sending": "Sending…",
+    "thanks": "Thank you",
+    "thanksBody": "We read everything that comes in. There's no reply coming — but it all feeds into what gets built next.",
+    "tooMany": "You've sent a few already today. Try again tomorrow.",
+    "failed": "That didn't send. Check your connection and try again.",
+    "empty": "Nobody has sent any feedback yet."
   },
   "placeCount": {
     "label_one": "place",

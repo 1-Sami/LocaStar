@@ -18,6 +18,8 @@ export type MenuId =
   | 'addActivity'
   | 'settings'
   | 'about'
+  | 'sendFeedback'
+  | 'feedbackInbox'
   | 'reports'
   | 'peopleAndBans'
   | 'moderationLog'
@@ -51,6 +53,10 @@ export const MENU_ICONS: Record<MenuId, MenuIcon> = {
   addActivity: { icon: 'time-outline', color: '#E8A93B' },
   settings: { icon: 'settings-outline', color: '#B0B4BA' },
   about: { icon: 'information-circle-outline', color: '#14747A' },
+  sendFeedback: { icon: 'bulb-outline', color: '#4CD37A' },
+  // Distinct from `reports`, which is the moderation queue. This one is a pile
+  // of opinions about the app, not a pile of complaints about people.
+  feedbackInbox: { icon: 'chatbubble-ellipses-outline', color: '#7C6BE8' },
   reports: { icon: 'flag-outline', color: '#E05252' },
   peopleAndBans: { icon: 'shield-checkmark-outline', color: '#E8A93B' },
   moderationLog: { icon: 'document-text-outline', color: '#4C8FE8' },
