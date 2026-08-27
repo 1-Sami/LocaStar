@@ -13,9 +13,8 @@
 // falls back to calling the RPC directly if this function is unreachable, so a
 // mail outage can never trap someone in an account they want to leave.
 
-const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
-const SENDER = { name: 'LocaStar', email: 'no-reply@locastar.se' };
-const SUPPORT_EMAIL = 'support@locastar.se';
+import { sendMail } from '../_shared/brevo.ts';
+import { renderAccountDeleted } from '../_shared/email/render.mjs';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -77,39 +76,6 @@ function publishableKey(): string | null {
   }
 }
 
-function emailBody() {
-  const text = [
-    'Your LocaStar account has been deleted.',
-    '',
-    'Your profile, username, picture, favourites, bucket list, lists and',
-    'friends are gone for good. Reviews, photos and places you added',
-    'stay in the app with your name removed, so the places other people rely on',
-    'keep their ratings — they can no longer be traced back to you.',
-    '',
-    'This cannot be undone, and we cannot restore the account.',
-    '',
-    `If you did not do this, please email us at ${SUPPORT_EMAIL} straight away.`,
-    'Someone else may have access to your email account.',
-    '',
-    'Thanks for having been part of LocaStar.',
-  ].join('\n');
-
-  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f6f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1b2b2f;line-height:1.55">
-  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px">
-    <h1 style="margin:0 0 16px;font-size:20px;color:#125F6F">Your LocaStar account has been deleted</h1>
-    <p style="margin:0 0 14px">Your profile, username, picture, favourites, bucket list, lists and friends are gone for good.</p>
-    <p style="margin:0 0 14px">Reviews, photos and places you added stay in the app with your name removed, so the places other people rely on keep their ratings. They can no longer be traced back to you.</p>
-    <p style="margin:0 0 20px">This cannot be undone, and we cannot restore the account.</p>
-    <div style="border-left:3px solid #E05252;padding:2px 0 2px 14px;margin:0 0 20px">
-      <p style="margin:0"><strong>Didn't do this?</strong> Email us at <a href="mailto:${SUPPORT_EMAIL}" style="color:#125F6F">${SUPPORT_EMAIL}</a> straight away — someone else may have access to your email account.</p>
-    </div>
-    <p style="margin:0;color:#5d6b6f;font-size:14px">Thanks for having been part of LocaStar.</p>
-  </div>
-</body></html>`;
-
-  return { text, html };
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -146,41 +112,16 @@ Deno.serve(async (req: Request) => {
   // Past this point the account is gone. Nothing below is allowed to turn that
   // into a failure the person sees, so every problem is logged and swallowed.
   const address = emailFromJwt(authHeader);
-  const apiKey = Deno.env.get('BREVO_API_KEY');
-
   if (!address) {
     console.error('Account deleted but the JWT carried no email address');
     return json({ deleted: true, emailed: false }, 200);
   }
-  if (!apiKey) {
-    console.error('Account deleted but BREVO_API_KEY is not set — no email sent');
-    return json({ deleted: true, emailed: false }, 200);
-  }
 
-  const { text, html } = emailBody();
-  try {
-    const mail = await fetch(BREVO_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json',
-        accept: 'application/json',
-      },
-      body: JSON.stringify({
-        sender: SENDER,
-        to: [{ email: address }],
-        subject: 'Your LocaStar account has been deleted',
-        htmlContent: html,
-        textContent: text,
-      }),
-    });
+  const { subject, html, text } = renderAccountDeleted();
+  const sent = await sendMail({ to: address, subject, html, text });
 
-    if (!mail.ok) {
-      console.error('Brevo rejected the message', mail.status, await mail.text());
-      return json({ deleted: true, emailed: false }, 200);
-    }
-  } catch (cause) {
-    console.error('Could not reach Brevo', cause);
+  if (!sent.ok) {
+    console.error('Account deleted but the email did not send:', sent.reason);
     return json({ deleted: true, emailed: false }, 200);
   }
 

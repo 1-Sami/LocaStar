@@ -4,7 +4,8 @@
   "packageManager": "pnpm@11.18.0",
   "scripts": {
     "mobile": "pnpm --filter @locastar/mobile start",
-    "typecheck": "pnpm --filter @locastar/shared --filter @locastar/mobile --filter @locastar/web typecheck",
-    "lint": "pnpm --filter @locastar/mobile lint"
+    "typecheck": "node supabase/scripts/build-email-templates.mjs supabase/templates --check && pnpm --filter @locastar/shared --filter @locastar/mobile --filter @locastar/web typecheck",
+    "lint": "pnpm --filter @locastar/mobile lint",
+    "emails": "node supabase/scripts/build-email-templates.mjs supabase/templates"
   }
 }

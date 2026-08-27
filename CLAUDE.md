@@ -14,6 +14,8 @@ pnpm workspace. Four places code lives, and the split matters:
 | `apps/web/src/pages/` | The website. Astro, file-based routes, server-rendered on Cloudflare. |
 | `packages/shared/src/api/` | **Every Supabase query.** Screens call these, never `supabase.from(...)` directly. |
 | `supabase/migrations/` | Schema and RLS, numbered `NNNN_name.sql`. |
+| `supabase/functions/_shared/email/` | **The one email layout.** Plain `.mjs` so Deno and Node can both import it. |
+| `supabase/templates/` | **Generated — never hand-edit.** `npm run emails` writes these from the layout above. |
 | `apps/mobile/scripts/` | Node build tooling — not app code. |
 | `tools/` | One-off data tooling, e.g. the OpenStreetMap importer. Never shipped. |
 
@@ -27,6 +29,7 @@ stored once so the copy Apple reviewed cannot drift from the copy on the site.
 ```
 npm run typecheck        # all three workspaces — run this after every change
 npm run lint             # ESLint via expo lint (apps/mobile only)
+npm run emails           # regenerate supabase/templates/ from the shared layout
 cd apps/mobile && npm run release            # bump APP_RELEASE + publish OTA
 cd apps/mobile && npm run release -- minor   # or major
 cd apps/web && npm run deploy                # astro build + wrangler deploy
@@ -34,22 +37,26 @@ cd apps/web && npm run deploy                # astro build + wrangler deploy
 
 ## The one thing that catches everyone
 
-**`git push` updates neither the website nor the app.** There are three
+**`git push` updates neither the website nor the app.** There are four
 pipelines from the same source, and pushing drives none of them:
 
 - `git push` → GitHub only. Nothing deploys.
 - `cd apps/web && npm run deploy` → the Astro site
 - `npm run release` → EAS publishes a JS bundle to phones
+- **Pasting into the Supabase dashboard** → the auth emails. Nothing in this
+  repo automates this one, and nothing ever can.
 
-**There are two web Workers, and the domain is still on the old one.** The
-root `wrangler.jsonc` defines `locastar`, which serves the prerendered Expo
-export in `apps/mobile/dist` and is what `locastar.se` currently resolves to.
-`apps/web/wrangler.jsonc` defines `locastar-web`, the Astro rebuild, which
-lives on its `workers.dev` address until somebody points the domain at it.
+**The domain cutover has happened.** `locastar.se` now resolves to
+`locastar-web`, the Astro Worker defined in `apps/web/wrangler.jsonc`, which
+serves `apps/web/` including everything in `apps/web/public/`. The root
+`wrangler.jsonc` still defines the older `locastar` Worker serving the
+prerendered Expo export in `apps/mobile/dist`; it is no longer what the domain
+points at.
 
-Until that cutover happens, a change to `apps/web` is not on `locastar.se`
-however many times it is deployed. Check which Worker you are looking at before
-concluding a fix did not work.
+This file previously said the domain was still on the old Worker, which was
+true when it was written and stopped being true without anybody updating it.
+If a change to `apps/web` is not showing up, check that it was deployed before
+concluding anything about which Worker is serving.
 
 This file used to say pushing rebuilt the website, and that cost an afternoon:
 three files added during the day were live in the repo, absent from the site,
@@ -57,8 +64,8 @@ and nobody had reason to look. `/legal/delete-account` 404'd while Google Play
 was waiting for it, and `apple-app-site-association` 404'd too — which would
 have made iOS universal links fail silently long after the app shipped.
 
-A fix that is committed and pushed can be absent from *both* the website and
-the app. Say which of the three you actually did.
+A fix that is committed and pushed can be absent from the website, the app
+*and* the inbox. Say which of the four you actually did.
 
 **Over-the-air updates only replace JavaScript and assets.** Anything that adds
 a *native module* needs a new binary — and publishing JS that imports a native

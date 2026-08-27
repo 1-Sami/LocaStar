@@ -15,3 +15,9 @@
 
 /vendor/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Versioned in the filename (logo-v1.png), because mail clients and Gmail's
+# image proxy cache email images indefinitely and cannot be purged. A new
+# filename is the only cache-busting mechanism a sent message has.
+/email/*
+  Cache-Control: public, max-age=31536000, immutable
