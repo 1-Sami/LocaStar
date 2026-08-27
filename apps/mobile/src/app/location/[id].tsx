@@ -30,7 +30,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToListModal } from '@/components/add-to-list-modal';
@@ -222,6 +222,11 @@ export default function LocationDetailScreen() {
   const [viewerWidth, setViewerWidth] = useState(() => Dimensions.get('window').width);
   const heroScrollRef = useRef<ScrollView>(null);
   const viewerScrollRef = useRef<ScrollView>(null);
+  // Holds the tapped index between closing the gallery grid and the full
+  // viewer actually opening — see openViewerFromGallery further down, which
+  // reads and clears it. Declared up here for the same early-return reason
+  // as the refs above it.
+  const galleryViewerIndexRef = useRef<number | null>(null);
   /*
    * Positions the viewer's ScrollView at viewerIndex — but only when the
    * viewer opens or the device rotates, never when viewerIndex changes on
@@ -678,6 +683,34 @@ export default function LocationDetailScreen() {
   const openViewerAt = (index: number) => {
     if (photos.length === 0) return;
     setViewerIndex(Math.max(0, Math.min(index, photos.length - 1)));
+  };
+
+  /*
+   * Going from the gallery grid to the full viewer means closing one Modal
+   * and opening another. Doing both in the same tick (setGalleryVisible(false)
+   * immediately followed by openViewerAt) sometimes has the viewer's native
+   * modal start presenting before the gallery's has actually finished
+   * dismissing on iOS — the two are briefly stacked, and the viewer's
+   * SafeAreaView reads a stale top inset of 0 for that first frame, landing
+   * the close button and photo count under the status bar. onDismiss (iOS
+   * only) fires once the gallery modal is truly gone, so routing through it
+   * closes that race. Android's Modal doesn't expose onDismiss, but it also
+   * hasn't shown this bug, so it keeps the direct open.
+   */
+  const openViewerFromGallery = (index: number) => {
+    if (Platform.OS === 'ios') {
+      galleryViewerIndexRef.current = index;
+      setGalleryVisible(false);
+    } else {
+      setGalleryVisible(false);
+      openViewerAt(index);
+    }
+  };
+  const handleGalleryDismiss = () => {
+    if (galleryViewerIndexRef.current !== null) {
+      openViewerAt(galleryViewerIndexRef.current);
+      galleryViewerIndexRef.current = null;
+    }
   };
 
   const handleWriteReview = () => {
@@ -1371,7 +1404,11 @@ export default function LocationDetailScreen() {
         }}
       />
 
-      <Modal visible={galleryVisible} animationType="slide" onRequestClose={() => setGalleryVisible(false)}>
+      <Modal
+        visible={galleryVisible}
+        animationType="slide"
+        onRequestClose={() => setGalleryVisible(false)}
+        onDismiss={handleGalleryDismiss}>
         <ThemedView style={styles.container}>
           <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.galleryHeader}>
@@ -1385,14 +1422,7 @@ export default function LocationDetailScreen() {
                 <Pressable
                   key={index}
                   style={styles.galleryThumbWrapper}
-                  onPress={() => {
-                    // Two Modals visible at once breaks safe-area inset
-                    // computation for the second one, so the close button on
-                    // the full viewer ends up unpadded against the notch —
-                    // sometimes unreachable, sometimes just visibly wrong.
-                    setGalleryVisible(false);
-                    openViewerAt(index);
-                  }}>
+                  onPress={() => openViewerFromGallery(index)}>
                   <Image source={{ uri: photo.url }} style={styles.galleryThumb} contentFit="cover" />
                 </Pressable>
               ))}
