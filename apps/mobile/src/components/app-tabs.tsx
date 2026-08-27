@@ -41,7 +41,28 @@ export default function AppTabs() {
        * nothing on older iOS or on Android, where the prop is ignored.
        */
       minimizeBehavior="never"
-      labelStyle={{ selected: { color: colors.text } }}>
+      /*
+       * An explicit 10pt, because iOS 26's floating tab bar is narrower than
+       * the old edge-to-edge one and the selected tab's capsule takes a bite
+       * out of what is left. Measured off a 390pt iPhone 13 screenshot: the
+       * four unselected tabs get about 52pt each, and the system was drawing
+       * the labels at roughly 12pt, so "Search" and "Profile" arrived as
+       * "Sea…" and "Prof…". 10pt is UIKit's own tab bar size, so this is
+       * asking for the standard rather than shrinking below it.
+       *
+       * `default` covers every state; `selected` only overlays the colour on
+       * top, so the size survives — see appendStyleToAppearance in
+       * expo-router's appearance.ios.
+       *
+       * "Community" is knowingly left too long: nine characters does not fit
+       * whatever the size, and the owner chose the honest word over one that
+       * fits (2026-08-27). It still shows as "Co…" on iOS 26. Don't shorten
+       * it without asking, and don't drop the font further to chase it.
+       */
+      labelStyle={{
+        default: { fontSize: 10 },
+        selected: { fontSize: 10, color: colors.text },
+      }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tabs.home')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
