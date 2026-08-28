@@ -667,6 +667,11 @@ export default function AdminReportsScreen() {
                     <ThemedText type="default" style={styles.reason}>
                       {report.reason}
                     </ThemedText>
+                    {report.fromBlock && (
+                      <ThemedText type="small" style={styles.fromBlockNote}>
+                        {t('admin.fromBlockNote')}
+                      </ThemedText>
+                    )}
                     {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
                         {report.details}
@@ -697,14 +702,22 @@ export default function AdminReportsScreen() {
                           <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
-                      <Pressable
-                        style={[styles.actionButton, styles.removeButton]}
-                        disabled={busy}
-                        onPress={() => askRemoveLocation(report)}>
-                        <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
-                          {t('admin.legendRemove')}
-                        </ThemedText>
-                      </Pressable>
+                      {/* No Remove on a report a block filed. See the note on
+                          askResolveList — one person blocking someone is not
+                          evidence the content breaks the rules, and removing
+                          on that basis also bars the author from posting here
+                          again. Dismiss and Warn stay: Dismiss for a personal
+                          falling-out, Warn when the blocks are adding up. */}
+                      {!report.fromBlock && (
+                        <Pressable
+                          style={[styles.actionButton, styles.removeButton]}
+                          disabled={busy}
+                          onPress={() => askRemoveLocation(report)}>
+                          <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
+                            {t('admin.legendRemove')}
+                          </ThemedText>
+                        </Pressable>
+                      )}
                     </View>
                   </ThemedView>
                 );
@@ -733,6 +746,11 @@ export default function AdminReportsScreen() {
                       Reported by {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default">{report.reason}</ThemedText>
+                    {report.fromBlock && (
+                      <ThemedText type="small" style={styles.fromBlockNote}>
+                        {t('admin.fromBlockNote')}
+                      </ThemedText>
+                    )}
                     {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
                         {report.details}
@@ -763,14 +781,17 @@ export default function AdminReportsScreen() {
                           <ThemedText type="smallBold" style={styles.actionButtonText}>{t('admin.legendWarn')}</ThemedText>
                         </Pressable>
                       )}
-                      <Pressable
-                        style={[styles.actionButton, styles.removeButton]}
-                        disabled={busy}
-                        onPress={() => askRemoveReview(report)}>
-                        <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
-                          {t('admin.legendRemove')}
-                        </ThemedText>
-                      </Pressable>
+                      {/* Same rule as the locations tab above. */}
+                      {!report.fromBlock && (
+                        <Pressable
+                          style={[styles.actionButton, styles.removeButton]}
+                          disabled={busy}
+                          onPress={() => askRemoveReview(report)}>
+                          <ThemedText type="smallBold" style={[styles.removeButtonText, styles.actionButtonText]}>
+                            {t('admin.legendRemove')}
+                          </ThemedText>
+                        </Pressable>
+                      )}
                     </View>
                   </ThemedView>
                 );
@@ -892,6 +913,11 @@ export default function AdminReportsScreen() {
                       Reported by {report.reporterName} · {new Date(report.createdAt).toLocaleDateString()}
                     </ThemedText>
                     <ThemedText type="default">{report.reason}</ThemedText>
+                    {report.fromBlock && (
+                      <ThemedText type="small" style={styles.fromBlockNote}>
+                        {t('admin.fromBlockNote')}
+                      </ThemedText>
+                    )}
                     {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
                         {report.details}
@@ -937,6 +963,11 @@ export default function AdminReportsScreen() {
                     <ThemedText type="default" style={styles.reason}>
                       {report.reason}
                     </ThemedText>
+                    {report.fromBlock && (
+                      <ThemedText type="small" style={styles.fromBlockNote}>
+                        {t('admin.fromBlockNote')}
+                      </ThemedText>
+                    )}
                     {report.details && (
                       <ThemedText type="small" themeColor="textSecondary">
                         {report.details}
@@ -1075,6 +1106,11 @@ const styles = StyleSheet.create({
   },
   reason: {
     marginTop: Spacing.one,
+  },
+  // Amber rather than red: this is context for the decision, not a warning
+  // about the content — the content may be perfectly fine.
+  fromBlockNote: {
+    color: '#E8A93B',
   },
   resolutionNote: {
     marginTop: Spacing.one,

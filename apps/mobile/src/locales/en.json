@@ -671,6 +671,7 @@
     "tabLocations": "Locations ({{count}})",
     "tabReviews": "Reviews ({{count}})",
     "tabLists": "Lists ({{count}})",
+    "fromBlockNote": "Filed automatically by a block — not a complaint about the content. Remove is unavailable here.",
     "listOwner": "List by {{name}}",
     "reportedBy": "Reported by {{name}}",
     "dismissListTitle": "Dismiss this report?",

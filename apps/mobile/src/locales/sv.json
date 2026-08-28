@@ -671,6 +671,7 @@
     "tabLocations": "Platser ({{count}})",
     "tabReviews": "Recensioner ({{count}})",
     "tabLists": "Listor ({{count}})",
+    "fromBlockNote": "Skapad automatiskt av en blockering — inte en anmälan av innehållet. Ta bort är inte tillgängligt här.",
     "listOwner": "Lista av {{name}}",
     "reportedBy": "Anmäld av {{name}}",
     "dismissListTitle": "Avfärda anmälan?",

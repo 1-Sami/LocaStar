@@ -35,6 +35,8 @@ export type LocationReport = {
   resolvedAt: string | null;
   resolutionAction: ResolutionAction | null;
   resolutionNote: string | null;
+  /** Filed automatically by a block rather than chosen — see migration 0123. */
+  fromBlock: boolean;
 };
 
 type LocationReportRow = {
@@ -49,6 +51,7 @@ type LocationReportRow = {
   resolved_at: string | null;
   resolution_action: ResolutionAction | null;
   resolution_note: string | null;
+  from_block: boolean | null;
   locations: {
     name: string;
     status: LocationStatus;
@@ -63,7 +66,7 @@ const LOCATION_REPORT_SELECT =
   // `locations` has two FKs to `profiles` (created_by and claimed_by), so the
   // nested embed must name the constraint — an unqualified profiles(...) here
   // is ambiguous and makes PostgREST reject the whole query.
-  "id, location_id, location_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, location_photos(storage_path), locations(name, status, removed_at, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
+  "id, location_id, location_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, from_block, location_photos(storage_path), locations(name, status, removed_at, created_by, profiles!locations_created_by_fkey(username, display_name)), profiles!location_reports_reporter_id_fkey(username, display_name)";
 
 function mapLocationReport(row: LocationReportRow): LocationReport {
   return {
@@ -84,6 +87,7 @@ function mapLocationReport(row: LocationReportRow): LocationReport {
     resolvedAt: row.resolved_at,
     resolutionAction: row.resolution_action,
     resolutionNote: row.resolution_note,
+    fromBlock: row.from_block ?? false,
   };
 }
 
@@ -208,6 +212,8 @@ export type ReviewReport = {
   resolvedAt: string | null;
   resolutionAction: ResolutionAction | null;
   resolutionNote: string | null;
+  /** Filed automatically by a block rather than chosen — see migration 0123. */
+  fromBlock: boolean;
 };
 
 type ReviewReportRow = {
@@ -222,6 +228,7 @@ type ReviewReportRow = {
   resolved_at: string | null;
   resolution_action: ResolutionAction | null;
   resolution_note: string | null;
+  from_block: boolean | null;
   reviews: {
     rating: number;
     title: string | null;
@@ -237,7 +244,7 @@ type ReviewReportRow = {
 };
 
 const REVIEW_REPORT_SELECT =
-  "id, review_id, review_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, review_photos(storage_path), reviews(rating, title, body, status, removed_at, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
+  "id, review_id, review_photo_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, from_block, review_photos(storage_path), reviews(rating, title, body, status, removed_at, location_id, user_id, profiles(username, display_name), locations(name)), profiles!review_reports_reporter_id_fkey(username, display_name)";
 
 function mapReviewReport(row: ReviewReportRow): ReviewReport {
   return {
@@ -262,6 +269,7 @@ function mapReviewReport(row: ReviewReportRow): ReviewReport {
     resolvedAt: row.resolved_at,
     resolutionAction: row.resolution_action,
     resolutionNote: row.resolution_note,
+    fromBlock: row.from_block ?? false,
   };
 }
 
@@ -301,6 +309,8 @@ export type ListReport = {
   resolvedAt: string | null;
   resolutionAction: ResolutionAction | null;
   resolutionNote: string | null;
+  /** Filed automatically by a block rather than chosen — see migration 0123. */
+  fromBlock: boolean;
 };
 
 type ListReportRow = {
@@ -313,6 +323,7 @@ type ListReportRow = {
   resolved_at: string | null;
   resolution_action: ResolutionAction | null;
   resolution_note: string | null;
+  from_block: boolean | null;
   lists: {
     name: string;
     description: string | null;
@@ -324,7 +335,7 @@ type ListReportRow = {
 };
 
 const LIST_REPORT_SELECT =
-  "id, list_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, lists(name, description, is_public, user_id, owner:profiles!lists_user_id_fkey(username, display_name)), profiles!list_reports_reporter_id_fkey(username, display_name)";
+  "id, list_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, from_block, lists(name, description, is_public, user_id, owner:profiles!lists_user_id_fkey(username, display_name)), profiles!list_reports_reporter_id_fkey(username, display_name)";
 
 function mapListReport(row: ListReportRow): ListReport {
   return {
@@ -345,6 +356,7 @@ function mapListReport(row: ListReportRow): ListReport {
     resolvedAt: row.resolved_at,
     resolutionAction: row.resolution_action,
     resolutionNote: row.resolution_note,
+    fromBlock: row.from_block ?? false,
   };
 }
 
