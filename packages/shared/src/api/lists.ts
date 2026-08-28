@@ -256,6 +256,31 @@ export async function fetchListMeta(
   };
 }
 
+export type ListReportInput = {
+  listId: string;
+  reporterId: string;
+  reason: string;
+  details: string | null;
+};
+
+/**
+ * Reports a list.
+ *
+ * Lists were the one kind of user-generated content with no report path, even
+ * though a public one puts a name and a description written by a stranger on
+ * the Home screen. See migration 0122 — the table is a mirror of
+ * review_reports, so the moderation queue needed no new shape to show it.
+ */
+export async function reportList(client: SupabaseClient, input: ListReportInput): Promise<void> {
+  const { error } = await client.from("list_reports").insert({
+    list_id: input.listId,
+    reporter_id: input.reporterId,
+    reason: input.reason,
+    details: input.details,
+  });
+  if (error) throw error;
+}
+
 export type ListItemLocation = {
   locationId: string;
   name: string;
@@ -524,6 +549,12 @@ export async function fetchListMembershipForLocation(
 }
 
 export type PublicList = LocationList & {
+  /**
+   * Who wrote it. Carried so a feed can drop the lists of anyone the viewer
+   * has blocked — the name alone cannot be matched against a block, which is
+   * held by id.
+   */
+  ownerId: string;
   ownerUsername: string | null;
   ownerDisplayName: string | null;
 };
@@ -534,6 +565,7 @@ type PublicListRow = {
   description: string | null;
   created_at: string;
   is_public: boolean;
+  user_id: string;
   list_items: { count: number }[];
   owner: { username: string | null; display_name: string | null } | null;
 };
@@ -548,7 +580,7 @@ export async function fetchPublicLists(
   const { data, error } = await client
     .from("lists")
     .select(
-      "id, name, description, created_at, is_public, list_items(count), owner:profiles!lists_user_id_fkey(username, display_name)"
+      "id, name, description, created_at, is_public, user_id, list_items(count), owner:profiles!lists_user_id_fkey(username, display_name)"
     )
     .eq("is_public", true)
     .order("created_at", { ascending: false });
@@ -574,6 +606,7 @@ export async function fetchPublicLists(
     likeCount: likesByList.get(row.id)?.count ?? 0,
     likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
     previewLocations: previewByList.get(row.id) ?? [],
+    ownerId: row.user_id,
     ownerUsername: row.owner?.username ?? null,
     ownerDisplayName: row.owner?.display_name ?? null,
   }));
@@ -633,7 +666,7 @@ export async function fetchSavedLists(client: SupabaseClient, userId: string): P
   const { data, error } = await client
     .from("list_saves")
     .select(
-      "created_at, lists(id, name, description, created_at, is_public, list_items(count), owner:profiles!lists_user_id_fkey(username, display_name))"
+      "created_at, lists(id, name, description, created_at, is_public, user_id, list_items(count), owner:profiles!lists_user_id_fkey(username, display_name))"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -661,6 +694,7 @@ export async function fetchSavedLists(client: SupabaseClient, userId: string): P
     likeCount: likesByList.get(row.id)?.count ?? 0,
     likedByMe: likesByList.get(row.id)?.likedByMe ?? false,
     previewLocations: previewByList.get(row.id) ?? [],
+    ownerId: row.user_id,
     ownerUsername: row.owner?.username ?? null,
     ownerDisplayName: row.owner?.display_name ?? null,
   }));

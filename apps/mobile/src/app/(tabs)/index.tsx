@@ -22,6 +22,7 @@ import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/the
 import { useSaves } from '@/hooks/use-saves';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
+import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
 
@@ -191,6 +192,10 @@ export default function HomeScreen() {
   const [nearbySummer, setNearbySummer] = useState<NearbyLocation[]>([]);
   const [nearbyWinter, setNearbyWinter] = useState<NearbyLocation[]>([]);
   const [publicLists, setPublicLists] = useState<PublicList[]>([]);
+  const { isBlocked } = useBlockedUsers();
+  // See the same filter on the Community tab — blocking has to empty the
+  // shelf immediately, not at the next reload.
+  const visiblePublicLists = publicLists.filter((list) => !isBlocked(list.ownerId));
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
 
   const reload = useCallback(() => {
@@ -450,7 +455,7 @@ export default function HomeScreen() {
           <HomeSection
             title={t('home.sharedLists')}
             onShowMore={() => router.push('/community')}
-            items={publicLists}
+            items={visiblePublicLists}
             keyExtractor={(item) => item.id}
             cardWidth={170}
             renderItem={(item) => (

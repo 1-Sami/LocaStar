@@ -82,6 +82,22 @@ export default function SignInScreen() {
             <ThemedText type="linkPrimary">{t('auth.signUp')}</ThemedText>
           </Link>
         </View>
+
+        {/* The same consent line the sign-up screen carries, and the same three
+            keys. App Store guideline 1.2 asks for the terms "before registering
+            or logging in" — they were only on the registering half, so someone
+            who already had an account never met them. */}
+        <ThemedText type="small" themeColor="textSecondary" style={styles.consentText}>
+          {t('auth.consentBefore')}
+          <Link href={'/legal/terms' as never}>
+            <ThemedText type="linkPrimary">{t('nav.termsOfService')}</ThemedText>
+          </Link>
+          {t('auth.consentBetween')}
+          <Link href={'/legal/privacy' as never}>
+            <ThemedText type="linkPrimary">{t('nav.privacyPolicy')}</ThemedText>
+          </Link>
+          {t('auth.consentAfter')}
+        </ThemedText>
       </SafeAreaView>
     </ThemedView>
   );
@@ -112,6 +128,10 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#E85C4C',
+  },
+  consentText: {
+    textAlign: 'center',
+    lineHeight: 20,
   },
   submitButton: {
     height: 48,

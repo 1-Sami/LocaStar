@@ -9,6 +9,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ScreenTitle } from '@/components/screen-title';
 import { UpdateBanner } from '@/components/update-banner';
 import { AuthProvider } from '@/lib/auth-context';
+import { BlockedUsersProvider } from '@/lib/blocked-users-context';
 import { installCrashReporter, setCrashRoute } from '@/lib/crash-reporting';
 // Imported for the side effect of initialising i18next before any screen calls
 // useTranslation. loadStoredLanguage applies the saved override afterwards.
@@ -129,11 +130,16 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ProfileProvider>
-        <NotificationsProvider>
-          <ThemeModeProvider>
-            <ThemedNavigation />
-          </ThemeModeProvider>
-        </NotificationsProvider>
+        {/* Inside AuthProvider because it keys off the session, and outside
+            the navigator because every screen that renders someone else's
+            content has to be able to ask it what to hide. */}
+        <BlockedUsersProvider>
+          <NotificationsProvider>
+            <ThemeModeProvider>
+              <ThemedNavigation />
+            </ThemeModeProvider>
+          </NotificationsProvider>
+        </BlockedUsersProvider>
       </ProfileProvider>
     </AuthProvider>
   );

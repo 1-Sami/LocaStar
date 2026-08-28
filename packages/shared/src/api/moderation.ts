@@ -285,6 +285,110 @@ export async function fetchHandledReviewReports(client: SupabaseClient): Promise
   return ((data ?? []) as unknown as ReviewReportRow[]).map(mapReviewReport);
 }
 
+export type ListReport = {
+  id: string;
+  listId: string;
+  listName: string;
+  listDescription: string | null;
+  listIsPublic: boolean;
+  ownerId: string | null;
+  ownerName: string;
+  reason: string;
+  details: string | null;
+  reporterName: string;
+  status: LocationReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+  resolutionAction: ResolutionAction | null;
+  resolutionNote: string | null;
+};
+
+type ListReportRow = {
+  id: string;
+  list_id: string;
+  reason: string;
+  details: string | null;
+  status: LocationReportStatus;
+  created_at: string;
+  resolved_at: string | null;
+  resolution_action: ResolutionAction | null;
+  resolution_note: string | null;
+  lists: {
+    name: string;
+    description: string | null;
+    is_public: boolean;
+    user_id: string | null;
+    owner: { username: string | null; display_name: string | null } | null;
+  } | null;
+  profiles: { username: string | null; display_name: string | null } | null;
+};
+
+const LIST_REPORT_SELECT =
+  "id, list_id, reason, details, status, created_at, resolved_at, resolution_action, resolution_note, lists(name, description, is_public, user_id, owner:profiles!lists_user_id_fkey(username, display_name)), profiles!list_reports_reporter_id_fkey(username, display_name)";
+
+function mapListReport(row: ListReportRow): ListReport {
+  return {
+    id: row.id,
+    listId: row.list_id,
+    // A deleted list cascades its reports away, so a null here means the row
+    // was read mid-delete rather than that the list was nameless.
+    listName: row.lists?.name ?? "Deleted list",
+    listDescription: row.lists?.description ?? null,
+    listIsPublic: row.lists?.is_public ?? false,
+    ownerId: row.lists?.user_id ?? null,
+    ownerName: row.lists?.owner?.username ?? row.lists?.owner?.display_name ?? "Anonymous",
+    reason: row.reason,
+    details: row.details,
+    reporterName: row.profiles?.username ?? row.profiles?.display_name ?? "Anonymous",
+    status: row.status,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at,
+    resolutionAction: row.resolution_action,
+    resolutionNote: row.resolution_note,
+  };
+}
+
+export async function fetchOpenListReports(client: SupabaseClient): Promise<ListReport[]> {
+  const { data, error } = await client
+    .from("list_reports")
+    .select(LIST_REPORT_SELECT)
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as ListReportRow[]).map(mapListReport);
+}
+
+export async function fetchHandledListReports(client: SupabaseClient): Promise<ListReport[]> {
+  const { data, error } = await client
+    .from("list_reports")
+    .select(LIST_REPORT_SELECT)
+    .neq("status", "open")
+    .order("resolved_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as ListReportRow[]).map(mapListReport);
+}
+
+export async function resolveListReport(
+  client: SupabaseClient,
+  reportId: string,
+  status: LocationReportStatus,
+  resolvedBy: string,
+  action: ResolutionAction,
+  note: string
+): Promise<void> {
+  const { error } = await client
+    .from("list_reports")
+    .update({
+      status,
+      resolved_by: resolvedBy,
+      resolved_at: new Date().toISOString(),
+      resolution_action: action,
+      resolution_note: note,
+    })
+    .eq("id", reportId);
+  if (error) throw error;
+}
+
 export async function resolveReviewReport(
   client: SupabaseClient,
   reportId: string,
@@ -307,15 +411,22 @@ export async function resolveReviewReport(
 }
 
 export async function fetchOpenReportsCount(client: SupabaseClient): Promise<number> {
-  const [locationReports, reviewReports, businessClaims] = await Promise.all([
+  const [locationReports, reviewReports, listReports, businessClaims] = await Promise.all([
     client.from("location_reports").select("*", { count: "exact", head: true }).eq("status", "open"),
     client.from("review_reports").select("*", { count: "exact", head: true }).eq("status", "open"),
+    client.from("list_reports").select("*", { count: "exact", head: true }).eq("status", "open"),
     client.from("business_claims").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
   if (locationReports.error) throw locationReports.error;
   if (reviewReports.error) throw reviewReports.error;
+  if (listReports.error) throw listReports.error;
   if (businessClaims.error) throw businessClaims.error;
-  return (locationReports.count ?? 0) + (reviewReports.count ?? 0) + (businessClaims.count ?? 0);
+  return (
+    (locationReports.count ?? 0) +
+    (reviewReports.count ?? 0) +
+    (listReports.count ?? 0) +
+    (businessClaims.count ?? 0)
+  );
 }
 
 export async function updateReviewStatus(

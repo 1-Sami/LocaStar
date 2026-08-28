@@ -106,6 +106,14 @@
     "lastDayTitle": "Sista dagen för {{name}}",
     "lastDayBody": "Du har sparat den här. Tryck för att se detaljerna."
   },
+  "safety": {
+    "blockUser": "Blockera",
+    "blockTitle": "Blockera {{name}}?",
+    "blockBody": "Du slutar direkt se deras recensioner, foton och listor, och de kan inte längre skicka förfrågningar eller dela med dig. Vi meddelar också våra moderatorer. Du kan ångra det under Inställningar › Blockerade användare.",
+    "blockConfirm": "Blockera och anmäl",
+    "reportListTitle": "Anmäl listan",
+    "reportListConfirm": "Tack — våra moderatorer tittar på listan."
+  },
   "tabs": {
     "home": "Hem",
     "search": "Sök",
@@ -661,6 +669,12 @@
     "rejectClaimNote": "Varför avslår du det?",
     "tabLocations": "Platser ({{count}})",
     "tabReviews": "Recensioner ({{count}})",
+    "tabLists": "Listor ({{count}})",
+    "listOwner": "Lista av {{name}}",
+    "reportedBy": "Anmäld av {{name}}",
+    "dismissListTitle": "Avfärda anmälan?",
+    "dismissListBody": "”{{list}}” får stå kvar som den är och anmälan stängs.",
+    "warnListBody": "De behåller ”{{list}}”, men får veta att den bröt mot reglerna.",
     "tabClaims": "Anspråk ({{count}})",
     "noOpenReports": "Inga öppna anmälningar. Allt är hanterat.",
     "reportsLoadFailed": "Anmälningarna kunde inte läsas in.",

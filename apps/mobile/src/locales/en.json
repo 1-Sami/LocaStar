@@ -106,6 +106,14 @@
     "lastDayTitle": "Last day for {{name}}",
     "lastDayBody": "You saved this. Tap to see the details."
   },
+  "safety": {
+    "blockUser": "Block",
+    "blockTitle": "Block {{name}}?",
+    "blockBody": "You will stop seeing their reviews, photos and lists straight away, and they will not be able to send you requests or share with you. We will also let our moderators know. You can undo this in Settings › Blocked users.",
+    "blockConfirm": "Block and report",
+    "reportListTitle": "Report this list",
+    "reportListConfirm": "Thanks — our moderators will take a look at this list."
+  },
   "tabs": {
     "home": "Home",
     "search": "Search",
@@ -661,6 +669,12 @@
     "rejectClaimNote": "Why are you rejecting it?",
     "tabLocations": "Locations ({{count}})",
     "tabReviews": "Reviews ({{count}})",
+    "tabLists": "Lists ({{count}})",
+    "listOwner": "List by {{name}}",
+    "reportedBy": "Reported by {{name}}",
+    "dismissListTitle": "Dismiss this report?",
+    "dismissListBody": "\"{{list}}\" stays as it is and the report is closed.",
+    "warnListBody": "They keep \"{{list}}\", but are told it broke the rules.",
     "tabClaims": "Claims ({{count}})",
     "noOpenReports": "No open reports. All caught up.",
     "reportsLoadFailed": "Reports could not be loaded.",

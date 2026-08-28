@@ -5,6 +5,10 @@ import {
   fetchOpenBusinessClaims,
   fetchProfile,
   fetchOpenLocationReports,
+  fetchOpenListReports,
+  fetchHandledListReports,
+  resolveListReport,
+  type ListReport,
   fetchOpenReviewReports,
   issueWarning,
   resolveBusinessClaim,
@@ -38,7 +42,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
-type Tab = 'locations' | 'reviews' | 'claims';
+type Tab = 'locations' | 'reviews' | 'lists' | 'claims';
 
 const RESOLUTION_LABEL_KEYS: Record<ResolutionAction, string> = {
   dismissed: 'admin.resolvedDismissed',
@@ -131,6 +135,8 @@ export default function AdminReportsScreen() {
   const [handledLocationReports, setHandledLocationReports] = useState<LocationReport[]>([]);
   const [openReviewReports, setOpenReviewReports] = useState<ReviewReport[]>([]);
   const [handledReviewReports, setHandledReviewReports] = useState<ReviewReport[]>([]);
+  const [openListReports, setOpenListReports] = useState<ListReport[]>([]);
+  const [handledListReports, setHandledListReports] = useState<ListReport[]>([]);
   const [openClaims, setOpenClaims] = useState<BusinessClaim[]>([]);
   const [handledClaims, setHandledClaims] = useState<BusinessClaim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,14 +180,27 @@ export default function AdminReportsScreen() {
       fetchHandledLocationReports(supabase),
       fetchOpenReviewReports(supabase),
       fetchHandledReviewReports(supabase),
+      fetchOpenListReports(supabase),
+      fetchHandledListReports(supabase),
       fetchOpenBusinessClaims(supabase),
       fetchHandledBusinessClaims(supabase),
     ])
-      .then(([openLocations, handledLocations, openReviews, handledReviews, openClaimsResult, handledClaimsResult]) => {
+      .then(([
+        openLocations,
+        handledLocations,
+        openReviews,
+        handledReviews,
+        openLists,
+        handledLists,
+        openClaimsResult,
+        handledClaimsResult,
+      ]) => {
         setOpenLocationReports(openLocations);
         setHandledLocationReports(handledLocations);
         setOpenReviewReports(openReviews);
         setHandledReviewReports(handledReviews);
+        setOpenListReports(openLists);
+        setHandledListReports(handledLists);
         setOpenClaims(openClaimsResult);
         setHandledClaims(handledClaimsResult);
         setLoadFailed(false);
@@ -427,6 +446,54 @@ export default function AdminReportsScreen() {
       },
     });
 
+  /* ------------------------------------------------------- list reports --- */
+
+  /*
+   * Dismiss or warn, and nothing else.
+   *
+   * The other queues can take their content down from here because a location
+   * or a review is fully described by the card. A list is not — it is a name
+   * over a set of places — so the delete stays on the list itself, where a
+   * moderator can see what they are removing first. Warning the owner is the
+   * proportionate action available here, and both land in the audit log by
+   * trigger either way.
+   */
+  const askResolveList = (report: ListReport, action: 'dismissed' | 'warned') =>
+    setPending({
+      reportId: report.id,
+      title:
+        action === 'warned'
+          ? t('admin.warnPerson', { name: report.ownerName })
+          : t('admin.dismissListTitle'),
+      consequence:
+        action === 'warned'
+          ? t('admin.warnListBody', { list: report.listName })
+          : t('admin.dismissListBody', { list: report.listName }),
+      noteLabel: action === 'warned' ? t('admin.warningNote') : t('admin.whyDismissing'),
+      confirmLabel: action === 'warned' ? t('admin.sendWarning') : t('admin.legendDismiss'),
+      destructive: false,
+      run: async (note) => {
+        if (!session) return;
+        if (action === 'warned' && report.ownerId) {
+          await issueWarning(supabase, {
+            userId: report.ownerId,
+            issuedBy: session.user.id,
+            reason: note,
+            targetType: 'list',
+            targetId: report.listId,
+          });
+        }
+        await resolveListReport(
+          supabase,
+          report.id,
+          action === 'warned' ? 'actioned' : 'dismissed',
+          session.user.id,
+          action,
+          note
+        );
+      },
+    });
+
   /* ----------------------------------------------------- business claims --- */
 
   // Claims used to resolve straight from a plain confirm dialog, so nothing
@@ -468,9 +535,21 @@ export default function AdminReportsScreen() {
   // If an admin's role is revoked while the claims tab is open, fall back.
   const activeTab: Tab = tab === 'claims' && !isAdmin ? 'locations' : tab;
   const openReports =
-    activeTab === 'locations' ? openLocationReports : activeTab === 'reviews' ? openReviewReports : openClaims;
+    activeTab === 'locations'
+      ? openLocationReports
+      : activeTab === 'reviews'
+        ? openReviewReports
+        : activeTab === 'lists'
+          ? openListReports
+          : openClaims;
   const handledReports =
-    activeTab === 'locations' ? handledLocationReports : activeTab === 'reviews' ? handledReviewReports : handledClaims;
+    activeTab === 'locations'
+      ? handledLocationReports
+      : activeTab === 'reviews'
+        ? handledReviewReports
+        : activeTab === 'lists'
+          ? handledListReports
+          : handledClaims;
 
   return (
     <ThemedView style={styles.container}>
@@ -491,6 +570,14 @@ export default function AdminReportsScreen() {
               setHandledExpanded(false);
             }}>
             <ThemedText type="smallBold">{t('admin.tabReviews', { count: openReviewReports.length })}</ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, tab === 'lists' && styles.tabActive]}
+            onPress={() => {
+              setTab('lists');
+              setHandledExpanded(false);
+            }}>
+            <ThemedText type="smallBold">{t('admin.tabLists', { count: openListReports.length })}</ThemedText>
           </Pressable>
           {isAdmin && (
             <Pressable
@@ -684,6 +771,57 @@ export default function AdminReportsScreen() {
                           {t('admin.legendRemove')}
                         </ThemedText>
                       </Pressable>
+                    </View>
+                  </ThemedView>
+                );
+              })
+            ) : activeTab === 'lists' ? (
+              openListReports.map((report) => {
+                const busy = busyId === report.id;
+                return (
+                  <ThemedView key={report.id} type="backgroundElement" style={styles.card}>
+                    <Pressable
+                      onPress={() => router.push({ pathname: '/lists/[id]', params: { id: report.listId } })}>
+                      <ThemedText type="smallBold">{report.listName}</ThemedText>
+                    </Pressable>
+                    {report.listDescription && (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {report.listDescription}
+                      </ThemedText>
+                    )}
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('admin.listOwner', { name: report.ownerName })}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('admin.reportedBy', { name: report.reporterName })} · {report.reason}
+                    </ThemedText>
+                    {report.details && (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {report.details}
+                      </ThemedText>
+                    )}
+                    {/* Dismiss and warn only. A list is deleted from the list
+                        itself, where a moderator can see what is in it before
+                        taking it down — see the moderator delete in 0069. */}
+                    <View style={styles.actionsRow}>
+                      <Pressable
+                        style={[styles.actionButton, styles.dismissButton]}
+                        disabled={busy}
+                        onPress={() => askResolveList(report, 'dismissed')}>
+                        <ThemedText type="smallBold" style={styles.actionButtonText}>
+                          {t('admin.legendDismiss')}
+                        </ThemedText>
+                      </Pressable>
+                      {report.ownerId && (
+                        <Pressable
+                          style={[styles.actionButton, styles.flagButton]}
+                          disabled={busy}
+                          onPress={() => askResolveList(report, 'warned')}>
+                          <ThemedText type="smallBold" style={styles.actionButtonText}>
+                            {t('admin.legendWarn')}
+                          </ThemedText>
+                        </Pressable>
+                      )}
                     </View>
                   </ThemedView>
                 );

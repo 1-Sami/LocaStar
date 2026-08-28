@@ -33,6 +33,8 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBlockAndReport } from '@/lib/block-and-report';
+import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { AddToListModal } from '@/components/add-to-list-modal';
 import { ClaimBusinessModal } from '@/components/claim-business-modal';
 import { LocationPhoto } from '@/components/location-photo';
@@ -199,7 +201,7 @@ export default function LocationDetailScreen() {
 
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+  const [allPhotos, setAllPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -211,6 +213,15 @@ export default function LocationDetailScreen() {
   const [myClaim, setMyClaim] = useState<BusinessClaim | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const { isBlocked } = useBlockedUsers();
+  const blockAndReport = useBlockAndReport();
+  /*
+   * Photos with a blocked uploader are filtered out here, at the single place
+   * everything else reads, rather than at each render site. The hero carousel,
+   * the gallery grid and the full-screen viewer all index into the same array
+   * — filtering later would have left the viewer paging to an index the grid
+   * no longer had.
+   */
   const [heroWidth, setHeroWidth] = useState(() => Math.min(Dimensions.get('window').width, MaxContentWidth));
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [galleryVisible, setGalleryVisible] = useState(false);
@@ -219,6 +230,7 @@ export default function LocationDetailScreen() {
   // while loading and when the place is missing, so a hook declared beside the
   // logic that uses it further down would be called conditionally.
   const [reportingPhoto, setReportingPhoto] = useState<GalleryPhoto | null>(null);
+  const photos = allPhotos.filter((photo) => !isBlocked(photo.uploaderId));
   const [viewerWidth, setViewerWidth] = useState(() => Dimensions.get('window').width);
   const heroScrollRef = useRef<ScrollView>(null);
   const viewerScrollRef = useRef<ScrollView>(null);
@@ -279,7 +291,7 @@ export default function LocationDetailScreen() {
           if (cancelled) return;
           setLocation(locationResult);
           setReviews(reviewsResult);
-          setPhotos(photosResult);
+          setAllPhotos(photosResult);
         })
         .catch((err) => {
           // fetchLocationById returns null when the row genuinely is not there
@@ -290,7 +302,7 @@ export default function LocationDetailScreen() {
           if (!cancelled) {
             setLocation(null);
             setReviews([]);
-            setPhotos([]);
+            setAllPhotos([]);
             setLoadFailed(true);
           }
         })
@@ -461,7 +473,7 @@ export default function LocationDetailScreen() {
     try {
       await setPhotoRemoved(supabase, currentPhotoRef, true);
       const refreshed = await fetchLocationPhotos(supabase, id, isModerator);
-      setPhotos(refreshed);
+      setAllPhotos(refreshed);
       // Close the viewer if that was the last photo, otherwise stay put and
       // let the next one slide into this index.
       setViewerIndex(refreshed.length === 0 ? null : Math.min(viewerIndex ?? 0, refreshed.length - 1));
@@ -485,7 +497,7 @@ export default function LocationDetailScreen() {
     if (!viewerPhoto || !id) return;
     try {
       await setPhotoRemoved(supabase, currentPhotoRef, false);
-      setPhotos(await fetchLocationPhotos(supabase, id, isModerator));
+      setAllPhotos(await fetchLocationPhotos(supabase, id, isModerator));
     } catch {
       // Same reasoning as the others here: RLS refusing is the expected
       // outcome for anyone who should not be doing this.
@@ -502,7 +514,7 @@ export default function LocationDetailScreen() {
     try {
       await makeCoverPhoto(supabase, id, viewerPhoto.photoId);
       const refreshed = await fetchLocationPhotos(supabase, id, isModerator);
-      setPhotos(refreshed);
+      setAllPhotos(refreshed);
       setViewerIndex(0);
       setActivePhotoIndex(0);
     } catch {
@@ -525,11 +537,50 @@ export default function LocationDetailScreen() {
   const hoursStatus = hasHours ? computeHoursStatus(location.hours!, t) : null;
   const todayKey = getTodayKey();
 
-  const sortedReviews = [...reviews].sort((a, b) => {
+  /*
+   * Blocked authors drop out here, before the sort, so a block empties their
+   * review off the screen on the tap rather than on the next load. The place's
+   * rating is deliberately left alone: it is an aggregate of what everyone
+   * thought, and quietly re-scoring a location per viewer would make the same
+   * page show different star counts to different people.
+   */
+  const visibleReviews = reviews.filter((review) => !isBlocked(review.user_id));
+
+  const sortedReviews = [...visibleReviews].sort((a, b) => {
     if (reviewSort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     if (reviewSort === 'highest') return b.rating - a.rating;
     return a.rating - b.rating;
   });
+
+  /*
+   * A photo hangs off either a review or the listing itself, and the report
+   * has to name whichever it is — a review photo reported as a location photo
+   * lands the moderator on the wrong thing.
+   */
+  const handleBlockPhotoUploader = async (photo: GalleryPhoto) => {
+    if (!session || !photo.uploaderId) return;
+    const closed = await blockAndReport(
+      photo.uploaderId,
+      photo.uploaderName,
+      photo.reviewId && photo.reviewPhotoId
+        ? { kind: 'reviewPhoto', reviewId: photo.reviewId, reviewPhotoId: photo.reviewPhotoId }
+        : { kind: 'location', locationId: location.id }
+    );
+    // The photo has just been filtered out from under the viewer, so leave it.
+    if (closed) setViewerIndex(null);
+  };
+
+  const handleBlockReviewAuthor = async (review: Review) => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    if (!review.user_id) return;
+    await blockAndReport(review.user_id, review.author_name, {
+      kind: 'review',
+      reviewId: review.id,
+    });
+  };
 
   const handleOpenLocationReport = () => {
     setMenuVisible(false);
@@ -1144,6 +1195,16 @@ export default function LocationDetailScreen() {
                           <Pressable onPress={() => handleOpenReviewReport(review.id)} hitSlop={8}>
                             <Ionicons name="flag-outline" size={14} color={theme.textSecondary} />
                           </Pressable>
+                          {/* Beside Report, because this is where someone
+                              looks when a review is the problem — and until
+                              now the only way to block anyone was to wait for
+                              them to send a friend request. An anonymised
+                              review has no author left to block. */}
+                          {review.user_id && (
+                            <Pressable onPress={() => handleBlockReviewAuthor(review)} hitSlop={8}>
+                              <Ionicons name="ban-outline" size={14} color={theme.textSecondary} />
+                            </Pressable>
+                          )}
                         </>
                       )}
                     </View>
@@ -1485,6 +1546,19 @@ export default function LocationDetailScreen() {
                   <Ionicons name="flag" size={14} color="#ffffff" />
                   <ThemedText type="smallBold" style={styles.reportPhotoText}>
                     {t('location.reportPhoto')}
+                  </ThemedText>
+                </Pressable>
+              )}
+              {/* Same pairing as on a review: whoever can report this photo
+                  can also stop seeing its uploader entirely. */}
+              {canReportCurrentPhoto && viewerPhoto?.uploaderId && (
+                <Pressable
+                  style={styles.reportPhotoButton}
+                  onPress={() => handleBlockPhotoUploader(viewerPhoto)}
+                  hitSlop={8}>
+                  <Ionicons name="ban" size={14} color="#ffffff" />
+                  <ThemedText type="smallBold" style={styles.reportPhotoText}>
+                    {t('safety.blockUser')}
                   </ThemedText>
                 </Pressable>
               )}

@@ -1,6 +1,5 @@
 import {
   acceptFriendRequest,
-  blockUser,
   fetchFriendships,
   removeFriendship,
   sendFriendRequest,
@@ -19,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
@@ -49,6 +49,7 @@ function FriendRow({
 export default function FriendsScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
+  const { block } = useBlockedUsers();
   const [friendships, setFriendships] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -116,7 +117,11 @@ export default function FriendsScreen() {
 
     setBusyId(friend.friendshipId);
     try {
-      await blockUser(supabase, session.user.id, friend.userId);
+      // Through the context rather than the API directly, so the block also
+      // takes their reviews, photos and lists off every other screen at the
+      // same moment — calling blockUser here left those visible until the
+      // next reload.
+      await block(friend.userId);
       // The block also clears the friendship row, so drop it locally too.
       setFriendships((current) => current.filter((f) => f.friendshipId !== friend.friendshipId));
     } finally {

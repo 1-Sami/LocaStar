@@ -7,6 +7,7 @@ import {
   fetchListShareRecipients,
   removeLocationFromList,
   renameList,
+  reportList,
   setListSaved,
   setListVisibility,
   shareList,
@@ -22,6 +23,8 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LocationPhoto } from '@/components/location-photo';
+import { ReportModal } from '@/components/report-modal';
+import { useBlockAndReport } from '@/lib/block-and-report';
 import { ShareModal } from '@/components/share-modal';
 import { StarRating } from '@/components/star-rating';
 import { SheetRoot } from '@/components/sheet-root';
@@ -82,7 +85,34 @@ export default function ListDetailScreen() {
    * list's real owner has loaded; once fetchListMeta resolves, the actual
    * owner id decides, overriding whatever the caller guessed.
    */
+  const [reportVisible, setReportVisible] = useState(false);
+  const blockAndReport = useBlockAndReport();
+
   const isOwner = meta ? meta.ownerId === session?.user?.id : null;
+
+  const handleOpenListReport = () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    setReportVisible(true);
+  };
+
+  const handleBlockListOwner = async () => {
+    if (!session) {
+      router.push('/sign-in');
+      return;
+    }
+    if (!meta?.ownerId) return;
+    const blocked = await blockAndReport(
+      meta.ownerId,
+      meta.ownerUsername ?? meta.ownerDisplayName,
+      { kind: 'list', listId: meta.id }
+    );
+    // Nothing left to look at once its author is blocked — the list itself is
+    // the thing that was objected to.
+    if (blocked) router.back();
+  };
   const isSharedView = isOwner === null ? shared === '1' : !isOwner;
 
   // Only meaningful on someone else's list — you can't "save" your own.
@@ -282,6 +312,27 @@ export default function ListDetailScreen() {
                   {!sameDay(meta.createdAt, meta.updatedAt) &&
                     t('listDetail.updatedSuffix', { date: formatListDate(meta.updatedAt) })}
                 </ThemedText>
+                {/* A list is somebody's words — a name and a description on a
+                    public screen — and until now it was the one kind of
+                    content with no way to complain about it and no way to
+                    stop seeing who wrote it. Hidden on your own list, where
+                    both would be meaningless. */}
+                {!isOwner && meta.ownerId && (
+                  <View style={styles.safetyRow}>
+                    <Pressable onPress={handleOpenListReport} hitSlop={8} style={styles.safetyAction}>
+                      <Ionicons name="flag-outline" size={14} color={theme.textSecondary} />
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {t('common.report')}
+                      </ThemedText>
+                    </Pressable>
+                    <Pressable onPress={handleBlockListOwner} hitSlop={8} style={styles.safetyAction}>
+                      <Ionicons name="ban-outline" size={14} color={theme.textSecondary} />
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {t('safety.blockUser')}
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             )}
             {loadFailed ? (
@@ -377,6 +428,25 @@ export default function ListDetailScreen() {
         title={t('listDetail.shareTitle')}
         successNoun={t('listDetail.shareSuccessNoun')}
         showNote={false}
+      />
+
+      {/* 'location' reasons rather than 'review': a list can genuinely be spam,
+          a duplicate, or wrongly named, which are claims about a thing rather
+          than about somebody's opinion. */}
+      <ReportModal
+        visible={reportVisible}
+        title={t('safety.reportListTitle')}
+        confirmationText={t('safety.reportListConfirm')}
+        onClose={() => setReportVisible(false)}
+        onSubmit={async (reason, details) => {
+          if (!session || !meta) return;
+          await reportList(supabase, {
+            listId: meta.id,
+            reporterId: session.user.id,
+            reason,
+            details,
+          });
+        }}
       />
 
       <Modal visible={renameVisible} animationType="slide" transparent onRequestClose={() => setRenameVisible(false)}>
@@ -505,6 +575,17 @@ const styles = StyleSheet.create({
   attribution: {
     gap: Spacing.half,
     marginBottom: Spacing.one,
+  },
+  safetyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.four,
+    marginTop: Spacing.one,
+  },
+  safetyAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   actionsRow: {
     flexDirection: 'row',

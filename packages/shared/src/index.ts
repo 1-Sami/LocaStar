@@ -146,6 +146,9 @@ export {
   fetchOpenReviewReports,
   fetchHandledReviewReports,
   resolveReviewReport,
+  fetchOpenListReports,
+  fetchHandledListReports,
+  resolveListReport,
   updateReviewStatus,
   fetchOpenReportsCount,
   issueBan,
@@ -165,6 +168,7 @@ export type {
   LocationStatus,
   ResolutionAction,
   ReviewReport,
+  ListReport,
   ReviewStatus,
   BanStatus,
   UserBan,
@@ -209,6 +213,7 @@ export {
   setListSaved,
   fetchListSavedState,
   fetchSavedLists,
+  reportList,
 } from "./api/lists";
 export type {
   LocationList,
@@ -218,6 +223,7 @@ export type {
   ListShareRecipient,
   PublicList,
   PublicListSort,
+  ListReportInput,
 } from "./api/lists";
 
 export {

@@ -16,6 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -36,6 +37,11 @@ export default function CommunityScreen() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [sort, setSort] = useState<PublicListSort>('newest');
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
+  const { isBlocked } = useBlockedUsers();
+
+  // Filtered at render rather than at fetch, so blocking someone from a list
+  // empties them out of this feed on the tap instead of on the next reload.
+  const visibleLists = lists.filter((list) => !isBlocked(list.ownerId));
 
   const reload = useCallback(() => {
     let cancelled = false;
@@ -102,12 +108,12 @@ export default function CommunityScreen() {
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 {t('common.somethingWentWrong')}
               </ThemedText>
-            ) : lists.length === 0 ? (
+            ) : visibleLists.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 {t('community.empty')}
               </ThemedText>
             ) : (
-              lists.map((list) => (
+              visibleLists.map((list) => (
                 <View key={list.id} style={styles.cardSlot}>
                   <ListCard
                     list={list}

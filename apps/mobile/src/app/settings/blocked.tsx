@@ -10,12 +10,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { confirmAsync } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
 
 export default function BlockedUsersScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
+  const { refresh: refreshBlocked } = useBlockedUsers();
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -54,6 +56,9 @@ export default function BlockedUsersScreen() {
     try {
       await unblockUser(supabase, entry.blockId);
       setBlocked((current) => current.filter((b) => b.blockId !== entry.blockId));
+      // The shared set is what every other screen filters on, so without this
+      // their content would stay hidden until the app was restarted.
+      refreshBlocked();
     } finally {
       setBusyId(null);
     }
