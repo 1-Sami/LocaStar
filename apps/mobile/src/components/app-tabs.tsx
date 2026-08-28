@@ -1,10 +1,14 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { useNotificationsBadge } from '@/lib/notifications-context';
 import { useThemeMode } from '@/lib/theme-mode-context';
+
+/** See the block in AppTabs. The figure is the one react-navigation#12908 reports as reliable. */
+const NATIVE_TABS_MOUNT_DELAY_MS = 1000;
 
 export default function AppTabs() {
   /*
@@ -21,6 +25,42 @@ export default function AppTabs() {
   const colors = Colors[resolvedScheme];
   const { unreadCount } = useNotificationsBadge();
   const { t } = useTranslation();
+
+  /*
+   * Hold the tab bar back for a moment on iOS, because mounting it too early
+   * lays it out wrong and nothing after that puts it right.
+   *
+   * This is an upstream bug, not ours: react-navigation#12908, "[iOS 26+]
+   * Native Bottom Tab Navigator labels truncated with ellipsis and
+   * mispositioned". Both halves of that title are what you see — the labels
+   * arrive as "Sea…", "Co…", "Prof…" *and* sit lower than they should, and
+   * both correct themselves the instant any tab is tapped. Nothing in this
+   * file causes it, which is why chasing it through font size, label
+   * wording, minimizeBehavior and backgroundColor all missed: the layout is
+   * simply computed before iOS 26 can measure the bar, and the first touch
+   * forces the re-measure that should have happened on its own.
+   *
+   * The delay is the workaround the issue documents, at the duration it
+   * gives. It is deliberately generous — the failure it prevents is visible
+   * on every launch, while the cost is hidden behind the splash overlay,
+   * which is still on screen for most of it.
+   *
+   * iOS only: Android has no Liquid Glass tab bar and no such bug, so it
+   * starts ready and pays nothing. Delete this the day the fix lands
+   * upstream — check the issue before assuming it is still needed.
+   */
+  const [tabsReady, setTabsReady] = useState(Platform.OS !== 'ios');
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const timer = setTimeout(() => setTabsReady(true), NATIVE_TABS_MOUNT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Matches the app background rather than the splash's teal, so the splash
+  // fades into the app's own colour instead of appearing to linger.
+  if (!tabsReady) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
 
   return (
     // "labeled" keeps every label on screen. The default is "auto", which on
