@@ -512,6 +512,8 @@ export type LocationReportInput = {
   details: string | null;
   /** Set to report one photo rather than the listing as a whole. */
   locationPhotoId?: string | null;
+  /** Filed by a block rather than chosen — see ReviewReportInput.fromBlock. */
+  fromBlock?: boolean;
 };
 
 export async function reportLocation(client: SupabaseClient, input: LocationReportInput): Promise<void> {
@@ -521,6 +523,7 @@ export async function reportLocation(client: SupabaseClient, input: LocationRepo
     reason: input.reason,
     details: input.details,
     location_photo_id: input.locationPhotoId ?? null,
+    from_block: input.fromBlock ?? false,
   });
   if (error) throw error;
 }

@@ -49,6 +49,7 @@
     "confirmationSent": "We sent a confirmation link to {{email}}. It can take a few minutes to arrive — check your spam and Promotions folders if you don't see it. Follow the link to finish creating your account, then come back and log in.",
     "consentAfter": ".",
     "consentBefore": "By signing up you agree to our ",
+    "consentCheckboxBefore": "I have read and agree to our ",
     "consentBetween": " and ",
     "email": "Email",
     "emailInvalid": "That doesn't look like an email address.",

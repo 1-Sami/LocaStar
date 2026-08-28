@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ export default function SignUpScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -53,7 +55,11 @@ export default function SignUpScreen() {
     typoSuggestion === null &&
     usernameIssue === null &&
     problem === null &&
-    password === confirmPassword;
+    password === confirmPassword &&
+    // Ticking the box is part of being able to submit, not a warning after the
+    // fact: App Review wants the terms agreed to before an account exists, and
+    // a link somebody may or may not have opened does not evidence that.
+    acceptedTerms;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -173,31 +179,57 @@ export default function SignUpScreen() {
           </ThemedText>
         )}
 
+        {/* Above the button, not below it: this has to be read before the
+            account is made, and the three keys are split because two links sit
+            inside the sentence. Swedish needs "våra ... och vår ..." where
+            English has "our ... and ...", so the joining words have to be
+            translatable separately — one string with placeholders could not
+            carry the links.
+
+            The box is the whole row, so the label is part of the tap target
+            rather than a 20pt square somebody has to hit exactly. The links
+            still open, because a Link inside a Pressable takes the touch. */}
+        <Pressable
+          style={styles.consentRow}
+          onPress={() => setAcceptedTerms((accepted) => !accepted)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: acceptedTerms }}>
+          <View
+            style={[
+              styles.checkbox,
+              { borderColor: acceptedTerms ? theme.primary : theme.fieldBorder },
+              acceptedTerms && { backgroundColor: theme.primary },
+            ]}>
+            {acceptedTerms && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+          </View>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.consentText}>
+            {/* First person, because a ticked box is a statement the person is
+                making. Sign-in keeps the passive "By logging in you agree",
+                which is the accurate thing to say where there is no box. */}
+            {t('auth.consentCheckboxBefore')}
+            <Link href={'/legal/terms' as never}>
+              <ThemedText type="linkPrimary">{t('nav.termsOfService')}</ThemedText>
+            </Link>
+            {t('auth.consentBetween')}
+            <Link href={'/legal/privacy' as never}>
+              <ThemedText type="linkPrimary">{t('nav.privacyPolicy')}</ThemedText>
+            </Link>
+            {t('auth.consentAfter')}
+          </ThemedText>
+        </Pressable>
+
         <Pressable
           onPress={onSubmit}
           disabled={submitting || !canSubmit}
-          style={[styles.submitButton, { backgroundColor: theme.primary }]}>
+          style={[
+            styles.submitButton,
+            { backgroundColor: theme.primary },
+            (submitting || !canSubmit) && styles.submitButtonDisabled,
+          ]}>
           <ThemedText type="smallBold" style={styles.submitButtonText}>
             {submitting ? t('auth.signingUp') : t('auth.signUp')}
           </ThemedText>
         </Pressable>
-
-        {/* Split into three keys rather than one, because two links sit inside
-            the sentence. Swedish needs "våra ... och vår ..." where English has
-            "our ... and ...", so the joining words have to be translatable
-            separately — a single string with placeholders could not carry the
-            links. */}
-        <ThemedText type="small" themeColor="textSecondary" style={styles.consentText}>
-          {t('auth.consentBefore')}
-          <Link href={'/legal/terms' as never}>
-            <ThemedText type="linkPrimary">{t('nav.termsOfService')}</ThemedText>
-          </Link>
-          {t('auth.consentBetween')}
-          <Link href={'/legal/privacy' as never}>
-            <ThemedText type="linkPrimary">{t('nav.privacyPolicy')}</ThemedText>
-          </Link>
-          {t('auth.consentAfter')}
-        </ThemedText>
 
         <View style={styles.switchRow}>
           <ThemedText type="small" themeColor="textSecondary">
@@ -243,9 +275,29 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#ffffff',
   },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: Spacing.half,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Nudged down so it sits on the first line of the sentence rather than
+    // above it, since the text wraps to two or three lines.
+    marginTop: 1,
+  },
   consentText: {
-    textAlign: 'center',
+    flex: 1,
     lineHeight: 20,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
   },
   switchRow: {
     flexDirection: 'row',

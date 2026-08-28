@@ -261,6 +261,8 @@ export type ListReportInput = {
   reporterId: string;
   reason: string;
   details: string | null;
+  /** Filed by a block rather than chosen — see ReviewReportInput.fromBlock. */
+  fromBlock?: boolean;
 };
 
 /**
@@ -277,6 +279,7 @@ export async function reportList(client: SupabaseClient, input: ListReportInput)
     reporter_id: input.reporterId,
     reason: input.reason,
     details: input.details,
+    from_block: input.fromBlock ?? false,
   });
   if (error) throw error;
 }

@@ -49,6 +49,7 @@
     "confirmationSent": "Vi har skickat en bekräftelselänk till {{email}}. Det kan ta några minuter innan den kommer fram — kolla skräppost och fliken Kampanjer om du inte ser den. Följ länken för att slutföra registreringen och logga sedan in.",
     "consentAfter": ".",
     "consentBefore": "Genom att skapa ett konto godkänner du våra ",
+    "consentCheckboxBefore": "Jag har läst och godkänner våra ",
     "consentBetween": " och vår ",
     "email": "E-post",
     "emailInvalid": "Det ser inte ut som en e-postadress.",

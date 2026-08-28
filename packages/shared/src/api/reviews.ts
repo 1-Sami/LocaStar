@@ -178,6 +178,14 @@ export type ReviewReportInput = {
   details: string | null;
   /** Set to report one of the review's photos rather than what it says. */
   reviewPhotoId?: string | null;
+  /**
+   * Filed because the reporter blocked the author, rather than chosen.
+   *
+   * Load-bearing: an ordinary report holds the review out of sight until a
+   * moderator judges it, and a block must never do that — one person's
+   * preference cannot take content off everybody's screen. See migration 0123.
+   */
+  fromBlock?: boolean;
 };
 
 export async function reportReview(client: SupabaseClient, input: ReviewReportInput): Promise<void> {
@@ -187,6 +195,7 @@ export async function reportReview(client: SupabaseClient, input: ReviewReportIn
     reason: input.reason,
     details: input.details,
     review_photo_id: input.reviewPhotoId ?? null,
+    from_block: input.fromBlock ?? false,
   });
   if (error) throw error;
 }

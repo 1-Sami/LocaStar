@@ -34,6 +34,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
 import { useAuth } from '@/lib/auth-context';
+import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { confirmAsync } from '@/lib/confirm';
 import { savedLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
@@ -164,6 +165,11 @@ export default function FavoritesScreen() {
   const [shares, setShares] = useState<LocationShare[]>([]);
   const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
   const [savedLists, setSavedLists] = useState<PublicList[]>([]);
+  const { isBlocked } = useBlockedUsers();
+  // You can save a list and block its owner afterwards. Without this it would
+  // sit on your own Saved shelf, which is the last place a block should leave
+  // somebody visible.
+  const visibleSavedLists = savedLists.filter((list) => !isBlocked(list.ownerId));
   const [loading, setLoading] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -345,11 +351,11 @@ export default function FavoritesScreen() {
               emptyMessage={t('saved.bucketListEmpty')}
             />
 
-            {savedLists.length > 0 && (
+            {visibleSavedLists.length > 0 && (
               <View style={styles.section} onLayout={handleSectionLayout('savedLists')}>
-                <SectionBadge label={t('saved.savedLists')} count={savedLists.length} backgroundColor="#2BA3A3" />
+                <SectionBadge label={t('saved.savedLists')} count={visibleSavedLists.length} backgroundColor="#2BA3A3" />
                 <View style={styles.savedListsGrid}>
-                  {savedLists.map((list) => (
+                  {visibleSavedLists.map((list) => (
                     <View key={list.id} style={styles.savedListSlot}>
                       <ListCard
                         list={list}

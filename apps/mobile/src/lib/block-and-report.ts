@@ -70,6 +70,7 @@ export function useBlockAndReport() {
           reporterId,
           reason: BLOCK_REPORT_REASON,
           details: BLOCK_REPORT_DETAILS,
+          fromBlock: true,
         });
       } else if (source.kind === 'reviewPhoto') {
         await reportReview(supabase, {
@@ -77,6 +78,7 @@ export function useBlockAndReport() {
           reporterId,
           reason: BLOCK_REPORT_REASON,
           details: BLOCK_REPORT_DETAILS,
+          fromBlock: true,
           reviewPhotoId: source.reviewPhotoId,
         });
       } else if (source.kind === 'location') {
@@ -85,6 +87,7 @@ export function useBlockAndReport() {
           reporterId,
           reason: BLOCK_REPORT_REASON,
           details: BLOCK_REPORT_DETAILS,
+          fromBlock: true,
         });
       } else {
         await reportList(supabase, {
@@ -92,6 +95,7 @@ export function useBlockAndReport() {
           reporterId,
           reason: BLOCK_REPORT_REASON,
           details: BLOCK_REPORT_DETAILS,
+          fromBlock: true,
         });
       }
     } catch (err) {
