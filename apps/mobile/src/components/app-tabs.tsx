@@ -1,5 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { useNotificationsBadge } from '@/lib/notifications-context';
@@ -28,41 +29,38 @@ export default function AppTabs() {
     // "Saved" to someone opening the app for the first time. iOS labels all tabs
     // regardless, so this also makes the two platforms agree.
     <NativeTabs
-      backgroundColor={colors.background}
+      /*
+       * iOS deliberately gets no colour here, and that is the whole fix for
+       * the truncated labels.
+       *
+       * expo-router builds *two* appearances for the bar. The scroll-edge one
+       * discards our colour and asks for the system's own glass — literally
+       * `backgroundColor: null, blurEffect: 'none'` in
+       * createScrollEdgeAppearanceFromOptions — while the standard one uses
+       * whatever is passed here. So the bar had two different looks, which is
+       * the light-to-dark flip visible between a fresh launch and a few taps
+       * later. The labels track it exactly: whole in the system appearance,
+       * cut to "Sea…" / "Co…" / "Prof…" in ours. Handing iOS 26's Liquid
+       * Glass bar an opaque colour is what makes it lay the items out short,
+       * so we stop handing it one and let it pick — which it already does
+       * correctly whenever the page sits at the scroll edge.
+       *
+       * Android keeps the colour. It has no Liquid Glass, no scroll-edge
+       * appearance and no such bug, and without this its bar falls back to
+       * the Material default instead of the app's own background.
+       */
+      backgroundColor={Platform.OS === 'ios' ? undefined : colors.background}
       indicatorColor={colors.backgroundElement}
       labelVisibilityMode="labeled"
       /*
-       * iOS 26 shrinks the tab bar while you scroll, and the labels go with
-       * it — on the Home screen, whose carousels are the first thing anyone
-       * touches, the bar arrived already minimised and read "Sea…", "Co…",
-       * "Prof…". Tapping a tab expanded it again, which is why it looked
-       * like the labels were failing to render rather than being squeezed.
-       * The default is 'automatic'; this is the opt-out, and it costs
-       * nothing on older iOS or on Android, where the prop is ignored.
+       * Stops iOS 26 shrinking the bar as the page scrolls. Kept for its own
+       * sake — a bar that collapses under a carousel is worse than one that
+       * doesn't — but note it was never the cause of the truncated labels,
+       * which is what it was first added to chase. The default is 'automatic';
+       * this is the opt-out, and it is ignored on older iOS and on Android.
        */
       minimizeBehavior="never"
-      /*
-       * An explicit 10pt, because iOS 26's floating tab bar is narrower than
-       * the old edge-to-edge one and the selected tab's capsule takes a bite
-       * out of what is left. Measured off a 390pt iPhone 13 screenshot: the
-       * four unselected tabs get about 52pt each, and the system was drawing
-       * the labels at roughly 12pt, so "Search" and "Profile" arrived as
-       * "Sea…" and "Prof…". 10pt is UIKit's own tab bar size, so this is
-       * asking for the standard rather than shrinking below it.
-       *
-       * `default` covers every state; `selected` only overlays the colour on
-       * top, so the size survives — see appendStyleToAppearance in
-       * expo-router's appearance.ios.
-       *
-       * "Community" is knowingly left too long: nine characters does not fit
-       * whatever the size, and the owner chose the honest word over one that
-       * fits (2026-08-27). It still shows as "Co…" on iOS 26. Don't shorten
-       * it without asking, and don't drop the font further to chase it.
-       */
-      labelStyle={{
-        default: { fontSize: 10 },
-        selected: { fontSize: 10, color: colors.text },
-      }}>
+      labelStyle={{ selected: { color: colors.text } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tabs.home')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
