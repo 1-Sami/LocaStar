@@ -430,11 +430,15 @@ export default function ListDetailScreen() {
         showNote={false}
       />
 
-      {/* 'location' reasons rather than 'review': a list can genuinely be spam,
-          a duplicate, or wrongly named, which are claims about a thing rather
-          than about somebody's opinion. */}
+      {/* The review reasons, not the location ones. A list has no opening
+          hours and cannot be permanently closed, so "Doesn't exist", "Incorrect
+          information" and "Duplicate of another listing" are all claims about a
+          place that a moderator could only ever dismiss here. What is left —
+          spam, inappropriate content, other — is the whole of what can actually
+          be wrong with somebody's list. */}
       <ReportModal
         visible={reportVisible}
+        target="review"
         title={t('safety.reportListTitle')}
         confirmationText={t('safety.reportListConfirm')}
         onClose={() => setReportVisible(false)}
