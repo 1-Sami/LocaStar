@@ -100,7 +100,21 @@ export default function AppTabs() {
        * this is the opt-out, and it is ignored on older iOS and on Android.
        */
       minimizeBehavior="never"
-      labelStyle={{ selected: { color: colors.text } }}>
+      /*
+       * Both states named explicitly, for both icons and labels.
+       *
+       * Only the selected label had a colour before, so everything else took
+       * whatever the system chose. On iOS that is a light grey picked for
+       * Apple's own translucent bar, and against a light background it came
+       * out barely visible — reported on an S10, an iPhone 13 and a Flip 3.
+       * Naming all four states keeps the bar legible on either theme instead
+       * of depending on what the platform happens to default to.
+       */
+      iconColor={{ default: colors.textSecondary, selected: colors.primary }}
+      labelStyle={{
+        default: { color: colors.textSecondary },
+        selected: { color: colors.text },
+      }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tabs.home')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />

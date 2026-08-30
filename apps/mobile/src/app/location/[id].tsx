@@ -2087,7 +2087,10 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 30,
     fontWeight: '700',
-    color: '#ffffff',
+    // No colour here on purpose. This sits on the page background, not on a
+    // button or a photo, so a hardcoded white made the rating invisible in
+    // light mode — white on white, with the stars beside it still showing.
+    // ThemedText already falls back to theme.text, which is right in both.
   },
   breakdown: {
     flex: 1,
