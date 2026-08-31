@@ -186,12 +186,10 @@ if (postForm && !hasSession) return new Response(null, { status: 403 });
 
 let viewerId: string | null = null;
 /*
- * Moderator tools, drawn in their own panel rather than woven into the page.
- *
- * The gallery is a background-image mosaic with its own lightbox script, and
- * the review list is the markup Google reads. Hanging buttons off both would
- * risk the two things on this page that must not break, to save a moderator
- * one glance down the page. A separate panel touches neither.
+ * Moderator controls sit on the thing they act on, the way the app does it:
+ * on the photo inside the viewer, and on the review itself. The mosaic only
+ * ever draws four tiles, so the viewer is the only place every photo can be
+ * reached — which is exactly where the app puts its delete button too.
  *
  * Only a moderator is ever sent any of it, and RLS decides every action
  * regardless — the flag chooses what to draw, not what is permitted.
@@ -270,6 +268,26 @@ if (hasSession) {
     inListCount = myLists.filter((l) => l.has).length;
   }
 }
+
+/*
+ * What the viewer's buttons need to know about whichever photo is on screen,
+ * keyed by the URL the viewer already pages through. Keying by URL rather than
+ * by index means the lookup does not have to know whether the open set is the
+ * place's photos or one review's.
+ */
+const modByUrl = Object.fromEntries(
+  modPhotos.map((photo) => [
+    photo.url,
+    { p: photo.photoId, r: photo.reviewPhotoId, x: photo.removedAt !== null },
+  ])
+);
+
+/*
+ * Photos in the trash are filtered out of every gallery set, so the viewer
+ * cannot reach them and there would be no way back. They get their own small
+ * strip, and only when there is something in it.
+ */
+const modTrash = modPhotos.filter((photo) => photo.removedAt !== null);
 
 const backHere = p(`/location/${location.id}`);
 const saved = Astro.url.searchParams.get('saved');
@@ -482,6 +500,15 @@ const seasonLabel =
                         <a class="mono report" href={`/report?review=${review.id}&location=${location.id}`}>
                           REPORT
                         </a>
+                        {isModerator && (
+                          <form class="mod-inline" method="POST">
+                            <input type="hidden" name="intent" value="review" />
+                            <input type="hidden" name="reviewId" value={review.id} />
+                            <button class="mono mod-remove" type="submit">
+                              {t('loc.modRemoveReview')}
+                            </button>
+                          </form>
+                        )}
                       </div>
                       {review.title && <strong class="review-title">{review.title}</strong>}
                       {review.body && <p class="review-text">{review.body}</p>}
@@ -593,6 +620,8 @@ const seasonLabel =
 
             {!viewerId && <span class="note">{t('loc.needAccount')}</span>}
 
+            {modError && <span class="note">{modError}</span>}
+            {moderated && !modError && <span class="note done">{t('loc.modDone')}</span>}
             {saved === 'favorite' && <span class="note done">{t('loc.doneFavourite')}</span>}
             {saved === 'bucket_list' && <span class="note done">{t('loc.doneBookmark')}</span>}
             {saved === 'add-to-list' && <span class="note done">{t('loc.doneList')}</span>}
@@ -608,96 +637,6 @@ const seasonLabel =
         </div>
       </aside>
     </div>
-
-    {
-      isModerator && (
-        <section class="wrap modpanel">
-          <div class="mod-head">
-            <p class="mono kicker">{t('mod.kicker')}</p>
-            <h2>{t('loc.modTitle')}</h2>
-            <p class="sub">{t('loc.modSub')}</p>
-          </div>
-
-          {modError && <p class="mod-error">{modError}</p>}
-          {moderated && !modError && <p class="mod-ok">{t('loc.modDone')}</p>}
-
-          <h3 class="mod-sub">{t('loc.modPhotos')}</h3>
-          {modPhotos.length === 0 ? (
-            <p class="sub">{t('loc.modNoPhotos')}</p>
-          ) : (
-            <ul class="mod-photos">
-              {modPhotos.map((photo, index) => (
-                <li class:list={['mod-photo', { gone: photo.removedAt !== null }]}>
-                  <span class="mod-thumb" style={`background-image:url("${photo.url}")`} />
-                  <div class="mod-photo-meta">
-                    <span class="mono mod-index">{`#${index + 1}`}</span>
-                    <span class="mod-by">{photo.uploaderName ?? t('loc.modNobody')}</span>
-                    {photo.removedAt !== null && <span class="mono mod-tag">{t('loc.modRemoved')}</span>}
-                    {photo.reviewId !== null && <span class="mono mod-tag soft">{t('loc.modFromReview')}</span>}
-                  </div>
-                  <div class="mod-actions">
-                    {/*
-                      Cover is offered only for a photo the place owns. A review
-                      photo belongs to its review, and promoting one would put a
-                      picture on the place that its author could delete out from
-                      under it.
-                    */}
-                    {photo.photoId && photo.removedAt === null && (
-                      <form method="POST">
-                        <input type="hidden" name="intent" value="cover" />
-                        <input type="hidden" name="photoId" value={photo.photoId} />
-                        <button class="mod-btn" type="submit">{t('loc.modMakeCover')}</button>
-                      </form>
-                    )}
-                    <form method="POST">
-                      <input type="hidden" name="intent" value="photo" />
-                      <input type="hidden" name="photoId" value={photo.photoId ?? ''} />
-                      <input type="hidden" name="reviewPhotoId" value={photo.reviewPhotoId ?? ''} />
-                      <input type="hidden" name="removed" value={photo.removedAt === null ? '1' : '0'} />
-                      <button class:list={['mod-btn', { danger: photo.removedAt === null }]} type="submit">
-                        {photo.removedAt === null ? t('loc.modRemovePhoto') : t('loc.modRestorePhoto')}
-                      </button>
-                    </form>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <h3 class="mod-sub">{t('loc.modReviews')}</h3>
-          {reviews.length === 0 ? (
-            <p class="sub">{t('loc.modNoReviews')}</p>
-          ) : (
-            <ul class="mod-reviews">
-              {reviews.map((review) => (
-                <li class="mod-review">
-                  <div class="mod-review-body">
-                    <span class="mod-by">{review.author_name}</span>
-                    <span class="mono mod-index">{`★ ${review.rating}`}</span>
-                    <p class="mod-quote">{review.title ?? review.body ?? t('loc.modNoText')}</p>
-                  </div>
-                  <form method="POST">
-                    <input type="hidden" name="intent" value="review" />
-                    <input type="hidden" name="reviewId" value={review.id} />
-                    <button class="mod-btn danger" type="submit">{t('loc.modRemoveReview')}</button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/*
-            Restoring a removed review is not here. fetchReviews only ever
-            returns visible ones, so a review taken down stops appearing on this
-            page at all — it is put back from the report queue, which is the
-            screen that already lists removed content.
-          */}
-          <p class="sub mod-foot">
-            <a href={p('/admin/reports')}>{t('loc.modQueue')}</a>
-          </p>
-        </section>
-      )
-    }
 
     {
       nearby.length > 0 && (
@@ -742,7 +681,114 @@ const seasonLabel =
     <img class="gallery-image" alt="" />
     <button class="gallery-nav next" type="button" data-gallery-step="1" aria-label={t('loc.nextPhoto')}>›</button>
     <span class="mono gallery-count" data-gallery-count></span>
+    {
+      isModerator && (
+        <div class="gallery-mod" data-gallery-mod data-restore-label={t('loc.modRestorePhoto')}>
+          {/*
+            Cover is offered only for a photo the place owns. A review photo
+            belongs to its review, and promoting one would put a picture on the
+            place that its author could delete out from under it — so the
+            script hides this form rather than letting it fail.
+          */}
+          <form method="POST" data-mod-cover hidden>
+            <input type="hidden" name="intent" value="cover" />
+            <input type="hidden" name="photoId" value="" data-mod-cover-id />
+            <button class="gallery-mod-btn" type="submit">{t('loc.modMakeCover')}</button>
+          </form>
+          <form method="POST">
+            <input type="hidden" name="intent" value="photo" />
+            <input type="hidden" name="photoId" value="" data-mod-photo-id />
+            <input type="hidden" name="reviewPhotoId" value="" data-mod-review-photo-id />
+            <input type="hidden" name="removed" value="1" data-mod-removed />
+            <button class="gallery-mod-btn danger" type="submit" data-mod-toggle>
+              {t('loc.modRemovePhoto')}
+            </button>
+          </form>
+        </div>
+      )
+    }
   </div>
+
+  {
+    /* What the viewer's buttons need about the photo on screen. Moderators only. */
+    isModerator && (
+      <script type="application/json" data-mod-photos set:html={JSON.stringify(modByUrl)} />
+    )
+  }
+
+{
+  isModerator && (
+    <script is:inline>
+      (function () {
+        /*
+         * Point the viewer's buttons at whichever photo is on screen. Called
+         * by the gallery script's show(), so it follows paging, and it does
+         * not matter whether the open set is the place's photos or one
+         * review's — the lookup is keyed by URL.
+         */
+        var block = document.querySelector('[data-mod-photos]');
+        var bar = document.querySelector('[data-gallery-mod]');
+        if (!block || !bar) return;
+
+        var byUrl = {};
+        try {
+          byUrl = JSON.parse(block.textContent || '{}');
+        } catch (error) {
+          return;
+        }
+
+        var coverForm = bar.querySelector('[data-mod-cover]');
+        var coverId = bar.querySelector('[data-mod-cover-id]');
+        var photoId = bar.querySelector('[data-mod-photo-id]');
+        var reviewPhotoId = bar.querySelector('[data-mod-review-photo-id]');
+        var removed = bar.querySelector('[data-mod-removed]');
+        var toggle = bar.querySelector('[data-mod-toggle]');
+        var removeLabel = toggle.textContent.trim();
+        var restoreLabel = bar.getAttribute('data-restore-label') || removeLabel;
+
+        window.__locastarModPhoto = function (url) {
+          var photo = byUrl[url];
+          /* A photo with no row behind it is not something to act on. */
+          bar.hidden = !photo;
+          if (!photo) return;
+
+          photoId.value = photo.p || '';
+          reviewPhotoId.value = photo.r || '';
+          removed.value = photo.x ? '0' : '1';
+          toggle.textContent = photo.x ? restoreLabel : removeLabel;
+
+          /* Only a photo the place itself owns can become the cover. */
+          coverForm.hidden = !photo.p || photo.x;
+          coverId.value = photo.p || '';
+        };
+      })();
+    </script>
+  )
+}
+
+
+  {
+    isModerator && modTrash.length > 0 && (
+      <section class="wrap modtrash">
+        <h2 class="mono modtrash-head">{t('loc.modTrash')}</h2>
+        <ul class="modtrash-list">
+          {modTrash.map((photo) => (
+            <li class="modtrash-item">
+              <span class="modtrash-thumb" style={`background-image:url("${photo.url}")`} />
+              <span class="modtrash-by">{photo.uploaderName ?? t('loc.modNobody')}</span>
+              <form method="POST">
+                <input type="hidden" name="intent" value="photo" />
+                <input type="hidden" name="photoId" value={photo.photoId ?? ''} />
+                <input type="hidden" name="reviewPhotoId" value={photo.reviewPhotoId ?? ''} />
+                <input type="hidden" name="removed" value="0" />
+                <button class="mono mod-remove" type="submit">{t('loc.modRestorePhoto')}</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
 
   </main>
 
@@ -804,6 +850,8 @@ const seasonLabel =
       image.src = urls[at];
       counter.textContent = urls.length > 1 ? at + 1 + ' / ' + urls.length : '';
       overlay.classList.toggle('single', urls.length < 2);
+      /* Moderator buttons, when the page drew any, follow the photo on screen. */
+      if (window.__locastarModPhoto) window.__locastarModPhoto(urls[at]);
     }
 
     function open(name, index) {
@@ -1600,106 +1648,74 @@ const seasonLabel =
     }
   }
 
-  /* ------------------------------------------------------- moderator tools --- */
-  /* Set apart from the page on purpose. A moderator reading down a place page
-     should be able to tell at a glance where the public page stops and the
-     buttons that change it begin — the accent rule is that line. */
-  .modpanel {
-    margin-block: 56px 8px;
-    /* padding-block, not the shorthand: .wrap supplies the page gutter through
-       padding-inline, and a shorthand here silently zeroed it — the panel ran
-       edge to edge while the rest of the page stayed inset. */
-    padding-block: 26px 30px;
-    border-top: 2px solid var(--accent);
-    border-bottom: 1px solid var(--hairline);
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  /* --------------------------------------------------- moderator controls --- */
+  /* On the thing they act on, not gathered into a list somewhere else. */
+  .mod-inline { display: inline; margin: 0; }
+  .mod-remove {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-42);
+    cursor: pointer;
   }
-  .mod-head { display: flex; flex-direction: column; gap: 8px; }
-  .mod-head .kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); margin: 0; }
-  .mod-head h2 { margin: 0; font-size: 26px; }
-  .modpanel .sub { margin: 0; color: var(--text-55); max-width: 62ch; font-size: 14px; }
-  .mod-sub {
-    margin: 6px 0 0;
-    font-size: 12px;
+  .mod-remove:hover { color: var(--accent); }
+
+  /* The viewer's buttons, sat with the close button rather than over the
+     picture — the photo is the thing being judged and should stay unobscured. */
+  /* Top left, opposite the close button. The bottom centre already carries
+     the photo counter, and the first attempt sat straight on top of it. */
+  .gallery-mod {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    display: flex;
+    gap: 10px;
+    z-index: 2;
+  }
+  .gallery-mod form { margin: 0; }
+  .gallery-mod-btn {
+    font: inherit;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .gallery-mod-btn:hover { border-color: #ffffff; }
+  .gallery-mod-btn.danger:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Only drawn when something is actually in the trash. */
+  .modtrash {
+    margin-block: 8px 40px;
+    padding-block: 18px;
+    border-top: 1px solid var(--hairline);
+  }
+  .modtrash-head {
+    margin: 0 0 12px;
+    font-size: 11px;
+    font-weight: 400;
     letter-spacing: .12em;
     text-transform: uppercase;
     color: var(--text-42);
   }
-  .mod-ok { margin: 0; color: var(--ok); font-size: 14px; }
-  .mod-error { margin: 0; color: var(--accent); font-size: 14px; }
-
-  .mod-photos,
-  .mod-reviews { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-  .mod-photo,
-  .mod-review {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--hairline);
-  }
-  .mod-photo:last-child,
-  .mod-review:last-child { border-bottom: 0; }
-  /* A photo in the trash still has to be recognisable — it is the picture the
-     moderator is deciding whether to bring back — so it is dimmed, not hidden. */
-  .mod-photo.gone .mod-thumb { opacity: .38; }
-  .mod-photo.gone .mod-by { color: var(--text-42); }
-
-  .mod-thumb {
-    flex: none;
-    width: 68px;
-    height: 52px;
-    border-radius: 6px;
+  .modtrash-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 18px; }
+  .modtrash-item { display: flex; align-items: center; gap: 10px; }
+  .modtrash-thumb {
+    width: 52px;
+    height: 40px;
+    border-radius: 5px;
     background-color: var(--surface-alt);
     background-size: cover;
     background-position: center;
+    opacity: .45;
   }
-  .mod-photo-meta,
-  .mod-review-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 10px;
-  }
-  .mod-index { font-size: 11px; color: var(--text-42); }
-  .mod-by { font-size: 14px; }
-  .mod-tag { font-size: 10px; letter-spacing: .1em; color: var(--accent); }
-  .mod-tag.soft { color: var(--text-42); }
-  .mod-quote {
-    flex-basis: 100%;
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-55);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  .mod-actions { display: flex; gap: 8px; flex: none; }
-  .mod-btn {
-    font: inherit;
-    font-size: 13px;
-    padding: 7px 13px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .mod-btn:hover { border-color: var(--brand-light); color: var(--brand-light); }
-  .mod-btn.danger:hover { border-color: var(--accent); color: var(--accent); }
-  .mod-foot { margin-top: 4px; }
-  .mod-foot a { color: var(--link); }
-
-  @media (max-width: 620px) {
-    .mod-photo,
-    .mod-review { flex-wrap: wrap; }
-    .mod-actions { width: 100%; }
-  }
+  .modtrash-by { font-size: 13px; color: var(--text-55); }
+  .modtrash-item form { margin: 0; }
 </style>
