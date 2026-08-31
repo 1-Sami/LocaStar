@@ -15,6 +15,7 @@ import {
   updateLocationStatus,
   updateReviewStatus,
 } from '@locastar/shared';
+import AdminNav from '../../components/AdminNav.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
@@ -131,6 +132,8 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   <SiteHeader />
 
   <main class="wrap">
+    <AdminNav current="reports" isAdmin={isAdmin} />
+
     <header class="head">
       <p class="mono kicker">{t('mod.kicker')}</p>
       <h1>{t('mod.title')}</h1>

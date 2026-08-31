@@ -1,0 +1,126 @@
+---
+import { fetchFeedback, fetchProfile } from '@locastar/shared';
+import AdminNav from '../../components/AdminNav.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
+import { longDate } from '../../lib/format';
+import { currentUser } from '../../lib/auth';
+
+/*
+ * What people have said about the app, on a screen wide enough to read it.
+ *
+ * Read-only on purpose. Feedback is not a queue — there is nothing to resolve,
+ * no state to move it through, and the useful action is usually a change to
+ * the app rather than a click here.
+ *
+ * Admin rather than moderator, matching the app: a superuser moderates
+ * content, they do not need the product suggestions. RLS says the same, so
+ * this check only decides whether to render the page.
+ */
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect(p('/auth/sign-in'));
+
+const profile = await fetchProfile(supabase, user.id).catch(() => null);
+if ((profile?.role ?? 'user') !== 'admin') return Astro.redirect(p('/account'));
+
+const entries = await fetchFeedback(supabase).catch(() => []);
+
+/*
+ * Grouped by what people asked for, because the same request arriving five
+ * times is the signal — a flat list by date buries it.
+ */
+const groups = [
+  { key: 'feature_request', label: t('mod.fbFeature') },
+  { key: 'feature_removal', label: t('mod.fbRemoval') },
+  { key: 'general', label: t('mod.fbGeneral') },
+].map((group) => ({
+  ...group,
+  items: entries.filter((entry) => entry.category === group.key),
+}));
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base title={t('mod.fbTitle')} description={t('mod.fbSubtitle')} canonical={`${origin}/admin/feedback`}>
+  <SiteHeader />
+
+  <main class="wrap">
+    <AdminNav current="feedback" isAdmin={true} />
+
+    <header class="head">
+      <p class="mono kicker">{t('mod.kicker')}</p>
+      <h1>{t('mod.fbTitle')}</h1>
+      <p class="sub">{t('mod.fbSubtitle')}</p>
+    </header>
+
+    {entries.length === 0 ? (
+      <p class="empty">{t('mod.fbEmpty')}</p>
+    ) : (
+      <>
+        <p class="mono total">{t('mod.fbCount', { count: String(entries.length) })}</p>
+        {groups.map((group) =>
+          group.items.length === 0 ? null : (
+            <section class="group">
+              <h2>{group.label} <span class="mono n">{group.items.length}</span></h2>
+              <ul class="items">
+                {group.items.map((entry) => (
+                  <li class="item">
+                    <p class="message">{entry.message}</p>
+                    <p class="mono meta">
+                      {longDate(entry.createdAt, lang)} · {entry.platform} · v{entry.appRelease}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        )}
+      </>
+    )}
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 40px var(--gutter) 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .head { display: flex; flex-direction: column; gap: 10px; }
+  .kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); margin: 0; }
+  h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.05; }
+  .sub { margin: 0; color: var(--text-70); max-width: 60ch; }
+  .empty { color: var(--text-55); margin: 0; }
+  .total { margin: 0; font-size: 11px; letter-spacing: .1em; color: var(--text-42); }
+
+  .group { display: flex; flex-direction: column; gap: 14px; }
+  .group h2 { margin: 0; font-size: 18px; display: flex; align-items: baseline; gap: 8px; }
+  .n { font-size: 12px; color: var(--text-42); }
+
+  .items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .item {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  /* Somebody's own words, so they get the room and the weight. */
+  .message { margin: 0; color: var(--text); white-space: pre-wrap; }
+  .meta { margin: 0; font-size: 11px; letter-spacing: .06em; color: var(--text-42); }
+</style>

@@ -1,0 +1,179 @@
+---
+import { fetchCrashReports, fetchProfile } from '@locastar/shared';
+import AdminNav from '../../components/AdminNav.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
+import { currentUser } from '../../lib/auth';
+
+/*
+ * Where the app broke, and on which build.
+ *
+ * A stack trace on a phone is unreadable, which is most of the reason this
+ * page exists. Read-only: a crash is a fact, not a task, and nothing here
+ * resolves it — the fix is a release.
+ *
+ * Grouped by message rather than listed by time, because twenty copies of one
+ * fault is one fault, and a flat list makes that look like twenty problems.
+ */
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect(p('/auth/sign-in'));
+
+const profile = await fetchProfile(supabase, user.id).catch(() => null);
+if ((profile?.role ?? 'user') !== 'admin') return Astro.redirect(p('/account'));
+
+const reports = await fetchCrashReports(supabase).catch(() => []);
+
+type Group = {
+  message: string;
+  count: number;
+  newest: string;
+  releases: Set<string>;
+  platforms: Set<string>;
+  routes: Set<string>;
+  fatal: boolean;
+  stack: string | null;
+};
+
+const byMessage = new Map<string, Group>();
+for (const report of reports) {
+  const existing = byMessage.get(report.message);
+  if (existing) {
+    existing.count += 1;
+    if (report.createdAt > existing.newest) existing.newest = report.createdAt;
+    existing.releases.add(report.appRelease);
+    existing.platforms.add(report.platform);
+    if (report.route) existing.routes.add(report.route);
+    existing.fatal = existing.fatal || report.isFatal;
+    if (!existing.stack && report.stack) existing.stack = report.stack;
+  } else {
+    byMessage.set(report.message, {
+      message: report.message,
+      count: 1,
+      newest: report.createdAt,
+      releases: new Set([report.appRelease]),
+      platforms: new Set([report.platform]),
+      routes: new Set(report.route ? [report.route] : []),
+      fatal: report.isFatal,
+      stack: report.stack,
+    });
+  }
+}
+
+// Most frequent first: how often something happens is the whole triage.
+const groups = [...byMessage.values()].sort((a, b) => b.count - a.count);
+
+const relative = (iso: string) => {
+  const hours = Math.round((Date.now() - new Date(iso).getTime()) / 3_600_000);
+  if (hours < 1) return t('mod.crJustNow');
+  if (hours < 24) return t('mod.crHours', { count: String(hours) });
+  return t('mod.crDays', { count: String(Math.round(hours / 24)) });
+};
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base title={t('mod.crTitle')} description={t('mod.crSubtitle')} canonical={`${origin}/admin/crashes`}>
+  <SiteHeader />
+
+  <main class="wrap">
+    <AdminNav current="crashes" isAdmin={true} />
+
+    <header class="head">
+      <p class="mono kicker">{t('mod.kicker')}</p>
+      <h1>{t('mod.crTitle')}</h1>
+      <p class="sub">{t('mod.crSubtitle')}</p>
+    </header>
+
+    {groups.length === 0 ? (
+      <p class="empty">{t('mod.crEmpty')}</p>
+    ) : (
+      <ul class="items">
+        {groups.map((group) => (
+          <li class="item">
+            <div class="item-head">
+              <p class="message">{group.message}</p>
+              <span class:list={['mono badge', { fatal: group.fatal }]}>
+                {group.count}×
+              </span>
+            </div>
+            <p class="mono meta">
+              {relative(group.newest)} · {[...group.platforms].join(', ')} · v{[...group.releases].join(', v')}
+              {group.routes.size > 0 && <> · {[...group.routes].join(', ')}</>}
+            </p>
+            {group.stack && (
+              <details>
+                <summary>{t('mod.crStack')}</summary>
+                <pre>{group.stack}</pre>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    )}
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px var(--gutter) 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .head { display: flex; flex-direction: column; gap: 10px; }
+  .kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); margin: 0; }
+  h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.05; }
+  .sub { margin: 0; color: var(--text-70); max-width: 60ch; }
+  .empty { color: var(--text-55); margin: 0; }
+
+  .items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .item {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+  .message { margin: 0; color: var(--text); font-weight: 600; }
+  .badge {
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--surface-alt);
+    color: var(--text-55);
+  }
+  /* Red only for the ones that took the app down, so frequency and severity
+     are two separate readings rather than one blurred alarm. */
+  .badge.fatal { background: rgba(224, 82, 82, .14); color: #f09a9a; }
+  .meta { margin: 0; font-size: 11px; letter-spacing: .06em; color: var(--text-42); }
+
+  summary { cursor: pointer; font-size: 13px; color: var(--text-55); }
+  summary:hover { color: var(--link); }
+  pre {
+    margin: 10px 0 0;
+    padding: 14px;
+    background: var(--page);
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-70);
+  }
+</style>

@@ -1,0 +1,56 @@
+---
+import { useTranslations, localePath } from '../i18n/ui';
+
+/*
+ * Moving between the admin screens without going back through the account page.
+ *
+ * Feedback and crashes are admin-only, matching the app, so a superuser is
+ * shown the reports link alone rather than links that would redirect them
+ * straight back out.
+ */
+interface Props {
+  current: 'reports' | 'feedback' | 'crashes';
+  isAdmin: boolean;
+}
+
+const { current, isAdmin } = Astro.props;
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
+const links = [
+  { key: 'reports', href: '/admin/reports', label: t('mod.navReports'), adminOnly: false },
+  { key: 'feedback', href: '/admin/feedback', label: t('mod.navFeedback'), adminOnly: true },
+  { key: 'crashes', href: '/admin/crashes', label: t('mod.navCrashes'), adminOnly: true },
+].filter((link) => isAdmin || !link.adminOnly);
+---
+
+<nav class="admin-nav" aria-label={t('mod.navLabel')}>
+  {links.map((link) => (
+    <a
+      href={p(link.href)}
+      class:list={['link', { on: current === link.key }]}
+      aria-current={current === link.key ? 'page' : undefined}>
+      {link.label}
+    </a>
+  ))}
+</nav>
+
+<style>
+  .admin-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .link {
+    font-size: 13px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-42);
+    text-decoration: none;
+  }
+  .link:hover { color: var(--text-70); }
+  .link.on { color: var(--accent); }
+</style>
