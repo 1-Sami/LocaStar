@@ -15,7 +15,7 @@ export const prerender = false;
  * separate set of addresses and a rule that names /account does not cover
  * /sv/account.
  */
-const CLOSED = ['/account', '/auth', '/add', '/search?'];
+const CLOSED = ['/account', '/auth', '/add', '/admin', '/search?'];
 
 export const GET: APIRoute = ({ site, url }) => {
   const canonicalHost = new URL(site ?? url.origin).host;

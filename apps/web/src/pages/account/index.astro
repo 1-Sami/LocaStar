@@ -198,6 +198,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           <div class="mod-note">
             <span class="mono mod-kicker">{t('acct.moderator')}</span>
             <p>{t('acct.moderatorNote')}</p>
+            <a href={p('/admin/reports')}>{t('acct.moderatorLink')}</a>
           </div>
         )
       }
