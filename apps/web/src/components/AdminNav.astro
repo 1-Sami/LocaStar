@@ -4,12 +4,14 @@ import { useTranslations, localePath } from '../i18n/ui';
 /*
  * Moving between the admin screens without going back through the account page.
  *
- * Feedback and crashes are admin-only, matching the app, so a superuser is
- * shown the reports link alone rather than links that would redirect them
- * straight back out.
+ * Feedback and crashes are admin-only, matching the app, so a superuser sees
+ * reports and the log rather than links that would redirect them straight back
+ * out. The log stays open to moderators on purpose: their own actions are in
+ * it, and being able to see what was done to your work is most of what makes
+ * keeping the record worth anything.
  */
 interface Props {
-  current: 'reports' | 'feedback' | 'crashes';
+  current: 'reports' | 'feedback' | 'crashes' | 'log' | 'people';
   isAdmin: boolean;
 }
 
@@ -20,6 +22,8 @@ const p = (href: string) => localePath(href, lang);
 
 const links = [
   { key: 'reports', href: '/admin/reports', label: t('mod.navReports'), adminOnly: false },
+  { key: 'log', href: '/admin/log', label: t('mod.navLog'), adminOnly: false },
+  { key: 'people', href: '/admin/people', label: t('mod.navPeople'), adminOnly: false },
   { key: 'feedback', href: '/admin/feedback', label: t('mod.navFeedback'), adminOnly: true },
   { key: 'crashes', href: '/admin/crashes', label: t('mod.navCrashes'), adminOnly: true },
 ].filter((link) => isAdmin || !link.adminOnly);

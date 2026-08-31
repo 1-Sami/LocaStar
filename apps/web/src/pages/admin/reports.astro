@@ -1,5 +1,7 @@
 ---
 import {
+  fetchOpenBusinessClaims,
+  resolveBusinessClaim,
   fetchHandledListReports,
   fetchHandledLocationReports,
   fetchHandledReviewReports,
@@ -69,6 +71,22 @@ if (Astro.request.method === 'POST') {
     actionError = t('mod.noteTooShort');
   } else {
     try {
+      /*
+       * Claims are not reports and do not share their vocabulary: a claim is
+       * approved or rejected, and approving it also marks the place verified
+       * and records who owns it — resolveBusinessClaim does both, so this must
+       * not try to do it again here.
+       */
+      if (kind === 'claim') {
+        await resolveBusinessClaim(
+          supabase,
+          reportId,
+          decision === 'approved' ? 'approved' : 'rejected',
+          note
+        );
+        return Astro.redirect(`${p('/admin/reports')}?tab=claim&done=1`);
+      }
+
       const status = decision === 'dismissed' ? 'dismissed' : 'actioned';
 
       if (decision === 'warned' && authorId) {
@@ -103,13 +121,18 @@ const tab = Astro.url.searchParams.get('tab') ?? 'location';
 const done = Astro.url.searchParams.get('done') === '1';
 const showHandled = Astro.url.searchParams.get('handled') === '1';
 
-const [openLocations, openReviews, openLists] = await Promise.all([
+const isAdmin = role === 'admin';
+
+const [openLocations, openReviews, openLists, openClaims] = await Promise.all([
   fetchOpenLocationReports(supabase).catch(() => []),
   fetchOpenReviewReports(supabase).catch(() => []),
   fetchOpenListReports(supabase).catch(() => []),
+  // Claims are an admin decision — a superuser moderating content has no
+  // business handing a business listing to somebody.
+  isAdmin ? fetchOpenBusinessClaims(supabase).catch(() => []) : Promise.resolve([]),
 ]);
 
-const handled = showHandled
+const handled = showHandled && tab !== 'claim'
   ? await (tab === 'review'
       ? fetchHandledReviewReports(supabase)
       : tab === 'list'
@@ -122,9 +145,9 @@ const tabs = [
   { key: 'location', label: t('mod.tabPlaces'), count: openLocations.length },
   { key: 'review', label: t('mod.tabReviews'), count: openReviews.length },
   { key: 'list', label: t('mod.tabLists'), count: openLists.length },
+  ...(isAdmin ? [{ key: 'claim', label: t('mod.tabClaims'), count: openClaims.length }] : []),
 ];
 
-const isAdmin = role === 'admin';
 const origin = Astro.site?.origin ?? Astro.url.origin;
 ---
 
@@ -296,7 +319,52 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       </section>
     )}
 
-    <section class="handled">
+    {tab === 'claim' && isAdmin && (
+      <section class="queue">
+        {openClaims.length === 0 ? (
+          <p class="empty">{t('mod.empty')}</p>
+        ) : (
+          openClaims.map((claim) => (
+            <article class="card">
+              <div class="card-head">
+                <a href={p(`/location/${claim.locationId}`)} class="target">{claim.locationName}</a>
+                <span class="mono when">{longDate(claim.createdAt, lang)}</span>
+              </div>
+              <div class="field">
+                <span class="mono field-label">{t('mod.claimEvidence')}</span>
+                {claim.verificationNotes ? (
+                  <blockquote class="quote">{claim.verificationNotes}</blockquote>
+                ) : (
+                  <p class="details">{t('mod.claimNoEvidence')}</p>
+                )}
+              </div>
+              <p class="mono by">{t('mod.claimedBy')} {claim.claimantName}</p>
+
+              {/* Approving marks the place verified and records who owns it,
+                  which is why this is admin-only and why the note matters: it
+                  is the only record of what convinced you. */}
+              <form method="POST" class="actions">
+                <input type="hidden" name="kind" value="claim" />
+                <input type="hidden" name="reportId" value={claim.id} />
+                <label class="note-label">
+                  <span class="mono">{t('mod.note')}</span>
+                  <input type="text" name="note" required minlength={3} placeholder={t('mod.claimNotePlaceholder')} />
+                </label>
+                <div class="buttons">
+                  <button type="submit" name="decision" value="rejected" class="btn">{t('mod.reject')}</button>
+                  <button type="submit" name="decision" value="approved" class="btn approve">{t('mod.approve')}</button>
+                </div>
+              </form>
+            </article>
+          ))
+        )}
+      </section>
+    )}
+
+    {/* Claims resolve to approved/rejected and carry no resolution note of the
+        shape this log renders, so the toggle is left off that tab rather than
+        shown against a list it would quietly get wrong. */}
+    <section class="handled" hidden={tab === 'claim'}>
       {showHandled ? (
         <>
           <h2>{t('mod.handled')}</h2>
@@ -463,6 +531,10 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .btn.warn:hover { border-color: var(--accent); }
   .btn.danger { border-color: rgba(224, 82, 82, .5); color: #f09a9a; }
   .btn.danger:hover { border-color: #e05252; }
+  /* The only affirmative button in the queue — everything else dismisses,
+     warns or takes something down. */
+  .btn.approve { border-color: rgba(76, 211, 122, .5); color: var(--ok); }
+  .btn.approve:hover { border-color: var(--ok); }
   .btn:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
 
   .handled { display: flex; flex-direction: column; gap: 12px; }

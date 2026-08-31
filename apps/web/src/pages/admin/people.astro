@@ -1,0 +1,352 @@
+---
+import {
+  fetchBansByStatus,
+  fetchProfile,
+  isModeratorRole,
+  issueBan,
+  reviewBan,
+  searchUsers,
+  setUserRole,
+  type UserRole,
+} from '@locastar/shared';
+import AdminNav from '../../components/AdminNav.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
+import { longDate } from '../../lib/format';
+import { currentUser } from '../../lib/auth';
+
+/*
+ * People, and the bans against them.
+ *
+ * Bans are two-step by design: a superuser proposes one and it takes effect
+ * immediately, an admin confirms or reverses it. That is not a workflow to
+ * reproduce in the client — issueBan takes asAdmin and the database decides
+ * the resulting status, so this page only has to say who is asking.
+ *
+ * Role changes are admin-only, and deliberately not offered against yourself:
+ * the app has no step-down guard either, and the one account that can hand out
+ * roles should not be able to remove its own in a mis-click. Turning it off in
+ * the UI is a guard rail, not a rule — the rule would have to be in the
+ * database, which was raised with the owner and deferred.
+ */
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect(p('/auth/sign-in'));
+
+const profile = await fetchProfile(supabase, user.id).catch(() => null);
+const role = profile?.role ?? 'user';
+if (!isModeratorRole(role)) return Astro.redirect(p('/account'));
+const isAdmin = role === 'admin';
+
+let actionError: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const intent = String(form.get('intent') ?? '');
+  const targetId = String(form.get('userId') ?? '');
+  const note = String(form.get('note') ?? '').trim();
+
+  try {
+    if (intent === 'ban') {
+      const days = String(form.get('days') ?? '').trim();
+      if (note.split(/\s+/).filter(Boolean).length < 3) {
+        actionError = t('ppl.reasonTooShort');
+      } else if (targetId === user.id) {
+        actionError = t('ppl.notYourself');
+      } else {
+        const expiresAt =
+          days === '' ? null : new Date(Date.now() + Number(days) * 86_400_000).toISOString();
+        await issueBan(supabase, {
+          userId: targetId,
+          issuedBy: user.id,
+          reason: note,
+          expiresAt,
+          asAdmin: isAdmin,
+        });
+      }
+    } else if (intent === 'review' && isAdmin) {
+      const banId = String(form.get('banId') ?? '');
+      const verdict = String(form.get('verdict') ?? '');
+      await reviewBan(
+        supabase,
+        banId,
+        verdict === 'active' ? 'active' : 'reversed',
+        user.id,
+        note || null
+      );
+    } else if (intent === 'role' && isAdmin) {
+      if (targetId === user.id) {
+        actionError = t('ppl.notYourself');
+      } else {
+        await setUserRole(supabase, targetId, String(form.get('role') ?? 'user') as UserRole);
+      }
+    }
+
+    if (!actionError) {
+      const q = String(form.get('q') ?? '');
+      return Astro.redirect(`${p('/admin/people')}?done=1${q ? `&q=${encodeURIComponent(q)}` : ''}`);
+    }
+  } catch (err) {
+    console.error('People action failed', err);
+    actionError = t('ppl.actionFailed');
+  }
+}
+
+const query = Astro.url.searchParams.get('q') ?? '';
+const done = Astro.url.searchParams.get('done') === '1';
+
+const [results, liveBans] = await Promise.all([
+  query.trim().length >= 2 ? searchUsers(supabase, query).catch(() => []) : Promise.resolve([]),
+  fetchBansByStatus(supabase, ['pending', 'active']).catch(() => []),
+]);
+
+// Pending first: a superuser's ban is already in force and waiting on an admin,
+// so it is the only thing on this page with a clock on it.
+const pending = liveBans.filter((ban) => ban.status === 'pending');
+const active = liveBans.filter((ban) => ban.status === 'active');
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base title={t('ppl.title')} description={t('ppl.subtitle')} canonical={`${origin}/admin/people`}>
+  <SiteHeader />
+
+  <main class="wrap">
+    <AdminNav current="people" isAdmin={isAdmin} />
+
+    <header class="head">
+      <p class="mono kicker">{t('mod.kicker')}</p>
+      <h1>{t('ppl.title')}</h1>
+      <p class="sub">{t('ppl.subtitle')}</p>
+    </header>
+
+    {done && <p class="flash ok">{t('ppl.done')}</p>}
+    {actionError && <p class="flash bad">{actionError}</p>}
+
+    <form method="GET" class="search">
+      <label class="mono search-label" for="q">{t('ppl.searchLabel')}</label>
+      <div class="search-row">
+        <input id="q" type="search" name="q" value={query} placeholder={t('ppl.searchPlaceholder')} minlength={2} />
+        <button type="submit" class="btn">{t('ppl.search')}</button>
+      </div>
+    </form>
+
+    {query.trim().length >= 2 && (
+      <section class="block">
+        <h2>{t('ppl.results')}</h2>
+        {results.length === 0 ? (
+          <p class="empty">{t('ppl.noResults')}</p>
+        ) : (
+          <ul class="rows">
+            {results.map((person) => (
+              <li class="row">
+                <div class="who">
+                  <p class="name">
+                    {person.username ?? person.name}
+                    {person.isBanned && <span class="mono tag banned">{t('ppl.banned')}</span>}
+                    <span class="mono tag">{person.role}</span>
+                  </p>
+                </div>
+
+                {person.id === user.id ? (
+                  <p class="mono self">{t('ppl.thatsYou')}</p>
+                ) : (
+                  <div class="row-actions">
+                    {!person.isBanned && (
+                      <form method="POST" class="inline">
+                        <input type="hidden" name="intent" value="ban" />
+                        <input type="hidden" name="userId" value={person.id} />
+                        <input type="hidden" name="q" value={query} />
+                        <input type="text" name="note" required minlength={3} placeholder={t('ppl.reasonPlaceholder')} />
+                        <select name="days" aria-label={t('ppl.duration')}>
+                          <option value="7">{t('ppl.days7')}</option>
+                          <option value="30">{t('ppl.days30')}</option>
+                          <option value="">{t('ppl.forever')}</option>
+                        </select>
+                        <button type="submit" class="btn danger">
+                          {isAdmin ? t('ppl.ban') : t('ppl.proposeBan')}
+                        </button>
+                      </form>
+                    )}
+                    {isAdmin && (
+                      <form method="POST" class="inline">
+                        <input type="hidden" name="intent" value="role" />
+                        <input type="hidden" name="userId" value={person.id} />
+                        <input type="hidden" name="q" value={query} />
+                        <select name="role" aria-label={t('ppl.role')}>
+                          <option value="user" selected={person.role === 'user'}>user</option>
+                          <option value="superuser" selected={person.role === 'superuser'}>superuser</option>
+                          <option value="admin" selected={person.role === 'admin'}>admin</option>
+                        </select>
+                        <button type="submit" class="btn">{t('ppl.setRole')}</button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    )}
+
+    {pending.length > 0 && (
+      <section class="block">
+        <h2>{t('ppl.pending')} <span class="mono n">{pending.length}</span></h2>
+        <p class="note-line">{t('ppl.pendingNote')}</p>
+        <ul class="rows">
+          {pending.map((ban) => (
+            <li class="row">
+              <div class="who">
+                <p class="name">{ban.userName}</p>
+                <p class="reason">{ban.reason}</p>
+                <p class="mono meta">
+                  {t('ppl.by')} {ban.issuedByName} · {longDate(ban.createdAt, lang)} ·{' '}
+                  {ban.expiresAt ? t('ppl.until', { date: longDate(ban.expiresAt, lang) }) : t('ppl.lifetime')}
+                </p>
+              </div>
+              {isAdmin ? (
+                <form method="POST" class="inline">
+                  <input type="hidden" name="intent" value="review" />
+                  <input type="hidden" name="banId" value={ban.id} />
+                  <input type="text" name="note" placeholder={t('ppl.reviewNote')} />
+                  <button type="submit" name="verdict" value="active" class="btn danger">{t('ppl.confirm')}</button>
+                  <button type="submit" name="verdict" value="reversed" class="btn">{t('ppl.reverse')}</button>
+                </form>
+              ) : (
+                <p class="mono self">{t('ppl.adminDecides')}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="block">
+      <h2>{t('ppl.active')} <span class="mono n">{active.length}</span></h2>
+      {active.length === 0 ? (
+        <p class="empty">{t('ppl.noneBanned')}</p>
+      ) : (
+        <ul class="rows">
+          {active.map((ban) => (
+            <li class="row">
+              <div class="who">
+                <p class="name">{ban.userName}</p>
+                <p class="reason">{ban.reason}</p>
+                <p class="mono meta">
+                  {t('ppl.by')} {ban.issuedByName} · {longDate(ban.createdAt, lang)} ·{' '}
+                  {ban.expiresAt ? t('ppl.until', { date: longDate(ban.expiresAt, lang) }) : t('ppl.lifetime')}
+                </p>
+              </div>
+              {isAdmin && (
+                <form method="POST" class="inline">
+                  <input type="hidden" name="intent" value="review" />
+                  <input type="hidden" name="banId" value={ban.id} />
+                  <input type="text" name="note" placeholder={t('ppl.reviewNote')} />
+                  <button type="submit" name="verdict" value="reversed" class="btn">{t('ppl.lift')}</button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px var(--gutter) 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .head { display: flex; flex-direction: column; gap: 10px; }
+  .kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); margin: 0; }
+  h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.05; }
+  .sub { margin: 0; color: var(--text-70); max-width: 60ch; }
+  .empty { color: var(--text-55); margin: 0; }
+
+  .flash { margin: 0; padding: 13px 16px; border-radius: 9px; font-size: 15px; }
+  .flash.ok { background: rgba(76, 211, 122, .12); color: var(--ok); }
+  .flash.bad { background: rgba(224, 82, 82, .13); color: #f09a9a; }
+
+  .search { display: flex; flex-direction: column; gap: 7px; }
+  .search-label { font-size: 10px; letter-spacing: .14em; color: var(--text-42); }
+  .search-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .search-row input { flex: 1 1 260px; }
+
+  .block { display: flex; flex-direction: column; gap: 14px; }
+  .block h2 { margin: 0; font-size: 19px; display: flex; align-items: baseline; gap: 8px; }
+  .n { font-size: 12px; color: var(--text-42); }
+  .note-line { margin: 0; color: var(--text-55); font-size: 14px; }
+
+  .rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .row {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 16px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .who { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .name { margin: 0; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .reason { margin: 0; color: var(--text-70); }
+  .meta { margin: 0; font-size: 11px; letter-spacing: .05em; color: var(--text-42); }
+  .tag {
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--surface-alt);
+    color: var(--text-55);
+  }
+  .tag.banned { background: rgba(224, 82, 82, .15); color: #f09a9a; }
+  .self { margin: 0; font-size: 11px; letter-spacing: .08em; color: var(--text-42); }
+
+  .row-actions { display: flex; flex-direction: column; gap: 10px; }
+  .inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  input[type='text'], input[type='search'], select {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--page);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+  }
+  input::placeholder { color: var(--text-42); }
+  input:focus-visible, select:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 1px; }
+
+  .btn {
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--text-55); }
+  .btn.danger { border-color: rgba(224, 82, 82, .5); color: #f09a9a; }
+  .btn.danger:hover { border-color: #e05252; }
+  .btn:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
+</style>

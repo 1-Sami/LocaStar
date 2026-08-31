@@ -1,0 +1,166 @@
+---
+import { fetchModerationActions, fetchProfile, isModeratorRole } from '@locastar/shared';
+import AdminNav from '../../components/AdminNav.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Base from '../../layouts/Base.astro';
+import { useTranslations, localePath } from '../../i18n/ui';
+import { currentUser } from '../../lib/auth';
+
+/*
+ * Every moderation decision, in order.
+ *
+ * Written by database triggers rather than by the app, so it records what
+ * actually happened rather than what a client claimed — including anything
+ * done from the report queue on this site.
+ *
+ * Read-only, and not because it was quicker: a log a moderator can edit is not
+ * a log. Nothing here has an action, and nothing should.
+ *
+ * Visible to moderators, not only admins. Their own actions are in it, and
+ * being able to see what was done to your work is most of what makes the
+ * record worth keeping.
+ */
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const p = (href: string) => localePath(href, lang);
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect(p('/auth/sign-in'));
+
+const profile = await fetchProfile(supabase, user.id).catch(() => null);
+const role = profile?.role ?? 'user';
+if (!isModeratorRole(role)) return Astro.redirect(p('/account'));
+
+const actions = await fetchModerationActions(supabase, 200).catch(() => []);
+
+/*
+ * The words a moderator would use, not the enum. 'report_resolved' is the
+ * database's name for it; "resolved a report" is what happened.
+ *
+ * Every action name the schema can write is here — grepped for rather than
+ * guessed, after photo_deleted turned up on screen as itself. Anything new
+ * still falls through to its raw name, which is ugly on purpose: better a
+ * moderator sees an unfamiliar word than a blank where a decision was.
+ */
+const ACTION_LABEL: Record<string, string> = {
+  report_resolved: t('log.aReportResolved'),
+  review_status_changed: t('log.aReviewStatus'),
+  location_status_changed: t('log.aLocationStatus'),
+  role_changed: t('log.aRoleChanged'),
+  warning_issued: t('log.aWarning'),
+  ban_issued: t('log.aBanIssued'),
+  ban_reviewed: t('log.aBanReviewed'),
+  photo_deleted: t('log.aPhotoDeleted'),
+  list_deleted: t('log.aListDeleted'),
+};
+
+/* The parts of `detail` worth reading, in the order they make sense. */
+const readable = (detail: Record<string, unknown> | null): string[] => {
+  if (!detail) return [];
+  const out: string[] = [];
+  const from = detail.from;
+  const to = detail.to;
+  if (from && to) out.push(`${from} → ${to}`);
+  else if (to) out.push(String(to));
+  if (detail.action) out.push(String(detail.action));
+  if (detail.note) out.push(`“${detail.note}”`);
+  if (detail.name) out.push(String(detail.name));
+  return out;
+};
+
+const stamp = (iso: string) =>
+  new Date(iso).toLocaleString(lang === 'sv' ? 'sv-SE' : 'en-GB', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base title={t('log.title')} description={t('log.subtitle')} canonical={`${origin}/admin/log`}>
+  <SiteHeader />
+
+  <main class="wrap">
+    <AdminNav current="log" isAdmin={role === 'admin'} />
+
+    <header class="head">
+      <p class="mono kicker">{t('mod.kicker')}</p>
+      <h1>{t('log.title')}</h1>
+      <p class="sub">{t('log.subtitle')}</p>
+    </header>
+
+    {actions.length === 0 ? (
+      <p class="empty">{t('log.empty')}</p>
+    ) : (
+      <ol class="entries">
+        {actions.map((entry) => (
+          <li class="entry">
+            <span class="mono when">{stamp(entry.createdAt)}</span>
+            <div class="what">
+              <p class="line">
+                <span class="actor">{entry.actorName}</span>
+                {' '}
+                <span class="verb">{ACTION_LABEL[entry.action] ?? entry.action}</span>
+                {entry.subject && <> — <span class="subject">{entry.subject}</span></>}
+              </p>
+              {readable(entry.detail).length > 0 && (
+                <p class="detail">{readable(entry.detail).join(' · ')}</p>
+              )}
+            </div>
+            {entry.actorRole && <span class="mono role">{entry.actorRole}</span>}
+          </li>
+        ))}
+      </ol>
+    )}
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px var(--gutter) 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .head { display: flex; flex-direction: column; gap: 10px; }
+  .kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); margin: 0; }
+  h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.05; }
+  .sub { margin: 0; color: var(--text-70); max-width: 60ch; }
+  .empty { color: var(--text-55); margin: 0; }
+
+  .entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  /* A timeline rather than cards: these are one thing after another, and the
+     eye should be able to run down the times. */
+  .entry {
+    display: grid;
+    grid-template-columns: 108px 1fr auto;
+    gap: 16px;
+    align-items: baseline;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .entry:last-child { border-bottom: 0; }
+  @media (max-width: 640px) {
+    .entry { grid-template-columns: 1fr; gap: 5px; }
+  }
+  .when { font-size: 11px; letter-spacing: .04em; color: var(--text-42); white-space: nowrap; }
+  .what { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .line { margin: 0; }
+  .actor { font-weight: 600; }
+  .verb { color: var(--text-70); }
+  .subject { color: var(--text-70); }
+  .detail { margin: 0; font-size: 14px; color: var(--text-55); }
+  .role {
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-42);
+    white-space: nowrap;
+  }
+</style>
