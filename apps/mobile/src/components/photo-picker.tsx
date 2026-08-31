@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uris: string[]) => void }) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [sourceMenuVisible, setSourceMenuVisible] = useState(false);
 
   const handleChooseFromLibrary = async () => {
@@ -126,7 +128,9 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
         animationType="slide"
         transparent
         onRequestClose={() => setSourceMenuVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSourceMenuVisible(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
+          onPress={() => setSourceMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
               {t('components.addAPhoto')}

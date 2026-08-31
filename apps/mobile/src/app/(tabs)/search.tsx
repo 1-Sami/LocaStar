@@ -17,7 +17,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
 import { categoryLabel } from '@/lib/categories';
@@ -76,6 +76,7 @@ export default function SearchScreen() {
   const { t } = useTranslation();
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
+  const insets = useSafeAreaInsets();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
@@ -439,7 +440,7 @@ export default function SearchScreen() {
             window on Android and does not inherit the activity's adjustResize,
             so this has to be handled here rather than in app.json. */}
         <KeyboardAvoidingView
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           {/* Backdrop as a sibling rather than a wrapper: wrapping the sheet in
               a Pressable would make every tap inside it dismiss the sheet. */}
@@ -540,7 +541,9 @@ export default function SearchScreen() {
       </Modal>
 
       <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
+          onPress={() => setSortMenuVisible(false)}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{t('search.sortBy')}</Text>
             {SORT_OPTIONS.map((option) => (

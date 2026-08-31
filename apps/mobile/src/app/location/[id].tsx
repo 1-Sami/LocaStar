@@ -1322,7 +1322,9 @@ export default function LocationDetailScreen() {
       </SafeAreaView>
 
       <Modal visible={menuVisible} animationType="slide" transparent onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setMenuVisible(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
+          onPress={() => setMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <Pressable style={styles.menuRow} onPress={handleOpenAddToList}>
               <MaterialCommunityIcons name="folder-marker-outline" size={20} color={theme.text} />
@@ -1359,7 +1361,9 @@ export default function LocationDetailScreen() {
       </Modal>
 
       <Modal visible={sortMenuVisible} animationType="slide" transparent onRequestClose={() => setSortMenuVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
+          onPress={() => setSortMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
               {t('location.sortReviews')}
@@ -2324,6 +2328,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
     alignSelf: 'flex-start',
   },
+  /*
+   * These two menus predate SheetRoot and never went through it, so they also
+   * never got its bottom inset — on an S10 the last row of the overflow menu
+   * ("Report") sat under the navigation bar. Padded here rather than moved
+   * onto SheetRoot, which carries keyboard handling neither of them needs:
+   * they are lists of buttons with nothing to type into.
+   */
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',

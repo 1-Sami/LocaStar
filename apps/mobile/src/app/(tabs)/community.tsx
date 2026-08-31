@@ -9,7 +9,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
 import { ThemedText } from '@/components/themed-text';
@@ -38,6 +38,7 @@ export default function CommunityScreen() {
   const [sort, setSort] = useState<PublicListSort>('newest');
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const { isBlocked } = useBlockedUsers();
+  const insets = useSafeAreaInsets();
 
   // Filtered at render rather than at fetch, so blocking someone from a list
   // empties them out of this feed on the tap instead of on the next reload.
@@ -138,7 +139,9 @@ export default function CommunityScreen() {
         animationType="slide"
         transparent
         onRequestClose={() => setSortMenuVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuVisible(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
+          onPress={() => setSortMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
               {t('community.sortBy')}
