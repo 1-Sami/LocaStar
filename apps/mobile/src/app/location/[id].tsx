@@ -1534,69 +1534,83 @@ export default function LocationDetailScreen() {
                 Reporting used to mean leaving the viewer, scrolling the reviews
                 to find the one this picture hangs off, and reporting that —
                 which on a place with a hundred reviews is a search. */}
-            <View style={styles.viewerCreditRow} pointerEvents="box-none">
-              {viewerPhoto?.uploaderName ? (
-                <ThemedText type="small" style={styles.viewerCredit}>
-                  {t('location.photoAddedBy', { name: viewerPhoto.uploaderName })}
-                </ThemedText>
+            {/* Credit sits on its own line, aligned right, so it reads as a
+                caption on the photo rather than as a label for the buttons. */}
+            {viewerPhoto?.uploaderName && (
+              <ThemedText type="small" style={styles.viewerCredit}>
+                {t('location.photoAddedBy', { name: viewerPhoto.uploaderName })}
+              </ThemedText>
+            )}
+
+            {/* Make cover keeps a line to itself. It is the only affirmative
+                action down here — everything on the row below either removes
+                something or complains about it — and putting it in with them
+                made a row of four buttons in three different colours. */}
+            {canPromoteCurrentPhoto && !viewerPhoto?.removedAt && (
+              <View style={styles.viewerCoverRow} pointerEvents="box-none">
+                <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
+                  <Ionicons name="star" size={13} color="#000000" />
+                  <ThemedText type="smallBold" style={styles.makeCoverText}>
+                    {t('location.makeCoverPhoto')}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Only a moderator ever sees a trashed photo at all — everyone
+                else has it filtered out before it reaches the gallery. */}
+            {canDeleteCurrentPhoto && viewerPhoto?.removedAt && (
+              <View style={styles.viewerCoverRow} pointerEvents="box-none">
+                <Pressable style={styles.makeCoverButton} onPress={handleRestorePhoto}>
+                  <Ionicons name="arrow-undo" size={13} color="#000000" />
+                  <ThemedText type="smallBold" style={styles.makeCoverText}>
+                    {t('admin.restore')}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Delete on the far left, away from the pair on the right. It is
+                the one control here that destroys something, and it should not
+                sit a thumb's width from Report. */}
+            <View style={styles.viewerActionRow} pointerEvents="box-none">
+              {canDeleteCurrentPhoto && !viewerPhoto?.removedAt ? (
+                <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
+                  <Ionicons name="trash-outline" size={13} color="#ffffff" />
+                  <ThemedText type="smallBold" style={styles.deletePhotoText}>
+                    {t('location.deletePhoto')}
+                  </ThemedText>
+                </Pressable>
               ) : (
                 <View />
               )}
-              {canReportCurrentPhoto && (
-                <Pressable
-                  style={styles.reportPhotoButton}
-                  onPress={() => setReportingPhoto(viewerPhoto)}
-                  hitSlop={8}>
-                  <Ionicons name="flag" size={14} color="#ffffff" />
-                  <ThemedText type="smallBold" style={styles.reportPhotoText}>
-                    {t('location.reportPhoto')}
-                  </ThemedText>
-                </Pressable>
-              )}
-              {/* Same pairing as on a review: whoever can report this photo
-                  can also stop seeing its uploader entirely. */}
-              {canReportCurrentPhoto && viewerPhoto?.uploaderId && (
-                <Pressable
-                  style={styles.reportPhotoButton}
-                  onPress={() => handleBlockPhotoUploader(viewerPhoto)}
-                  hitSlop={8}>
-                  <Ionicons name="ban" size={14} color="#ffffff" />
-                  <ThemedText type="smallBold" style={styles.reportPhotoText}>
-                    {t('safety.blockUser')}
-                  </ThemedText>
-                </Pressable>
-              )}
-            </View>
-            {(canPromoteCurrentPhoto || canDeleteCurrentPhoto) && (
-              <View style={styles.viewerModeratorRow} pointerEvents="box-none">
-                {canPromoteCurrentPhoto && (
-                  <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
-                    <Ionicons name="star" size={14} color="#000000" />
-                    <ThemedText type="smallBold" style={styles.makeCoverText}>
-                      {t('location.makeCoverPhoto')}
+              <View style={styles.viewerActionRight} pointerEvents="box-none">
+                {canReportCurrentPhoto && (
+                  <Pressable
+                    style={styles.reportPhotoButton}
+                    onPress={() => setReportingPhoto(viewerPhoto)}
+                    hitSlop={8}>
+                    <Ionicons name="flag" size={13} color="#ffffff" />
+                    <ThemedText type="smallBold" style={styles.reportPhotoText}>
+                      {t('location.reportPhoto')}
                     </ThemedText>
                   </Pressable>
                 )}
-                {canDeleteCurrentPhoto && !viewerPhoto?.removedAt && (
-                  <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
-                    <Ionicons name="trash-outline" size={14} color="#ffffff" />
-                    <ThemedText type="smallBold" style={styles.deletePhotoText}>
-                      {t('location.deletePhoto')}
-                    </ThemedText>
-                  </Pressable>
-                )}
-                {/* Only a moderator ever sees a trashed photo at all — everyone
-                    else has it filtered out before it reaches the gallery. */}
-                {canDeleteCurrentPhoto && viewerPhoto?.removedAt && (
-                  <Pressable style={styles.makeCoverButton} onPress={handleRestorePhoto}>
-                    <Ionicons name="arrow-undo" size={14} color="#000000" />
-                    <ThemedText type="smallBold" style={styles.makeCoverText}>
-                      {t('admin.restore')}
+                {/* Same pairing as on a review: whoever can report this photo
+                    can also stop seeing its uploader entirely. */}
+                {canReportCurrentPhoto && viewerPhoto?.uploaderId && (
+                  <Pressable
+                    style={styles.reportPhotoButton}
+                    onPress={() => handleBlockPhotoUploader(viewerPhoto)}
+                    hitSlop={8}>
+                    <Ionicons name="ban" size={13} color="#ffffff" />
+                    <ThemedText type="smallBold" style={styles.reportPhotoText}>
+                      {t('safety.blockUser')}
                     </ThemedText>
                   </Pressable>
                 )}
               </View>
-            )}
+            </View>
           </SafeAreaView>
         </View>
       </Modal>
@@ -1746,22 +1760,9 @@ const styles = StyleSheet.create({
   viewerCount: {
     color: '#ffffff',
   },
-  viewerCreditRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.two,
-  },
   viewerCredit: {
     color: 'rgba(255,255,255,0.75)',
-  },
-  viewerModeratorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    textAlign: 'right',
   },
   reportPhotoStrip: {
     flexGrow: 0,
@@ -1790,30 +1791,50 @@ const styles = StyleSheet.create({
   reportPhotoText: {
     color: '#ffffff',
   },
+  /*
+   * Stretch, not centre. Each row inside now decides its own alignment — the
+   * credit and Make cover sit right, the bottom row pushes Delete left and the
+   * report pair right — and a centred parent would have overridden all of it.
+   */
   viewerFooter: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    alignItems: 'stretch',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.four,
+  },
+  viewerCoverRow: {
+    alignItems: 'flex-end',
+  },
+  viewerActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  viewerActionRight: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingBottom: Spacing.four,
   },
   makeCoverButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
     backgroundColor: '#F5C242',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 1,
     borderRadius: Spacing.five,
   },
   deletePhotoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    height: 36,
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 1,
     borderRadius: Spacing.five,
     backgroundColor: '#E05252',
   },
