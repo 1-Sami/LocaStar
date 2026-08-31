@@ -31,7 +31,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useBlockAndReport } from '@/lib/block-and-report';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
@@ -215,6 +215,10 @@ export default function LocationDetailScreen() {
 
   const { isBlocked } = useBlockedUsers();
   const blockAndReport = useBlockAndReport();
+  // Read here rather than through a SafeAreaView, because the viewer's close
+  // button is positioned against the picture and only needs the inset as a
+  // floor — see the clamp where it is placed.
+  const insets = useSafeAreaInsets();
   /*
    * Photos with a blocked uploader are filtered out here, at the single place
    * everything else reads, rather than at each render site. The hero carousel,
@@ -232,6 +236,8 @@ export default function LocationDetailScreen() {
   const [reportingPhoto, setReportingPhoto] = useState<GalleryPhoto | null>(null);
   const photos = allPhotos.filter((photo) => !isBlocked(photo.uploaderId));
   const [viewerWidth, setViewerWidth] = useState(() => Dimensions.get('window').width);
+  const [viewerHeight, setViewerHeight] = useState(() => Dimensions.get('window').height);
+  const [photoSizes, setPhotoSizes] = useState<Record<string, { width: number; height: number }>>({});
   const heroScrollRef = useRef<ScrollView>(null);
   const viewerScrollRef = useRef<ScrollView>(null);
   // Holds the tapped index between closing the gallery grid and the full
@@ -435,6 +441,30 @@ export default function LocationDetailScreen() {
   const whenNow = isActivity ? activityWhen(location.starts_at, location.expires_at) : null;
 
   const viewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
+
+  /*
+   * Where the picture actually is on screen, so the close button can sit on
+   * its top-right corner and the counter on its bottom-right.
+   *
+   * contentFit="contain" letterboxes: the Image element fills the page, but
+   * the picture inside it only fills one axis and is centred on the other, so
+   * "the corner of the photo" is nowhere near the corner of the element. The
+   * same arithmetic contain does — scale to whichever axis runs out first,
+   * then halve what is left over — gives the inset on each side.
+   *
+   * Falls back to the full frame until onLoad reports the picture's shape,
+   * which puts the controls at the screen corners for one frame rather than
+   * leaving them somewhere arbitrary.
+   */
+  const viewerSize = viewerPhoto ? photoSizes[viewerPhoto.url] : null;
+  const photoInset = (() => {
+    if (!viewerSize || viewerWidth <= 0 || viewerHeight <= 0) return { x: 0, y: 0 };
+    const scale = Math.min(viewerWidth / viewerSize.width, viewerHeight / viewerSize.height);
+    return {
+      x: Math.max(0, (viewerWidth - viewerSize.width * scale) / 2),
+      y: Math.max(0, (viewerHeight - viewerSize.height * scale) / 2),
+    };
+  })();
   // Review photos belong to their review, not the place, so they can't lead it.
   const canPromoteCurrentPhoto = canReorderPhotos && Boolean(viewerPhoto?.photoId) && viewerIndex !== 0;
 
@@ -1501,7 +1531,12 @@ export default function LocationDetailScreen() {
         animationType="fade"
         onRequestClose={() => setViewerIndex(null)}
         supportedOrientations={['portrait', 'landscape']}>
-        <View style={styles.viewerRoot} onLayout={(e) => setViewerWidth(e.nativeEvent.layout.width)}>
+        <View
+          style={styles.viewerRoot}
+          onLayout={(e) => {
+            setViewerWidth(e.nativeEvent.layout.width);
+            setViewerHeight(e.nativeEvent.layout.height);
+          }}>
           <ScrollView
             ref={viewerScrollRef}
             horizontal
@@ -1515,19 +1550,48 @@ export default function LocationDetailScreen() {
             scrollEventThrottle={32}>
             {photos.map((photo, index) => (
               <View key={index} style={[styles.viewerPage, { width: viewerWidth }]}>
-                <Image source={{ uri: photo.url }} style={styles.viewerImage} contentFit="contain" />
+                <Image
+                  source={{ uri: photo.url }}
+                  style={styles.viewerImage}
+                  contentFit="contain"
+                  // The picture's own shape, so the controls can sit on its
+                  // corners rather than the screen's. Keyed by url because the
+                  // gallery reorders when a photo is removed or promoted.
+                  onLoad={(e) =>
+                    setPhotoSizes((current) =>
+                      current[photo.url]
+                        ? current
+                        : { ...current, [photo.url]: { width: e.source.width, height: e.source.height } }
+                    )
+                  }
+                />
               </View>
             ))}
           </ScrollView>
 
-          <SafeAreaView style={styles.viewerHeader} edges={['top']} pointerEvents="box-none">
-            <ThemedText type="smallBold" style={styles.viewerCount}>
-              {(viewerIndex ?? 0) + 1} / {photos.length}
-            </ThemedText>
-            <Pressable style={styles.viewerCloseButton} onPress={() => setViewerIndex(null)} hitSlop={8}>
-              <Ionicons name="close" size={24} color="#ffffff" />
-            </Pressable>
-          </SafeAreaView>
+          {/* Both pinned to the picture's corners rather than the screen's, so
+              they read as belonging to the photo. The inset is clamped to the
+              safe area at the top: a wide picture on a tall screen would
+              otherwise put the close button under the notch. */}
+          <Pressable
+            style={[
+              styles.viewerCloseButton,
+              styles.viewerCloseFloating,
+              { top: Math.max(photoInset.y + Spacing.two, insets.top + Spacing.two), right: photoInset.x + Spacing.two },
+            ]}
+            onPress={() => setViewerIndex(null)}
+            hitSlop={12}>
+            <Ionicons name="close" size={24} color="#ffffff" />
+          </Pressable>
+
+          <ThemedText
+            type="smallBold"
+            style={[
+              styles.viewerCount,
+              { bottom: photoInset.y + Spacing.two, right: photoInset.x + Spacing.two },
+            ]}>
+            {(viewerIndex ?? 0) + 1} / {photos.length}
+          </ThemedText>
 
           <SafeAreaView style={styles.viewerFooter} edges={['bottom']} pointerEvents="box-none">
             {/* Who took it and a way to complain about it, on the photo itself.
@@ -1542,18 +1606,32 @@ export default function LocationDetailScreen() {
               </ThemedText>
             )}
 
-            {/* Make cover keeps a line to itself. It is the only affirmative
-                action down here — everything on the row below either removes
-                something or complains about it — and putting it in with them
-                made a row of four buttons in three different colours. */}
-            {canPromoteCurrentPhoto && !viewerPhoto?.removedAt && (
-              <View style={styles.viewerCoverRow} pointerEvents="box-none">
-                <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
-                  <Ionicons name="star" size={13} color="#000000" />
-                  <ThemedText type="smallBold" style={styles.makeCoverText}>
-                    {t('location.makeCoverPhoto')}
-                  </ThemedText>
-                </Pressable>
+            {/* The moderator's two actions share a line, pushed to opposite
+                ends. Delete used to sit on the row below beside Report and
+                Block, and three pills did not fit — Block was cut off at the
+                screen edge. Up here it also stays as far from Report as the
+                row allows, which is the point: it is the only control in the
+                viewer that destroys anything. */}
+            {(canDeleteCurrentPhoto || canPromoteCurrentPhoto) && !viewerPhoto?.removedAt && (
+              <View style={styles.viewerModRow} pointerEvents="box-none">
+                {canDeleteCurrentPhoto ? (
+                  <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
+                    <Ionicons name="trash-outline" size={13} color="#ffffff" />
+                    <ThemedText type="smallBold" style={styles.deletePhotoText}>
+                      {t('location.deletePhoto')}
+                    </ThemedText>
+                  </Pressable>
+                ) : (
+                  <View />
+                )}
+                {canPromoteCurrentPhoto && (
+                  <Pressable style={styles.makeCoverButton} onPress={handleMakeCover}>
+                    <Ionicons name="star" size={13} color="#000000" />
+                    <ThemedText type="smallBold" style={styles.makeCoverText}>
+                      {t('location.makeCoverPhoto')}
+                    </ThemedText>
+                  </Pressable>
+                )}
               </View>
             )}
 
@@ -1574,16 +1652,6 @@ export default function LocationDetailScreen() {
                 the one control here that destroys something, and it should not
                 sit a thumb's width from Report. */}
             <View style={styles.viewerActionRow} pointerEvents="box-none">
-              {canDeleteCurrentPhoto && !viewerPhoto?.removedAt ? (
-                <Pressable style={styles.deletePhotoButton} onPress={handleDeletePhoto}>
-                  <Ionicons name="trash-outline" size={13} color="#ffffff" />
-                  <ThemedText type="smallBold" style={styles.deletePhotoText}>
-                    {t('location.deletePhoto')}
-                  </ThemedText>
-                </Pressable>
-              ) : (
-                <View />
-              )}
               <View style={styles.viewerActionRight} pointerEvents="box-none">
                 {canReportCurrentPhoto && (
                   <Pressable
@@ -1757,21 +1825,14 @@ const styles = StyleSheet.create({
    * black and sometimes on the picture is steadier, which is why both carry
    * their own scrim below.
    */
-  viewerHeader: {
+  viewerCloseFloating: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
   },
-  // Same scrim and radius as the close button beside it, so the two read as
-  // one control cluster and both stay legible over a bright photo.
+  // Same scrim and radius as the close button, so the two read as a pair even
+  // at opposite corners of the picture, and both stay legible over a bright
+  // photo as well as over the black surround.
   viewerCount: {
+    position: 'absolute',
     color: '#ffffff',
     backgroundColor: 'rgba(0,0,0,0.55)',
     paddingHorizontal: Spacing.three,
@@ -1828,10 +1889,16 @@ const styles = StyleSheet.create({
   viewerCoverRow: {
     alignItems: 'flex-end',
   },
-  viewerActionRow: {
+  viewerModRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  viewerActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: Spacing.two,
   },
   viewerActionRight: {
