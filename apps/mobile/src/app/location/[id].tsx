@@ -1135,7 +1135,7 @@ export default function LocationDetailScreen() {
                   <View style={styles.breakdown}>
                     {[5, 4, 3, 2, 1].map((star, index) => (
                       <View key={star} style={styles.breakdownRow}>
-                        <ThemedText type="small" style={styles.breakdownLabel}>
+                        <ThemedText type="small" numberOfLines={1} style={styles.breakdownLabel}>
                           {star}★
                         </ThemedText>
                         <View style={[styles.breakdownTrack, { backgroundColor: theme.backgroundElement }]}>
@@ -1146,7 +1146,11 @@ export default function LocationDetailScreen() {
                             ]}
                           />
                         </View>
-                        <ThemedText type="small" themeColor="textSecondary" style={styles.breakdownCount}>
+                        <ThemedText
+                          type="small"
+                          themeColor="textSecondary"
+                          numberOfLines={1}
+                          style={styles.breakdownCount}>
                           {ratingCounts[index]}
                         </ThemedText>
                       </View>
@@ -2102,8 +2106,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  /*
+   * minWidth, not width, and never allowed to wrap.
+   *
+   * This held "5★" in a fixed 20pt box. That fits at the smallest system font
+   * and nothing above it: at Android's default the text is wider than the box,
+   * so it wrapped — the digit on one line, the star underneath — and every row
+   * of the histogram became two lines tall. Reported as the ratings looking
+   * "off" on an S10 and an iPhone 13 while a Fold looked fine, which turned out
+   * to be the Fold having been set to the smallest font.
+   *
+   * A fixed width for text that scales with the reader's settings is the trap.
+   * minWidth keeps the five rows aligned with each other, and numberOfLines on
+   * the element makes wrapping impossible whatever the font is set to.
+   */
   breakdownLabel: {
-    width: 20,
+    minWidth: 20,
   },
   breakdownTrack: {
     flex: 1,
@@ -2117,7 +2135,9 @@ const styles = StyleSheet.create({
     backgroundColor: STAR_COLOR,
   },
   breakdownCount: {
-    width: 20,
+    // Same reason as breakdownLabel. A place with 100+ reviews would have
+    // wrapped this one even at the default font.
+    minWidth: 20,
     textAlign: 'right',
   },
   sortButton: {
