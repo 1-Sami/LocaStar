@@ -8,7 +8,13 @@ import {
   fetchListMembershipForLocation,
   fetchLists,
   fetchSavedLocationIds,
+  fetchProfile,
   isAlwaysOpen,
+  isModeratorRole,
+  makeCoverPhoto,
+  setPhotoRemoved,
+  updateReviewStatus,
+  type GalleryPhoto,
 } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -162,7 +168,37 @@ const jsonLd: Record<string, unknown>[] = [
  * exists, so a signed-out reader — and a crawler — pays nothing.
  */
 const hasSession = (Astro.request.headers.get('cookie') ?? '').includes('sb-');
+
+/*
+ * Read a POST body once, here, before anything decides whether to act on it.
+ *
+ * Two reasons, and the second one cost an hour. A body can only be read once,
+ * so the moderator block below has to share this rather than ask again. And a
+ * POST whose body is never read wedges the Workers runtime *after* the
+ * response has gone out — the local server died on the next request every
+ * time, which looked like the moderator actions crashing it and was actually
+ * the paths that refuse a POST without reading it.
+ */
+const postForm = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
+
+// Nothing here is postable without a session.
+if (postForm && !hasSession) return new Response(null, { status: 403 });
+
 let viewerId: string | null = null;
+/*
+ * Moderator tools, drawn in their own panel rather than woven into the page.
+ *
+ * The gallery is a background-image mosaic with its own lightbox script, and
+ * the review list is the markup Google reads. Hanging buttons off both would
+ * risk the two things on this page that must not break, to save a moderator
+ * one glance down the page. A separate panel touches neither.
+ *
+ * Only a moderator is ever sent any of it, and RLS decides every action
+ * regardless — the flag chooses what to draw, not what is permitted.
+ */
+let isModerator = false;
+let modPhotos: GalleryPhoto[] = [];
+let modError: string | null = null;
 let isFavourite = false;
 let isBookmarked = false;
 let myLists: { id: string; name: string; has: boolean }[] = [];
@@ -173,6 +209,50 @@ if (hasSession) {
   const { user, supabase: authed } = await currentUser(Astro.cookies, Astro.request.headers);
   if (user) {
     viewerId = user.id;
+    const profile = await fetchProfile(authed, user.id).catch(() => null);
+    isModerator = isModeratorRole(profile?.role ?? 'user');
+
+    if (postForm) {
+      if (!isModerator) return new Response(null, { status: 403 });
+      const form = postForm;
+
+      const intent = String(form.get('intent') ?? '');
+      try {
+        if (intent === 'cover') {
+          await makeCoverPhoto(authed, location.id, String(form.get('photoId') ?? ''));
+        } else if (intent === 'photo') {
+          await setPhotoRemoved(
+            authed,
+            {
+              locationPhotoId: String(form.get('photoId') ?? '') || null,
+              reviewPhotoId: String(form.get('reviewPhotoId') ?? '') || null,
+            },
+            String(form.get('removed') ?? '') === '1'
+          );
+        } else if (intent === 'review') {
+          await updateReviewStatus(authed, String(form.get('reviewId') ?? ''), 'removed');
+        }
+        return Astro.redirect(`${p(`/location/${location.id}`)}?moderated=1`);
+      } catch (err) {
+        console.error('Moderator action failed', err);
+        modError = t('loc.modFailed');
+      }
+    }
+
+    if (isModerator) {
+      /*
+       * Re-read the photos as the moderator. The anonymous client above has
+       * removed ones filtered out by RLS, which is exactly what makes a photo
+       * unrecoverable from a public page once it is in the trash.
+       *
+       * Reviews are not re-read: fetchReviews is fixed to status = visible and
+       * is used by every screen in the app, so widening it here would change
+       * what the app shows too. Restoring a removed review stays where it
+       * already works, in the report queue.
+       */
+      modPhotos = await fetchLocationPhotos(authed, location.id, true).catch(() => []);
+    }
+
     const [favIds, bucketIds, lists, inLists] = await Promise.all([
       fetchSavedLocationIds(authed, user.id, 'favorite').catch(() => new Set<string>()),
       fetchSavedLocationIds(authed, user.id, 'bucket_list').catch(() => new Set<string>()),
@@ -193,6 +273,7 @@ if (hasSession) {
 
 const backHere = p(`/location/${location.id}`);
 const saved = Astro.url.searchParams.get('saved');
+const moderated = Astro.url.searchParams.get('moderated') === '1';
 
 const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`;
 const seasonLabel =
@@ -527,6 +608,96 @@ const seasonLabel =
         </div>
       </aside>
     </div>
+
+    {
+      isModerator && (
+        <section class="wrap modpanel">
+          <div class="mod-head">
+            <p class="mono kicker">{t('mod.kicker')}</p>
+            <h2>{t('loc.modTitle')}</h2>
+            <p class="sub">{t('loc.modSub')}</p>
+          </div>
+
+          {modError && <p class="mod-error">{modError}</p>}
+          {moderated && !modError && <p class="mod-ok">{t('loc.modDone')}</p>}
+
+          <h3 class="mod-sub">{t('loc.modPhotos')}</h3>
+          {modPhotos.length === 0 ? (
+            <p class="sub">{t('loc.modNoPhotos')}</p>
+          ) : (
+            <ul class="mod-photos">
+              {modPhotos.map((photo, index) => (
+                <li class:list={['mod-photo', { gone: photo.removedAt !== null }]}>
+                  <span class="mod-thumb" style={`background-image:url("${photo.url}")`} />
+                  <div class="mod-photo-meta">
+                    <span class="mono mod-index">{`#${index + 1}`}</span>
+                    <span class="mod-by">{photo.uploaderName ?? t('loc.modNobody')}</span>
+                    {photo.removedAt !== null && <span class="mono mod-tag">{t('loc.modRemoved')}</span>}
+                    {photo.reviewId !== null && <span class="mono mod-tag soft">{t('loc.modFromReview')}</span>}
+                  </div>
+                  <div class="mod-actions">
+                    {/*
+                      Cover is offered only for a photo the place owns. A review
+                      photo belongs to its review, and promoting one would put a
+                      picture on the place that its author could delete out from
+                      under it.
+                    */}
+                    {photo.photoId && photo.removedAt === null && (
+                      <form method="POST">
+                        <input type="hidden" name="intent" value="cover" />
+                        <input type="hidden" name="photoId" value={photo.photoId} />
+                        <button class="mod-btn" type="submit">{t('loc.modMakeCover')}</button>
+                      </form>
+                    )}
+                    <form method="POST">
+                      <input type="hidden" name="intent" value="photo" />
+                      <input type="hidden" name="photoId" value={photo.photoId ?? ''} />
+                      <input type="hidden" name="reviewPhotoId" value={photo.reviewPhotoId ?? ''} />
+                      <input type="hidden" name="removed" value={photo.removedAt === null ? '1' : '0'} />
+                      <button class:list={['mod-btn', { danger: photo.removedAt === null }]} type="submit">
+                        {photo.removedAt === null ? t('loc.modRemovePhoto') : t('loc.modRestorePhoto')}
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h3 class="mod-sub">{t('loc.modReviews')}</h3>
+          {reviews.length === 0 ? (
+            <p class="sub">{t('loc.modNoReviews')}</p>
+          ) : (
+            <ul class="mod-reviews">
+              {reviews.map((review) => (
+                <li class="mod-review">
+                  <div class="mod-review-body">
+                    <span class="mod-by">{review.author_name}</span>
+                    <span class="mono mod-index">{`★ ${review.rating}`}</span>
+                    <p class="mod-quote">{review.title ?? review.body ?? t('loc.modNoText')}</p>
+                  </div>
+                  <form method="POST">
+                    <input type="hidden" name="intent" value="review" />
+                    <input type="hidden" name="reviewId" value={review.id} />
+                    <button class="mod-btn danger" type="submit">{t('loc.modRemoveReview')}</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/*
+            Restoring a removed review is not here. fetchReviews only ever
+            returns visible ones, so a review taken down stops appearing on this
+            page at all — it is put back from the report queue, which is the
+            screen that already lists removed content.
+          */}
+          <p class="sub mod-foot">
+            <a href={p('/admin/reports')}>{t('loc.modQueue')}</a>
+          </p>
+        </section>
+      )
+    }
 
     {
       nearby.length > 0 && (
@@ -1427,5 +1598,108 @@ const seasonLabel =
     .nearby-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* ------------------------------------------------------- moderator tools --- */
+  /* Set apart from the page on purpose. A moderator reading down a place page
+     should be able to tell at a glance where the public page stops and the
+     buttons that change it begin — the accent rule is that line. */
+  .modpanel {
+    margin-block: 56px 8px;
+    /* padding-block, not the shorthand: .wrap supplies the page gutter through
+       padding-inline, and a shorthand here silently zeroed it — the panel ran
+       edge to edge while the rest of the page stayed inset. */
+    padding-block: 26px 30px;
+    border-top: 2px solid var(--accent);
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .mod-head { display: flex; flex-direction: column; gap: 8px; }
+  .mod-head .kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); margin: 0; }
+  .mod-head h2 { margin: 0; font-size: 26px; }
+  .modpanel .sub { margin: 0; color: var(--text-55); max-width: 62ch; font-size: 14px; }
+  .mod-sub {
+    margin: 6px 0 0;
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-42);
+  }
+  .mod-ok { margin: 0; color: var(--ok); font-size: 14px; }
+  .mod-error { margin: 0; color: var(--accent); font-size: 14px; }
+
+  .mod-photos,
+  .mod-reviews { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .mod-photo,
+  .mod-review {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .mod-photo:last-child,
+  .mod-review:last-child { border-bottom: 0; }
+  /* A photo in the trash still has to be recognisable — it is the picture the
+     moderator is deciding whether to bring back — so it is dimmed, not hidden. */
+  .mod-photo.gone .mod-thumb { opacity: .38; }
+  .mod-photo.gone .mod-by { color: var(--text-42); }
+
+  .mod-thumb {
+    flex: none;
+    width: 68px;
+    height: 52px;
+    border-radius: 6px;
+    background-color: var(--surface-alt);
+    background-size: cover;
+    background-position: center;
+  }
+  .mod-photo-meta,
+  .mod-review-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+  }
+  .mod-index { font-size: 11px; color: var(--text-42); }
+  .mod-by { font-size: 14px; }
+  .mod-tag { font-size: 10px; letter-spacing: .1em; color: var(--accent); }
+  .mod-tag.soft { color: var(--text-42); }
+  .mod-quote {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-55);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .mod-actions { display: flex; gap: 8px; flex: none; }
+  .mod-btn {
+    font: inherit;
+    font-size: 13px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .mod-btn:hover { border-color: var(--brand-light); color: var(--brand-light); }
+  .mod-btn.danger:hover { border-color: var(--accent); color: var(--accent); }
+  .mod-foot { margin-top: 4px; }
+  .mod-foot a { color: var(--link); }
+
+  @media (max-width: 620px) {
+    .mod-photo,
+    .mod-review { flex-wrap: wrap; }
+    .mod-actions { width: 100%; }
   }
 </style>
