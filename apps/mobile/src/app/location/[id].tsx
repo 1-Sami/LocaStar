@@ -1746,6 +1746,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  /*
+   * Count and close grouped together on the right, not one in each corner.
+   *
+   * Anchored to the top of the screen rather than to the top of the photo,
+   * which is what the reference drew. The photo is contain-fitted, so its top
+   * edge moves with every image's aspect ratio — controls pinned to it would
+   * jump up and down as you swipe through a gallery, and would need the image
+   * measured on load to place at all. A fixed position that sometimes sits on
+   * black and sometimes on the picture is steadier, which is why both carry
+   * their own scrim below.
+   */
   viewerHeader: {
     position: 'absolute',
     top: 0,
@@ -1753,12 +1764,20 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.four,
   },
+  // Same scrim and radius as the close button beside it, so the two read as
+  // one control cluster and both stay legible over a bright photo.
   viewerCount: {
     color: '#ffffff',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+    borderRadius: Spacing.five,
+    overflow: 'hidden',
   },
   viewerCredit: {
     color: 'rgba(255,255,255,0.75)',
