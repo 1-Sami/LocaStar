@@ -167,28 +167,28 @@ const config = JSON.stringify({ pins, zoom: zoom ?? null, tileUrl: TILE_URL, att
   .map-fallback {
     font-size: 11px;
     letter-spacing: 0.18em;
-    color: rgba(244, 246, 245, 0.42);
+    color: rgba(var(--ink-rgb), 0.42);
   }
 
   /* Leaflet's controls and popups default to a light theme that fights the
      page. Only the chrome is restyled; the tiles are left alone. */
   .leaflet-map :global(.leaflet-control-attribution) {
-    background: rgba(7, 16, 15, 0.78);
-    color: rgba(244, 246, 245, 0.55);
+    background: rgba(var(--page-rgb), 0.78);
+    color: rgba(var(--ink-rgb), 0.55);
     font-size: 10px;
   }
 
   .leaflet-map :global(.leaflet-control-attribution a) {
-    color: rgba(244, 246, 245, 0.75);
+    color: rgba(var(--ink-rgb), 0.75);
   }
 
   .leaflet-map :global(.leaflet-bar a) {
-    background: #0c1817;
-    color: #f4f6f5;
-    border-bottom-color: rgba(244, 246, 245, 0.12);
+    background: var(--surface);
+    color: var(--text);
+    border-bottom-color: rgba(var(--ink-rgb), 0.12);
   }
 
   .leaflet-map :global(.leaflet-bar a:hover) {
-    background: #141f1e;
+    background: var(--surface-alt);
   }
 </style>

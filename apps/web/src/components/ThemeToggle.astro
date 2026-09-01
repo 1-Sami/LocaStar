@@ -1,0 +1,101 @@
+---
+import { useTranslations } from '../i18n/ui';
+
+/*
+ * Light/dark, sat next to EN · SV.
+ *
+ * Both icons are always in the markup and CSS picks which one shows, driven by
+ * --icon-sun / --icon-moon in tokens.css. That is what lets the correct icon
+ * be in the very first paint: when there is no cookie the theme comes from the
+ * device, which the server cannot see, so anything decided in JS would have to
+ * wait for hydration and would visibly flip.
+ *
+ * The icon shown is the theme you would switch TO, not the one you are in.
+ */
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+---
+
+<button class="theme" type="button" data-theme-toggle aria-label={t('nav.theme')} title={t('nav.theme')}>
+  <svg class="icon sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="12" r="4.6" />
+    <g class="rays">
+      <path d="M12 1.6v3M12 19.4v3M1.6 12h3M19.4 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M19.4 4.6l-2.1 2.1M6.7 17.3l-2.1 2.1" />
+    </g>
+  </svg>
+  <svg class="icon moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M20.5 14.6A8.6 8.6 0 1 1 9.4 3.5a7 7 0 0 0 11.1 11.1Z" />
+  </svg>
+</button>
+
+<style>
+  .theme {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--text-42);
+    cursor: pointer;
+    transition: color 120ms ease-out;
+  }
+  .theme:hover { color: var(--text); }
+
+  .icon { width: 17px; height: 17px; }
+  .sun {
+    display: var(--icon-sun);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+  }
+  .moon { display: var(--icon-moon); fill: currentColor; }
+</style>
+
+<script is:inline>
+  (function () {
+    /*
+     * Bind once, however many toggles are on the page.
+     *
+     * The component renders twice — the desktop header and the mobile menu —
+     * so without this its script registers two document-level listeners, and
+     * a single click runs both: the first flips the theme, the second reads
+     * the flipped value and flips it straight back. The button looked
+     * completely dead, and only ever landed on one theme.
+     */
+    if (window.__locastarThemeBound) return;
+    window.__locastarThemeBound = true;
+
+    /*
+     * A year, path=/ so it survives the /sv/ prefix, and Lax so it still
+     * arrives on links followed in from search results — which is most of this
+     * site's traffic, and exactly the visit that must not arrive in the wrong
+     * theme.
+     */
+    var YEAR = 60 * 60 * 24 * 365;
+
+    document.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-theme-toggle]');
+      if (!button) return;
+
+      var root = document.documentElement;
+      /*
+       * Ask CSS what it actually painted, via the color-scheme each theme
+       * block sets. Not matchMedia: that reports the device preference, which
+       * is a different question and can disagree with what was applied — it
+       * did in testing, and the first click came back as the theme already on
+       * screen, so the button did nothing at all. The computed value cannot
+       * disagree with itself.
+       */
+      var current = getComputedStyle(root).colorScheme === 'dark' ? 'dark' : 'light';
+      var next = current === 'dark' ? 'light' : 'dark';
+
+      root.dataset.theme = next;
+      document.cookie = 'theme=' + next + ';path=/;max-age=' + YEAR + ';samesite=lax';
+    });
+  })();
+</script>

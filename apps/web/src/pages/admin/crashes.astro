@@ -160,7 +160,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   }
   /* Red only for the ones that took the app down, so frequency and severity
      are two separate readings rather than one blurred alarm. */
-  .badge.fatal { background: rgba(224, 82, 82, .14); color: #f09a9a; }
+  .badge.fatal { background: rgba(224, 82, 82, .14); color: var(--danger); }
   .meta { margin: 0; font-size: 11px; letter-spacing: .06em; color: var(--text-42); }
 
   summary { cursor: pointer; font-size: 13px; color: var(--text-55); }

@@ -418,7 +418,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
   .flash { margin: 0; padding: 13px 16px; border-radius: 9px; font-size: 15px; }
   .flash.ok { background: rgba(76, 211, 122, .12); color: var(--ok); }
-  .flash.bad { background: rgba(224, 82, 82, .13); color: #f09a9a; }
+  .flash.bad { background: rgba(224, 82, 82, .13); color: var(--danger); }
 
   .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
   .tab {
@@ -529,7 +529,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .btn:hover { border-color: var(--text-55); }
   .btn.warn { border-color: rgba(232, 169, 59, .5); color: var(--accent); }
   .btn.warn:hover { border-color: var(--accent); }
-  .btn.danger { border-color: rgba(224, 82, 82, .5); color: #f09a9a; }
+  .btn.danger { border-color: rgba(224, 82, 82, .5); color: var(--danger); }
   .btn.danger:hover { border-color: #e05252; }
   /* The only affirmative button in the queue — everything else dismisses,
      warns or takes something down. */
@@ -553,7 +553,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   }
   .log li:last-child { border-bottom: 0; }
   .verdict { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-55); }
-  .verdict.removed { color: #f09a9a; }
+  .verdict.removed { color: var(--danger); }
   .verdict.warned { color: var(--accent); }
   .log-note { color: var(--text-70); }
 </style>

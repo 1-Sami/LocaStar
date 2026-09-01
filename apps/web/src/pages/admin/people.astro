@@ -280,7 +280,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
 
   .flash { margin: 0; padding: 13px 16px; border-radius: 9px; font-size: 15px; }
   .flash.ok { background: rgba(76, 211, 122, .12); color: var(--ok); }
-  .flash.bad { background: rgba(224, 82, 82, .13); color: #f09a9a; }
+  .flash.bad { background: rgba(224, 82, 82, .13); color: var(--danger); }
 
   .search { display: flex; flex-direction: column; gap: 7px; }
   .search-label { font-size: 10px; letter-spacing: .14em; color: var(--text-42); }
@@ -317,7 +317,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     background: var(--surface-alt);
     color: var(--text-55);
   }
-  .tag.banned { background: rgba(224, 82, 82, .15); color: #f09a9a; }
+  .tag.banned { background: rgba(224, 82, 82, .15); color: var(--danger); }
   .self { margin: 0; font-size: 11px; letter-spacing: .08em; color: var(--text-42); }
 
   .row-actions { display: flex; flex-direction: column; gap: 10px; }
@@ -346,7 +346,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     cursor: pointer;
   }
   .btn:hover { border-color: var(--text-55); }
-  .btn.danger { border-color: rgba(224, 82, 82, .5); color: #f09a9a; }
+  .btn.danger { border-color: rgba(224, 82, 82, .5); color: var(--danger); }
   .btn.danger:hover { border-color: #e05252; }
   .btn:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
 </style>

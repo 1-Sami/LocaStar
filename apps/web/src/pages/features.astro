@@ -267,7 +267,10 @@ const bands = [
     font-size: 8px;
     line-height: 1.2;
     letter-spacing: 0.1em;
-    color: rgba(7, 16, 15, 0.55);
+    /* The chip is inverted — its background is --text — so its ink is the
+       page colour, not a fixed dark. Hardcoded, this vanished on the light
+       theme where the chip itself turns dark. */
+    color: rgba(var(--page-rgb), 0.62);
   }
 
   .store-name {

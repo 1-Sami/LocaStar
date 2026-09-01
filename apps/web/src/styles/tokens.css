@@ -1,23 +1,37 @@
 /*
- * The design system from the handoff, verbatim.
+ * Two palettes, one structure.
+ *
+ * The site used to commit to a single dark look. It now follows the visitor's
+ * device, exactly as the app does — app.json is `userInterfaceStyle:
+ * "automatic"` and theme-mode-context defaults to `system`, so a site that was
+ * dark-only was the thing out of step, not the other way round.
  *
  * Two backgrounds only — page and surface. Depth comes from those plus
  * hairlines, not shadows. Do not add a third.
  *
- * The site commits to one dark look on purpose: it is the app's own palette,
- * and the mockups are built around it. No light theme.
+ * THE ALPHAS ARE NOT SHARED BETWEEN THE THEMES, and that is the whole trap.
+ * Light text on a dark ground and dark text on a light ground do not reach the
+ * same contrast at the same opacity. --text-42 measures 5.34:1 at alpha 0.52
+ * on the dark page; the same 0.52 on the light page measures 3.44:1, which is
+ * below the 4.5:1 body-text bar and would silently undo the fix recorded
+ * below. Each ramp is set from a measured ratio, not copied across.
+ *
+ * Every value lives once, in the block below. The two theme blocks only map
+ * them, so changing a colour is a one-line edit and the themes cannot drift.
  */
 :root {
-  --page: #07100f;
-  --surface: #0c1817;
-  --surface-alt: #141f1e;
-  --brand: #125f6f;
-  --brand-light: #2ba3a3;
-  --link: #5fd3cf;
-  --accent: #e8a93b;
-  --text: #f4f6f5;
-  --text-70: rgba(244, 246, 245, 0.7);
-  --text-55: rgba(244, 246, 245, 0.55);
+  /* ---------------------------------------------------------- dark values -- */
+  --d-page: #07100f;
+  --d-surface: #0c1817;
+  --d-surface-alt: #141f1e;
+  --d-brand: #125f6f;
+  --d-brand-light: #2ba3a3;
+  --d-link: #5fd3cf;
+  --d-accent: #e8a93b;
+  --d-accent-fill: #e8a93b;
+  --d-text: #f4f6f5;
+  --d-text-70: rgba(244, 246, 245, 0.7);
+  --d-text-55: rgba(244, 246, 245, 0.55);
   /*
    * Raised from 0.42, which measured 3.85:1 on --page where body text needs
    * 4.5:1. It carried the input placeholders and .fine — the line on the
@@ -26,16 +40,164 @@
    *
    * The name is kept so nothing has to be renamed to benefit.
    */
-  --text-42: rgba(244, 246, 245, 0.52);
-  --hairline: rgba(244, 246, 245, 0.09);
-  --border: rgba(244, 246, 245, 0.28);
-  --list-surface: #141f2e;
-  --ok: #4cd37a;
+  --d-text-42: rgba(244, 246, 245, 0.52);
+  --d-hairline: rgba(244, 246, 245, 0.09);
+  --d-border: rgba(244, 246, 245, 0.28);
+  --d-list-surface: #141f2e;
+  --d-ok: #4cd37a;
+  --d-danger: #f09a9a;
+  /* Sits on a photo, so it is the same in both themes: a scrim is not a
+     surface, it is a darkening of whatever is underneath. */
+  /* The ink, as channels, so a page can write rgba(var(--ink-rgb), a) and keep
+     its own alpha while the colour follows the theme. 46 hardcoded overlays
+     across the site were the dark ink written out longhand. */
+  --d-ink-rgb: 244, 246, 245;
+  --d-page-rgb: 7, 16, 15;
+  --d-scrim: rgba(0, 0, 0, 0.55);
+  --d-on-photo: #ffffff;
+
+  /* --------------------------------------------------------- light values -- */
+  /* Warm off-white rather than #fff: the page reads as paper, and it leaves
+     #fff free to lift cards off it without needing a shadow. */
+  --l-page: #fbfaf7;
+  --l-surface: #ffffff;
+  --l-surface-alt: #efece5;
+  --l-brand: #125f6f;
+  /* The dark theme's #2ba3a3 measures 2.93:1 on the light page — fine as a
+     glow on black, unreadable as text on paper. Darkened until it passes. */
+  --l-brand-light: #0e7a83;
+  --l-link: #0e7a83;
+  /*
+   * Two accents on light, one on dark, for a reason worth keeping.
+   *
+   * #e8a93b measures 1.98:1 on the light page. It stays as a *fill* — a
+   * button, a rating star, a block of colour — where nothing is read through
+   * it. Anything that has to be legible, including the focus ring and link
+   * hover, uses the darker ochre at 4.65:1.
+   */
+  --l-accent: #9e6510;
+  --l-accent-fill: #e8a93b;
+  --l-text: #10201e;
+  /* Alphas set to land on the dark theme's own ratios: 8.04 / 5.71 / 5.35
+     against its 8.89 / 5.86 / 5.34. */
+  --l-text-70: rgba(16, 32, 30, 0.78);
+  --l-text-55: rgba(16, 32, 30, 0.68);
+  --l-text-42: rgba(16, 32, 30, 0.66);
+  /* Higher than the dark theme's 0.09/0.28: a dark line on paper disappears
+     at the alpha a light line needs on black. */
+  --l-hairline: rgba(16, 32, 30, 0.12);
+  --l-border: rgba(16, 32, 30, 0.22);
+  --l-list-surface: #edf2fa;
+  --l-ok: #18703c;
+  /* 6.26:1 on the light page, against the pale pink’s 2.05:1. */
+  --l-danger: #b3261e;
+  --l-ink-rgb: 16, 32, 30;
+  --l-page-rgb: 251, 250, 247;
+  --l-scrim: rgba(0, 0, 0, 0.55);
+  --l-on-photo: #ffffff;
 
   --font-display: 'Spline Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   --gutter: 40px;
+}
+
+/*
+ * Light is the default, so a visitor with no preference and no cookie gets the
+ * friendlier of the two — this site's traffic is strangers arriving from a
+ * search result, and it is read outdoors in daylight as often as not.
+ */
+:root {
+  color-scheme: light;
+  --page: var(--l-page);
+  --surface: var(--l-surface);
+  --surface-alt: var(--l-surface-alt);
+  --brand: var(--l-brand);
+  --brand-light: var(--l-brand-light);
+  --link: var(--l-link);
+  --accent: var(--l-accent);
+  --accent-fill: var(--l-accent-fill);
+  --text: var(--l-text);
+  --text-70: var(--l-text-70);
+  --text-55: var(--l-text-55);
+  --text-42: var(--l-text-42);
+  --hairline: var(--l-hairline);
+  --border: var(--l-border);
+  --list-surface: var(--l-list-surface);
+  --ok: var(--l-ok);
+  --danger: var(--l-danger);
+  --ink-rgb: var(--l-ink-rgb);
+  --page-rgb: var(--l-page-rgb);
+  --scrim: var(--l-scrim);
+  --on-photo: var(--l-on-photo);
+  /* The toggle draws both icons and lets CSS pick, so the right one is in the
+     first paint even when the theme came from the device rather than a cookie
+     — which the server cannot know. */
+  --icon-sun: none;
+  --icon-moon: block;
+}
+
+/*
+ * The device asked for dark and the visitor has not overridden it.
+ *
+ * Guarded on [data-theme="light"] so an explicit choice beats the device;
+ * without the guard, choosing light on a dark-set phone would do nothing.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --page: var(--d-page);
+    --surface: var(--d-surface);
+    --surface-alt: var(--d-surface-alt);
+    --brand: var(--d-brand);
+    --brand-light: var(--d-brand-light);
+    --link: var(--d-link);
+    --accent: var(--d-accent);
+    --accent-fill: var(--d-accent-fill);
+    --text: var(--d-text);
+    --text-70: var(--d-text-70);
+    --text-55: var(--d-text-55);
+    --text-42: var(--d-text-42);
+    --hairline: var(--d-hairline);
+    --border: var(--d-border);
+    --list-surface: var(--d-list-surface);
+    --ok: var(--d-ok);
+    --danger: var(--d-danger);
+    --ink-rgb: var(--d-ink-rgb);
+    --page-rgb: var(--d-page-rgb);
+    --scrim: var(--d-scrim);
+    --on-photo: var(--d-on-photo);
+    --icon-sun: block;
+    --icon-moon: none;
+  }
+}
+
+/* An explicit choice of dark, whatever the device says. Written as
+   :root[...] so it outranks the media block above in both directions. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page: var(--d-page);
+  --surface: var(--d-surface);
+  --surface-alt: var(--d-surface-alt);
+  --brand: var(--d-brand);
+  --brand-light: var(--d-brand-light);
+  --link: var(--d-link);
+  --accent: var(--d-accent);
+  --accent-fill: var(--d-accent-fill);
+  --text: var(--d-text);
+  --text-70: var(--d-text-70);
+  --text-55: var(--d-text-55);
+  --text-42: var(--d-text-42);
+  --hairline: var(--d-hairline);
+  --border: var(--d-border);
+  --list-surface: var(--d-list-surface);
+  --ok: var(--d-ok);
+  --ink-rgb: var(--d-ink-rgb);
+  --page-rgb: var(--d-page-rgb);
+  --scrim: var(--d-scrim);
+  --on-photo: var(--d-on-photo);
+  --icon-sun: block;
+  --icon-moon: none;
 }
 
 @media (max-width: 767px) {
@@ -107,4 +269,40 @@ a:hover {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/*
+ * A panel that is dark in both themes — the home hero, and anything else that
+ * is a branded block rather than page background.
+ *
+ * Re-declaring the ink tokens inside it is what makes this work: every
+ * descendant already reads --text, --text-70, --ink-rgb and so on, so they all
+ * flip together and nothing inside needs to know it is on a dark panel. The
+ * first light build got this wrong and the hero rendered dark text on the dark
+ * gradient — the headline, the nav and the sign-in link were all invisible.
+ */
+.on-dark {
+  color-scheme: dark;
+  /* --page as well as --text: an inverted chip does background: var(--text)
+     with color: var(--page), so overriding only one of the pair turns it into
+     near-white on near-white. The store badges in the hero did exactly that. */
+  --page: var(--d-page);
+  --surface: var(--d-surface);
+  --surface-alt: var(--d-surface-alt);
+  --brand-light: var(--d-brand-light);
+  --link: var(--d-link);
+  --accent: var(--d-accent);
+  --text: var(--d-text);
+  --text-70: var(--d-text-70);
+  --text-55: var(--d-text-55);
+  --text-42: var(--d-text-42);
+  --hairline: var(--d-hairline);
+  --border: var(--d-border);
+  --ink-rgb: var(--d-ink-rgb);
+  --page-rgb: var(--d-page-rgb);
+  --list-surface: var(--d-list-surface);
+  --ok: var(--d-ok);
+  --danger: var(--d-danger);
+  --scrim: var(--d-scrim);
+  color: var(--text);
 }

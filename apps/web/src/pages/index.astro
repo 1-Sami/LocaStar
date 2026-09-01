@@ -109,7 +109,7 @@ const jsonLd = [
   <SiteHeader />
 
   <main id="main">
-    <section class="hero">
+    <section class="hero on-dark">
       <div class="hero-shade"></div>
 
       <div class="hero-inner">
@@ -430,7 +430,7 @@ const jsonLd = [
   .promise {
     font-size: clamp(19px, 2.4vw, 26px);
     line-height: 1.4;
-    color: rgba(244, 246, 245, 0.88);
+    color: rgba(var(--ink-rgb), 0.88);
     margin: 0;
     max-width: 620px;
     text-wrap: pretty;
@@ -481,7 +481,10 @@ const jsonLd = [
     font-size: 8px;
     line-height: 1.2;
     letter-spacing: 0.1em;
-    color: rgba(7, 16, 15, 0.55);
+    /* The chip is inverted — its background is --text — so its ink is the
+       page colour, not a fixed dark. Hardcoded, this vanished on the light
+       theme where the chip itself turns dark. */
+    color: rgba(var(--page-rgb), 0.62);
   }
 
   .store-name {
@@ -493,7 +496,7 @@ const jsonLd = [
   .badge-note {
     font-size: 13px;
     line-height: 1.4;
-    color: rgba(244, 246, 245, 0.62);
+    color: rgba(var(--ink-rgb), 0.62);
     max-width: 170px;
     padding-left: 8px;
   }
@@ -504,7 +507,7 @@ const jsonLd = [
     margin: 44px var(--gutter) 36px;
     display: flex;
     background: rgba(7, 16, 15, 0.72);
-    border: 1px solid rgba(244, 246, 245, 0.16);
+    border: 1px solid rgba(var(--ink-rgb), 0.16);
     border-radius: 10px;
     overflow: hidden;
     backdrop-filter: blur(14px);
@@ -513,7 +516,7 @@ const jsonLd = [
   .cell {
     flex: 1;
     padding: 18px 22px;
-    border-right: 1px solid rgba(244, 246, 245, 0.14);
+    border-right: 1px solid rgba(var(--ink-rgb), 0.14);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -532,7 +535,7 @@ const jsonLd = [
   .cell-label {
     font-size: 9.5px;
     letter-spacing: 0.16em;
-    color: rgba(244, 246, 245, 0.5);
+    color: rgba(var(--ink-rgb), 0.5);
   }
 
   .cell input,
@@ -540,7 +543,7 @@ const jsonLd = [
     background: transparent;
     border: 0;
     padding: 0;
-    color: rgba(244, 246, 245, 0.85);
+    color: rgba(var(--ink-rgb), 0.85);
     font-family: var(--font-display);
     font-weight: 400;
     font-size: 15px;
@@ -549,7 +552,7 @@ const jsonLd = [
   }
 
   .cell input::placeholder {
-    color: rgba(244, 246, 245, 0.85);
+    color: rgba(var(--ink-rgb), 0.85);
   }
 
   .cell select option {
@@ -780,7 +783,7 @@ const jsonLd = [
   .lm-main,
   .lm-tile {
     border-radius: 6px;
-    background-color: rgba(244, 246, 245, 0.06);
+    background-color: rgba(var(--ink-rgb), 0.06);
     background-size: cover;
     background-position: center;
   }
@@ -821,7 +824,7 @@ const jsonLd = [
   .band-copy p {
     font-size: 16px;
     line-height: 1.6;
-    color: rgba(244, 246, 245, 0.75);
+    color: rgba(var(--ink-rgb), 0.75);
     margin: 0;
     max-width: 46ch;
   }
@@ -835,7 +838,7 @@ const jsonLd = [
 
   .band-note {
     font-size: 13px;
-    color: rgba(244, 246, 245, 0.55);
+    color: rgba(var(--ink-rgb), 0.55);
   }
 
   .band-art {
@@ -923,7 +926,7 @@ const jsonLd = [
     .cell {
       flex: 1 1 100%;
       border-right: 0;
-      border-bottom: 1px solid rgba(244, 246, 245, 0.14);
+      border-bottom: 1px solid rgba(var(--ink-rgb), 0.14);
     }
   }
 </style>

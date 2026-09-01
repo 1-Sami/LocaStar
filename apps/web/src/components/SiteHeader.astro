@@ -1,4 +1,5 @@
 ---
+import ThemeToggle from './ThemeToggle.astro';
 import { fetchProfile } from '@locastar/shared';
 
 import { localePath, useTranslations } from '../i18n/ui';
@@ -99,6 +100,8 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
         <a class={lang === 'sv' ? 'on' : ''} href={localePath(path, 'sv')} hreflang="sv">SV</a>
       </span>
 
+      <ThemeToggle />
+
       {
         signedInName ? (
           <a class="me" href={p('/account')} aria-label={`${t('nav.account')} — ${signedInName}`}>
@@ -149,6 +152,7 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
             <span aria-hidden="true"> · </span>
             <a class={lang === 'sv' ? 'on' : ''} href={localePath(path, 'sv')} hreflang="sv">SV</a>
           </span>
+          <ThemeToggle />
         </nav>
       </details>
     </div>
@@ -158,7 +162,7 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
 <style>
   .site-header {
     border-bottom: 1px solid var(--hairline);
-    background: rgba(7, 16, 15, 0.9);
+    background: rgba(var(--page-rgb), 0.9);
     /*
      * Above the sticky results bar the search page puts at the top of its
      * column, so the open menu is never drawn underneath it — and below the
@@ -224,7 +228,7 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
     font-weight: 500;
     font-size: 17px;
     line-height: 1;
-    color: rgba(244, 246, 245, 0.85);
+    color: rgba(var(--ink-rgb), 0.85);
     padding-bottom: 6px;
     border-bottom: 2px solid transparent;
   }

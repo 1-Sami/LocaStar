@@ -67,10 +67,26 @@ const svHref = origin + (bare === '/' ? '/sv/' : '/sv' + bare);
  */
 const selfHref = lang === 'sv' && !englishOnly ? svHref : canonical;
 const shareImage = image ?? origin + '/share-card.png';
+
+/*
+ * The theme, resolved on the server so it is right in the first byte.
+ *
+ * Deliberately a cookie and not a path, unlike the language. /sv/ exists
+ * because Google indexes addresses (see middleware.ts); doing the same for the
+ * theme would double every URL again for something no one should ever search
+ * for. A cookie also means the page arrives already correct — a theme read
+ * from localStorage can only be applied after the first paint, so every page
+ * load would flash the wrong colours before snapping over.
+ *
+ * Absent means "follow the device", which is left to the CSS media query
+ * rather than guessed here: the server cannot see the visitor's OS setting.
+ */
+const themeCookie = Astro.cookies.get('theme')?.value;
+const theme = themeCookie === 'light' || themeCookie === 'dark' ? themeCookie : null;
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang={lang} data-theme={theme}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -105,7 +121,22 @@ const shareImage = image ?? origin + '/share-card.png';
     */}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content="#07100f" />
+    {
+      /*
+       * The browser chrome around the page, which has to agree with the page
+       * or the phone's address bar sits in the opposite theme. With a cookie
+       * there is one answer; without one the device decides, so both are
+       * emitted and the media attribute picks.
+       */
+      theme ? (
+        <meta name="theme-color" content={theme === 'dark' ? '#07100f' : '#fbfaf7'} />
+      ) : (
+        <>
+          <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)" />
+          <meta name="theme-color" content="#07100f" media="(prefers-color-scheme: dark)" />
+        </>
+      )
+    }
 
     {/*
       Served from this origin, not fonts.googleapis.com — see the note in

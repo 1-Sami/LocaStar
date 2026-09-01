@@ -73,7 +73,7 @@ const p = (href: string) => localePath(href, lang);
 <style>
   .site-footer {
     margin-top: 72px;
-    border-top: 1px solid rgba(244, 246, 245, 0.08);
+    border-top: 1px solid rgba(var(--ink-rgb), 0.08);
   }
 
   .inner {
@@ -110,19 +110,22 @@ const p = (href: string) => localePath(href, lang);
   .credit {
     font-size: 13px;
     line-height: 1.6;
-    color: rgba(244, 246, 245, 0.45);
+    /* Was a bare 0.45, which measured 2.82:1 on the light page and 4.25:1 on
+       the dark one — under the 4.5:1 bar in both. The token is the one that
+       has already been measured. */
+    color: var(--text-42);
     margin: 0;
     max-width: 280px;
   }
 
   .credit a {
-    color: rgba(244, 246, 245, 0.6);
+    color: var(--text-70);
   }
 
   .col-head {
     font-size: 10px;
     letter-spacing: 0.16em;
-    color: rgba(244, 246, 245, 0.35);
+    color: var(--text-42);
     margin-bottom: 3px;
   }
 
