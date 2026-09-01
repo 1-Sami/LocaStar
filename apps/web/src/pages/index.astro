@@ -65,6 +65,45 @@ const finderCategories = byCategoryName(
 );
 
 /*
+ * The activities the front page leads with, chosen by the owner rather than
+ * taken off the top of the counts.
+ *
+ * The grid used to show the 23 biggest, which is a lot of tiles and put the
+ * page's face in the hands of whatever the importer happened to load most of
+ * — five of the top eight were pitches and courts. This set is a spread of
+ * what somebody actually decides to go and do on a Saturday, and it
+ * deliberately includes three the counts would have buried: fishing sits at
+ * 31st, ski slopes 26th, museums 33rd.
+ *
+ * In the owner's order, not by count. The tiles carry their counts, so the
+ * numbers will not descend down the grid — that is the point, and sorting it
+ * would quietly undo the curation.
+ *
+ * Everything not named here is still one tap away behind the "+N more" tile,
+ * and the heading above still counts every activity there is.
+ */
+const FRONT_PAGE_CATEGORIES = [
+  'dog-parks',
+  'playgrounds',
+  'fishing',
+  'museums-free',
+  'skiing',
+  'golf',
+  'gyms-outside',
+  'ice-skating',
+  'nature-reserves',
+];
+
+/*
+ * Resolved against what actually has places, so a category that empties out
+ * drops off the front page rather than rendering a tile leading nowhere — and
+ * the "+N more" count stays honest either way.
+ */
+const frontCategories = FRONT_PAGE_CATEGORIES.map((slug) =>
+  withPlaces.find((row) => row.slug === slug)
+).filter((row): row is (typeof withPlaces)[number] => row !== undefined);
+
+/*
  * Most liked: only places somebody has actually reviewed.
  *
  * The server cannot know where a visitor is and a crawler has no location at
@@ -265,7 +304,7 @@ const jsonLd = [
       </div>
       <div class="cat-grid">
         {
-          withPlaces.slice(0, 23).map((row) => (
+          frontCategories.map((row) => (
             <a class="cat" href={p(`/activity/${row.slug}`)} style={`background:${categoryColor(row.slug)}`}>
               <span class="cat-name">{categoryName(row.slug, lang) ?? row.name}</span>
               <span class="mono cat-count">{row.count}</span>
@@ -273,9 +312,11 @@ const jsonLd = [
           ))
         }
         {
-          withPlaces.length > 23 && (
+          withPlaces.length > frontCategories.length && (
             <a class="cat more" href={p('/categories')}>
-              <span class="cat-name">+{withPlaces.length - 23} {t('home.more')}</span>
+              <span class="cat-name">
+                +{withPlaces.length - frontCategories.length} {t('home.more')}
+              </span>
             </a>
           )
         }
