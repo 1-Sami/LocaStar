@@ -731,7 +731,7 @@ export const ui = {
     'home.community': 'GEMENSKAP →',
     'home.bandTitle': 'Hela kartan, i fickan',
     'home.bandBody':
-      'Vägbeskrivning från där du faktiskt är, platser sparade till sedan, och en påminnelse innan något du ville se drar igång.',
+      'Vägbeskrivningar från var du faktiskt befinner dig, platser sparade till senare och en påminnelse innan något du ville se börjar.',
     'home.bandNote': 'Gratis, inga annonser. Fungerar på svenska och engelska.',
 
     'search.placeholder': 'Sök en plats, ett evenemang, en ort…',

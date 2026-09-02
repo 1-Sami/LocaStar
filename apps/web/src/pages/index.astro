@@ -6,6 +6,7 @@ import {
   fetchPublicLists,
 } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
+import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
@@ -164,48 +165,8 @@ const jsonLd = [
         </p>
 
         <div class="badges">
-          {
-            appStoreReady ? (
-              <a class="store" href={STORE_LINKS.appStore}>
-                <span class="store-mark" aria-hidden="true" />
-                <span class="store-text">
-                  <span class="mono over">DOWNLOAD ON THE</span>
-                  <span class="store-name">App Store</span>
-                </span>
-              </a>
-            ) : (
-              /* A span until that store is public: a badge that 404s is worse
-                 than one that waits. The design is identical either way. */
-              <span class="store waiting">
-                <span class="store-mark" aria-hidden="true" />
-                <span class="store-text">
-                  <span class="mono over">DOWNLOAD ON THE</span>
-                  <span class="store-name">App Store</span>
-                </span>
-              </span>
-            )
-          }
-          {
-            googlePlayReady ? (
-              <a class="store" href={STORE_LINKS.googlePlay}>
-                <span class="store-mark" aria-hidden="true" />
-                <span class="store-text">
-                  <span class="mono over">GET IT ON</span>
-                  <span class="store-name">Google Play</span>
-                </span>
-              </a>
-            ) : (
-              /* A span until that store is public: a badge that 404s is worse
-                 than one that waits. The design is identical either way. */
-              <span class="store waiting">
-                <span class="store-mark" aria-hidden="true" />
-                <span class="store-text">
-                  <span class="mono over">GET IT ON</span>
-                  <span class="store-name">Google Play</span>
-                </span>
-              </span>
-            )
-          }
+          <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
+          <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
           <span class="badge-note">{t('home.storeSoon')}</span>
         </div>
       </div>
@@ -368,52 +329,18 @@ const jsonLd = [
     }
 
     <section class="wrap" id="get-the-app">
-      <div class="band">
+      <div class="band on-dark">
         <div class="band-copy">
           <h2>{t('home.bandTitle')}</h2>
-          <p>
-            Directions from where you actually are, places saved for later, and a reminder before something you
-            wanted to see starts.
-          </p>
+          {/*
+            t('home.bandBody'), not the sentence typed out here. Both
+            translations existed all along — the key was written and never
+            reached, so the Swedish page rendered this paragraph in English.
+          */}
+          <p>{t('home.bandBody')}</p>
           <div class="band-badges">
-            {
-              appStoreReady ? (
-                <a class="store" href={STORE_LINKS.appStore}>
-                  <span class="store-mark" aria-hidden="true" />
-                  <span class="store-text">
-                    <span class="mono over">DOWNLOAD ON THE</span>
-                    <span class="store-name">App Store</span>
-                  </span>
-                </a>
-              ) : (
-                <span class="store waiting">
-                  <span class="store-mark" aria-hidden="true" />
-                  <span class="store-text">
-                    <span class="mono over">DOWNLOAD ON THE</span>
-                    <span class="store-name">App Store</span>
-                  </span>
-                </span>
-              )
-            }
-            {
-              googlePlayReady ? (
-                <a class="store" href={STORE_LINKS.googlePlay}>
-                  <span class="store-mark" aria-hidden="true" />
-                  <span class="store-text">
-                    <span class="mono over">GET IT ON</span>
-                    <span class="store-name">Google Play</span>
-                  </span>
-                </a>
-              ) : (
-                <span class="store waiting">
-                  <span class="store-mark" aria-hidden="true" />
-                  <span class="store-text">
-                    <span class="mono over">GET IT ON</span>
-                    <span class="store-name">Google Play</span>
-                  </span>
-                </span>
-              )
-            }
+            <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
+            <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
           </div>
           <p class="band-note">{t('home.bandNote')}</p>
         </div>

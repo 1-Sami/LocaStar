@@ -1,0 +1,79 @@
+---
+/*
+ * One App Store or Google Play badge.
+ *
+ * A component because there are three pairs of these — the home hero, the
+ * "get the app" band, and the features page — and they had drifted: the band's
+ * pair was hardcoded as unavailable and would have stayed dead however the
+ * flags were set. One definition means a store going live is one edit.
+ *
+ * The chip is inverted: its background is --text and its ink is --page, so it
+ * reads correctly in both themes and on the always-dark panels it sits on.
+ * The mark inherits currentColor for the same reason.
+ */
+interface Props {
+  store: 'apple' | 'google';
+  over: string;
+  name: string;
+  href: string;
+  ready: boolean;
+}
+
+const { store, over, name, href, ready } = Astro.props;
+
+/*
+ * Drawn rather than fetched: the badge is the site's own design, not Apple's
+ * or Google's supplied artwork, and an <img> would be one more request and one
+ * more thing to go missing. Single paths, so they take currentColor and invert
+ * with the chip.
+ */
+const MARK = {
+  apple:
+    'M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z',
+  google:
+    'M3.9 1.9c-.25.26-.4.67-.4 1.2v17.8c0 .53.15.94.4 1.2l.06.06 9.97-9.97v-.24L3.96 1.98l-.06-.08zm11.36 6.6L4.9 2.1l-.1-.06 8.7 8.7 1.76-2.24zm1.16 1.1 2.98 1.7c.85.48.85 1.27 0 1.76l-3.03 1.73-2.02-2.02 2.07-3.17zM4.8 21.96l10.36-6.4-1.9-2.36-8.46 8.76z',
+} as const;
+
+const Tag = ready ? 'a' : 'span';
+---
+
+<Tag class:list={['store', { waiting: !ready }]} href={ready ? href : undefined}>
+  <svg class="store-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d={MARK[store]} />
+  </svg>
+  <span class="store-text">
+    <span class="mono over">{over}</span>
+    <span class="store-name">{name}</span>
+  </span>
+</Tag>
+
+<style>
+  .store {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 20px;
+    background: var(--text);
+    border-radius: 9px;
+    color: var(--page);
+    text-decoration: none;
+  }
+  .store-mark {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    fill: currentColor;
+  }
+  .store-text { display: flex; flex-direction: column; }
+  .over {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    /* The chip is inverted, so its ink is the page colour, not a fixed dark —
+       hardcoded, this vanished on whichever theme turned the chip dark. */
+    color: rgba(var(--page-rgb), 0.62);
+  }
+  .store-name { font-weight: 600; font-size: 16px; line-height: 1.2; }
+
+  /* Still a badge, just not a link yet. */
+  .store.waiting { opacity: 0.62; }
+</style>
