@@ -47,15 +47,47 @@ export { CategoryColors } from '@locastar/shared';
  * Fixed near-black palette for the redesigned Search screen. Deliberately not
  * theme-adaptive (light/dark) — this is a dedicated dark UI treatment per spec.
  */
-export const SearchPalette = {
-  background: '#0A0A0A',
-  card: '#141414',
-  hairline: '#202020',
-  inputBorder: '#2A2A2A',
-  text: '#F2F2F2',
-  textMuted: '#8A8A8A',
-  accent: '#E8A93B',
+/*
+ * The search screen's own palette, in both themes.
+ *
+ * It was a single dark set, so Search stayed black while the rest of the app
+ * followed the phone — and because it paints under the status bar, the icons
+ * up there are drawn for the theme and vanished against it.
+ *
+ * Still separate from Colors: this screen is a denser, flatter surface than
+ * the rest of the app, and the two have never used the same greys.
+ */
+export const SearchPalettes = {
+  dark: {
+    background: '#0A0A0A',
+    card: '#141414',
+    hairline: '#202020',
+    inputBorder: '#2A2A2A',
+    text: '#F2F2F2',
+    textMuted: '#8A8A8A',
+    accent: '#E8A93B',
+  },
+  light: {
+    background: '#FFFFFF',
+    card: '#F2F2F5',
+    hairline: '#E3E4E8',
+    inputBorder: '#CFD2D8',
+    text: '#0A0A0D',
+    /* Darker than the dark theme's #8A8A8A mirrored would be: grey on white
+       needs more weight than grey on black to read at the same size. */
+    textMuted: '#5B6068',
+    accent: '#E8A93B',
+  },
 } as const;
+
+/* Widened to string: `as const` above makes every value its own literal
+   type, so the light set is not assignable to the shape of the dark one. */
+export type SearchPaletteColors = {
+  [K in keyof (typeof SearchPalettes)['dark']]: string;
+};
+
+/** Kept for anything still reading a fixed palette. Prefer useSearchPalette. */
+export const SearchPalette = SearchPalettes.dark;
 
 export const Fonts = Platform.select({
   ios: {

@@ -2,7 +2,7 @@ import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocati
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -22,7 +22,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CategoryChip } from '@/components/category-chip';
 import { categoryLabel } from '@/lib/categories';
 import { LocationCard } from '@/components/location-card';
-import { BottomTabInset, Fonts, MaxContentWidth, SearchPalette, Spacing } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, type SearchPaletteColors, Spacing } from '@/constants/theme';
+import { useSearchPalette } from '@/hooks/use-search-palette';
 import { useSaves } from '@/hooks/use-saves';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
@@ -77,6 +78,9 @@ export default function SearchScreen() {
   const { coords } = useUserLocation();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
   const insets = useSafeAreaInsets();
+  /* Rebuilt only when the theme changes, not on every render. */
+  const palette = useSearchPalette();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSlugs, setActiveSlugs] = useState<string[]>([]);
@@ -304,17 +308,13 @@ export default function SearchScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.exploreHeader}>
-          <Text style={styles.exploreTitle}>{t('search.title')}</Text>
-        </View>
-
         <View style={styles.searchBar}>
-          <Ionicons name="search-sharp" size={16} color={SearchPalette.textMuted} style={styles.searchIcon} />
+          <Ionicons name="search-sharp" size={16} color={palette.textMuted} style={styles.searchIcon} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder={t('search.placeholder')}
-            placeholderTextColor={SearchPalette.textMuted}
+            placeholderTextColor={palette.textMuted}
             style={styles.searchInput}
           />
           {/* Only while there is something to clear — an X sitting over an
@@ -325,7 +325,7 @@ export default function SearchScreen() {
               hitSlop={10}
               accessibilityLabel={t('search.clear')}
               style={styles.searchClear}>
-              <Ionicons name="close-circle" size={18} color={SearchPalette.textMuted} />
+              <Ionicons name="close-circle" size={18} color={palette.textMuted} />
             </Pressable>
           )}
         </View>
@@ -345,7 +345,7 @@ export default function SearchScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.filterButtonGradient}>
                 <View style={styles.filterButton}>
-                  <Ionicons name="options-sharp" size={15} color={SearchPalette.text} />
+                  <Ionicons name="options-sharp" size={14} color={palette.text} />
                   <Text style={styles.filterButtonText}>{t('search.filter')}</Text>
                 </View>
               </LinearGradient>
@@ -368,7 +368,6 @@ export default function SearchScreen() {
               setActiveSeason(null);
               setActiveKind(null);
             }}>
-            <Text style={styles.resetFiltersX}>×</Text>
             <Text style={styles.resetFiltersText}>{t('search.resetFilters')}</Text>
           </Pressable>
         )}
@@ -382,7 +381,7 @@ export default function SearchScreen() {
           </Text>
           <Pressable style={styles.sortButton} onPress={() => setSortMenuVisible(true)}>
             <Text style={styles.sortButtonText}>{t(sortLabelKey).toUpperCase()}</Text>
-            <Ionicons name="swap-vertical-sharp" size={14} color={SearchPalette.text} />
+            <Ionicons name="swap-vertical-sharp" size={14} color={palette.text} />
           </Pressable>
         </View>
 
@@ -393,7 +392,7 @@ export default function SearchScreen() {
           top again.
         */}
         {loading && cards.length === 0 ? (
-          <ActivityIndicator style={styles.loadingIndicator} color={SearchPalette.accent} />
+          <ActivityIndicator style={styles.loadingIndicator} color={palette.accent} />
         ) : (
           <FlatList
             data={cards}
@@ -412,7 +411,7 @@ export default function SearchScreen() {
             onEndReachedThreshold={1.5}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator style={styles.footerLoader} color={SearchPalette.accent} />
+                <ActivityIndicator style={styles.footerLoader} color={palette.accent} />
               ) : hasMore ? null : cards.length > PAGE_SIZE ? (
                 // Only worth saying once there was actually more than one page
                 // to get through; on a short list it is noise.
@@ -496,19 +495,19 @@ export default function SearchScreen() {
 
             <Text style={styles.modalSectionLabel}>{t('search.categories')}</Text>
             <View style={styles.categorySearchBar}>
-              <Ionicons name="search-sharp" size={15} color={SearchPalette.textMuted} />
+              <Ionicons name="search-sharp" size={15} color={palette.textMuted} />
               <TextInput
                 value={categoryQuery}
                 onChangeText={setCategoryQuery}
                 placeholder={t('search.searchCategories')}
-                placeholderTextColor={SearchPalette.textMuted}
+                placeholderTextColor={palette.textMuted}
                 style={styles.categorySearchInput}
                 autoCorrect={false}
                 autoCapitalize="none"
               />
               {categoryQuery.length > 0 && (
                 <Pressable onPress={() => setCategoryQuery('')} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={SearchPalette.textMuted} />
+                  <Ionicons name="close-circle" size={16} color={palette.textMuted} />
                 </Pressable>
               )}
             </View>
@@ -530,7 +529,7 @@ export default function SearchScreen() {
                       <Text style={[styles.modalRowText, active && styles.modalRowTextActive]}>
                         {categoryLabel(t, category.slug, category.name)}
                       </Text>
-                      {active && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
+                      {active && <Ionicons name="checkmark" size={18} color={palette.accent} />}
                     </Pressable>
                   );
                 })
@@ -555,7 +554,7 @@ export default function SearchScreen() {
                   setSortMenuVisible(false);
                 }}>
                 <Text style={styles.modalRowText}>{t(option.labelKey)}</Text>
-                {sortBy === option.key && <Ionicons name="checkmark" size={18} color={SearchPalette.accent} />}
+                {sortBy === option.key && <Ionicons name="checkmark" size={18} color={palette.accent} />}
               </Pressable>
             ))}
           </View>
@@ -566,12 +565,12 @@ export default function SearchScreen() {
 }
 
 const MONO_FONT = Fonts.mono;
-const SERIF_FONT = Fonts.serif;
 
-const styles = StyleSheet.create({
+const createStyles = (c: SearchPaletteColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SearchPalette.background,
+    backgroundColor: c.background,
   },
   safeArea: {
     flex: 1,
@@ -580,27 +579,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   // Plain text on the page background — no pill or panel behind the title.
-  exploreHeader: {
-    alignSelf: 'flex-start',
-    paddingVertical: Spacing.two,
-    marginHorizontal: Spacing.three,
-  },
-  exploreTitle: {
-    fontFamily: SERIF_FONT,
-    fontSize: 24,
-    fontWeight: '700',
-    color: SearchPalette.text,
-  },
   searchBar: {
     marginHorizontal: Spacing.three,
-    marginTop: Spacing.two,
+    marginTop: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     height: 46,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: SearchPalette.inputBorder,
-    backgroundColor: SearchPalette.card,
+    borderColor: c.inputBorder,
+    backgroundColor: c.card,
     paddingHorizontal: Spacing.three,
   },
   searchIcon: {
@@ -611,7 +599,7 @@ const styles = StyleSheet.create({
     fontFamily: MONO_FONT,
     fontSize: 13,
     letterSpacing: 0.5,
-    color: SearchPalette.text,
+    color: c.text,
   },
   searchClear: {
     marginLeft: Spacing.two,
@@ -635,21 +623,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     // Fixed height rather than padding around the text: a padding-driven pill
     // is sized from font metrics, so it got squeezed and clipped its label when
-    // the keyboard opened. Matches the category chips.
-    height: 34,
-    borderRadius: 8.5,
-    backgroundColor: SearchPalette.card,
+    // the keyboard opened.
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: c.card,
   },
   filterButtonText: {
     fontFamily: MONO_FONT,
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: SearchPalette.text,
+    color: c.text,
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
@@ -669,24 +657,19 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.three,
     // Clear of the filter row: at Spacing.one the two crowded each other and
     // read as a single control.
-    marginTop: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    height: 34,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
     borderColor: '#E2564A',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  resetFiltersX: {
-    fontFamily: MONO_FONT,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#E2564A',
-    includeFontPadding: false,
+    // A red tint rather than a black wash, which was invisible on the dark
+    // theme and a dark smear on the light one.
+    backgroundColor: 'rgba(226,86,74,0.10)',
   },
   resetFiltersText: {
     fontFamily: MONO_FONT,
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 0.3,
     color: '#E2564A',
     includeFontPadding: false,
@@ -696,14 +679,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    marginTop: Spacing.four,
+    paddingVertical: Spacing.one,
+    marginTop: Spacing.two,
   },
   resultsCountText: {
     fontFamily: MONO_FONT,
     fontSize: 12,
     letterSpacing: 0.5,
-    color: SearchPalette.textMuted,
+    color: c.textMuted,
   },
   sortButton: {
     flexDirection: 'row',
@@ -715,7 +698,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: SearchPalette.text,
+    color: c.text,
   },
   listContent: {
     paddingHorizontal: Spacing.three,
@@ -729,7 +712,7 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     marginTop: Spacing.six,
-    color: SearchPalette.textMuted,
+    color: c.textMuted,
   },
   footerLoader: {
     marginVertical: Spacing.four,
@@ -740,7 +723,7 @@ const styles = StyleSheet.create({
     fontFamily: MONO_FONT,
     fontSize: 11,
     letterSpacing: 0.5,
-    color: SearchPalette.textMuted,
+    color: c.textMuted,
   },
   modalBackdrop: {
     flex: 1,
@@ -756,21 +739,21 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Spacing.four,
     padding: Spacing.four,
     gap: Spacing.two,
-    backgroundColor: SearchPalette.card,
+    backgroundColor: c.card,
   },
   modalTitle: {
     fontFamily: MONO_FONT,
     fontSize: 20,
     lineHeight: 26,
     fontWeight: '700',
-    color: SearchPalette.text,
+    color: c.text,
     marginBottom: Spacing.two,
   },
   modalSectionLabel: {
     fontFamily: MONO_FONT,
     fontSize: 12,
     letterSpacing: 0.5,
-    color: SearchPalette.textMuted,
+    color: c.textMuted,
   },
   modalSeasonRow: {
     flexDirection: 'row',
@@ -779,17 +762,17 @@ const styles = StyleSheet.create({
   },
   modalSeasonChip: {
     borderWidth: 1,
-    borderColor: SearchPalette.inputBorder,
+    borderColor: c.inputBorder,
     borderRadius: Spacing.five,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
   modalSeasonChipActive: {
-    backgroundColor: SearchPalette.accent,
-    borderColor: SearchPalette.accent,
+    backgroundColor: c.accent,
+    borderColor: c.accent,
   },
   modalSeasonChipText: {
-    color: SearchPalette.text,
+    color: c.text,
   },
   modalSeasonChipTextActive: {
     color: '#0A0A0A',
@@ -802,21 +785,21 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: SearchPalette.inputBorder,
-    backgroundColor: SearchPalette.background,
+    borderColor: c.inputBorder,
+    backgroundColor: c.background,
     paddingHorizontal: Spacing.three,
     marginBottom: Spacing.one,
   },
   categorySearchInput: {
     flex: 1,
     fontSize: 15,
-    color: SearchPalette.text,
+    color: c.text,
   },
   modalScroll: {
     flexGrow: 0,
   },
   modalEmptyText: {
-    color: SearchPalette.textMuted,
+    color: c.textMuted,
     paddingVertical: Spacing.three,
   },
   modalRow: {
@@ -827,7 +810,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.one,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: SearchPalette.hairline,
+    borderBottomColor: c.hairline,
   },
   /*
    * A selected row is the whole row, not a tick.
@@ -840,15 +823,15 @@ const styles = StyleSheet.create({
   modalRowActive: {
     backgroundColor: 'rgba(76,211,122,0.14)',
     borderLeftWidth: 3,
-    borderLeftColor: SearchPalette.accent,
+    borderLeftColor: c.accent,
     borderBottomColor: 'transparent',
   },
   modalRowTextActive: {
-    color: SearchPalette.accent,
+    color: c.accent,
     fontWeight: '700',
   },
   modalRowText: {
-    color: SearchPalette.text,
+    color: c.text,
     fontSize: 16,
   },
 });

@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { LocationPhoto } from '@/components/location-photo';
 import { ThemedText } from '@/components/themed-text';
-import { CategoryColors, SearchPalette, Spacing } from '@/constants/theme';
+import { CategoryColors, type SearchPaletteColors, Spacing } from '@/constants/theme';
+import { useSearchPalette } from '@/hooks/use-search-palette';
 import { openDirections } from '@/lib/directions';
 import { formatDistance } from '@/lib/distance';
 import type { CardLocation } from '@/types/location';
@@ -76,6 +77,9 @@ export function LocationCard({
   onPress?: () => void;
 }) {
   const { t } = useTranslation();
+  /* Rebuilt only when the theme changes, not on every render. */
+  const palette = useSearchPalette();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const categoryColor = CategoryColors[location.categorySlug] ?? CategoryColors.default;
   const { street, area } = addressLines(location);
   const distance = formatDistance(location.distanceM);
@@ -106,21 +110,21 @@ export function LocationCard({
                 <Ionicons
                   name={isFavorite ? 'heart' : 'heart-outline'}
                   size={19}
-                  color={isFavorite ? '#4CD37A' : SearchPalette.text}
+                  color={isFavorite ? '#4CD37A' : palette.text}
                 />
               </Pressable>
               <Pressable onPress={onToggleBucketList} hitSlop={8}>
                 <Ionicons
                   name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
                   size={19}
-                  color={isBucketListed ? SearchPalette.accent : SearchPalette.text}
+                  color={isBucketListed ? palette.accent : palette.text}
                 />
               </Pressable>
             </View>
           </View>
 
           <View style={styles.ratingRow}>
-            <Ionicons name="star" size={14} color={SearchPalette.accent} />
+            <Ionicons name="star" size={14} color={palette.accent} />
             <ThemedText type="smallBold" style={styles.ratingText}>
               {location.rating.toFixed(1)}
             </ThemedText>
@@ -157,7 +161,7 @@ export function LocationCard({
             <View style={[styles.bottomRowFill, styles.placeRow]}>
               {distance && (
                 <View style={styles.distanceChip}>
-                  <Ionicons name="navigate-outline" size={11} color={SearchPalette.textMuted} />
+                  <Ionicons name="navigate-outline" size={11} color={palette.textMuted} />
                   <ThemedText type="small" style={styles.mutedText}>
                     {distance}
                   </ThemedText>
@@ -171,7 +175,7 @@ export function LocationCard({
               <ThemedText type="smallBold" style={styles.directionsText}>
                 {t('components.directions')}
               </ThemedText>
-              <Ionicons name="arrow-forward" size={14} color={SearchPalette.text} />
+              <Ionicons name="arrow-forward" size={14} color={palette.text} />
             </Pressable>
           </View>
         </View>
@@ -180,9 +184,10 @@ export function LocationCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: SearchPaletteColors) =>
+  StyleSheet.create({
   card: {
-    backgroundColor: SearchPalette.card,
+    backgroundColor: c.card,
     borderRadius: 14,
     borderWidth: 1.5,
     overflow: 'hidden',
@@ -232,7 +237,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15.5,
     lineHeight: 20,
-    color: SearchPalette.text,
+    color: c.text,
   },
   iconRow: {
     flexDirection: 'row',
@@ -244,10 +249,10 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   ratingText: {
-    color: SearchPalette.text,
+    color: c.text,
   },
   mutedText: {
-    color: SearchPalette.textMuted,
+    color: c.textMuted,
   },
   startsAtText: {
     marginTop: Spacing.half,
@@ -282,6 +287,6 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   directionsText: {
-    color: SearchPalette.text,
+    color: c.text,
   },
 });
