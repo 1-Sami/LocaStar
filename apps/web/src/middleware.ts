@@ -1,5 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 
+import { PRIVATE_PATHS } from './lib/site';
+
 /*
  * Swedish lives under /sv/, English stays where it is.
  *
@@ -135,6 +137,16 @@ function applyHeaders(url: URL, request: Request, response: Response) {
     headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 
+  /*
+   * Nothing here belongs in a search result. robots.txt already asks crawlers
+   * not to fetch these, but a disallowed URL can still be indexed as a bare
+   * address when something links to it — the header is the part that says do
+   * not list it, for anything that does fetch the page.
+   */
+  if (PRIVATE_PATHS.some((prefix) => stripLocale(url.pathname).startsWith(prefix))) {
+    headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('X-Frame-Options', 'DENY');
@@ -151,7 +163,7 @@ function applyHeaders(url: URL, request: Request, response: Response) {
    * anonymous copy is never served to a request that has one.
    */
   const signedIn = (request.headers.get('cookie') ?? '').includes('sb-');
-  const private_ = signedIn || PRIVATE.some((prefix) => stripLocale(url.pathname).startsWith(prefix));
+  const private_ = signedIn || PRIVATE_PATHS.some((prefix) => stripLocale(url.pathname).startsWith(prefix));
 
   if (private_) {
     headers.set('Cache-Control', 'private, no-store');
@@ -161,8 +173,7 @@ function applyHeaders(url: URL, request: Request, response: Response) {
   headers.append('Vary', 'Cookie');
 }
 
-/** Never cached, signed in or not. */
-const PRIVATE = ['/account', '/auth', '/api', '/report'];
+
 
 const stripLocale = (pathname: string) =>
   pathname === '/sv' ? '/' : pathname.startsWith('/sv/') ? pathname.slice(3) : pathname;

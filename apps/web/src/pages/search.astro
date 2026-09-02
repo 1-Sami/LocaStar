@@ -263,6 +263,15 @@ const canonical = `${origin}/search`;
       </aside>
 
       <section class="results" aria-label={t('common.results')}>
+        {/*
+          Every other page opens with an h1; this one had no heading at all,
+          which leaves anyone navigating by headings with nothing to land on.
+          The design deliberately starts at the filters, so the heading is
+          there for the outline rather than for the eye.
+        */}
+        <h1 class="visually-hidden">
+          {q ? t('search.headingFor', { query: q }) : t('search.heading')}
+        </h1>
         <div class="results-head">
           <span class="mono count">{response.total} {t('common.results')}</span>
           <label class="sort">

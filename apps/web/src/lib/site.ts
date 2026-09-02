@@ -31,9 +31,10 @@ export const STORE_LINKS = {
  * 2026-09-02 while Android is still in a closed test, so one flag would have
  * meant either holding back a link that works or shipping one that 404s.
  */
+/* Judged per store; there is no longer a combined flag, because the two
+   stores went live months apart. */
 export const appStoreReady = Boolean(STORE_LINKS.appStore);
 export const googlePlayReady = Boolean(STORE_LINKS.googlePlay);
-export const storeLinksReady = appStoreReady && googlePlayReady;
 
 /**
  * OpenStreetMap attribution.
@@ -42,6 +43,16 @@ export const storeLinksReady = appStoreReady && googlePlayReady;
  * OpenStreetMap, and ODbL requires the attribution to travel with the data.
  * It belongs on every page that shows imported places.
  */
+/*
+ * Paths with nothing to index and nothing a shared cache should ever hold.
+ *
+ * One list because there were two, and they had drifted: the middleware knew
+ * about /api and /report, robots.txt knew about /add and /admin, and neither
+ * knew the other's. Anything named here is served no-store and noindex, and
+ * robots.txt asks crawlers not to come at all.
+ */
+export const PRIVATE_PATHS = ['/account', '/auth', '/api', '/report', '/add', '/admin'] as const;
+
 export const OSM_ATTRIBUTION = {
   text: 'Place data partly from OpenStreetMap contributors, under ODbL.',
   href: 'https://www.openstreetmap.org/copyright',

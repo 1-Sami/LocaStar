@@ -719,7 +719,9 @@ const jsonLd = [
   .cat-count {
     font-size: 10px;
     letter-spacing: 0.1em;
-    color: rgba(255, 255, 255, 0.7);
+    /* Full white, not 70%. The tiles carry 54 category colours and 14 of
+       them put a 70% white label under 4.5:1 — at full white none do. */
+    color: #ffffff;
   }
 
   .cat.more {

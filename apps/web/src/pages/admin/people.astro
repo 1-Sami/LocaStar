@@ -164,7 +164,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                         <input type="hidden" name="intent" value="ban" />
                         <input type="hidden" name="userId" value={person.id} />
                         <input type="hidden" name="q" value={query} />
-                        <input type="text" name="note" required minlength={3} placeholder={t('ppl.reasonPlaceholder')} />
+                        <input
+                          type="text"
+                          name="note"
+                          required
+                          minlength={3}
+                          aria-label={t('ppl.reasonPlaceholder')}
+                          placeholder={t('ppl.reasonPlaceholder')}
+                        />
                         <select name="days" aria-label={t('ppl.duration')}>
                           <option value="7">{t('ppl.days7')}</option>
                           <option value="30">{t('ppl.days30')}</option>
@@ -216,7 +223,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 <form method="POST" class="inline">
                   <input type="hidden" name="intent" value="review" />
                   <input type="hidden" name="banId" value={ban.id} />
-                  <input type="text" name="note" placeholder={t('ppl.reviewNote')} />
+                  <input type="text" name="note" aria-label={t('ppl.reviewNote')} placeholder={t('ppl.reviewNote')} />
                   <button type="submit" name="verdict" value="active" class="btn danger">{t('ppl.confirm')}</button>
                   <button type="submit" name="verdict" value="reversed" class="btn">{t('ppl.reverse')}</button>
                 </form>
@@ -249,7 +256,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 <form method="POST" class="inline">
                   <input type="hidden" name="intent" value="review" />
                   <input type="hidden" name="banId" value={ban.id} />
-                  <input type="text" name="note" placeholder={t('ppl.reviewNote')} />
+                  <input type="text" name="note" aria-label={t('ppl.reviewNote')} placeholder={t('ppl.reviewNote')} />
                   <button type="submit" name="verdict" value="reversed" class="btn">{t('ppl.lift')}</button>
                 </form>
               )}

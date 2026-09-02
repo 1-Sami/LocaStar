@@ -1,5 +1,7 @@
 import type { APIRoute } from 'astro';
 
+import { PRIVATE_PATHS } from '../lib/site';
+
 export const prerender = false;
 
 /*
@@ -15,7 +17,9 @@ export const prerender = false;
  * separate set of addresses and a rule that names /account does not cover
  * /sv/account.
  */
-const CLOSED = ['/account', '/auth', '/add', '/admin', '/search?'];
+/* The shared list, plus filtered search — which is public and cacheable but
+   is the same content sliced thousands of ways, so it wastes crawl budget. */
+const CLOSED = [...PRIVATE_PATHS, '/search?'];
 
 /*
  * Crawlers that cost us the site and send nobody back.
