@@ -14,6 +14,7 @@ import {
   resolveListReport,
   resolveLocationReport,
   resolveReviewReport,
+  setPhotoRemoved,
   updateLocationStatus,
   updateReviewStatus,
 } from '@locastar/shared';
@@ -88,6 +89,9 @@ if (Astro.request.method === 'POST') {
       }
 
       const status = decision === 'dismissed' ? 'dismissed' : 'actioned';
+      /* resolution_action only knows four words, and "remove-photo" is not one
+         of them — what got recorded has to be a verdict the column accepts. */
+      const resolution = decision === 'remove-photo' ? 'removed' : decision;
 
       if (decision === 'warned' && authorId) {
         await issueWarning(supabase, {
@@ -99,14 +103,35 @@ if (Astro.request.method === 'POST') {
         });
       }
 
+      /*
+       * Removing the photo is not removing the thing it hangs on.
+       *
+       * A report can name one photo, and until now the queue could only act on
+       * its parent — so the only way to take down a bad picture was to take
+       * down the whole place or the whole review with it. The app has had this
+       * since 0103; the website had the column and ignored it.
+       *
+       * It resolves as 'removed' either way, because that is what happened:
+       * something the report complained about is gone.
+       */
+      const photoId = String(form.get('photoId') ?? '');
+
       if (kind === 'location') {
-        if (decision === 'removed') await updateLocationStatus(supabase, targetId, 'removed');
-        await resolveLocationReport(supabase, reportId, status, user.id, decision as never, note);
+        if (decision === 'remove-photo' && photoId) {
+          await setPhotoRemoved(supabase, { locationPhotoId: photoId }, true);
+        } else if (decision === 'removed') {
+          await updateLocationStatus(supabase, targetId, 'removed');
+        }
+        await resolveLocationReport(supabase, reportId, status, user.id, resolution as never, note);
       } else if (kind === 'review') {
-        if (decision === 'removed') await updateReviewStatus(supabase, targetId, 'removed');
-        await resolveReviewReport(supabase, reportId, status, user.id, decision as never, note);
+        if (decision === 'remove-photo' && photoId) {
+          await setPhotoRemoved(supabase, { reviewPhotoId: photoId }, true);
+        } else if (decision === 'removed') {
+          await updateReviewStatus(supabase, targetId, 'removed');
+        }
+        await resolveReviewReport(supabase, reportId, status, user.id, resolution as never, note);
       } else if (kind === 'list') {
-        await resolveListReport(supabase, reportId, status, user.id, decision as never, note);
+        await resolveListReport(supabase, reportId, status, user.id, resolution as never, note);
       }
 
       return Astro.redirect(`${p('/admin/reports')}?tab=${kind}&done=1`);
@@ -116,6 +141,12 @@ if (Astro.request.method === 'POST') {
     }
   }
 }
+
+/*
+ * Reports carry the storage path, not a URL — building one needs the storage
+ * client, which the shared layer deliberately does not hold.
+ */
+const publicUrl = (path: string) => supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
 
 const tab = Astro.url.searchParams.get('tab') ?? 'location';
 const done = Astro.url.searchParams.get('done') === '1';
@@ -196,10 +227,18 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {report.fromBlock && <p class="from-block">{t('mod.fromBlock')}</p>}
               <p class="mono by">{t('mod.reportedBy')} {report.reporterName} · {t('mod.author')} {report.locationCreatorName}</p>
 
+              {report.photoPath && (
+                <div class="reported-photo">
+                  <img src={publicUrl(report.photoPath)} alt="" loading="lazy" />
+                  <span class="mono">{t('mod.aboutThisPhoto')}</span>
+                </div>
+              )}
+
               <form method="POST" class="actions">
                 <input type="hidden" name="kind" value="location" />
                 <input type="hidden" name="reportId" value={report.id} />
                 <input type="hidden" name="targetId" value={report.locationId} />
+                <input type="hidden" name="photoId" value={report.photoId ?? ''} />
                 <input type="hidden" name="authorId" value={report.locationCreatorId ?? ''} />
                 <label class="note-label">
                   <span class="mono">{t('mod.note')}</span>
@@ -207,6 +246,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 </label>
                 <div class="buttons">
                   <button type="submit" name="decision" value="dismissed" class="btn">{t('mod.dismiss')}</button>
+                  {report.photoId && (
+                    <button type="submit" name="decision" value="remove-photo" class="btn warn">
+                      {t('mod.removePhoto')}
+                    </button>
+                  )}
                   {report.locationCreatorId && (
                     <button type="submit" name="decision" value="warned" class="btn warn">{t('mod.warn')}</button>
                   )}
@@ -245,10 +289,18 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {report.fromBlock && <p class="from-block">{t('mod.fromBlock')}</p>}
               <p class="mono by">{t('mod.reportedBy')} {report.reporterName} · {t('mod.author')} {report.reviewAuthorName}</p>
 
+              {report.photoPath && (
+                <div class="reported-photo">
+                  <img src={publicUrl(report.photoPath)} alt="" loading="lazy" />
+                  <span class="mono">{t('mod.aboutThisPhoto')}</span>
+                </div>
+              )}
+
               <form method="POST" class="actions">
                 <input type="hidden" name="kind" value="review" />
                 <input type="hidden" name="reportId" value={report.id} />
                 <input type="hidden" name="targetId" value={report.reviewId} />
+                <input type="hidden" name="photoId" value={report.photoId ?? ''} />
                 <input type="hidden" name="authorId" value={report.reviewAuthorId ?? ''} />
                 <label class="note-label">
                   <span class="mono">{t('mod.note')}</span>
@@ -256,6 +308,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 </label>
                 <div class="buttons">
                   <button type="submit" name="decision" value="dismissed" class="btn">{t('mod.dismiss')}</button>
+                  {report.photoId && (
+                    <button type="submit" name="decision" value="remove-photo" class="btn warn">
+                      {t('mod.removePhoto')}
+                    </button>
+                  )}
                   {report.reviewAuthorId && (
                     <button type="submit" name="decision" value="warned" class="btn warn">{t('mod.warn')}</button>
                   )}
@@ -556,4 +613,26 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .verdict.removed { color: var(--danger); }
   .verdict.warned { color: var(--accent); }
   .log-note { color: var(--text-70); }
+
+  /* The picture the report is actually about. Shown at a size you can judge —
+     a moderator deciding whether something should come down has to see it. */
+  .reported-photo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 14px 0 4px;
+  }
+  .reported-photo img {
+    width: 132px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--hairline);
+    background: var(--surface-alt);
+  }
+  .reported-photo span {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
+  }
 </style>
