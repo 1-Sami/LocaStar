@@ -41,20 +41,40 @@ const links = [
 </nav>
 
 <style>
+  /* A real tab bar rather than a row of uppercase links: one rounded track
+     with a hairline, and the current tab filled so it reads as the sheet you
+     are on rather than one more link you have not clicked yet. */
   .admin-nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--hairline);
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    align-self: flex-start;
+    max-width: 100%;
   }
   .link {
-    font-size: 13px;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--text-42);
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text-55);
     text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
   }
-  .link:hover { color: var(--text-70); }
-  .link.on { color: var(--accent); }
+  .link:hover { color: var(--text); }
+  .link.on {
+    background: var(--brand);
+    color: #ffffff;
+  }
+  .link.on:hover { color: #ffffff; }
+
+  @media (max-width: 620px) {
+    .admin-nav { border-radius: 14px; }
+    .link { flex: 1 1 auto; text-align: center; }
+  }
 </style>

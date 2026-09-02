@@ -5,11 +5,15 @@ import {
   fetchMyAddedLocations,
   fetchMyReviews,
   fetchMyShares,
+  fetchFriendships,
+  fetchMyPrivateProfile,
+  fetchNotifications,
   fetchProfile,
   fetchProfileStats,
   fetchSavedLists,
   fetchSavedLocations,
   isModeratorRole,
+  DEFAULT_NOTIFICATION_PREFERENCES,
   type LocationShare,
 } from '@locastar/shared';
 import ListCard from '../../components/ListCard.astro';
@@ -35,6 +39,8 @@ const created = Astro.url.searchParams.get('created');
 const avatarSaved = Astro.url.searchParams.get('avatar') === '1';
 const avatarRemoved = Astro.url.searchParams.get('avatar') === 'removed';
 const avatarError = Astro.url.searchParams.get('avatarError');
+const done = Astro.url.searchParams.get('done');
+const accountError = Astro.url.searchParams.get('accountError') === '1';
 
 /*
  * Everything is fetched with the visitor's own session, so RLS returns their
@@ -46,7 +52,7 @@ const avatarError = Astro.url.searchParams.get('avatarError');
  * somewhere you rate, a bookmark is somewhere you intend to go, and a share is
  * somewhere another person sent you.
  */
-const [profile, stats, favourites, bookmarks, shares, lists, savedLists, reviews, added] = await Promise.all([
+const [profile, stats, favourites, bookmarks, shares, lists, savedLists, reviews, added, friends, notifications, privateProfile] = await Promise.all([
   fetchProfile(supabase, user.id).catch(() => null),
   fetchProfileStats(supabase, user.id).catch(() => null),
   fetchSavedLocations(supabase, user.id, 'favorite').catch(() => []),
@@ -56,10 +62,67 @@ const [profile, stats, favourites, bookmarks, shares, lists, savedLists, reviews
   fetchSavedLists(supabase, user.id).catch(() => []),
   fetchMyReviews(supabase, user.id).catch(() => []),
   fetchMyAddedLocations(supabase, user.id).catch(() => []),
+  fetchFriendships(supabase, user.id).catch(() => []),
+  fetchNotifications(supabase, user.id).catch(() => []),
+  /*
+   * Its own RPC, not part of the profile: notification_preferences is granted
+   * to nobody column-wise, because the profiles SELECT policy is using(true)
+   * and anything in that select is world-readable. See 0066.
+   */
+  fetchMyPrivateProfile(supabase).catch(() => null),
 ]);
 
 const name = profile?.username ?? profile?.display_name ?? user.email ?? 'You';
 const isModerator = isModeratorRole(profile?.role ?? 'user');
+
+/*
+ * Split by who is waiting on whom, because the three want different controls:
+ * an incoming request can be accepted or declined, an outgoing one can only be
+ * withdrawn, and a friendship can be ended. Merged into one list, every row
+ * would have to explain which of the three it was.
+ */
+const incoming = friends.filter((f) => f.status === 'pending' && f.direction === 'incoming');
+const outgoing = friends.filter((f) => f.status === 'pending' && f.direction === 'outgoing');
+const accepted = friends.filter((f) => f.status === 'accepted');
+
+const unread = notifications.filter((n) => n.readAt === null).length;
+const prefs = privateProfile?.notification_preferences ?? DEFAULT_NOTIFICATION_PREFERENCES;
+
+const friendName = (f: (typeof friends)[number]) =>
+  f.username ?? f.displayName ?? t('acct.someone');
+
+/*
+ * One line per notification, built from that kind's own payload.
+ *
+ * The union is discriminated on `type`, so each branch reads only the fields
+ * its own payload actually has — there is no shared shape to lean on, and
+ * guessing at one would break the moment a kind gains a field.
+ */
+const notificationLine = (n: (typeof notifications)[number]) => {
+  switch (n.type) {
+    case 'share':
+      return t('acct.noteShare', {
+        who: n.payload.sender_name,
+        place: n.payload.location_name ?? t('acct.aPlace'),
+      });
+    case 'list_share':
+      return t('acct.noteListShare', {
+        who: n.payload.sender_name,
+        list: n.payload.list_name ?? t('acct.aList'),
+      });
+    case 'role_granted':
+      return t('acct.noteRole', { role: n.payload.role });
+    case 'friend_request':
+      return t('acct.noteFriendRequest', { who: n.payload.sender_name });
+    case 'friend_accepted':
+      return t('acct.noteFriendAccepted', { who: n.payload.sender_name });
+    case 'activity_reminder':
+      return t('acct.noteReminder', {
+        place: n.payload.location_name ?? t('acct.aPlace'),
+        when: longDate(n.payload.starts_at),
+      });
+  }
+};
 
 /*
  * A share is only half a fact without the other person. "SENT" told you the
@@ -79,6 +142,17 @@ const NAV = [
   { key: 'lists', label: t('acct.myLists'), count: lists.length + savedLists.length },
   { key: 'added', label: t('acct.addedByMe'), count: added.length },
   { key: 'reviews', label: t('acct.myReviews'), count: reviews.length },
+  /*
+   * Friends and notifications count what is waiting on you, not how many rows
+   * there are. A badge reading 40 beside Notifications when all forty have
+   * been read is noise; the number people look for is the one that means
+   * something needs them.
+   */
+  { key: 'friends', label: t('acct.friends'), count: incoming.length },
+  { key: 'notifications', label: t('acct.notifications'), count: unread },
+  /* No count: settings is not a collection, and a 0 beside it reads as a
+     tally of something rather than as nothing to show. */
+  { key: 'settings', label: t('acct.settings'), count: null },
 ] as const;
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
@@ -170,11 +244,24 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           NAV.map((item) => (
             <a class={`side-link${section === item.key ? ' on' : ''}`} href={p(`/account?show=${item.key}`)}>
               <span>{item.label}</span>
-              <span class="mono side-count">{item.count}</span>
+              {item.count !== null && <span class="mono side-count">{item.count}</span>}
             </a>
           ))
         }
       </nav>
+
+      {/*
+        Filled and brand-coloured, so it does not read as one more of the
+        account's own links. It goes somewhere else entirely, and only a
+        moderator ever sees it.
+      */}
+      {
+        isModerator && (
+          <a class="mod-button" href={p('/admin/reports')}>
+            {t('acct.moderatorLink')}
+          </a>
+        )
+      }
 
       <form method="post" action={p('/auth/sign-out')}>
         <button class="signout" type="submit">{t('acct.logOut')}</button>
@@ -184,25 +271,17 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         A red box rather than a quiet link, matching the app. This is the one
         control here that destroys something, and it should not look like a
         setting.
+
+        Just the control, no heading and no warning: /account/delete exists to
+        explain the consequences and ask again, so saying it here only made the
+        sidebar shout at somebody who has not asked for anything yet.
       */}
-      <div class="danger">
-        <span class="mono danger-head">{t('acct.deleteHead')}</span>
-        <p>{t('acct.deleteSub')}</p>
-        <a class="danger-link" href={p('/account/delete')}>{t('acct.deleteLink')}</a>
-      </div>
+      <a class="danger-link" href={p('/account/delete')}>{t('acct.deleteLink')}</a>
     </aside>
 
     <section class="body">
-      {
-        isModerator && (
-          <div class="mod-note">
-            <span class="mono mod-kicker">{t('acct.moderator')}</span>
-            <p>{t('acct.moderatorNote')}</p>
-            <a href={p('/admin/reports')}>{t('acct.moderatorLink')}</a>
-          </div>
-        )
-      }
-
+      {accountError && <p class="err-line">{t('acct.actionFailed')}</p>}
+      {done && !accountError && <p class="ok-line">{t('acct.actionDone')}</p>}
       {
         section === 'saved' && (
           <>
@@ -401,6 +480,248 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           </>
         )
       }
+
+      {
+        section === 'friends' && (
+          <>
+            <h1>{t('acct.friends')}</h1>
+
+            {incoming.length > 0 && (
+              <section class="group">
+                <div class="group-head">
+                  <h2>{t('acct.friendRequests')}</h2>
+                  <span class="mono group-count">{incoming.length}</span>
+                </div>
+                <div class="people">
+                  {incoming.map((f) => (
+                    <div class="person">
+                      {f.avatarUrl ? (
+                        <span class="face" style={`background-image:url("${f.avatarUrl}")`} />
+                      ) : (
+                        <span class="face initial">{friendName(f).charAt(0).toUpperCase()}</span>
+                      )}
+                      <span class="person-name">{friendName(f)}</span>
+                      <form method="post" action="/api/account" class="person-do">
+                        <input type="hidden" name="back" value={p('/account?show=friends')} />
+                        <input type="hidden" name="friendshipId" value={f.friendshipId} />
+                        <button class="mini primary" type="submit" name="action" value="friend-accept">
+                          {t('acct.accept')}
+                        </button>
+                        <button class="mini" type="submit" name="action" value="friend-remove">
+                          {t('acct.decline')}
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section class="group">
+              <div class="group-head">
+                <h2>{t('acct.myFriends')}</h2>
+                <span class="mono group-count">{accepted.length}</span>
+              </div>
+              {accepted.length === 0 ? (
+                <p class="empty-line">{t('acct.noFriends')}</p>
+              ) : (
+                <div class="people">
+                  {accepted.map((f) => (
+                    <div class="person">
+                      {f.avatarUrl ? (
+                        <span class="face" style={`background-image:url("${f.avatarUrl}")`} />
+                      ) : (
+                        <span class="face initial">{friendName(f).charAt(0).toUpperCase()}</span>
+                      )}
+                      <span class="person-name">{friendName(f)}</span>
+                      <form method="post" action="/api/account" class="person-do">
+                        <input type="hidden" name="back" value={p('/account?show=friends')} />
+                        <input type="hidden" name="friendshipId" value={f.friendshipId} />
+                        <button
+                          class="mini"
+                          type="submit"
+                          name="action"
+                          value="friend-remove"
+                          data-confirm={t('acct.unfriendConfirm', { who: friendName(f) })}
+                        >
+                          {t('acct.unfriend')}
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {outgoing.length > 0 && (
+              <section class="group">
+                <div class="group-head">
+                  <h2>{t('acct.friendSent')}</h2>
+                  <span class="mono group-count">{outgoing.length}</span>
+                </div>
+                <div class="people">
+                  {outgoing.map((f) => (
+                    <div class="person">
+                      {f.avatarUrl ? (
+                        <span class="face" style={`background-image:url("${f.avatarUrl}")`} />
+                      ) : (
+                        <span class="face initial">{friendName(f).charAt(0).toUpperCase()}</span>
+                      )}
+                      <span class="person-name">{friendName(f)}</span>
+                      <span class="mono person-note">{t('acct.friendPending')}</span>
+                      <form method="post" action="/api/account" class="person-do">
+                        <input type="hidden" name="back" value={p('/account?show=friends')} />
+                        <input type="hidden" name="friendshipId" value={f.friendshipId} />
+                        <button class="mini" type="submit" name="action" value="friend-remove">
+                          {t('acct.friendWithdraw')}
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/*
+              Adding a friend is not here. Finding somebody needs the user
+              search the app has and the website does not, and a control that
+              cannot complete the job is worse than an honest absence.
+            */}
+            <p class="fine">{t('acct.friendsAddInApp')}</p>
+          </>
+        )
+      }
+
+      {
+        section === 'notifications' && (
+          <>
+            <div class="head-row">
+              <h1>{t('acct.notifications')}</h1>
+              {unread > 0 && (
+                <form method="post" action="/api/account">
+                  <input type="hidden" name="back" value={p('/account?show=notifications')} />
+                  <button class="mini" type="submit" name="action" value="notifications-read-all">
+                    {t('acct.markAllRead')}
+                  </button>
+                </form>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <div class="empty">
+                <p class="empty-lead">{t('acct.noNotifications')}</p>
+                <p class="empty-sub">{t('acct.noNotificationsSub')}</p>
+              </div>
+            ) : (
+              <div class="notes">
+                {notifications.map((n) => (
+                  <div class:list={['note', { unread: n.readAt === null }]}>
+                    <div class="note-body">
+                      <span class="mono note-kind">{t(`acct.note_${n.type}`)}</span>
+                      <p class="note-text">{notificationLine(n)}</p>
+                      <span class="mono note-when">{longDate(n.createdAt)}</span>
+                    </div>
+                    <form method="post" action="/api/account">
+                      <input type="hidden" name="back" value={p('/account?show=notifications')} />
+                      <input type="hidden" name="notificationId" value={n.id} />
+                      <button class="mini" type="submit" name="action" value="notification-delete">
+                        {t('acct.dismiss')}
+                      </button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )
+      }
+
+      {
+        section === 'settings' && (
+          <>
+            <h1>{t('acct.settings')}</h1>
+
+            <section class="group">
+              <div class="group-head">
+                <h2>{t('acct.aboutYou')}</h2>
+              </div>
+              <form method="post" action="/api/account" class="settings-form">
+                <input type="hidden" name="back" value={p('/account?show=settings')} />
+                <label class="field">
+                  <span class="mono field-label">{t('acct.displayName')}</span>
+                  <input name="displayName" value={profile?.display_name ?? ''} maxlength="60" />
+                </label>
+                <label class="field">
+                  <span class="mono field-label">{t('acct.bio')}</span>
+                  <textarea name="bio" rows="3" maxlength="300">{profile?.bio ?? ''}</textarea>
+                </label>
+                {/*
+                  Username is shown but not editable here. It is stamped on
+                  every review and location the account has ever posted, and
+                  changing it is the app's flow with its own uniqueness check —
+                  offering a box that could fail on save would be worse than
+                  sending people to the place that does it properly.
+                */}
+                <p class="fine">{t('acct.usernameFine', { name: profile?.username ?? '—' })}</p>
+                <button class="save" type="submit" name="action" value="settings-profile">
+                  {t('acct.save')}
+                </button>
+              </form>
+            </section>
+
+            <section class="group">
+              <div class="group-head">
+                <h2>{t('acct.emailsFromUs')}</h2>
+              </div>
+              <form method="post" action="/api/account" class="settings-form">
+                <input type="hidden" name="back" value={p('/account?show=settings')} />
+                <label class="check">
+                  <input type="checkbox" name="reviews" value="1" checked={prefs.reviews} />
+                  <span>{t('acct.prefReviews')}</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" name="shares" value="1" checked={prefs.shares} />
+                  <span>{t('acct.prefShares')}</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" name="reminders" value="1" checked={prefs.reminders} />
+                  <span>{t('acct.prefReminders')}</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" name="marketing" value="1" checked={prefs.marketing} />
+                  <span>{t('acct.prefMarketing')}</span>
+                </label>
+                <button class="save" type="submit" name="action" value="settings-notifications">
+                  {t('acct.save')}
+                </button>
+              </form>
+            </section>
+
+            <section class="group">
+              <div class="group-head">
+                <h2>{t('acct.writeToMeIn')}</h2>
+              </div>
+              <form method="post" action="/api/account" class="settings-form">
+                <input type="hidden" name="back" value={p('/account?show=settings')} />
+                <p class="fine">{t('acct.localeFine')}</p>
+                <div class="locale-row">
+                  <label class="check">
+                    <input type="radio" name="locale" value="en" checked={(profile?.locale ?? 'en') !== 'sv'} />
+                    <span>English</span>
+                  </label>
+                  <label class="check">
+                    <input type="radio" name="locale" value="sv" checked={profile?.locale === 'sv'} />
+                    <span>Svenska</span>
+                  </label>
+                </div>
+                <button class="save" type="submit" name="action" value="settings-locale">
+                  {t('acct.save')}
+                </button>
+              </form>
+            </section>
+          </>
+        )
+      }
     </section>
   </main>
 
@@ -577,7 +898,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   }
 
   .avatar-remove:hover {
-    color: #f0a9a9;
+    color: var(--danger);
   }
 
   .who-text {
@@ -630,6 +951,24 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     color: var(--text-42);
   }
 
+  .mod-button {
+    display: block;
+    text-align: center;
+    background: var(--brand);
+    border: 1px solid var(--brand);
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    color: #ffffff;
+  }
+  .mod-button:hover {
+    background: var(--brand-light);
+    border-color: var(--brand-light);
+    color: #ffffff;
+  }
+
   .signout {
     background: transparent;
     border: 1px solid var(--border);
@@ -648,38 +987,29 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     border-color: var(--accent);
   }
 
-  .danger {
+
+
+
+
+
+
+  /* --danger, not the old hardcoded #f0a9a9: that pink was drawn for a
+     near-black page and measures about 2:1 on the light one. */
+  .danger-link {
+    display: block;
+    text-align: center;
     border: 1px solid rgba(224, 82, 82, 0.45);
     background: rgba(224, 82, 82, 0.08);
-    border-radius: 10px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-  }
-
-  .danger-head {
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    color: #f0a9a9;
-  }
-
-  .danger p {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--text-55);
-  }
-
-  .danger-link {
+    border-radius: 8px;
+    padding: 11px 18px;
     font-weight: 600;
     font-size: 14px;
-    color: #f0a9a9;
+    color: var(--danger);
   }
 
   .danger-link:hover {
-    color: #ff8484;
+    background: rgba(224, 82, 82, 0.16);
+    color: var(--danger);
   }
 
   .body {
@@ -743,7 +1073,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .err-line {
     margin: 0 0 14px;
     font-size: 14.5px;
-    color: #f0a9a9;
+    color: var(--danger);
   }
 
   .new-list {
@@ -927,4 +1257,116 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       grid-template-columns: 1fr;
     }
   }
+
+  /* ------------------------------- friends, notifications and settings --- */
+  .head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .people { display: flex; flex-direction: column; }
+  .person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .person:last-child { border-bottom: 0; }
+  .face {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: var(--surface-alt);
+    background-size: cover;
+    background-position: center;
+  }
+  .face.initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-70);
+  }
+  .person-name { flex: 1; min-width: 0; font-size: 15px; }
+  .person-note { font-size: 10px; letter-spacing: 0.12em; color: var(--text-42); }
+  .person-do { display: flex; gap: 8px; flex: none; }
+
+  .notes { display: flex; flex-direction: column; }
+  .note {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .note:last-child { border-bottom: 0; }
+  /* An unread one is marked down the edge rather than tinted: the list is
+     mostly read, and a background on the few that are not turns into stripes. */
+  .note.unread { border-left: 3px solid var(--accent); padding-left: 12px; }
+  .note-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .note-kind { font-size: 10px; letter-spacing: 0.14em; color: var(--text-42); }
+  .note-text { margin: 0; font-size: 15px; line-height: 1.5; }
+  .note-when { font-size: 10px; letter-spacing: 0.1em; color: var(--text-42); }
+
+  .mini {
+    font-family: var(--font-display);
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .mini:hover { border-color: var(--text-42); }
+  .mini.primary {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #ffffff;
+  }
+  .mini.primary:hover { background: var(--brand-light); border-color: var(--brand-light); }
+
+  .settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+    max-width: 520px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+  .field-label { font-size: 10px; letter-spacing: 0.14em; color: var(--text-42); }
+  .settings-form input[type='text'],
+  .settings-form input:not([type]),
+  .settings-form textarea {
+    width: 100%;
+    font-family: var(--font-display);
+    font-size: 15px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    resize: vertical;
+  }
+  .check { display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; }
+  .locale-row { display: flex; gap: 22px; flex-wrap: wrap; }
+  .save {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 11px 22px;
+    border-radius: 8px;
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: #ffffff;
+    cursor: pointer;
+  }
+  .save:hover { background: var(--brand-light); border-color: var(--brand-light); }
 </style>
