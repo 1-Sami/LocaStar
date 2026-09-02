@@ -162,13 +162,18 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
 <style>
   .site-header {
     border-bottom: 1px solid var(--hairline);
-    background: rgba(var(--page-rgb), 0.9);
+    /* Opaque, not the old 0.9: once the header stays put, whatever scrolls
+       underneath shows through a translucent one. */
+    background: var(--page);
+    /* Stays with you down the page. Below the photo lightbox at 60, which is
+       meant to cover everything including this. */
+    position: sticky;
+    top: 0;
     /*
      * Above the sticky results bar the search page puts at the top of its
      * column, so the open menu is never drawn underneath it — and below the
      * photo lightbox at 60, which is meant to cover everything.
      */
-    position: relative;
     z-index: 30;
   }
 

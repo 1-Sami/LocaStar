@@ -504,7 +504,11 @@ const seasonLabel =
                           <form class="mod-inline" method="POST">
                             <input type="hidden" name="intent" value="review" />
                             <input type="hidden" name="reviewId" value={review.id} />
-                            <button class="mono mod-remove" type="submit">
+                            <button
+                              class="mono mod-remove"
+                              type="submit"
+                              data-confirm={t('loc.modRemoveReviewConfirm')}
+                            >
                               {t('loc.modRemoveReview')}
                             </button>
                           </form>
@@ -675,7 +679,7 @@ const seasonLabel =
     clicked. The hidden attribute keeps it out of the accessibility tree
     until it is actually open.
   */}
-  <div class="gallery" id="gallery" hidden role="dialog" aria-modal="true" aria-label={t('loc.gallery')}>
+  <div class="gallery on-dark" id="gallery" hidden role="dialog" aria-modal="true" aria-label={t('loc.gallery')}>
     <button class="gallery-close" type="button" data-gallery-close aria-label={t('common.close')}>×</button>
     <button class="gallery-nav prev" type="button" data-gallery-step="-1" aria-label={t('loc.previousPhoto')}>‹</button>
     <img class="gallery-image" alt="" />
@@ -683,7 +687,12 @@ const seasonLabel =
     <span class="mono gallery-count" data-gallery-count></span>
     {
       isModerator && (
-        <div class="gallery-mod" data-gallery-mod data-restore-label={t('loc.modRestorePhoto')}>
+        <div
+          class="gallery-mod"
+          data-gallery-mod
+          data-restore-label={t('loc.modRestorePhoto')}
+          data-remove-confirm={t('loc.modRemovePhotoConfirm')}
+        >
           {/*
             Cover is offered only for a photo the place owns. A review photo
             belongs to its review, and promoting one would put a picture on the
@@ -715,6 +724,16 @@ const seasonLabel =
       <script type="application/json" data-mod-photos set:html={JSON.stringify(modByUrl)} />
     )
   }
+
+<script is:inline>
+  /* Ask before anything destructive. Bound once, and it reads the attribute at
+     click time rather than at load, so a button whose prompt is set later —
+     the viewer's, as it pages between photos — is still covered. */
+  document.addEventListener('click', function (event) {
+    var el = event.target.closest('[data-confirm]');
+    if (el && !window.confirm(el.getAttribute('data-confirm'))) event.preventDefault();
+  });
+</script>
 
 {
   isModerator && (
@@ -756,6 +775,8 @@ const seasonLabel =
           reviewPhotoId.value = photo.r || '';
           removed.value = photo.x ? '0' : '1';
           toggle.textContent = photo.x ? restoreLabel : removeLabel;
+          if (photo.x) toggle.removeAttribute('data-confirm');
+          else toggle.setAttribute('data-confirm', bar.getAttribute('data-remove-confirm') || '');
 
           /* Only a photo the place itself owns can become the cover. */
           coverForm.hidden = !photo.p || photo.x;
