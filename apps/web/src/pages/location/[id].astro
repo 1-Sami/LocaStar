@@ -289,6 +289,36 @@ const modByUrl = Object.fromEntries(
  */
 const modTrash = modPhotos.filter((photo) => photo.removedAt !== null);
 
+/*
+ * Where "report this photo" goes, per photo, or null when it is not offered.
+ *
+ * Built here rather than in the browser so the rule stays on the server and
+ * uploaderId never reaches the page. That id is deliberately not for display —
+ * uploaderName respects a do-not-credit setting and this does not — so
+ * shipping it to every visitor would quietly undo that. What goes out is a
+ * link or nothing.
+ *
+ * Not offered on your own photo, matching the app: reporting your own picture
+ * only hides it from you, which reads as the site breaking.
+ */
+const reportHref = (photo: (typeof photos)[number]) => {
+  if (!viewerId || photo.uploaderId === viewerId) return null;
+  const params = new URLSearchParams({ location: location.id });
+  if (photo.reviewId && photo.reviewPhotoId) {
+    params.set('review', photo.reviewId);
+    params.set('reviewPhoto', photo.reviewPhotoId);
+  } else if (photo.photoId) {
+    params.set('locationPhoto', photo.photoId);
+  } else {
+    return null;
+  }
+  return `${p('/report')}?${params.toString()}`;
+};
+
+const reportByUrl = Object.fromEntries(
+  photos.map((photo) => [photo.url, reportHref(photo)]).filter(([, href]) => href !== null)
+);
+
 const backHere = p(`/location/${location.id}`);
 const saved = Astro.url.searchParams.get('saved');
 const moderated = Astro.url.searchParams.get('moderated') === '1';
@@ -686,6 +716,14 @@ const seasonLabel =
     <button class="gallery-nav next" type="button" data-gallery-step="1" aria-label={t('loc.nextPhoto')}>›</button>
     <span class="mono gallery-count" data-gallery-count></span>
     {
+      /* Signed in and not your own picture — see reportHref. */
+      viewerId && (
+        <a class="gallery-report" data-gallery-report href="#" hidden>
+          {t('loc.reportPhoto')}
+        </a>
+      )
+    }
+    {
       isModerator && (
         <div
           class="gallery-mod"
@@ -722,6 +760,33 @@ const seasonLabel =
     /* What the viewer's buttons need about the photo on screen. Moderators only. */
     isModerator && (
       <script type="application/json" data-mod-photos set:html={JSON.stringify(modByUrl)} />
+    )
+  }
+
+  {viewerId && <script type="application/json" data-report-photos set:html={JSON.stringify(reportByUrl)} />}
+
+  {
+    viewerId && (
+      <script is:inline>
+        (function () {
+          var block = document.querySelector('[data-report-photos]');
+          var link = document.querySelector('[data-gallery-report]');
+          if (!block || !link) return;
+
+          var byUrl = {};
+          try {
+            byUrl = JSON.parse(block.textContent || '{}');
+          } catch (error) {
+            return;
+          }
+
+          document.getElementById('gallery').addEventListener('photochange', function (event) {
+            var href = byUrl[event.detail];
+            link.hidden = !href;
+            if (href) link.setAttribute('href', href);
+          });
+        })();
+      </script>
     )
   }
 
@@ -765,7 +830,8 @@ const seasonLabel =
         var removeLabel = toggle.textContent.trim();
         var restoreLabel = bar.getAttribute('data-restore-label') || removeLabel;
 
-        window.__locastarModPhoto = function (url) {
+        document.getElementById('gallery').addEventListener('photochange', function (event) {
+          var url = event.detail;
           var photo = byUrl[url];
           /* A photo with no row behind it is not something to act on. */
           bar.hidden = !photo;
@@ -781,7 +847,7 @@ const seasonLabel =
           /* Only a photo the place itself owns can become the cover. */
           coverForm.hidden = !photo.p || photo.x;
           coverId.value = photo.p || '';
-        };
+        });
       })();
     </script>
   )
@@ -871,8 +937,12 @@ const seasonLabel =
       image.src = urls[at];
       counter.textContent = urls.length > 1 ? at + 1 + ' / ' + urls.length : '';
       overlay.classList.toggle('single', urls.length < 2);
-      /* Moderator buttons, when the page drew any, follow the photo on screen. */
-      if (window.__locastarModPhoto) window.__locastarModPhoto(urls[at]);
+      /*
+       * An event rather than one global function: the moderator bar and the
+       * report link both need to follow the photo, and a single hook can only
+       * have one owner.
+       */
+      overlay.dispatchEvent(new CustomEvent('photochange', { detail: urls[at] }));
     }
 
     function open(name, index) {
@@ -1739,4 +1809,20 @@ const seasonLabel =
   }
   .modtrash-by { font-size: 13px; color: var(--text-55); }
   .modtrash-item form { margin: 0; }
+
+  /* Bottom left, opposite nothing — the counter is centre and the moderator
+     bar is top left, so this is the one corner still free. */
+  .gallery-report {
+    position: absolute;
+    left: 18px;
+    bottom: 18px;
+    z-index: 2;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    text-decoration: none;
+  }
+  .gallery-report:hover { border-color: #ffffff; color: #ffffff; }
 </style>

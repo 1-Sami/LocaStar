@@ -5,6 +5,7 @@ import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
 import { currentUser } from '../lib/auth';
+import { isUuid } from '../lib/ids';
 import { anonClient } from '../lib/supabase';
 
 /*
@@ -60,6 +61,23 @@ const locationId = Astro.url.searchParams.get('location');
 const reviewId = Astro.url.searchParams.get('review');
 const isReview = Boolean(reviewId);
 
+/*
+ * A report can name one photo rather than the whole review or place.
+ *
+ * Both report tables have carried the column since 0103 and the app has always
+ * used it; the website could only ever report the parent, so someone objecting
+ * to one picture had to report the review it hangs on and hope a moderator
+ * worked out which. Validated as ids, because they are pasted straight into a
+ * report row.
+ */
+const reviewPhotoId = isUuid(Astro.url.searchParams.get('reviewPhoto') ?? '')
+  ? Astro.url.searchParams.get('reviewPhoto')
+  : null;
+const locationPhotoId = isUuid(Astro.url.searchParams.get('locationPhoto') ?? '')
+  ? Astro.url.searchParams.get('locationPhoto')
+  : null;
+const photoId = isReview ? reviewPhotoId : locationPhotoId;
+
 if (!locationId && !reviewId) return Astro.redirect(p('/'));
 
 const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
@@ -93,6 +111,7 @@ if (Astro.request.method === 'POST') {
             reporterId: user.id,
             reason,
             details: details || null,
+            reviewPhotoId,
           });
         } else {
           await reportLocation(supabase, {
@@ -100,6 +119,7 @@ if (Astro.request.method === 'POST') {
             reporterId: user.id,
             reason,
             details: details || null,
+            locationPhotoId,
           });
         }
         done = true;
@@ -109,6 +129,19 @@ if (Astro.request.method === 'POST') {
       }
     }
   }
+}
+
+/*
+ * The photo being reported, so the person filing can see they picked the one
+ * they meant. Looked up rather than passed in the URL: a path in a query
+ * string is a path anyone can swap for another.
+ */
+let photoUrl: string | null = null;
+if (photoId) {
+  const table = isReview ? 'review_photos' : 'location_photos';
+  const { data } = await anonClient().from(table).select('storage_path').eq('id', photoId).maybeSingle();
+  const path = (data as { storage_path?: string } | null)?.storage_path ?? null;
+  if (path) photoUrl = anonClient().storage.from('media').getPublicUrl(path).data.publicUrl;
 }
 
 const reasons = isReview ? REVIEW_REASONS : LOCATION_REASONS;
@@ -136,7 +169,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           <>
             <h1>{isReview ? t('report.headingReview') : t('report.headingPlace')}</h1>
             {context && <p class="what">{context.name}</p>}
-            <p class="lead">{t('report.lead')}</p>
+            <p class="lead">{photoId ? t('report.leadPhoto') : t('report.lead')}</p>
+
+            {photoUrl && (
+              <div class="reporting-photo">
+                <img src={photoUrl} alt="" loading="lazy" />
+                <span class="mono">{t('report.thisPhoto')}</span>
+              </div>
+            )}
 
             {!user ? (
               <div class="signin-first">
@@ -356,5 +396,25 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     font-size: 15px;
     line-height: 1.6;
     color: var(--text-70);
+  }
+
+  .reporting-photo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 4px 0 18px;
+  }
+  .reporting-photo img {
+    width: 116px;
+    height: 88px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--hairline);
+    background: var(--surface-alt);
+  }
+  .reporting-photo span {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
   }
 </style>
