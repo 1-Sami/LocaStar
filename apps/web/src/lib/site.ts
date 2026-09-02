@@ -17,11 +17,23 @@
  * Fill both in the day the apps are public.
  */
 export const STORE_LINKS = {
-  appStore: '',
+  /* Live 2026-09-02. No country segment on purpose — Apple sends each visitor
+     to their own storefront, and the Swedish one resolves to the localised
+     name, which is the listing Swedish search will find. */
+  appStore: 'https://apps.apple.com/app/locastar/id6800435437',
   googlePlay: '',
 } as const;
 
-export const storeLinksReady = Boolean(STORE_LINKS.appStore && STORE_LINKS.googlePlay);
+/*
+ * Judged per store, not once for both.
+ *
+ * They were a single flag while neither was public. iOS went live on
+ * 2026-09-02 while Android is still in a closed test, so one flag would have
+ * meant either holding back a link that works or shipping one that 404s.
+ */
+export const appStoreReady = Boolean(STORE_LINKS.appStore);
+export const googlePlayReady = Boolean(STORE_LINKS.googlePlay);
+export const storeLinksReady = appStoreReady && googlePlayReady;
 
 /**
  * OpenStreetMap attribution.
