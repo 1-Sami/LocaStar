@@ -4,11 +4,13 @@ import { useTranslations } from '../i18n/ui';
 /*
  * Light/dark, sat next to EN · SV.
  *
- * Both icons are always in the markup and CSS picks which one shows, driven by
- * --icon-sun / --icon-moon in tokens.css. That is what lets the correct icon
- * be in the very first paint: when there is no cookie the theme comes from the
- * device, which the server cannot see, so anything decided in JS would have to
- * wait for hydration and would visibly flip.
+ * A sliding pill: the knob sits left in dark with a sun on it, right in light
+ * with a moon. Both icons are always in the markup and CSS picks which one
+ * shows, and the knob's position is a variable rather than a class. That is
+ * what lets the whole control be correct in the very first paint: with no
+ * cookie the theme comes from the device, which the server cannot see, so
+ * anything decided in JS would have to wait for hydration and would visibly
+ * snap across.
  *
  * The icon shown is the theme you would switch TO, not the one you are in.
  */
@@ -17,40 +19,60 @@ const t = useTranslations(lang);
 ---
 
 <button class="theme" type="button" data-theme-toggle aria-label={t('nav.theme')} title={t('nav.theme')}>
-  <svg class="icon sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <circle cx="12" cy="12" r="4.6" />
-    <g class="rays">
-      <path d="M12 1.6v3M12 19.4v3M1.6 12h3M19.4 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M19.4 4.6l-2.1 2.1M6.7 17.3l-2.1 2.1" />
-    </g>
-  </svg>
-  <svg class="icon moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M20.5 14.6A8.6 8.6 0 1 1 9.4 3.5a7 7 0 0 0 11.1 11.1Z" />
-  </svg>
+  <span class="knob">
+    <svg class="icon sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="4.4" />
+      <path
+        d="M12 1.8v3.1M12 19.1v3.1M1.8 12h3.1M19.1 12h3.1M4.9 4.9l2.2 2.2M16.9 16.9l2.2 2.2M19.1 4.9l-2.2 2.2M7.1 16.9l-2.2 2.2"
+      />
+    </svg>
+    <svg class="icon moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M21 14.2A9 9 0 1 1 9.8 3a7.3 7.3 0 0 0 11.2 11.2Z" />
+    </svg>
+  </span>
 </button>
 
 <style>
   .theme {
+    /* The pill takes the page colour and the knob takes the ink, so the whole
+       control inverts with the theme without either being named twice. */
+    position: relative;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 46px;
+    height: 26px;
+    flex: none;
     padding: 0;
-    border: 0;
+    border: 1px solid var(--border);
     border-radius: 999px;
-    background: none;
-    color: var(--text-42);
+    background: var(--page);
     cursor: pointer;
-    transition: color 120ms ease-out;
+    /* The global reduced-motion rule in tokens.css already cancels this. */
+    transition: background-color 140ms ease-out, border-color 140ms ease-out;
   }
-  .theme:hover { color: var(--text); }
+  .theme:hover { border-color: var(--text-42); }
 
-  .icon { width: 17px; height: 17px; }
+  .knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(var(--toggle-knob-x));
+    transition: transform 160ms ease-out, background-color 140ms ease-out;
+  }
+
+  .icon { width: 12px; height: 12px; color: var(--page); }
   .sun {
     display: var(--icon-sun);
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.7;
+    stroke-width: 2.1;
     stroke-linecap: round;
   }
   .moon { display: var(--icon-moon); fill: currentColor; }

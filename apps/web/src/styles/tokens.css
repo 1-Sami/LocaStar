@@ -135,6 +135,7 @@
      — which the server cannot know. */
   --icon-sun: none;
   --icon-moon: block;
+  --toggle-knob-x: 20px;
 }
 
 /*
@@ -169,6 +170,7 @@
     --on-photo: var(--d-on-photo);
     --icon-sun: block;
     --icon-moon: none;
+    --toggle-knob-x: 0px;
   }
 }
 
@@ -198,6 +200,7 @@
   --on-photo: var(--d-on-photo);
   --icon-sun: block;
   --icon-moon: none;
+  --toggle-knob-x: 0px;
 }
 
 @media (max-width: 767px) {
