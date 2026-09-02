@@ -17,6 +17,49 @@ export const prerender = false;
  */
 const CLOSED = ['/account', '/auth', '/add', '/admin', '/search?'];
 
+/*
+ * Crawlers that cost us the site and send nobody back.
+ *
+ * The sitemap lists 16,701 addresses — 8,289 places in two languages — and
+ * every one is server-rendered, so a full crawl is 16,701 Worker invocations
+ * and as many database reads. The free Workers allowance is 100,000 requests a
+ * day, and a handful of these bots sweeping the whole map is enough to spend
+ * it before any search engine gets a look in. That is what exhausted it on
+ * 2026-09-02, with about twenty people using the app.
+ *
+ * Search engines are not here on purpose. Google, Bing and the rest are the
+ * entire reason the site has 16,701 addresses, and they stay welcome. These
+ * are the SEO-tooling and AI-training crawlers, which take the same load and
+ * return nothing.
+ *
+ * robots.txt is a request, not a fence — the polite ones honour it, and the
+ * rest need Cloudflare's own bot rules. It costs nothing to ask first.
+ */
+const UNWELCOME = [
+  // SEO tooling
+  'AhrefsBot',
+  'SemrushBot',
+  'DotBot',
+  'MJ12bot',
+  'DataForSeoBot',
+  'BLEXBot',
+  'PetalBot',
+  'SeekportBot',
+  'serpstatbot',
+  // AI training and scraping
+  'GPTBot',
+  'CCBot',
+  'ClaudeBot',
+  'anthropic-ai',
+  'Google-Extended',
+  'Bytespider',
+  'Amazonbot',
+  'Applebot-Extended',
+  'meta-externalagent',
+  'ImagesiftBot',
+  'Omgilibot',
+];
+
 export const GET: APIRoute = ({ site, url }) => {
   const canonicalHost = new URL(site ?? url.origin).host;
   const origin = (site ?? new URL(url.origin)).origin;
@@ -33,10 +76,13 @@ export const GET: APIRoute = ({ site, url }) => {
   }
 
   const rules = CLOSED.flatMap((path) => [`Disallow: ${path}`, `Disallow: /sv${path}`]);
+  const blocked = UNWELCOME.map((agent) => `User-agent: ${agent}\nDisallow: /`).join('\n\n');
 
   return text(`User-agent: *
 Allow: /
 ${rules.join('\n')}
+
+${blocked}
 
 Sitemap: ${origin}/sitemap.xml
 `);

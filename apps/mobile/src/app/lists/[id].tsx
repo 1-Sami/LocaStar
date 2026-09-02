@@ -346,12 +346,23 @@ export default function ListDetailScreen() {
             ) : (
               items.map((item) => (
                 <ThemedView key={item.locationId} type="backgroundElement" style={styles.card}>
-                  <View style={styles.cardRow}>
+                  {/*
+                    The whole card opens the place, not just its name.
+
+                    The Pressable used to wrap the title text alone, so the
+                    stars, the note, the photo and every bit of padding around
+                    them did nothing — the one live target was the width of the
+                    words, and there was no way to tell by looking. Remove from
+                    list stays a Pressable of its own inside; the inner one
+                    takes the touch.
+                  */}
+                  <Pressable
+                    style={({ pressed }) => [styles.cardRow, pressed && styles.cardRowPressed]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.name}
+                    onPress={() => router.push({ pathname: '/location/[id]', params: { id: item.locationId } })}>
                     <View style={styles.cardContent}>
-                      <Pressable
-                        onPress={() => router.push({ pathname: '/location/[id]', params: { id: item.locationId } })}>
-                        <ThemedText type="smallBold">{item.name}</ThemedText>
-                      </Pressable>
+                      <ThemedText type="smallBold">{item.name}</ThemedText>
                       <View style={styles.ratingRow}>
                         <StarRating rating={item.avgRating} size={14} />
                         <ThemedText type="small" themeColor="textSecondary">
@@ -376,7 +387,7 @@ export default function ListDetailScreen() {
                       )}
                     </View>
                     <LocationPhoto url={item.imageUrl} style={styles.cardImage} />
-                  </View>
+                  </Pressable>
                 </ThemedView>
               ))
             )}
@@ -513,6 +524,9 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: Spacing.two,
     padding: Spacing.three,
+  },
+  cardRowPressed: {
+    opacity: 0.6,
   },
   cardRow: {
     flexDirection: 'row',
