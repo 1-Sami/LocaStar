@@ -61,8 +61,38 @@ const escapeXml = (value: string) =>
     }
   });
 
-export const GET: APIRoute = async ({ site, url }) => {
+/*
+ * The one page on this site worth the Worker keeping a copy of.
+ *
+ * It is 16,701 addresses read out of the database and 2.2 MB of XML, and it
+ * took 6.5 seconds to answer. Search engines ask for it repeatedly, and every
+ * one of them paid that in full, because a Worker builds its own responses —
+ * there is no origin fetch for Cloudflare's own cache to sit in front of, so
+ * the Cache-Control below was never doing anything.
+ *
+ * Safe to cache in a way almost nothing else here is: it is the same bytes for
+ * every visitor, signed in or not, and contains no user data at all — so the
+ * usual hazard, handing one person's page to the next, cannot arise.
+ *
+ * An hour, matching what the header already claimed. The fastest thing that
+ * changes this file is an activity retiring, and that job also runs hourly.
+ */
+const CACHE_SECONDS = 3600;
+
+export const GET: APIRoute = async ({ site, url, request, locals }) => {
   const origin = (site ?? new URL(url.origin)).origin;
+
+  /*
+   * Cloudflare only. Absent under `astro dev`, which runs on Node, so the
+   * whole thing degrades to building the file every time — which is exactly
+   * what you want while editing it.
+   */
+  const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
+  if (cache) {
+    const hit = await cache.match(request);
+    if (hit) return hit;
+  }
+
   const supabase = anonClient();
 
   let entries;
@@ -110,12 +140,31 @@ ${urls
 </urlset>
 `;
 
-  return new Response(body, {
+  const response = new Response(body, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      // An hour is plenty: an activity retiring is the fastest thing that
-      // changes this file, and that job runs hourly too.
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
     },
   });
+
+  /*
+   * Stored after the response is on its way, not before it. Writing 2.2 MB is
+   * not free, and nobody waiting for a sitemap should pay for the next
+   * requester's copy. A failed write is not worth failing the request over —
+   * the only cost is rebuilding it next time.
+   *
+   * The 503 above returns before reaching here on purpose: a sitemap that
+   * failed to build must never be the copy handed out for an hour.
+   */
+  if (cache) {
+    const store = cache.put(request, response.clone()).catch((error) => {
+      console.error('Could not cache the sitemap', error);
+    });
+    /* cfContext, not runtime.ctx — the latter was removed in Astro 6 and now
+       throws when touched, which optional chaining does not save you from. */
+    const ctx = (locals as { cfContext?: { waitUntil?: (p: Promise<unknown>) => void } }).cfContext;
+    if (ctx?.waitUntil) ctx.waitUntil(store);
+  }
+
+  return response;
 };
