@@ -135,6 +135,10 @@
      — which the server cannot know. */
   --icon-sun: none;
   --icon-moon: block;
+  /* Apple ships a black badge and a white one. Which is correct depends on
+     the surface, not only the theme, so .on-dark flips it too. */
+  --badge-black: block;
+  --badge-white: none;
   --toggle-knob-x: 20px;
 }
 
@@ -170,6 +174,8 @@
     --on-photo: var(--d-on-photo);
     --icon-sun: block;
     --icon-moon: none;
+    --badge-black: none;
+    --badge-white: block;
     --toggle-knob-x: 0px;
   }
 }
@@ -200,6 +206,8 @@
   --on-photo: var(--d-on-photo);
   --icon-sun: block;
   --icon-moon: none;
+  --badge-black: none;
+  --badge-white: block;
   --toggle-knob-x: 0px;
 }
 
@@ -307,5 +315,7 @@ a:hover {
   --ok: var(--d-ok);
   --danger: var(--d-danger);
   --scrim: var(--d-scrim);
+  --badge-black: none;
+  --badge-white: block;
   color: var(--text);
 }

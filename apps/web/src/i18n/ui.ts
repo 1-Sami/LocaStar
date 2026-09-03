@@ -65,6 +65,7 @@ export const ui = {
     'home.title': 'Explore',
     'home.promise':
       'One map of things to actually go and do — described by the people who have been there.',
+    'home.appStoreAlt': 'Download on the App Store',
     'home.storeSoon': 'Free · iOS and Android · English and Swedish',
     'home.finderActivity': 'ACTIVITY',
     'home.finderAnyType': 'Place · Event',
@@ -644,6 +645,7 @@ export const ui = {
     'home.title': 'Utforska',
     'home.promise':
       'En karta över saker att faktiskt göra — beskrivna av dem som har varit där.',
+    'home.appStoreAlt': 'Ladda ned via App Store',
     'home.storeSoon': 'Gratis · iOS och Android · svenska och engelska',
     'home.finderActivity': 'AKTIVITET',
     'home.finderAnyType': 'Plats · Evenemang',
