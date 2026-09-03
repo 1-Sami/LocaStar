@@ -46,17 +46,21 @@ pipelines from the same source, and pushing drives none of them:
 - **Pasting into the Supabase dashboard** → the auth emails. Nothing in this
   repo automates this one, and nothing ever can.
 
-**The domain cutover has happened.** `locastar.se` now resolves to
-`locastar-web`, the Astro Worker defined in `apps/web/wrangler.jsonc`, which
-serves `apps/web/` including everything in `apps/web/public/`. The root
-`wrangler.jsonc` still defines the older `locastar` Worker serving the
-prerendered Expo export in `apps/mobile/dist`; it is no longer what the domain
-points at.
+**There is one Worker.** `locastar.se` resolves to `locastar-web`, defined in
+`apps/web/wrangler.jsonc`, which serves `apps/web/` including everything in
+`apps/web/public/`.
 
-This file previously said the domain was still on the old Worker, which was
-true when it was written and stopped being true without anybody updating it.
-If a change to `apps/web` is not showing up, check that it was deployed before
-concluding anything about which Worker is serving.
+The older `locastar` Worker — the prerendered Expo export from
+`apps/mobile/dist` — was kept unrouted for a month as a rollback and
+**deleted on 2026-09-03**, along with the root `wrangler.jsonc` that defined
+it. The rollback it protected had stopped being real: going back would have
+lost the Swedish pages, the sitemap, the account area and the moderation
+tooling. `apps/mobile/scripts/build-web.mjs` still exists and still builds
+that export, but nothing deploys it any more.
+
+This file has twice said something about the website that was true when
+written and quietly stopped being true. If a change to `apps/web` is not
+showing up, check that it was deployed before concluding anything else.
 
 This file used to say pushing rebuilt the website, and that cost an afternoon:
 three files added during the day were live in the repo, absent from the site,

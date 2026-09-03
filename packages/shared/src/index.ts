@@ -49,6 +49,7 @@ export {
   DAY_KEYS,
   isAlwaysOpen,
   fetchNearbyLocations,
+  fetchNearbyLocationsBrief,
   fetchCategories,
   fetchLocationById,
   submitLocation,

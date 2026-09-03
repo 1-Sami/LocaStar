@@ -100,6 +100,33 @@ export type NearbyLocationsParams = {
   offset?: number;
 };
 
+/**
+ * The same places, without the total.
+ *
+ * nearby_locations ends with count(*) over (), which the search screens need
+ * and a "more nearby" strip does not — and that window count forces Postgres
+ * to build every matching row before the LIMIT discards them. On the live
+ * database that is 646ms against 135ms for the same five results.
+ *
+ * Use this wherever you want a handful of places and are not paging.
+ */
+export async function fetchNearbyLocationsBrief(
+  client: SupabaseClient,
+  params: Omit<NearbyLocationsParams, 'searchQuery' | 'sort' | 'offset'>
+): Promise<NearbyLocation[]> {
+  const { data, error } = await client.rpc('nearby_locations_brief', {
+    lat: params.lat,
+    lng: params.lng,
+    radius_m: params.radiusM ?? 50000,
+    category_slugs: params.categorySlugs && params.categorySlugs.length > 0 ? params.categorySlugs : null,
+    season_filter: params.season ?? null,
+    max_results: params.maxResults ?? 5,
+    kind_filter: params.kind ?? null,
+  });
+  if (error) throw error;
+  return (data ?? []) as NearbyLocation[];
+}
+
 export async function fetchNearbyLocations(
   client: SupabaseClient,
   params: NearbyLocationsParams

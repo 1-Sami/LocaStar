@@ -3,7 +3,7 @@ import {
   categoryName,
   fetchLocationById,
   fetchLocationPhotos,
-  fetchNearbyLocations,
+  fetchNearbyLocationsBrief,
   fetchReviews,
   fetchListMembershipForLocation,
   fetchLists,
@@ -76,11 +76,10 @@ const [photos, reviews] = await Promise.all([
  * decoration. One extra is requested because this place matches its own query.
  */
 const nearbyRaw = location.category_slug
-  ? await fetchNearbyLocations(supabase, {
+  ? await fetchNearbyLocationsBrief(supabase, {
       lat: location.lat,
       lng: location.lng,
       categorySlugs: [location.category_slug],
-      sort: 'distance',
       maxResults: 5,
     }).catch(() => [])
   : [];
