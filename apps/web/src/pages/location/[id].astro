@@ -171,12 +171,15 @@ const hasSession = (Astro.request.headers.get('cookie') ?? '').includes('sb-');
 /*
  * Read a POST body once, here, before anything decides whether to act on it.
  *
- * Two reasons, and the second one cost an hour. A body can only be read once,
- * so the moderator block below has to share this rather than ask again. And a
- * POST whose body is never read wedges the Workers runtime *after* the
- * response has gone out — the local server died on the next request every
- * time, which looked like the moderator actions crashing it and was actually
- * the paths that refuse a POST without reading it.
+ * A body can only be read once, so the moderator block below shares this
+ * rather than asking again — reading it twice throws.
+ *
+ * This was originally written up as a Workers runtime bug: an unread POST body
+ * appeared to wedge the server, because wrangler dev died on the request
+ * after every such POST. Production does not do this. Six POSTs with unread
+ * bodies to locastar.se, checked between each, all fine. The crash is in
+ * wrangler dev's own proxy, and the note is kept so nobody re-derives the
+ * wrong conclusion from the same symptom.
  */
 const postForm = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
 

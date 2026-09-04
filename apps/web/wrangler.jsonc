@@ -3,12 +3,38 @@
   "compatibility_date": "2026-08-19",
   "compatibility_flags": ["nodejs_compat"],
 
-  // The live domain. A custom domain belongs to exactly one Worker, so this
-  // is also what takes locastar.se off the old `locastar` Worker that served
-  // the Expo export. That Worker is left in place, unrouted, as the rollback:
-  // putting the domain back on it is the whole undo.
+  // Both hostnames, deliberately. A custom domain belongs to exactly one
+  // Worker, and www is attached only so it resolves at all — the middleware
+  // 301s it to the apex, so there is one address Google can index rather than
+  // two copies of the site competing.
   "routes": [
     { "pattern": "locastar.se", "custom_domain": true },
     { "pattern": "www.locastar.se", "custom_domain": true }
-  ]
+  ],
+
+  /*
+   * Run next to the database, not next to the visitor.
+   *
+   * The database is in eu-west-1, Ireland. Left alone, the Worker runs at
+   * whichever edge the visitor reaches — Stockholm for most of them — and then
+   * every query crosses to Ireland and back: two round trips to render the
+   * home page, four for a place page, before a byte is sent.
+   *
+   * Smart Placement moves the Worker to where those round trips are local. The
+   * visitor's own hop gets longer, once; the four database hops get shorter,
+   * which is the trade that pays here. Cloudflare measures this per Worker and
+   * reverts on its own if it turns out slower, so the failure mode is "no
+   * change" rather than "worse".
+   *
+   * It takes about 15 minutes of traffic to take effect after a deploy, and it
+   * only considers locations the Worker has actually run in.
+   */
+  "placement": { "mode": "smart" },
+
+  /*
+   * Logs, so a 500 is something we can read rather than guess at. The metrics
+   * panel counts errors but will not say which route or why; without this the
+   * only way to see inside a failing request is to reproduce it.
+   */
+  "observability": { "enabled": true }
 }
