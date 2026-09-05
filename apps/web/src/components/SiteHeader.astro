@@ -131,6 +131,13 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
           <span class="bars" aria-hidden="true"></span>
         </summary>
         <nav class="menu-panel" aria-label={t('nav.menuLabel')}>
+          {/*
+            First, and styled as the action it is rather than as one more link
+            — it leaves the row on a phone, and burying it under the navigation
+            would be demoting it rather than moving it.
+          */}
+          <a class="menu-cta" href={p('/add')}>{t('nav.addPlace')}</a>
+          <span class="menu-rule" aria-hidden="true"></span>
           {
             NAV.map((item) => (
               <a class={`menu-link${current === item.key ? ' on' : ''}`} href={p(item.href)}>
@@ -152,7 +159,12 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
             <span aria-hidden="true"> · </span>
             <a class={lang === 'sv' ? 'on' : ''} href={localePath(path, 'sv')} hreflang="sv">SV</a>
           </span>
-          <ThemeToggle />
+          {/*
+            No theme toggle in here. Things appear in this panel because they
+            leave the row — the language pair does at 640. The toggle never
+            leaves, so a copy here is the same control offered twice, and both
+            were on screen together once the menu opened.
+          */}
         </nav>
       </details>
     </div>
@@ -450,13 +462,22 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
    *
    * So the tagline and Sign in step out of the row. Sign in is not lost; it
    * moves into the menu, which is where a phone expects to find an account
-   * anyway. What is left is the brand, Add a place, and the way out.
+   * anyway.
+   *
+   * Add a place followed them, later and for the same reason. The theme toggle
+   * joined this row after that measurement was taken and put it back over
+   * budget: on a 390px screen the toggle sat on top of the wordmark and Add a
+   * place covered the rest of it. It is the first thing in the menu panel now,
+   * still the most prominent thing in there.
+   *
+   * What is left in the row is the brand, the toggle, and the way out.
    */
   @media (max-width: 640px) {
     .lang,
     .me-name,
     .tagline,
-    .signin {
+    .signin,
+    .cta {
       display: none;
     }
 
@@ -469,9 +490,6 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
       padding-block: 16px;
     }
 
-    .cta {
-      padding-inline: 15px;
-    }
   }
 
   /* Narrower still: the mark alone carries the brand. */
@@ -479,6 +497,24 @@ const initial = signedInName ? signedInName.trim().charAt(0).toUpperCase() : '';
     .wordmark {
       display: none;
     }
+  }
+
+  /* The action, wearing the same clothes it wore in the row. */
+  .menu-cta {
+    display: block;
+    text-align: center;
+    padding: 11px 16px;
+    border-radius: 9px;
+    background: var(--accent);
+    color: var(--page);
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+  }
+  .menu-cta:hover {
+    background: var(--accent);
+    color: var(--page);
+    opacity: 0.9;
   }
 
   /* In the menu it is a link like the others, but it is who you are. */

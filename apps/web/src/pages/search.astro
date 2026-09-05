@@ -242,8 +242,31 @@ const canonical = `${origin}/search`;
 
     <div class="layout">
       <aside class="rail" aria-label={t('search.filters')}>
-        <div class="group activity-group">
-          <span class="mono group-head">{t('search.activity')}</span>
+        {/*
+          A disclosure, not a permanent list.
+
+          There are 54 activities, so on a phone the list ran for roughly nine
+          screens and pushed the results themselves below all of it — the
+          filter was in the way of the thing being filtered.
+
+          <details> rather than a script-driven panel, matching the header
+          menu: it opens on the first tap whether or not anything has loaded.
+          It is open in the markup, so desktop and a browser with no JavaScript
+          both get exactly what they got before; the script below closes it on
+          a small screen, and only when nothing is selected — once you have
+          picked an activity, keeping it open is what lets you pick a second
+          without reopening it every time the page reloads.
+        */}
+        <details
+          class="group activity-group"
+          open
+          data-activity-filter
+          data-collapse={activity.length === 0 ? 'yes' : undefined}
+        >
+          <summary class="mono group-head">
+            <span>{t('search.activity')}</span>
+            {activity.length > 0 && <span class="chosen">{activity.length}</span>}
+          </summary>
           <div class="cats">
             {
               filterCategories.map((row) => {
@@ -259,7 +282,20 @@ const canonical = `${origin}/search`;
               })
             }
           </div>
-        </div>
+        </details>
+
+        {/*
+          Inline and immediately after the element, so it runs while the page is
+          still parsing and the list is never painted open on a phone.
+        */}
+        <script is:inline>
+          (function () {
+            var el = document.querySelector('[data-activity-filter]');
+            if (el && el.dataset.collapse === 'yes' && window.matchMedia('(max-width: 767px)').matches) {
+              el.open = false;
+            }
+          })();
+        </script>
       </aside>
 
       <section class="results" aria-label={t('common.results')}>
@@ -1063,6 +1099,87 @@ const canonical = `${origin}/search`;
     .directions {
       text-align: center;
       padding-block: 13px;
+    }
+  }
+
+  /* ------------------------------------------- the activity disclosure --- */
+  /*
+   * On a wide screen this is a heading that happens to sit in a <details>:
+   * no marker, no pointer, nothing to suggest it does anything, because there
+   * the list is always open and there is no reason to close it.
+   */
+  .activity-group > summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .activity-group > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* How many are on, so a closed panel still says filters are applied. */
+  .chosen {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--page);
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  @media (max-width: 767px) {
+    /*
+     * On a phone it becomes a control: a full-width bar you tap, with a
+     * chevron that turns over when it opens. Without this the 54 activities
+     * ran for about nine screens and the results sat underneath all of them.
+     */
+    .activity-group > summary {
+      justify-content: flex-start;
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+    }
+    .activity-group > summary::after {
+      content: '';
+      margin-left: auto;
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid var(--text-55);
+      border-bottom: 1.5px solid var(--text-55);
+      transform: rotate(45deg) translate(-2px, -2px);
+      transition: transform 120ms ease-out;
+    }
+    .activity-group[open] > summary::after {
+      transform: rotate(-135deg) translate(-2px, -2px);
+    }
+    .activity-group[open] > summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    /*
+     * Capped and scrollable rather than nine screens of list. Tall enough that
+     * it is obviously a list you scroll, short enough that the results stay
+     * reachable with one thumb flick.
+     */
+    .activity-group[open] > .cats {
+      max-height: 46vh;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-top: 0;
+      border-radius: 0 0 10px 10px;
+      padding: 10px 14px 12px;
+      -webkit-overflow-scrolling: touch;
     }
   }
 </style>
