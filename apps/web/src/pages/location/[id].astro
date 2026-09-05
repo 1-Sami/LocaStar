@@ -1723,17 +1723,105 @@ const seasonLabel =
   }
 
   @media (max-width: 767px) {
-    .mosaic {
+    /*
+     * The other photos were hidden here, so a phone saw one picture and no
+     * sign the rest existed — the gallery they open is the only place every
+     * photo is reachable. The hero keeps its size and they sit under it as a
+     * strip: small, but present and tappable.
+     */
+    /* Every count- variant, not bare .mosaic: those set the columns with two
+       classes, and a media query adds no specificity, so a one-class rule in
+       here loses to them and the grid stayed two columns wide. */
+    .mosaic.count-1,
+    .mosaic.count-2,
+    .mosaic.count-3,
+    .mosaic.count-4 {
       grid-template-columns: 1fr;
-      height: 260px;
+      height: auto;
     }
 
+    .mosaic > .shot {
+      height: 110px;
+    }
+
+    .mosaic > .shot:first-child {
+      height: 220px;
+    }
+
+    /* Columns from however many tiles there are, not a fixed three: a place
+       with three photos has two of them here and would leave an empty cell. */
     .mosaic-side {
-      display: none;
+      grid-template-columns: none;
+      grid-template-rows: none;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
     }
 
+    .mosaic-side .shot {
+      height: 76px;
+    }
+
+    /* Its two tiles join the row above rather than nesting inside one cell. */
+    .mosaic-pair {
+      display: contents;
+    }
+
+    /*
+     * Three across, not stacked. Each card carried one short fact and a full
+     * screen width to say it in, so the three of them pushed everything below
+     * them down by most of a screen.
+     */
     .info {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .card {
+      padding: 11px 10px;
+      border-radius: 9px;
+    }
+
+    .card .label {
+      font-size: 8.5px;
+      letter-spacing: 0.1em;
+    }
+
+    .card .value {
+      font-size: 13px;
+      line-height: 1.3;
+      margin-top: 6px;
+    }
+
+    .card .sub {
+      font-size: 10px;
+    }
+
+    /*
+     * Directions above the reviews.
+     *
+     * Both columns become one here, and the side column is second in the
+     * markup, so the way to actually get to the place sat below every review
+     * of it. display: contents drops the two column boxes so their children
+     * become items of the page grid directly, which is what makes it possible
+     * to put one of them between the facts and the reviews rather than only
+     * before or after both.
+     */
+    .col-main,
+    .col-side {
+      display: contents;
+    }
+
+    .body {
+      gap: 22px;
+    }
+
+    .col-side > * {
+      order: 2;
+    }
+
+    .hairline,
+    .reviews {
+      order: 3;
     }
 
     .nearby-grid {
