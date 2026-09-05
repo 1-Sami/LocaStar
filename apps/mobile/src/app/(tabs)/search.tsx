@@ -71,7 +71,18 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NearbyLocation[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  /*
+   * True from the first frame, because a search is always going to happen.
+   *
+   * It used to start false, and the effect below cannot run until the device
+   * has a location — so between opening the tab and the fix landing, the screen
+   * had no results, was not loading and had not failed. It rendered that as
+   * "0 RESULTS" and "No matches.", which is a definite answer to a question
+   * nobody had asked yet, and it was wrong: the search that eventually ran
+   * found plenty. Empty is not a failure state, and it is not a waiting state
+   * either.
+   */
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const router = useRouter();
   const { t } = useTranslation();
@@ -155,6 +166,11 @@ export default function SearchScreen() {
   const [searchFailed, setSearchFailed] = useState(false);
   const lastFilterKey = useRef<string | null>(null);
   const loadingMoreRef = useRef(false);
+  // What was in the search box last time the query ran, so the effect can tell
+  // typing (which is worth waiting out) from every other reason it re-runs.
+  // Seeded with the empty box the screen actually opens with, so the first
+  // search — which nobody typed — is not made to wait for a keystroke.
+  const lastQueryText = useRef('');
 
   useFocusEffect(
     useCallback(() => {
@@ -187,6 +203,18 @@ export default function SearchScreen() {
     const wanted = isRefresh
       ? Math.min(Math.max(PAGE_SIZE, loadedCount.current), MAX_REFRESH_ROWS)
       : PAGE_SIZE;
+
+    /*
+     * The wait is for typing, and only for typing.
+     *
+     * It exists so that a word does not become one request per letter. Tapping
+     * a category, changing the sort, or coming back to the tab each happen once
+     * and are already the user's final answer, so making them wait 300ms was
+     * latency bought for nothing. Still a timeout at zero rather than a direct
+     * call, so the cleanup below can cancel it either way.
+     */
+    const debounced = lastQueryText.current !== trimmed;
+    lastQueryText.current = trimmed;
 
     const timeout = setTimeout(() => {
       setLoading(true);
@@ -223,7 +251,7 @@ export default function SearchScreen() {
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
-    }, 300);
+    }, debounced ? 300 : 0);
 
     return () => {
       cancelled = true;
