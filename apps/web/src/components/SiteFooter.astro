@@ -48,13 +48,6 @@ const p = (href: string) => localePath(href, lang);
     </div>
 
     <div class="col">
-      <span class="mono col-head">{t('footer.explore')}</span>
-      <a href={p('/categories')}>{t('footer.categories')}</a>
-      <a href={p('/community')}>{t('footer.communityLists')}</a>
-      <a href={p('/add')}>{t('footer.addPlace')}</a>
-    </div>
-
-    <div class="col">
       <span class="mono col-head">{t('footer.locastar')}</span>
       <a href={p('/about')}>{t('footer.about')}</a>
       <a href={p('/features')}>{t('footer.features')}</a>
@@ -79,7 +72,13 @@ const p = (href: string) => localePath(href, lang);
   .inner {
     padding-block: 44px 64px;
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    /*
+     * Was 1.4fr and three columns, when Explore was one of them. Its three
+     * links — Categories, Community lists, Add a place — are all in the header
+     * on every page already, so the column was repeating what was a thumb's
+     * reach above it rather than adding a way anywhere.
+     */
+    grid-template-columns: 1.6fr 1fr 1fr;
     gap: 36px;
   }
 
