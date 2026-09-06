@@ -18,14 +18,17 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/date-field';
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { PhotoPicker } from '@/components/photo-picker';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { YesNoRow } from '@/components/yes-no-row';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { endOfLocalDay, startOfLocalDay } from '@/lib/activity-dates';
 import { formatCityLine, formatStreetLine, resolveCity } from '@/lib/address-format';
 import { useAuth } from '@/lib/auth-context';
 import { locationPhotoPath } from '@/lib/media-path';
@@ -33,12 +36,12 @@ import { uploadImageToMedia } from '@/lib/media-upload';
 import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
 
-/** Mirrors the interval in migration 0079, which is what actually enforces it. */
-const CREATOR_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-
 // Same shape check as the create form — deliberately loose. Anything stricter
 // rejects addresses that are perfectly valid.
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
+
+/** The same cap the create form applies, so editing cannot exceed what adding allows. */
+const MAX_ACTIVITY_DAYS = 120;
 
 /** Label above a field. The asterisk marks the ones that must not be emptied. */
 function FieldLabel({ children, required }: { children: string; required?: boolean }) {
@@ -89,6 +92,17 @@ export default function EditLocationScreen() {
   const [hours, setHours] = useState<OpeningHours>({});
   const [availableSummer, setAvailableSummer] = useState(false);
   const [availableWinter, setAvailableWinter] = useState(false);
+  /*
+   * An event's dates, and whether it is on the public map.
+   *
+   * All four were set once at creation and then fixed: this screen had no
+   * control for any of them, and updateLocation did not send the columns even
+   * if it had. Changing your mind meant deleting the event and adding it again.
+   */
+  const [isPrivate, setIsPrivate] = useState<boolean | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [publishDate, setPublishDate] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -152,6 +166,12 @@ export default function EditLocationScreen() {
             setHours(location.hours_not_applicable ? ALWAYS_OPEN : (location.hours ?? {}));
             setAvailableSummer(location.available_summer);
             setAvailableWinter(location.available_winter);
+            setIsPrivate(location.visibility === 'private');
+            setStartDate(location.starts_at ? new Date(location.starts_at) : null);
+            // Stored as the last instant of the closing day, so it reads back as
+            // that day rather than as the one after it.
+            setEndDate(location.expires_at ? startOfLocalDay(new Date(location.expires_at)) : null);
+            setPublishDate(location.publish_at ? new Date(location.publish_at) : null);
           }
           setCategoryIds(existingCategoryIds);
         })
@@ -258,20 +278,21 @@ export default function EditLocationScreen() {
   /**
    * Whether the database will actually accept this save.
    *
-   * Worth checking here and not only on the button that got you here: the
-   * creator's window can close while the form is open, and the guard trigger
-   * does not raise on a late write — it silently reverts the columns and
-   * reports success. Without this you would get "Saved." and no change.
+   * Worth checking here and not only on the button that got you here, because
+   * the guard trigger does not raise on a write it disallows — it silently
+   * reverts the columns and reports success, so without this you would be told
+   * "Saved." and nothing would have changed.
+   *
+   * The creator used to fall out of this after 24 hours, which is exactly how
+   * that silent revert was reached in normal use. The window is gone at both
+   * ends now (migration 0132); what is left is the honest question of whether
+   * this row is yours at all.
    */
-  const editWindowClosed = Boolean(
+  const cannotEdit = Boolean(
     permissions &&
       !isModerator &&
       !(session && permissions.isVerified && permissions.claimedBy === session.user.id) &&
-      !(
-        session &&
-        permissions.createdBy === session.user.id &&
-        Date.now() - new Date(permissions.createdAt).getTime() < CREATOR_EDIT_WINDOW_MS
-      )
+      !(session && permissions.createdBy === session.user.id)
   );
 
   // A name and an address are what make a place findable, so editing must not
@@ -280,8 +301,46 @@ export default function EditLocationScreen() {
   const missingName = !name.trim();
   // Optional, but has to be an address if given — same rule as the create form.
   const emailValid = kind !== 'activity' || email.trim() === '' || EMAIL_PATTERN.test(email.trim());
+  /*
+   * The event's dates, checked exactly as the create form checks them.
+   *
+   * Whole days rather than instants, because the pickers are date-only and two
+   * dates tapped as "today" differ only by the seconds between the taps. The
+   * ends of the day matter too: an hourly job deletes activities past
+   * expires_at, which is how a festival once vanished at 19:12 on its last day.
+   */
+  const isActivity = kind === 'activity';
+  let dateError: string | null = null;
+  let startsAtIso: string | null = null;
+  let expiresAtIso: string | null = null;
+  let publishAtIso: string | undefined;
+
+  if (isActivity) {
+    startsAtIso = startDate ? startOfLocalDay(startDate).toISOString() : null;
+
+    if (endDate && startDate) {
+      const startDay = startOfLocalDay(startDate).getTime();
+      const endDay = startOfLocalDay(endDate).getTime();
+      if (endDay < startDay) {
+        dateError = t('addLocation.endBeforeStart');
+      } else if ((endDay - startDay) / (1000 * 60 * 60 * 24) > MAX_ACTIVITY_DAYS) {
+        dateError = t('addLocation.tooLong', { days: MAX_ACTIVITY_DAYS });
+      } else {
+        expiresAtIso = endOfLocalDay(endDate).toISOString();
+      }
+    }
+
+    if (!dateError && publishDate) {
+      if (endDate && startOfLocalDay(publishDate).getTime() > startOfLocalDay(endDate).getTime()) {
+        dateError = t('addLocation.publishAfterEnd');
+      } else {
+        publishAtIso = startOfLocalDay(publishDate).toISOString();
+      }
+    }
+  }
+
   const canSave = Boolean(
-    !missingName && addressLine1.trim() && addressLine2.trim() && emailValid && !editWindowClosed
+    !missingName && addressLine1.trim() && addressLine2.trim() && emailValid && !cannotEdit && !dateError
   );
 
   const handleSave = async () => {
@@ -310,6 +369,12 @@ export default function EditLocationScreen() {
         hoursNotApplicable: false,
         availableSummer,
         availableWinter,
+        // Events only. Sending these for a place would write dates onto
+        // something that has none and take it off the public map.
+        visibility: isActivity && isPrivate !== null ? (isPrivate ? 'private' : 'public') : undefined,
+        startsAt: isActivity ? startsAtIso : undefined,
+        expiresAt: isActivity ? expiresAtIso : undefined,
+        publishAt: isActivity ? publishAtIso : undefined,
       });
       await setLocationCategories(supabase, id, categoryIds);
 
@@ -371,9 +436,9 @@ export default function EditLocationScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          {editWindowClosed && (
+          {cannotEdit && (
             <ThemedText type="small" style={styles.addressWarning}>
-              {t('editLocation.windowExpired')}
+              {t('editLocation.notYours')}
             </ThemedText>
           )}
 
@@ -575,6 +640,62 @@ export default function EditLocationScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/*
+            An event's own fields. Set once when it was created and unreachable
+            ever after — so a festival that moved a week, or one added privately
+            that its organiser then wanted on the map, could only be fixed by
+            deleting it and starting again.
+          */}
+          {isActivity && (
+            <View style={styles.section}>
+              <YesNoRow
+                label={t('addLocation.publicOrPrivate')}
+                value={isPrivate}
+                onChange={(value) => {
+                  setIsPrivate(value);
+                  setSaved(false);
+                }}
+                yesLabel={t('addLocation.private')}
+                noLabel={t('addLocation.public')}
+              />
+
+              <DateField
+                label={t('addLocation.startDate')}
+                value={startDate}
+                onChange={(value) => {
+                  setStartDate(value);
+                  setSaved(false);
+                }}
+                placeholder={t('addLocation.startDatePlaceholder')}
+              />
+              <DateField
+                label={t('addLocation.endDate')}
+                value={endDate}
+                onChange={(value) => {
+                  setEndDate(value);
+                  setSaved(false);
+                }}
+                minimumDate={startDate ?? undefined}
+                placeholder={t('addLocation.endDatePlaceholder')}
+              />
+              <DateField
+                label={t('addLocation.publishDate')}
+                value={publishDate}
+                onChange={(value) => {
+                  setPublishDate(value);
+                  setSaved(false);
+                }}
+                placeholder={t('addLocation.publishDatePlaceholder')}
+              />
+
+              {dateError && (
+                <ThemedText type="small" style={styles.addressWarning}>
+                  {dateError}
+                </ThemedText>
+              )}
+            </View>
+          )}
 
           {/*
             Moderators only. Everyone else adds photos when they create a place

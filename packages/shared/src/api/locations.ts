@@ -756,6 +756,26 @@ export type LocationUpdate = {
   hoursNotApplicable: boolean;
   availableSummer: boolean;
   availableWinter: boolean;
+  /**
+   * Whether the place is on the public map, or undefined to leave it alone.
+   *
+   * An event created as private could never be opened up again, and one created
+   * public could never be taken down -- the edit form had no control for it and
+   * this function never sent the column, so the only way to change your mind
+   * was to delete the row and add it a second time.
+   */
+  visibility?: "public" | "private";
+  /**
+   * When an event runs, as ISO strings, or undefined to leave them.
+   *
+   * Dates were writable at creation and then fixed forever, which is the one
+   * thing about an event most likely to change after you have announced it.
+   * Meaningless on a place, so the edit screen only offers them for an event.
+   */
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  /** When it becomes visible. Same story as the dates above. */
+  publishAt?: string;
 };
 
 export async function updateLocation(
@@ -781,6 +801,12 @@ export async function updateLocation(
       hours_not_applicable: input.hoursNotApplicable,
       available_summer: input.availableSummer,
       available_winter: input.availableWinter,
+      // Each omitted unless the caller asked, so a screen that does not offer
+      // the field cannot blank it by saving everything else.
+      ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+      ...(input.startsAt !== undefined ? { starts_at: input.startsAt } : {}),
+      ...(input.expiresAt !== undefined ? { expires_at: input.expiresAt } : {}),
+      ...(input.publishAt !== undefined ? { publish_at: input.publishAt } : {}),
     })
     .eq("id", locationId);
   if (error) throw error;

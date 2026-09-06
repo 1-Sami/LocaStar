@@ -157,20 +157,6 @@ function openUrl(url: string): void {
   Linking.openURL(url).catch(() => {});
 }
 
-/**
- * How long a creator has to correct what they typed. Mirrors the interval in
- * migration 0079 — the database is the thing that actually enforces it, and if
- * these two ever disagree the button lies rather than the rule bending.
- */
-const CREATOR_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-function formatWindowLeft(ms: number, t: TFunction): string {
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours >= 1) return t('location.durationHours', { count: hours });
-  const minutes = Math.max(1, Math.round(ms / 60_000));
-  return t('location.durationMinutes', { count: minutes });
-}
-
 const AVATAR_COLORS = ['#4C8FE8', '#4CD37A', '#E8A93B', '#C34CE8', '#F5738A', '#2BA3A3', '#E2791F'];
 function avatarColorFor(id: string): string {
   let hash = 0;
@@ -402,15 +388,17 @@ export default function LocationDetailScreen() {
   // Who may edit, matching what the database will actually allow. This used to
   // check isAdmin while the trigger checks is_moderator(), so a moderator who
   // wasn't an admin could edit through the API but saw no button.
-  const creatorWindowLeftMs =
-    session && location.created_by === session.user.id
-      ? CREATOR_EDIT_WINDOW_MS - (Date.now() - new Date(location.created_at).getTime())
-      : 0;
-  const withinCreatorWindow = creatorWindowLeftMs > 0;
+  /*
+   * There used to be a 24-hour window on this, mirroring migration 0079. Both
+   * ends of it are gone (0132): what you added stays yours to correct, and the
+   * trigger still pins the fields that are not yours to change — status, the
+   * rating other people gave it, verification, boost.
+   */
+  const isCreator = Boolean(session && location.created_by === session.user.id);
   const canEditLocation =
     isModerator ||
     Boolean(session && location.is_verified && location.claimed_by === session.user.id) ||
-    withinCreatorWindow;
+    isCreator;
 
   // A private activity is the creator's own event, not part of the public map,
   // so they can remove it (0081). Public content stays admin-only: it carries
@@ -1011,11 +999,12 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
-            {/* Say the window exists and that it ends, rather than letting the
-                Edit link vanish overnight with no explanation. */}
-            {withinCreatorWindow && !isModerator && (
+            {/* Said "you can edit it for 3 hours more" until the window went.
+                Still worth saying at all: it is what explains the Edit link
+                being here for you and not for anybody else. */}
+            {isCreator && !isModerator && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.statusLine}>
-                {t('location.creatorWindow', { time: formatWindowLeft(creatorWindowLeftMs, t) })}
+                {t('location.youAddedThis')}
               </ThemedText>
             )}
 

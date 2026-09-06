@@ -26,6 +26,7 @@ import { ScreenTitle } from '@/components/screen-title';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { YesNoRow } from '@/components/yes-no-row';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDiscardWarning } from '@/hooks/use-discard-warning';
@@ -45,58 +46,6 @@ import { supabase } from '@/lib/supabase';
 const DUPLICATE_RADIUS_M = 200;
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 const MAX_ACTIVITY_DAYS = 120;
-
-function YesNoRow({
-  label,
-  value,
-  onChange,
-  yesLabel,
-  noLabel,
-}: {
-  label: string;
-  value: boolean | null;
-  onChange: (value: boolean) => void;
-  yesLabel?: string;
-  noLabel?: string;
-}) {
-  const { t } = useTranslation();
-  const theme = useTheme();
-  return (
-    <View style={styles.yesNoRow}>
-      <ThemedText type="default">{label}</ThemedText>
-      <View style={styles.yesNoOptions}>
-        <Pressable
-          style={styles.yesNoOption}
-          onPress={() => onChange(true)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: value === true }}>
-          <ThemedText type='small'>{yesLabel ?? t('common.yes')}</ThemedText>
-          <View
-            style={[
-              styles.checkbox,
-              { borderColor: theme.fieldBorder },
-              value === true && styles.checkboxChecked,
-            ]}
-          />
-        </Pressable>
-        <Pressable
-          style={styles.yesNoOption}
-          onPress={() => onChange(false)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: value === false }}>
-          <ThemedText type='small'>{noLabel ?? t('common.no')}</ThemedText>
-          <View
-            style={[
-              styles.checkbox,
-              { borderColor: theme.fieldBorder },
-              value === false && styles.checkboxChecked,
-            ]}
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
 
 export default function AddLocationScreen() {
   const { t } = useTranslation();
@@ -954,17 +903,6 @@ const styles = StyleSheet.create({
   categoryInputText: {
     flex: 1,
     color: '#000000',
-  },
-  yesNoRow: {
-    gap: Spacing.two,
-  },
-  yesNoOptions: {
-    flexDirection: 'row',
-    gap: Spacing.five,
-  },
-  yesNoOption: {
-    alignItems: 'center',
-    gap: Spacing.one,
   },
   seasonRow: {
     gap: Spacing.two,
