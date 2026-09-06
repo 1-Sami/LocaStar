@@ -50,10 +50,24 @@ export type SavedLocation = {
   category_slug: string | null;
   /** Storage path of the location's first photo, if it has one. */
   cover_photo_path: string | null;
+  /**
+   * When an event starts, so a saved card can say so.
+   *
+   * Saved rows carried no date, which is why a festival in Saved looked exactly
+   * like a bench: no "starts Saturday", no sense that it would stop existing.
+   */
+  starts_at: string | null;
+  /**
+   * Where it is. Fetched so a saved card can show how far away it is, and so
+   * Directions opens the pin rather than falling back to searching for the name
+   * — two places called "Strandbadet" is all that fallback needs to be wrong.
+   */
+  lat: number | null;
+  lng: number | null;
 };
 
 const JOINED_LOCATION_SELECT =
-  "location:locations(id, name, description, address, city, country, avg_rating, review_count, kind, location_categories(categories(slug)), location_photos(storage_path, created_at))";
+  "location:locations(id, name, description, address, city, country, avg_rating, review_count, kind, starts_at, lat, lng, location_categories(categories(slug)), location_photos(storage_path, created_at))";
 
 type JoinedLocationRow = {
   location: {
@@ -66,6 +80,9 @@ type JoinedLocationRow = {
     avg_rating: number;
     review_count: number;
     kind: "place" | "activity";
+    starts_at: string | null;
+    lat: number | null;
+    lng: number | null;
     location_categories: { categories: { slug: string } | null }[];
     location_photos: { storage_path: string; created_at: string }[];
   } | null;
@@ -94,6 +111,9 @@ function mapJoinedLocation(row: JoinedLocationRow): SavedLocation | null {
     kind: location.kind,
     category_slug: location.location_categories?.[0]?.categories?.slug ?? null,
     cover_photo_path: coverPhotoPath(location.location_photos),
+    starts_at: location.starts_at,
+    lat: location.lat,
+    lng: location.lng,
   };
 }
 

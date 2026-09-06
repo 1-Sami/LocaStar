@@ -25,9 +25,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FavoriteCard } from '@/components/favorite-card';
 import { ListCard } from '@/components/list-card';
-import { LocationCard } from '@/components/location-card';
+import { SavedCard } from '@/components/saved-card';
 import { SectionBadge } from '@/components/section-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -75,11 +74,11 @@ function FullSection({
           {emptyMessage}
         </ThemedText>
       ) : (
-        <View style={styles.sectionList}>
+        <View style={styles.favoritesGrid}>
           {items.map((item, index) => {
             const note = noteForItem?.(item, index);
             return (
-              <View key={`${item.id}-${index}`} style={styles.cardWithNote}>
+              <View key={`${item.id}-${index}`} style={styles.gridSlot}>
                 {(note || onDeleteItem) && (
                   <View style={styles.noteRow}>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
@@ -92,7 +91,7 @@ function FullSection({
                     )}
                   </View>
                 )}
-                <LocationCard
+                <SavedCard
                   location={item}
                   isFavorite={favoriteIds.has(item.id)}
                   isBucketListed={bucketListIds.has(item.id)}
@@ -137,7 +136,7 @@ function FavoritesSection({
       ) : (
         <View style={styles.favoritesGrid}>
           {items.map((item) => (
-            <FavoriteCard
+            <SavedCard
               key={item.id}
               location={item}
               isFavorite={favoriteIds.has(item.id)}
@@ -384,7 +383,7 @@ export default function FavoritesScreen() {
                   {sharedCards.map((item, index) => {
                     const note = sharedNote(item, index);
                     return (
-                      <View key={`${item.id}-${index}`} style={styles.cardWithNote}>
+                      <View key={`${item.id}-${index}`} style={styles.gridSlot}>
                         <View style={styles.noteRow}>
                           <ThemedText type="small" themeColor="textSecondary" style={styles.shareNote}>
                             {note}
@@ -393,7 +392,7 @@ export default function FavoritesScreen() {
                             <Ionicons name="close-circle" size={18} color="#E05252" />
                           </Pressable>
                         </View>
-                        <LocationCard
+                        <SavedCard
                           location={item}
                           isFavorite={favoriteIds.has(item.id)}
                           isBucketListed={bucketListIds.has(item.id)}
@@ -491,6 +490,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    rowGap: Spacing.three,
+  },
+  /*
+   * Two to a row. 48% rather than half, so the two per row are separated by the
+   * remaining 4% — the grid is space-between and has no column gap of its own.
+   */
+  gridSlot: {
+    width: '48%',
+    gap: Spacing.one,
   },
   loggedOutPrompt: {
     flex: 1,

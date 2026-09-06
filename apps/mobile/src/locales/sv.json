@@ -526,7 +526,10 @@
     "themPlaceholder": "dem",
     "peopleCount_one": "{{count}} person",
     "peopleCount_other": "{{count}} personer",
-    "bucketListEmpty": "Inget sparat än — tryck på bokmärket på en plats för att spara det du planerar."
+    "bucketListEmpty": "Inget sparat än — tryck på bokmärket på en plats för att spara det du planerar.",
+    "notRatedYet": "INGA OMDÖMEN ÄN",
+    "daysLeft_one": "{{count}} DAG KVAR",
+    "daysLeft_other": "{{count}} DAGAR KVAR"
   },
   "friends": {
     "blockTitle": "Blockera {{name}}?",

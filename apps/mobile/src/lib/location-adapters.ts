@@ -61,9 +61,11 @@ export function savedLocationToCard(location: SavedLocation): CardLocation {
     city: location.city,
     country: location.country,
     distanceM: null,
-    coords: null,
+    // Both were null here until the saved query started fetching them, which is
+    // why Directions from Saved searched for the name instead of opening the pin.
+    coords: location.lat !== null && location.lng !== null ? { lat: location.lat, lng: location.lng } : null,
     imageUrl: photoUrl(location.cover_photo_path),
-    startsAt: null,
+    startsAt: location.starts_at,
   };
 }
 

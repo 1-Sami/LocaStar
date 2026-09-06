@@ -526,7 +526,10 @@
     "themPlaceholder": "them",
     "peopleCount_one": "{{count}} person",
     "peopleCount_other": "{{count}} people",
-    "bucketListEmpty": "Nothing saved yet — tap the bookmark on a location to start saving your planned trips."
+    "bucketListEmpty": "Nothing saved yet — tap the bookmark on a location to start saving your planned trips.",
+    "notRatedYet": "NOT RATED YET",
+    "daysLeft_one": "{{count}} DAY LEFT",
+    "daysLeft_other": "{{count}} DAYS LEFT"
   },
   "friends": {
     "blockTitle": "Block {{name}}?",
