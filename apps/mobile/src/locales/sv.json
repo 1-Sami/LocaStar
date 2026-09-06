@@ -185,6 +185,7 @@
     "results_one": "{{count}} RESULTAT",
     "results_other": "{{count}} RESULTAT",
     "noMatches": "Inga träffar.",
+    "backToTop": "Till toppen",
     "thatsAll": "DET VAR ALLA {{count}}",
     "filterTitle": "Filter",
     "show": "VISA",

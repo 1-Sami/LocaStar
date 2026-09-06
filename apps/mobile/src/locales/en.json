@@ -185,6 +185,7 @@
     "results_one": "{{count}} RESULT",
     "results_other": "{{count}} RESULTS",
     "noMatches": "No matches.",
+    "backToTop": "Back to top",
     "thatsAll": "THAT’S ALL {{count}}",
     "filterTitle": "Filter",
     "show": "SHOW",

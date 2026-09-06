@@ -9,8 +9,11 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +31,7 @@ import { useSaves } from '@/hooks/use-saves';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { nearbyLocationToCard } from '@/lib/location-adapters';
 import { supabase } from '@/lib/supabase';
+import type { CardLocation } from '@/types/location';
 
 // Effectively "no radius limit" — search isn't restricted to nearby-only like Home is.
 const SEARCH_RADIUS_M = 20_000_000;
@@ -50,6 +54,14 @@ const PAGE_SIZE = 50;
  * location and come back; past this they get the top of the list again.
  */
 const MAX_REFRESH_ROWS = 300;
+
+/*
+ * How far down the list the "back to top" arrow waits before appearing.
+ *
+ * About two screens of cards. Showing it any earlier puts it on top of the
+ * first few results, which is the one moment nobody wants to leave.
+ */
+const SCROLL_TOP_AFTER_PX = 1200;
 
 // Key and label kept apart: the key is compared and stored, the label is only
 // ever displayed. Sharing one string between the two is what broke the Profile
@@ -84,6 +96,14 @@ export default function SearchScreen() {
    */
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Separate from `loading` so the pull-down spinner is shown only for a pull.
+  // Sharing the flag would have put it on screen for every filter change too.
+  const [refreshing, setRefreshing] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef<FlatList<CardLocation>>(null);
+  // Mirrors showScrollTop for onScroll to compare against without re-rendering,
+  // and is reset alongside it wherever the arrow is put away by hand.
+  const scrollTopShown = useRef(false);
   const router = useRouter();
   const { t } = useTranslation();
   const { coords } = useUserLocation();
@@ -237,6 +257,23 @@ export default function SearchScreen() {
           // total_count is on every row and identical across them; with no rows
           // there is nothing to read it from, and the answer is zero anyway.
           setTotalCount(result[0]?.total_count ?? 0);
+
+          /*
+           * A different search is a different list, so it starts at its own top
+           * rather than wherever the last one had been scrolled to. A refresh is
+           * the opposite case and is left alone deliberately — the whole point
+           * of it is that the position survives.
+           *
+           * The arrow has to be put away by hand here. It is driven by onScroll,
+           * and a list that jumps to the top because its data was replaced does
+           * not necessarily emit one — which left it hovering over the first
+           * card, offering to take you where you already were.
+           */
+          if (!isRefresh) {
+            scrollTopShown.current = false;
+            setShowScrollTop(false);
+            listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          }
         })
         .catch((err) => {
           // "Nothing matched your search" is a statement about the search, and
@@ -250,6 +287,10 @@ export default function SearchScreen() {
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
+          // Not guarded on `cancelled`: if this request was superseded, the one
+          // that replaced it is not the pull, and leaving the flag set would
+          // strand the spinner at the top of the list with nothing behind it.
+          setRefreshing(false);
         });
     }, debounced ? 300 : 0);
 
@@ -320,6 +361,32 @@ export default function SearchScreen() {
     // for no benefit.
   }, [coords, loading, hasMore, query, activeSlugs, sortBy, activeSeason, activeKind, results.length]);
 
+  /*
+   * Drag down from the top to ask the database again.
+   *
+   * The same path the tab already takes when you come back to it — bump
+   * refreshKey and the effect re-runs, asking for as many rows as are on screen
+   * rather than the first page, so the list keeps its length and its position.
+   * The spinner is cleared where the request settles.
+   */
+  const onPullToRefresh = useCallback(() => {
+    setRefreshing(true);
+    setRefreshKey((key) => key + 1);
+  }, []);
+
+  /*
+   * onScroll runs on every frame of a drag, so this compares against a ref and
+   * only touches state when the answer actually changes. Setting it each time
+   * would re-render the whole list sixty times a second to keep telling it the
+   * same thing.
+   */
+  const onListScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const past = event.nativeEvent.contentOffset.y > SCROLL_TOP_AFTER_PX;
+    if (past === scrollTopShown.current) return;
+    scrollTopShown.current = past;
+    setShowScrollTop(past);
+  }, []);
+
   const trimmedCategoryQuery = categoryQuery.trim().toLowerCase();
   const visibleCategories = trimmedCategoryQuery
     ? categories.filter((c) =>
@@ -388,10 +455,20 @@ export default function SearchScreen() {
           )}
         />
 
-        {(activeSlugs.length > 0 || activeSeason !== null || activeKind !== null) && (
+        {/*
+          Typed text counts as something to clear, and clearing empties the box
+          along with the chips. It is the one control that says "start over", so
+          leaving the search term behind would have been a half-answer — and the
+          term is usually the narrower filter of the two.
+        */}
+        {(query.length > 0 ||
+          activeSlugs.length > 0 ||
+          activeSeason !== null ||
+          activeKind !== null) && (
           <Pressable
             style={styles.resetFiltersButton}
             onPress={() => {
+              setQuery('');
               setActiveSlugs([]);
               setActiveSeason(null);
               setActiveKind(null);
@@ -423,9 +500,24 @@ export default function SearchScreen() {
           <ActivityIndicator style={styles.loadingIndicator} color={palette.accent} />
         ) : (
           <FlatList
+            ref={listRef}
             data={cards}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            onScroll={onListScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onPullToRefresh}
+                // Both are needed: iOS draws the spinner in tintColor, Android
+                // in colors, and the default is a dark grey that disappears on
+                // the dark theme.
+                tintColor={palette.accent}
+                colors={[palette.accent]}
+                progressBackgroundColor={palette.card}
+              />
+            }
             ListEmptyComponent={
               <Text style={styles.emptyText}>
                 {searchFailed ? t('common.somethingWentWrong') : t('search.noMatches')}
@@ -457,6 +549,20 @@ export default function SearchScreen() {
               />
             )}
           />
+        )}
+
+        {/*
+          Outside the list rather than in it, so it stays put while the cards
+          move under it. Last in the tree so it draws over them.
+        */}
+        {showScrollTop && (
+          <Pressable
+            style={styles.scrollTopButton}
+            accessibilityLabel={t('search.backToTop')}
+            accessibilityRole="button"
+            onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+            <Ionicons name="arrow-up" size={20} color={palette.text} />
+          </Pressable>
         )}
       </SafeAreaView>
 
@@ -736,6 +842,31 @@ const createStyles = (c: SearchPaletteColors) =>
   },
   loadingIndicator: {
     marginTop: Spacing.six,
+  },
+  /*
+   * Clear of the tab bar, on the side the thumb is already on. 44 square is the
+   * smallest target both platforms call reliable, and it is round so it does
+   * not read as one more card.
+   */
+  scrollTopButton: {
+    position: 'absolute',
+    right: Spacing.three,
+    bottom: BottomTabInset + Spacing.two,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: c.card,
+    borderWidth: 1,
+    borderColor: c.hairline,
+    // It floats over cards painted the same colour it is, so without a shadow
+    // it reads as one of them that has come loose.
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   emptyText: {
     textAlign: 'center',
