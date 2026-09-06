@@ -229,18 +229,20 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
       {/*
         The panel beside the form was an empty gradient. It is the one place on
         the site where somebody has already decided they want an account, which
-        makes it the best place to say the app exists — and the code is here
-        rather than a bare badge because this page is mostly opened on a laptop,
-        where a store link is the least useful thing we could offer.
+        makes it the best place to offer the app — and the code is here rather
+        than a bare badge because this page is mostly opened on a laptop, where
+        a store link is the least useful thing we could offer.
+
+        No heading and no paragraph: the owner cut both. The two badges say
+        what this is, and a pitch beside a sign-in form is talking over
+        somebody who is mid-task.
       */}
       <aside class="art on-dark">
-        <h2>{t('auth.appTitle')}</h2>
-        <p>{t('auth.appBody')}</p>
-        <AppQr />
         <div class="art-badges">
           <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
         </div>
+        <AppQr />
       </aside>
     </div>
   </main>
@@ -278,13 +280,16 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
 
   .card {
     width: 100%;
-    max-width: 760px;
+    /* 60px wider than it was, all of it given to the panel: the two badges
+       side by side do not fit in 300px, and Apple's badge cannot be scaled to
+       make them. */
+    max-width: 820px;
     background: var(--page);
     border: 1px solid var(--hairline);
     border-radius: 13px;
     overflow: hidden;
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr 360px;
   }
 
   .pane {
@@ -474,25 +479,16 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    gap: 16px;
+    gap: 18px;
   }
 
-  .art h2 {
-    font-size: 21px;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
-
-  .art p {
-    margin: 0;
-    font-size: 13.5px;
-    line-height: 1.6;
-    color: var(--text-70);
-  }
-
+  /*
+   * Side by side, which is what set the column width above: two badges and a
+   * 10px gap need 304px of content, and the panel was 300px wide in total.
+   */
   .art-badges {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 10px;
   }
 
@@ -503,16 +499,12 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
 
     /*
      * Under the form rather than gone. It used to be display: none, which was
-     * right while the panel was decoration — it is the app pitch now, and a
-     * phone is the one device that can act on it.
+     * right while the panel was decoration — it offers the app now, and a
+     * phone is the one device that can act on that. The code inside it hides
+     * itself at this width; the badges are the part that works here.
      */
     .art {
-      padding: 28px 24px 32px;
-    }
-
-    .art-badges {
-      flex-direction: row;
-      flex-wrap: wrap;
+      padding: 26px 24px 30px;
     }
 
     .pane {

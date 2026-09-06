@@ -77,8 +77,8 @@ const bands = [
         <div class="badges">
           <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
-          <AppQr />
         </div>
+        <AppQr />
       </div>
     </section>
   </main>
@@ -194,10 +194,8 @@ const bands = [
 
   .badges {
     display: flex;
-    gap: 14px 12px;
+    gap: 10px;
     flex-wrap: wrap;
-    /* Centred because the QR beside them is taller than a badge. */
-    align-items: center;
     margin-top: 6px;
   }
 
