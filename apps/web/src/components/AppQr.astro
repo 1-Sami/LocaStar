@@ -6,9 +6,15 @@ import { GET_THE_APP_PATH } from '../lib/site';
 /*
  * "Point your camera at this to get the app."
  *
- * Sits beside the store badges everywhere they appear, because the badges only
- * help somebody already holding the phone they want the app on — and the most
+ * Sits beside the store badges everywhere they appear, because a badge only
+ * helps somebody already holding the phone they want the app on — and the most
  * likely visitor to this site is at a desk.
+ *
+ * Desktop only, by the owner's decision: below 900px it is display: none, so
+ * it is out of the layout and out of the accessibility tree rather than shrunk.
+ * A phone cannot scan its own screen, and the badges right beside it are the
+ * real path there. The markup is still served at every width — the server
+ * cannot know the viewport — which costs a few hundred bytes and nothing else.
  *
  * Drawn dark-on-white in both themes and on the dark panels. That is not a
  * styling oversight: plenty of scanners refuse an inverted code, and the ones
@@ -16,7 +22,7 @@ import { GET_THE_APP_PATH } from '../lib/site';
  * is as much a part of a working code as the modules are.
  */
 interface Props {
-  /** The plate's inner size in px. Shrinks on phones whatever is passed. */
+  /** The plate's inner size in px, up to 112. */
   size?: number;
 }
 
@@ -96,23 +102,16 @@ const { path, size: modules } = qrPathFor(new URL(href, Astro.site ?? Astro.url.
   }
 
   /*
-   * Smaller on a phone rather than gone.
+   * Gone below 900px, not shrunk.
    *
-   * Nobody scans the screen they are holding, but they do hold it up for the
-   * person next to them, and hiding it would leave the phone — the one device
-   * that can install the app — as the only place the site never offers a code.
+   * 900 rather than a phone width on purpose: it takes in a phone held
+   * sideways and the small tablets, none of which can scan themselves either.
+   * Every surface that shows this also shows the store badges, which are what
+   * a visitor already on a phone needs.
    */
-  @media (max-width: 700px) {
-    .qr svg {
-      width: 76px;
-      height: 76px;
-    }
-
-    .caption {
-      font-size: 9px;
-      /* Wider than the plate on purpose: three stacked words under a 76px code
-         is a paragraph, not a label. */
-      max-width: 18ch;
+  @media (max-width: 900px) {
+    .qr {
+      display: none;
     }
   }
 </style>
