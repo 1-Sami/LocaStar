@@ -60,17 +60,38 @@ function YesNoRow({
   noLabel?: string;
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
   return (
     <View style={styles.yesNoRow}>
       <ThemedText type="default">{label}</ThemedText>
       <View style={styles.yesNoOptions}>
-        <Pressable style={styles.yesNoOption} onPress={() => onChange(true)}>
+        <Pressable
+          style={styles.yesNoOption}
+          onPress={() => onChange(true)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: value === true }}>
           <ThemedText type='small'>{yesLabel ?? t('common.yes')}</ThemedText>
-          <View style={[styles.checkbox, value === true && styles.checkboxChecked]} />
+          <View
+            style={[
+              styles.checkbox,
+              { borderColor: theme.fieldBorder },
+              value === true && styles.checkboxChecked,
+            ]}
+          />
         </Pressable>
-        <Pressable style={styles.yesNoOption} onPress={() => onChange(false)}>
+        <Pressable
+          style={styles.yesNoOption}
+          onPress={() => onChange(false)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: value === false }}>
           <ThemedText type='small'>{noLabel ?? t('common.no')}</ThemedText>
-          <View style={[styles.checkbox, value === false && styles.checkboxChecked]} />
+          <View
+            style={[
+              styles.checkbox,
+              { borderColor: theme.fieldBorder },
+              value === false && styles.checkboxChecked,
+            ]}
+          />
         </Pressable>
       </View>
     </View>
@@ -561,7 +582,7 @@ export default function AddLocationScreen() {
               onChange={handlePinChange}
             />
           ) : (
-            <View style={styles.mapLoading}>
+            <View style={[styles.mapLoading, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="small" themeColor="textSecondary">
                 {t('form.findingLocation')}
               </ThemedText>
@@ -644,11 +665,11 @@ export default function AddLocationScreen() {
             <ThemedText type="default">{t(`addLocation.whenAvailable.${kindKey}`)}</ThemedText>
             <View style={styles.seasonOptions}>
               <Pressable style={styles.seasonOption} onPress={() => setAvailableSummer((v) => !v)}>
-                <View style={[styles.checkbox, availableSummer && styles.checkboxChecked]} />
+                <View style={[styles.checkbox, { borderColor: theme.fieldBorder }, availableSummer && styles.checkboxChecked]} />
                 <ThemedText type="small">☀ {t('search.summer')}</ThemedText>
               </Pressable>
               <Pressable style={styles.seasonOption} onPress={() => setAvailableWinter((v) => !v)}>
-                <View style={[styles.checkbox, availableWinter && styles.checkboxChecked]} />
+                <View style={[styles.checkbox, { borderColor: theme.fieldBorder }, availableWinter && styles.checkboxChecked]} />
                 <ThemedText type="small">❄ {t('search.winter')}</ThemedText>
               </Pressable>
             </View>
@@ -896,12 +917,15 @@ const styles = StyleSheet.create({
   mapLabel: {
     marginTop: -Spacing.one,
   },
+  /* backgroundColor comes from theme.backgroundElement at the use. Same fault
+     as the checkboxes below: an 8%-white wash is a panel on the dark theme and
+     nothing at all on the white one, so the map area read as a gap while it
+     was loading. */
   mapLoading: {
     height: 220,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -981,11 +1005,18 @@ const styles = StyleSheet.create({
   duplicateRowText: {
     flex: 1,
   },
+  /*
+   * borderColor is passed in from theme.fieldBorder at every use, not set here.
+   *
+   * It was rgba(255,255,255,0.6) — 60% white — which is a box you can see on the
+   * dark theme and nothing at all on the light one, where the page behind it is
+   * #ffffff. So Yes/No read as two words with no boxes to tick. fieldBorder
+   * exists for exactly this and flips with the theme.
+   */
   checkbox: {
     width: 22,
     height: 22,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.6)',
     borderRadius: Spacing.half,
   },
   checkboxChecked: {

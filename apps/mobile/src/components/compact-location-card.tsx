@@ -6,6 +6,7 @@ import { LocationPhoto } from '@/components/location-photo';
 import { STAR_COLOR } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, Spacing } from '@/constants/theme';
+import { categoryLabel } from '@/lib/categories';
 import { formatDistance } from '@/lib/distance';
 import type { CardLocation } from '@/types/location';
 
@@ -32,8 +33,9 @@ export function CompactLocationCard({
       <View style={styles.imageWrapper}>
         <LocationPhoto url={location.imageUrl} style={styles.image} />
         <View style={[styles.categoryBadge, { backgroundColor: cardColor }]}>
+          {/* Translated by slug, as on the full card. */}
           <ThemedText type="small" style={[styles.whiteText, styles.badgeText]} numberOfLines={1}>
-            {location.categoryLabel}
+            {categoryLabel(t, location.categorySlug, location.categoryLabel)}
           </ThemedText>
         </View>
         {showBoostedBadge && (

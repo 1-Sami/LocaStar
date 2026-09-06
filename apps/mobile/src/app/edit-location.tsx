@@ -561,7 +561,7 @@ export default function EditLocationScreen() {
                   setAvailableSummer((v) => !v);
                   setSaved(false);
                 }}>
-                <View style={[styles.checkbox, availableSummer && styles.checkboxChecked]} />
+                <View style={[styles.checkbox, { borderColor: theme.fieldBorder }, availableSummer && styles.checkboxChecked]} />
                 <ThemedText type="small">☀ {t('search.summer')}</ThemedText>
               </Pressable>
               <Pressable
@@ -570,7 +570,7 @@ export default function EditLocationScreen() {
                   setAvailableWinter((v) => !v);
                   setSaved(false);
                 }}>
-                <View style={[styles.checkbox, availableWinter && styles.checkboxChecked]} />
+                <View style={[styles.checkbox, { borderColor: theme.fieldBorder }, availableWinter && styles.checkboxChecked]} />
                 <ThemedText type="small">❄ {t('search.winter')}</ThemedText>
               </Pressable>
             </View>
@@ -682,11 +682,13 @@ const styles = StyleSheet.create({
   section: {
     marginTop: Spacing.two,
   },
+  /* borderColor comes from theme.fieldBorder at each use, as on the add form.
+     The grey here was visible in both themes but faint against white; the token
+     is the one the rest of the form's outlines already use. */
   checkbox: {
     width: 22,
     height: 22,
     borderWidth: 2,
-    borderColor: 'rgba(128,128,128,0.5)',
     borderRadius: Spacing.half,
   },
   checkboxChecked: {

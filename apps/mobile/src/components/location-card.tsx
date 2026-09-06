@@ -7,6 +7,7 @@ import { LocationPhoto } from '@/components/location-photo';
 import { ThemedText } from '@/components/themed-text';
 import { CategoryColors, type SearchPaletteColors, Spacing } from '@/constants/theme';
 import { useSearchPalette } from '@/hooks/use-search-palette';
+import { categoryLabel } from '@/lib/categories';
 import { openDirections } from '@/lib/directions';
 import { formatDistance } from '@/lib/distance';
 import type { CardLocation } from '@/types/location';
@@ -94,8 +95,14 @@ export function LocationCard({
         <View style={[styles.imageWrapper, { height: contentHeight ?? FALLBACK_IMAGE_HEIGHT }]}>
           <LocationPhoto url={location.imageUrl} style={styles.image} iconSize={26} />
           <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
+            {/*
+              Translated by slug, the way the filter chips are. The badge showed
+              location.categoryLabel straight from the database, which is only
+              ever English — so the chip you tapped said "Utegym" and the cards
+              it returned all said "GYMS (OUTDOOR)".
+            */}
             <ThemedText type="small" style={styles.categoryBadgeText} numberOfLines={1}>
-              {location.categoryLabel.toUpperCase()}
+              {categoryLabel(t, location.categorySlug, location.categoryLabel).toUpperCase()}
             </ThemedText>
           </View>
         </View>
