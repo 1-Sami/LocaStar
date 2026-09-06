@@ -1,4 +1,5 @@
 ---
+import AppQr from '../components/AppQr.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
@@ -76,6 +77,7 @@ const bands = [
         <div class="badges">
           <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
+          <AppQr />
         </div>
       </div>
     </section>
@@ -192,8 +194,10 @@ const bands = [
 
   .badges {
     display: flex;
-    gap: 10px;
+    gap: 14px 12px;
     flex-wrap: wrap;
+    /* Centred because the QR beside them is taller than a badge. */
+    align-items: center;
     margin-top: 6px;
   }
 

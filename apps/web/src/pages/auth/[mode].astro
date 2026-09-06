@@ -1,11 +1,14 @@
 ---
 import { isValidUsername, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from '@locastar/shared';
+import AppQr from '../../components/AppQr.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
+import StoreBadge from '../../components/StoreBadge.astro';
 import Base from '../../layouts/Base.astro';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { currentUser, sessionClient } from '../../lib/auth';
 import { safePath } from '../../lib/redirects';
+import { appStoreReady, googlePlayReady, STORE_LINKS } from '../../lib/site';
 
 export const prerender = false;
 
@@ -223,7 +226,22 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
         }
       </div>
 
-      <div class="art" aria-hidden="true"></div>
+      {/*
+        The panel beside the form was an empty gradient. It is the one place on
+        the site where somebody has already decided they want an account, which
+        makes it the best place to say the app exists — and the code is here
+        rather than a bare badge because this page is mostly opened on a laptop,
+        where a store link is the least useful thing we could offer.
+      */}
+      <aside class="art on-dark">
+        <h2>{t('auth.appTitle')}</h2>
+        <p>{t('auth.appBody')}</p>
+        <AppQr />
+        <div class="art-badges">
+          <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
+          <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
+        </div>
+      </aside>
     </div>
   </main>
 
@@ -451,6 +469,31 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
     background:
       radial-gradient(300px 200px at 40% 20%, rgba(43, 163, 163, 0.28), transparent 65%),
       linear-gradient(150deg, #125f6f, #0a2a31);
+    padding: 40px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .art h2 {
+    font-size: 21px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .art p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-70);
+  }
+
+  .art-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   @media (max-width: 720px) {
@@ -458,8 +501,18 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
       grid-template-columns: 1fr;
     }
 
+    /*
+     * Under the form rather than gone. It used to be display: none, which was
+     * right while the panel was decoration — it is the app pitch now, and a
+     * phone is the one device that can act on it.
+     */
     .art {
-      display: none;
+      padding: 28px 24px 32px;
+    }
+
+    .art-badges {
+      flex-direction: row;
+      flex-wrap: wrap;
     }
 
     .pane {

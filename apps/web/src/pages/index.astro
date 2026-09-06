@@ -5,6 +5,7 @@ import {
   fetchMostLikedPlaces,
   fetchPublicLists,
 } from '@locastar/shared';
+import AppQr from '../components/AppQr.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
@@ -168,6 +169,11 @@ const jsonLd = [
           <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
           <span class="badge-note">{t('home.storeSoon')}</span>
+          {/* Last, so the badges keep the note that belongs to them. The code
+              is here at all because a badge only helps somebody already on the
+              phone they want the app on, and most of this site is read at a
+              desk. */}
+          <AppQr />
         </div>
       </div>
 
@@ -341,6 +347,7 @@ const jsonLd = [
           <div class="band-badges">
             <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
             <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
+            <AppQr />
           </div>
           <p class="band-note">{t('home.bandNote')}</p>
         </div>
@@ -430,7 +437,7 @@ const jsonLd = [
   /* ---- store badges ---- */
   .badges {
     display: flex;
-    gap: 10px;
+    gap: 14px 12px;
     flex-wrap: wrap;
     align-items: center;
     margin-top: 6px;
@@ -824,8 +831,11 @@ const jsonLd = [
 
   .band-badges {
     display: flex;
-    gap: 10px;
+    gap: 14px 12px;
     flex-wrap: wrap;
+    /* The QR is taller than a badge; centred, the row reads as one object
+       rather than as two things that failed to line up. */
+    align-items: center;
     margin-top: 4px;
   }
 

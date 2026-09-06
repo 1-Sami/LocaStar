@@ -24,6 +24,17 @@ export const STORE_LINKS = {
   googlePlay: '',
 } as const;
 
+/**
+ * What the QR codes encode — one address on our own domain, not a store link.
+ *
+ * A QR is photographed, printed and screenshotted, and then scanned by
+ * somebody months later: whatever it encodes is fixed the moment it leaves the
+ * screen. One code has to answer both an iPhone and an Android phone, and
+ * Google Play is not public yet, so the only thing safe to put inside it is an
+ * address we still control. /get is what decides, per visitor, at scan time.
+ */
+export const GET_THE_APP_PATH = '/get';
+
 /*
  * Judged per store, not once for both.
  *

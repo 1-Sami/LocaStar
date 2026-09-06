@@ -56,6 +56,9 @@ export const ui = {
     'common.results': 'RESULTS',
     'common.clearAll': 'CLEAR ALL',
 
+    /* Under the QR code, which appears wherever the store badges do. */
+    'app.scan': 'SCAN TO GET THE APP',
+
     'home.eyebrowPlaces': 'PLACES AND EVENTS',
     'home.eyebrowCategories': 'CATEGORIES',
     'home.title': 'Explore',
@@ -318,6 +321,8 @@ export const ui = {
     'auth.signUpIntro': 'You only need one to save places, build lists and add somewhere new. Browsing needs nothing.',
     'auth.signInIntro': 'Your saved places, lists and reviews are the same ones as in the app.',
     'auth.sentSub': 'If {email} can have an account, a confirmation link is on its way. Opening it on your phone opens the app, if you have it installed.',
+    'auth.appTitle': 'The app is where this account earns its keep',
+    'auth.appBody': 'Same sign-in, same saved places and lists — plus directions from where you actually are, and a reminder before something you wanted to see starts.',
     'auth.passwordHint': 'At least 8 characters, letters and numbers',
     'auth.submitSignUp': 'Create account',
     'auth.fineSignUpPrefix': 'By creating an account you agree to the',
@@ -632,6 +637,10 @@ export const ui = {
     'common.results': 'TRÄFFAR',
     'common.clearAll': 'RENSA ALLT',
 
+    /* "Skanna" rather than "läs av": it is what a Swedish phone camera calls
+       it, and the label has to fit on two short lines under the code. */
+    'app.scan': 'SKANNA FÖR ATT HÄMTA APPEN',
+
     'home.eyebrowPlaces': 'PLATSER OCH EVENEMANG',
     'home.eyebrowCategories': 'KATEGORIER',
     'home.title': 'Utforska',
@@ -894,6 +903,8 @@ export const ui = {
     'auth.signUpIntro': 'Du behöver bara ett för att spara platser, bygga listor och lägga till nya ställen. Att titta runt kräver ingenting.',
     'auth.signInIntro': 'Dina sparade platser, listor och omdömen är samma som i appen.',
     'auth.sentSub': 'Om {email} kan ha ett konto är en bekräftelselänk på väg. Öppnar du den i telefonen öppnas appen, om du har den installerad.',
+    'auth.appTitle': 'Kontot kommer till sin rätt i appen',
+    'auth.appBody': 'Samma inloggning, samma sparade platser och listor — plus vägbeskrivning från där du faktiskt är, och en påminnelse innan något du velat se börjar.',
     'auth.passwordHint': 'Minst 8 tecken, bokstäver och siffror',
     'auth.submitSignUp': 'Skapa konto',
     'auth.fineSignUpPrefix': 'Genom att skapa ett konto godkänner du',

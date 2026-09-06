@@ -1,0 +1,118 @@
+---
+import { localePath, useTranslations } from '../i18n/ui';
+import { qrPathFor } from '../lib/qr';
+import { GET_THE_APP_PATH } from '../lib/site';
+
+/*
+ * "Point your camera at this to get the app."
+ *
+ * Sits beside the store badges everywhere they appear, because the badges only
+ * help somebody already holding the phone they want the app on — and the most
+ * likely visitor to this site is at a desk.
+ *
+ * Drawn dark-on-white in both themes and on the dark panels. That is not a
+ * styling oversight: plenty of scanners refuse an inverted code, and the ones
+ * that manage it are slower about it. The plate is the quiet zone too, which
+ * is as much a part of a working code as the modules are.
+ */
+interface Props {
+  /** The plate's inner size in px. Shrinks on phones whatever is passed. */
+  size?: number;
+}
+
+const { size = 112 } = Astro.props;
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+
+/*
+ * Absolute, and taken from the configured site rather than the request: a code
+ * is scanned by a different device than the one that rendered it, so a bare
+ * path is meaningless inside it. On the workers.dev preview Astro.site is
+ * still locastar.se, which is what should be tested anyway — the QR is the one
+ * thing on a preview that has to name production.
+ *
+ * The language travels with it. /sv/get and /get pick the same store, but they
+ * differ where neither store can be served yet, and a Swedish visitor's phone
+ * should not land on the English page.
+ */
+const href = localePath(GET_THE_APP_PATH, lang);
+const { path, size: modules } = qrPathFor(new URL(href, Astro.site ?? Astro.url.origin).href);
+---
+
+<a class="qr" href={href} style={`--qr-size: ${size}px`}>
+  <span class="plate">
+    <svg viewBox={`0 0 ${modules} ${modules}`} aria-hidden="true" focusable="false">
+      <path d={path} fill="#0b1211" />
+    </svg>
+  </span>
+  <span class="mono caption">{t('app.scan')}</span>
+</a>
+
+<style>
+  .qr {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .plate {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 9px;
+    /* The light theme's page is an off-white, so a white plate on it has no
+       edge at all without this. Invisible on the dark panels, which is where
+       the plate defines itself. */
+    box-shadow: 0 0 0 1px rgba(16, 32, 30, 0.09);
+    /* An inline SVG is still a line box; without this the plate carries a few
+       stray pixels of descender space under the code. */
+    line-height: 0;
+  }
+
+  .qr svg {
+    display: block;
+    width: min(var(--qr-size), 112px);
+    height: min(var(--qr-size), 112px);
+    /* Modules are one unit each on a scaled grid, so the edges land between
+       device pixels and antialias into grey. Scanners read the contrast, and
+       this is what keeps it. */
+    shape-rendering: crispEdges;
+  }
+
+  .caption {
+    font-size: 10px;
+    line-height: 1.3;
+    letter-spacing: 0.12em;
+    text-align: center;
+    max-width: 15ch;
+    color: var(--text-55);
+  }
+
+  .qr:hover .caption {
+    color: var(--text);
+  }
+
+  /*
+   * Smaller on a phone rather than gone.
+   *
+   * Nobody scans the screen they are holding, but they do hold it up for the
+   * person next to them, and hiding it would leave the phone — the one device
+   * that can install the app — as the only place the site never offers a code.
+   */
+  @media (max-width: 700px) {
+    .qr svg {
+      width: 76px;
+      height: 76px;
+    }
+
+    .caption {
+      font-size: 9px;
+      /* Wider than the plate on purpose: three stacked words under a 76px code
+         is a paragraph, not a label. */
+      max-width: 18ch;
+    }
+  }
+</style>
