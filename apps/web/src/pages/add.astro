@@ -97,13 +97,10 @@ const p = (href: string) => localePath(href, lang);
   .small { font-size: 13px; color: var(--text-55); }
   /* The code beside the badges rather than above them: it is taller than they
      are, and stacked it pushed the buttons below the fold on a laptop. */
+  /* Centred because the code is taller than a badge. Below 900px AppQr hides
+     itself, so this is just the badge row and there is nothing to align to. */
   .get { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
   .get-badges { display: flex; gap: 10px; flex-wrap: wrap; }
-  @media (max-width: 520px) {
-    /* The badges are the useful half here — the phone reading this is the one
-       that would install it — so they lead and the code follows. */
-    .get { flex-direction: column-reverse; align-items: flex-start; gap: 16px; }
-  }
 
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
   .ghost { border: 1px solid var(--border); border-radius: 8px; padding: 11px 18px; font-weight: 500; font-size: 14px; color: var(--text); }
