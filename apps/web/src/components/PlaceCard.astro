@@ -45,6 +45,7 @@ const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
 const colour = categoryColor(categorySlug);
 const rating = ratingLabel(avgRating, reviewCount);
+const isEvent = Boolean(startsAt);
 
 /*
  * Whole days, compared as dates rather than instants — "tomorrow" should not
@@ -62,36 +63,48 @@ const startLabel = startsAt
 ---
 
 <a class="card" href={href}>
-  {
-    imageUrl ? (
-      <span class="shot" style={`background-image:url("${imageUrl}")`} />
-    ) : (
-      <span class="shot flat" style={`background:${colour}`} />
-    )
-  }
-
-  <span class="plate">
+  <span class="frame">
     {
-      categoryName && (
-        <span class="mono cat" style={`color:${colour}`}>
+      imageUrl ? (
+        <span class="shot" style={`background-image:url("${imageUrl}")`} />
+      ) : (
+        <span class="shot flat" style={`background:${colour}`} />
+      )
+    }
+    {/*
+      On the picture, and only when it earns its place: an event, where the
+      countdown is the point, or a place with no photograph, where the block
+      would otherwise be a rectangle of colour saying nothing. A photographed
+      court does not need the word "Basketball" over it.
+    */}
+    {
+      categoryName && (isEvent || !imageUrl) && (
+        <span class:list={['mono', 'chip', imageUrl ? 'on-shot' : 'on-flat']}>
           {categoryName}
           {daysLeft !== null && daysLeft >= 0 ? ` · ${t('acct.daysLeft').replace('{n}', String(daysLeft))}` : ''}
         </span>
       )
     }
+  </span>
+
+  <span class="plate">
     <span class="name">{name}</span>
+    {/*
+      One line, as the reference has it. The app shows "4.0 · 1.2 km" there; the
+      website has no idea where the reader is, so the city takes the distance's
+      place rather than the line being dropped or split in two.
+    */}
     {
       startLabel ? (
         <span class="mono when">{startLabel}</span>
       ) : rating.rated ? (
         <span class="mono star">
-          ★ {rating.avg} <span class="dim">({rating.count})</span>
+          ★ {rating.avg}{where ? ` · ${where}` : ` (${rating.count})`}
         </span>
       ) : (
-        <span class="mono unrated">{t('common.notRated')}</span>
+        <span class="mono unrated">{t('common.notRated')}{where ? ` · ${where}` : ''}</span>
       )
     }
-    {where && <span class="where">{where}</span>}
   </span>
 </a>
 
@@ -112,6 +125,11 @@ const startLabel = startsAt
     box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
   }
 
+  .frame {
+    position: relative;
+    display: block;
+  }
+
   .shot {
     display: block;
     height: 118px;
@@ -119,16 +137,34 @@ const startLabel = startsAt
     background-position: center;
   }
 
+  .chip {
+    position: absolute;
+    top: 9px;
+    left: 9px;
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    padding: 3px 7px;
+    border-radius: 999px;
+  }
+
+  /* Over a photograph whose brightness is unknown, so it carries its own
+     background rather than trusting the picture underneath it. */
+  .chip.on-shot {
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+  }
+
+  /* On a flat category colour, where a second block would just be noise. */
+  .chip.on-flat {
+    background: rgba(0, 0, 0, 0.28);
+    color: #ffffff;
+  }
+
   .plate {
     display: flex;
     flex-direction: column;
     gap: 4px;
     padding: 11px 12px 13px;
-  }
-
-  .cat {
-    font-size: 9.5px;
-    letter-spacing: 0.12em;
   }
 
   .name {
@@ -158,8 +194,4 @@ const startLabel = startsAt
     color: var(--text-55);
   }
 
-  .where {
-    font-size: 12.5px;
-    color: var(--text-55);
-  }
 </style>

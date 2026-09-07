@@ -296,7 +296,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {favourites.length === 0 ? (
                 <p class="empty-line">{t('acct.favouritesEmpty')}</p>
               ) : (
-                <div class="cards">
+                <div class="cards wide-only">
                   {favourites.map((place) => (
                     <PlaceCard
                       href={p(`/location/${place.location_id}`)}
@@ -311,6 +311,19 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                     />
                   ))}
                 </div>
+                <div class="rows narrow-only">
+                  {favourites.map((place) => (
+                    <PlaceRow
+                      href={p(`/location/${place.location_id}`)}
+                      name={place.name}
+                      categorySlug={place.category_slug}
+                      avgRating={place.avg_rating}
+                      reviewCount={place.review_count}
+                      where={place.city}
+                      imageUrl={publicUrl(place.cover_photo_path)}
+                    />
+                  ))}
+                </div>
               )}
             </section>
 
@@ -322,7 +335,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {bookmarks.length === 0 ? (
                 <p class="empty-line">{t('acct.bookmarksEmpty')}</p>
               ) : (
-                <div class="cards">
+                <div class="cards wide-only">
                   {bookmarks.map((place) => (
                     <PlaceCard
                       href={p(`/location/${place.location_id}`)}
@@ -337,6 +350,19 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                     />
                   ))}
                 </div>
+                <div class="rows narrow-only">
+                  {bookmarks.map((place) => (
+                    <PlaceRow
+                      href={p(`/location/${place.location_id}`)}
+                      name={place.name}
+                      categorySlug={place.category_slug}
+                      avgRating={place.avg_rating}
+                      reviewCount={place.review_count}
+                      where={place.city}
+                      imageUrl={publicUrl(place.cover_photo_path)}
+                    />
+                  ))}
+                </div>
               )}
             </section>
 
@@ -348,7 +374,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {shares.length === 0 ? (
                 <p class="empty-line">{t('acct.sharedEmpty')}</p>
               ) : (
-                <div class="cards">
+                <div class="cards wide-only">
                   {shares.map((share) => (
                     <PlaceCard
                       href={p(`/location/${share.location_id}`)}
@@ -360,6 +386,20 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                       where={shareAside(share) ?? share.city}
                       imageUrl={publicUrl(share.cover_photo_path)}
                       startsAt={share.starts_at}
+                    />
+                  ))}
+                </div>
+                <div class="rows narrow-only">
+                  {shares.map((share) => (
+                    <PlaceRow
+                      href={p(`/location/${share.location_id}`)}
+                      name={share.name}
+                      categorySlug={share.category_slug}
+                      avgRating={share.avg_rating}
+                      reviewCount={share.review_count}
+                      where={share.city}
+                      imageUrl={publicUrl(share.cover_photo_path)}
+                      aside={shareAside(share)}
                     />
                   ))}
                 </div>
@@ -1054,6 +1094,30 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  /*
+   * Saved places are cards on the desktop layout and rows below it.
+   *
+   * Only the desktop layout was meant to change, so rather than making one
+   * shape reflow into the other -- which would have quietly altered the narrow
+   * view as well -- both are rendered and one is hidden. Same approach as the
+   * QR code in AppQr: the server cannot know the viewport, so the markup is
+   * always sent and CSS decides. It costs a few hundred bytes on a page that is
+   * behind a login and lists your own saves.
+   */
+  .narrow-only {
+    display: none;
+  }
+
+  @media (max-width: 1000px) {
+    .wide-only {
+      display: none;
+    }
+
+    .rows.narrow-only {
+      display: flex;
+    }
   }
 
   .cards {
