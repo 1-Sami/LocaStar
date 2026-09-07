@@ -1,0 +1,165 @@
+---
+import { useTranslations } from '../i18n/ui';
+import { categoryColor, ratingLabel } from '../lib/format';
+
+/*
+ * One saved place, as a card.
+ *
+ * The Saved area used PlaceRow — a thumbnail and a line of text — which is the
+ * right weight for a list of your own contributions and the wrong one for the
+ * places you kept because you liked the look of them. This is the shape the
+ * app's Saved screen uses, so the two surfaces show a saved place the same way.
+ *
+ * The tension worth naming: most locations still have no photograph, so a card
+ * grid is partly a grid of flat colour. That is exactly why the account area
+ * moved to rows once before. The category name sits on the plate rather than
+ * over the picture, so a card with no photo still says what it is instead of
+ * being a coloured rectangle.
+ */
+interface Props {
+  href: string;
+  name: string;
+  categorySlug?: string | null;
+  categoryName?: string | null;
+  avgRating?: number;
+  reviewCount?: number;
+  where?: string | null;
+  imageUrl?: string | null;
+  /** ISO start, for an event. Replaces the rating line with the date. */
+  startsAt?: string | null;
+}
+
+const {
+  href,
+  name,
+  categorySlug = null,
+  categoryName = null,
+  avgRating = 0,
+  reviewCount = 0,
+  where = null,
+  imageUrl = null,
+  startsAt = null,
+} = Astro.props;
+
+const lang = Astro.locals.lang ?? 'en';
+const t = useTranslations(lang);
+const colour = categoryColor(categorySlug);
+const rating = ratingLabel(avgRating, reviewCount);
+
+/*
+ * Whole days, compared as dates rather than instants — "tomorrow" should not
+ * become "0 days" because the event starts 23 hours from now.
+ */
+const startOfDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+const daysLeft = startsAt
+  ? Math.round((startOfDay(new Date(startsAt)) - startOfDay(new Date())) / 86_400_000)
+  : null;
+const startLabel = startsAt
+  ? new Date(startsAt)
+      .toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { day: 'numeric', month: 'short' })
+      .toUpperCase()
+  : null;
+---
+
+<a class="card" href={href}>
+  {
+    imageUrl ? (
+      <span class="shot" style={`background-image:url("${imageUrl}")`} />
+    ) : (
+      <span class="shot flat" style={`background:${colour}`} />
+    )
+  }
+
+  <span class="plate">
+    {
+      categoryName && (
+        <span class="mono cat" style={`color:${colour}`}>
+          {categoryName}
+          {daysLeft !== null && daysLeft >= 0 ? ` · ${t('acct.daysLeft').replace('{n}', String(daysLeft))}` : ''}
+        </span>
+      )
+    }
+    <span class="name">{name}</span>
+    {
+      startLabel ? (
+        <span class="mono when">{startLabel}</span>
+      ) : rating.rated ? (
+        <span class="mono star">
+          ★ {rating.avg} <span class="dim">({rating.count})</span>
+        </span>
+      ) : (
+        <span class="mono unrated">{t('common.notRated')}</span>
+      )
+    }
+    {where && <span class="where">{where}</span>}
+  </span>
+</a>
+
+<style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    overflow: hidden;
+    color: var(--text);
+    transition: box-shadow 120ms ease-out;
+  }
+
+  .card:hover {
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(232, 169, 59, 0.12);
+  }
+
+  .shot {
+    display: block;
+    height: 118px;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .plate {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 11px 12px 13px;
+  }
+
+  .cat {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+  }
+
+  .name {
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .star {
+    font-size: 11.5px;
+    color: var(--accent);
+  }
+
+  .when {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-70);
+  }
+
+  .dim {
+    color: var(--text-42);
+  }
+
+  .unrated {
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-55);
+  }
+
+  .where {
+    font-size: 12.5px;
+    color: var(--text-55);
+  }
+</style>

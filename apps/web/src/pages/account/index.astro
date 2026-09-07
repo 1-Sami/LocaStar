@@ -17,6 +17,7 @@ import {
   type LocationShare,
 } from '@locastar/shared';
 import ListCard from '../../components/ListCard.astro';
+import PlaceCard from '../../components/PlaceCard.astro';
 import PlaceRow from '../../components/PlaceRow.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -295,16 +296,18 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {favourites.length === 0 ? (
                 <p class="empty-line">{t('acct.favouritesEmpty')}</p>
               ) : (
-                <div class="rows">
+                <div class="cards">
                   {favourites.map((place) => (
-                    <PlaceRow
+                    <PlaceCard
                       href={p(`/location/${place.location_id}`)}
                       name={place.name}
                       categorySlug={place.category_slug}
+                      categoryName={categoryName(place.category_slug, lang)}
                       avgRating={place.avg_rating}
                       reviewCount={place.review_count}
                       where={place.city}
                       imageUrl={publicUrl(place.cover_photo_path)}
+                      startsAt={place.starts_at}
                     />
                   ))}
                 </div>
@@ -319,16 +322,18 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {bookmarks.length === 0 ? (
                 <p class="empty-line">{t('acct.bookmarksEmpty')}</p>
               ) : (
-                <div class="rows">
+                <div class="cards">
                   {bookmarks.map((place) => (
-                    <PlaceRow
+                    <PlaceCard
                       href={p(`/location/${place.location_id}`)}
                       name={place.name}
                       categorySlug={place.category_slug}
+                      categoryName={categoryName(place.category_slug, lang)}
                       avgRating={place.avg_rating}
                       reviewCount={place.review_count}
                       where={place.city}
                       imageUrl={publicUrl(place.cover_photo_path)}
+                      startsAt={place.starts_at}
                     />
                   ))}
                 </div>
@@ -343,17 +348,18 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {shares.length === 0 ? (
                 <p class="empty-line">{t('acct.sharedEmpty')}</p>
               ) : (
-                <div class="rows">
+                <div class="cards">
                   {shares.map((share) => (
-                    <PlaceRow
+                    <PlaceCard
                       href={p(`/location/${share.location_id}`)}
                       name={share.name}
                       categorySlug={share.category_slug}
+                      categoryName={categoryName(share.category_slug, lang)}
                       avgRating={share.avg_rating}
                       reviewCount={share.review_count}
-                      where={share.city}
+                      where={shareAside(share) ?? share.city}
                       imageUrl={publicUrl(share.cover_photo_path)}
-                      aside={shareAside(share)}
+                      startsAt={share.starts_at}
                     />
                   ))}
                 </div>

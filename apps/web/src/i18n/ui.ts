@@ -342,6 +342,8 @@ export const ui = {
     'acct.contribution_one': 'CONTRIBUTION',
     'acct.contribution_other': 'CONTRIBUTIONS',
     'acct.saved': 'Saved',
+    /* {n} days, on a saved event's card. */
+    'acct.daysLeft': '{n} DAYS LEFT',
     'acct.myLists': 'My lists',
     'acct.addedByMe': 'Added by me',
     'acct.myReviews': 'My reviews',
@@ -923,6 +925,7 @@ export const ui = {
     'acct.contribution_one': 'BIDRAG',
     'acct.contribution_other': 'BIDRAG',
     'acct.saved': 'Sparat',
+    'acct.daysLeft': '{n} DAGAR KVAR',
     'acct.myLists': 'Mina listor',
     'acct.addedByMe': 'Tillagt av mig',
     'acct.myReviews': 'Mina omdömen',
