@@ -136,15 +136,21 @@ function FavoritesSection({
       ) : (
         <View style={styles.favoritesGrid}>
           {items.map((item) => (
-            <SavedCard
-              key={item.id}
-              location={item}
-              isFavorite={favoriteIds.has(item.id)}
-              isBucketListed={bucketListIds.has(item.id)}
-              onToggleFavorite={() => onToggleFavorite(item.id)}
-              onToggleBucketList={() => onToggleBucketList(item.id)}
-              onPress={() => onOpen(item.id)}
-            />
+            /* gridSlot, like every other section. Without it the card had no
+               width of its own, so a space-between row sized each one to its
+               contents: Favourites came out wider than the grid below it, its
+               two cards different widths from each other, and neither lining
+               up with anything. */
+            <View key={item.id} style={styles.gridSlot}>
+              <SavedCard
+                location={item}
+                isFavorite={favoriteIds.has(item.id)}
+                isBucketListed={bucketListIds.has(item.id)}
+                onToggleFavorite={() => onToggleFavorite(item.id)}
+                onToggleBucketList={() => onToggleBucketList(item.id)}
+                onPress={() => onOpen(item.id)}
+              />
+            </View>
           ))}
         </View>
       )}
