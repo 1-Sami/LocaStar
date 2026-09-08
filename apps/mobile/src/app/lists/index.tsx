@@ -29,17 +29,25 @@ export default function MyListsScreen() {
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!session) return;
     setLoading(true);
+    setLoadFailed(false);
     Promise.all([fetchLists(supabase, session.user.id), fetchProfile(supabase, session.user.id).catch(() => null)])
       .then(([listRows, profile]) => {
         setLists(listRows);
         setUsername(profile?.username ?? profile?.display_name ?? 'you');
       })
-      .catch(() => setLists([]))
+      .catch((err) => {
+        // "No lists yet. Create one to start organizing places you love." is a
+        // sentence about this person, and a failed request is not entitled to
+        // say it over lists they have already made.
+        console.error('Failed to load your lists', err);
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [session]);
 
@@ -95,7 +103,11 @@ export default function MyListsScreen() {
               </ThemedText>
             </Pressable>
 
-            {lists.length === 0 ? (
+            {loadFailed ? (
+              <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
+                {t('common.somethingWentWrong')}
+              </ThemedText>
+            ) : lists.length === 0 ? (
               <ThemedText type="default" themeColor="textSecondary" style={styles.emptyText}>
                 {t('lists.empty')}
               </ThemedText>

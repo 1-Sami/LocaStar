@@ -138,6 +138,7 @@ export default function AdminAuditScreen() {
   const [actions, setActions] = useState<ModerationAction[]>([]);
   const [myRole, setMyRole] = useState<UserRole>('user');
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const theme = useTheme();
@@ -145,18 +146,30 @@ export default function AdminAuditScreen() {
   const reload = useCallback(() => {
     if (!session) return;
     setLoading(true);
+    setLoadFailed(false);
     Promise.all([fetchProfile(supabase, session.user.id), fetchModerationActions(supabase, 200)])
       .then(([profile, rows]) => {
         setMyRole(profile.role);
         setActions(rows);
       })
-      .catch(() => setActions([]))
+      .catch((err) => {
+        /*
+         * Two false statements came out of swallowing this. "Nothing logged" to
+         * a moderator checking what happened is one; they read it and move on.
+         * The other is worse: the profile fetch is in the same Promise.all, so
+         * losing it left myRole at its 'user' default and the screen told an
+         * actual admin they do not have access to this page.
+         */
+        console.error('Failed to load the moderation log', err);
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [session]);
 
   useFocusEffect(useCallback(() => reload(), [reload]));
 
-  if (!session || (!loading && !isModeratorRole(myRole))) {
+  // !loadFailed: not knowing the role is not the same as knowing it is too low.
+  if (!session || (!loading && !loadFailed && !isModeratorRole(myRole))) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -221,7 +234,11 @@ export default function AdminAuditScreen() {
               ))}
             </ScrollView>
 
-            {actions.length === 0 ? (
+            {loadFailed ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {t('common.somethingWentWrong')}
+              </ThemedText>
+            ) : actions.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 {t('admin.nothingLogged')}
               </ThemedText>

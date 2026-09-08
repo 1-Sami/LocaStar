@@ -94,6 +94,7 @@ export default function AddLocationScreen() {
   const [geocoding, setGeocoding] = useState(false);
   const [addressPinFailed, setAddressPinFailed] = useState(false);
   const [nearbyExisting, setNearbyExisting] = useState<NearbyLocation[]>([]);
+  const [categoriesFailed, setCategoriesFailed] = useState(false);
   const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
   const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
   const [visibleAsCreator, setVisibleAsCreator] = useState<boolean | null>(null);
@@ -164,7 +165,15 @@ export default function AddLocationScreen() {
   useEffect(() => {
     fetchCategories(supabase)
       .then(setCategories)
-      .catch(() => setCategories([]));
+      .catch((err) => {
+        /*
+         * A category is required to submit, so losing this list quietly makes
+         * the form impossible to finish — and the picker said "No categories
+         * match", blaming the search box for a request that never arrived.
+         */
+        console.error('Failed to load categories', err);
+        setCategoriesFailed(true);
+      });
   }, []);
 
   // Nothing in the schema stops two people adding the same court, which would
@@ -816,7 +825,11 @@ export default function AddLocationScreen() {
             {/* keyboardShouldPersistTaps, or the first tap only dismisses the
                 keyboard and the category the person aimed at is not selected. */}
             <ScrollView keyboardShouldPersistTaps="handled">
-              {visibleCategories.length === 0 ? (
+              {categoriesFailed && categories.length === 0 ? (
+                <ThemedText type="default" themeColor="textSecondary" style={styles.modalEmptyText}>
+                  {t('common.somethingWentWrong')}
+                </ThemedText>
+              ) : visibleCategories.length === 0 ? (
                 <ThemedText type="default" themeColor="textSecondary" style={styles.modalEmptyText}>
                   {t('form.noCategoriesMatch')}
                 </ThemedText>

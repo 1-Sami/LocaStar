@@ -176,7 +176,9 @@ export default function FavoritesScreen() {
   // somebody visible.
   const visibleSavedLists = savedLists.filter((list) => !isBlocked(list.ownerId));
   const [loading, setLoading] = useState(true);
+  /** Set only by a load that worked, so a first load that failed is not "empty". */
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Partial<Record<string, number>>>({});
@@ -215,6 +217,7 @@ export default function FavoritesScreen() {
   const reload = useCallback(async () => {
     if (!session) return;
     setLoading(true);
+    setLoadFailed(false);
     try {
       const [favoriteRows, bucketListRows, shareRows, sharedListRows, savedListRows] = await Promise.all([
         fetchSavedLocations(supabase, session.user.id, 'favorite'),
@@ -228,9 +231,18 @@ export default function FavoritesScreen() {
       setShares(shareRows);
       setSharedLists(sharedListRows);
       setSavedLists(savedListRows);
+      setHasLoadedOnce(true);
+    } catch (err) {
+      /*
+       * Five sections of somebody's own saved places, and every one of them has
+       * an empty message written as a statement about them — "Nothing saved yet
+       * — tap the heart on a location". Rendering that because a request failed
+       * tells them their saves are gone.
+       */
+      console.error('Failed to load saved places', err);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
-      setHasLoadedOnce(true);
     }
   }, [session]);
 
@@ -332,6 +344,13 @@ export default function FavoritesScreen() {
         */}
         {loading && !hasLoadedOnce ? (
           <ActivityIndicator style={styles.loadingIndicator} />
+        ) : loadFailed && !hasLoadedOnce ? (
+          /* Only when there is nothing to show. Once a load has worked, a later
+             refresh failing leaves the places on screen rather than replacing
+             five sections of them with one line of apology. */
+          <ThemedText type="default" themeColor="textSecondary" style={styles.sectionEmptyText}>
+            {t('common.somethingWentWrong')}
+          </ThemedText>
         ) : (
           <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
             <FavoritesSection
