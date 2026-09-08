@@ -96,7 +96,12 @@ const STAT_SECTIONS: Partial<Record<StatId, string>> = {
 // "My reviews" is deliberately absent: the Reviews stat tile directly above
 // already goes there, and two controls a centimetre apart leading to the same
 // screen reads as a mistake rather than a convenience.
-const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends', 'addLocation', 'addActivity'];
+//
+// So are "Add a place" and "Add an activity". The Add tab is on every screen
+// in the app and offers both kinds; repeating them here bought a second route
+// to a form that was never hard to reach, at the cost of two rows between the
+// profile and the things only the profile has.
+const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends'];
 const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
 // Its own group rather than an entry in the list above, because that list is
 // deliberately shared with the signed-out branch and this needs an account.
@@ -193,8 +198,6 @@ export default function ProfileScreen() {
   const handleMenuPress = (item: MenuId) => {
     if (item === 'myLists') router.push('/lists' as never);
     if (item === 'friends') router.push('/friends' as never);
-    if (item === 'addLocation') router.push({ pathname: '/add-location', params: { kind: 'place' } });
-    if (item === 'addActivity') router.push({ pathname: '/add-location', params: { kind: 'activity' } });
     if (item === 'settings') router.push('/settings' as never);
     if (item === 'about') router.push('/about');
     if (item === 'sendFeedback') router.push('/send-feedback' as never);

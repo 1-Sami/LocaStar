@@ -5,7 +5,7 @@ export type MenuIcon =
   | { icon: keyof typeof MaterialCommunityIcons.glyphMap; family: 'material'; color: string };
 
 /**
- * Every destination reachable from the Profile screen, as a stable id.
+ * Every screen that has a titled header of its own, as a stable id.
  *
  * The id is the join between three things that must agree: the icon below, the
  * menu row's label (`menu.<id>`) and the screen header's title (`nav.<id>`).
@@ -44,8 +44,11 @@ export type MenuId =
  * English build could not have caught it — there the translation and the old
  * key are the same string.
  *
- * Includes destinations with no menu row of their own (My reviews, Saved,
- * Notifications), which are reached from the stat tiles instead.
+ * Includes destinations with no menu row of their own: My reviews, Saved and
+ * Notifications are reached from the stat tiles, and addLocation/addActivity
+ * only from the Add tab — their rows left the Profile menu, but both still
+ * title the form's header, so removing them here would strip that header of
+ * its icon and colour.
  */
 export const MENU_ICONS: Record<MenuId, MenuIcon> = {
   myLists: { icon: 'folder-marker-outline', family: 'material', color: '#4C8FE8' },
