@@ -22,6 +22,22 @@ export const prerender = false;
 const CLOSED = [...PRIVATE_PATHS, '/search?'];
 
 /*
+ * The city filter on a category page.
+ *
+ * Every city chip is a real link a crawler follows, and each one is a Worker
+ * invocation and a database read that ends at a canonical pointing back to the
+ * unfiltered page — 54 categories times the cities in each, in both languages,
+ * all of it spent to be told that the page Google already has is the right one.
+ * Search Console files these under "Alternative page with proper canonical
+ * tag": working as intended, and still not worth the crawl. That budget is
+ * wanted by the place pages sitting in "Discovered — currently not indexed".
+ *
+ * Deliberately not repeated under /sv/ like the rules above: the leading
+ * wildcard matches any path, so /sv/activity/basketball?city=Lund is covered.
+ */
+const CLOSED_QUERIES = ['/*?city='];
+
+/*
  * Crawlers that cost us the site and send nobody back.
  *
  * The sitemap lists 16,701 addresses — 8,289 places in two languages — and
@@ -79,7 +95,10 @@ export const GET: APIRoute = ({ site, url }) => {
     return text('User-agent: *\nDisallow: /\n');
   }
 
-  const rules = CLOSED.flatMap((path) => [`Disallow: ${path}`, `Disallow: /sv${path}`]);
+  const rules = [
+    ...CLOSED.flatMap((path) => [`Disallow: ${path}`, `Disallow: /sv${path}`]),
+    ...CLOSED_QUERIES.map((pattern) => `Disallow: ${pattern}`),
+  ];
   const blocked = UNWELCOME.map((agent) => `User-agent: ${agent}\nDisallow: /`).join('\n\n');
 
   return text(`User-agent: *
