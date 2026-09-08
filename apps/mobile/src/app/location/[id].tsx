@@ -60,6 +60,9 @@ import { supabase } from '@/lib/supabase';
 const TEAL = '#2BA3A3';
 const TEAL_TINT = 'rgba(43,163,163,0.15)';
 const DIRECTIONS_TEXT = '#0B3D2E';
+// Favourited. Was buried in a style used by the heart button that the overflow
+// menu replaced; the menu row it moved to needs the same green.
+const FAVORITE_ACTIVE = '#4CD37A';
 
 // Monday-first for display. The names come from days.<key> rather than living
 // here, so the hours editor on the add/edit forms uses the same seven.
@@ -834,9 +837,6 @@ export default function LocationDetailScreen() {
             <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="arrow-back" size={18} color="#ffffff" />
             </Pressable>
-            <Pressable style={styles.overflowButton} onPress={() => setMenuVisible(true)} hitSlop={8}>
-              <Ionicons name="ellipsis-horizontal" size={18} color="#ffffff" />
-            </Pressable>
             {photos.length > 0 && (
               <Pressable style={styles.photoCountButton} onPress={() => setGalleryVisible(true)}>
                 <Ionicons name="images-outline" size={13} color="#ffffff" />
@@ -1039,13 +1039,20 @@ export default function LocationDetailScreen() {
                   color={isBucketListed ? '#F5C242' : theme.text}
                 />
               </Pressable>
+              {/* Where the favourite heart used to be. This menu was a white
+                  glyph on a scrim in the corner of the photo, which reads as
+                  part of the picture; here it sits with Directions and the
+                  bookmark, where someone looks for what they can do. Favourite
+                  is the first row inside it.
+
+                  theme.text rather than a fixed colour: this button is on
+                  theme.backgroundElement, not the dark scrim, and the white
+                  the photo needed was invisible in light mode. */}
               <Pressable
                 style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
-                onPress={() => toggleFavorite(location.id)}
-                accessibilityLabel={t('location.favorite')}>
-                <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.squareActionIcon}>
-                  {isFavorite ? '♥' : '♡'}
-                </ThemedText>
+                onPress={() => setMenuVisible(true)}
+                accessibilityLabel={t('location.moreOptions')}>
+                <Ionicons name="ellipsis-horizontal" size={22} color={theme.text} />
               </Pressable>
             </View>
 
@@ -1315,6 +1322,23 @@ export default function LocationDetailScreen() {
           style={[styles.modalBackdrop, { paddingBottom: insets.bottom }]}
           onPress={() => setMenuVisible(false)}>
           <ThemedView type="backgroundElement" style={styles.modalContent}>
+            <Pressable
+              style={styles.menuRow}
+              onPress={() => {
+                setMenuVisible(false);
+                // No session check here: toggleFavorite sends a signed-out
+                // tap to /sign-in itself, the same as every card in the app.
+                toggleFavorite(location.id);
+              }}>
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
+                size={18}
+                color={isFavorite ? FAVORITE_ACTIVE : theme.text}
+              />
+              <ThemedText type="default">
+                {isFavorite ? t('location.favoriteRemove') : t('location.favoriteAdd')}
+              </ThemedText>
+            </Pressable>
             <Pressable style={styles.menuRow} onPress={handleOpenAddToList}>
               <MaterialCommunityIcons name="folder-marker-outline" size={20} color={theme.text} />
               <ThemedText type="default">{t('location.addToList')}</ThemedText>
@@ -1729,17 +1753,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  overflowButton: {
-    position: 'absolute',
-    top: Spacing.two,
-    right: Spacing.two,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   photoDotsRow: {
     position: 'absolute',
     bottom: Spacing.two,
@@ -1930,20 +1943,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconActiveFavorite: {
-    color: '#4CD37A',
-    fontSize: 22,
-  },
-  /*
-   * No color here on purpose. Unlike the bookmark/favorite cards, this button
-   * sits on theme.backgroundElement, not a fixed dark scrim over a photo —
-   * a hardcoded white was invisible in light mode. ThemedText already
-   * defaults to theme.text when no themeColor is given, which is correct in
-   * both themes; this style only needs to set the size.
-   */
-  squareActionIcon: {
-    fontSize: 22,
   },
   body: {
     padding: Spacing.four,
