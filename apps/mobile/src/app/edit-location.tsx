@@ -74,7 +74,18 @@ export default function EditLocationScreen() {
   // screen and saving a phone number cannot blank a city that is already right.
   const [geocodedCity, setGeocodedCity] = useState<string | null>(null);
   const [geocodedCountry, setGeocodedCountry] = useState<string | null>(null);
-  const addressEdited = useRef(false);
+  /*
+   * Whether each address line currently holds something the person typed, so
+   * the reverse-geocoder can refill the other one without clobbering it.
+   *
+   * One flag for both fields is what this replaces, and it read "has ever been
+   * touched" rather than "holds their words". Clearing the postal code still
+   * counted as an edit, so dropping the pin somewhere new left the city line
+   * blank for good. Emptying a field clears its flag: there is nothing left to
+   * protect, and someone who wipes a line is asking for it to be filled again.
+   */
+  const addressLine1Edited = useRef(false);
+  const addressLine2Edited = useRef(false);
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [website, setWebsite] = useState('');
@@ -215,21 +226,26 @@ export default function EditLocationScreen() {
    * never overwritten. The difference is that here the field starts full, of
    * the stored address, and replacing *that* is the whole point.
    *
-   * @param keepAddress the pin moved because of the address, so take only city
-   * and country from the answer and leave the question alone.
+   * There used to be a `keepAddress` parameter for when the pin moved because
+   * of the address; the per-field flags cover it, and cover the cleared field
+   * that flag could not.
    */
-  const handlePinChange = (next: MapCoords, keepAddress = false) => {
+  const handlePinChange = (next: MapCoords) => {
     setPinCoords(next);
     setSaved(false);
     setGeocoding(true);
     Location.reverseGeocodeAsync(next)
       .then((results) => {
         const result = results[0];
-        if (result && !keepAddress && !addressEdited.current) {
+        if (result) {
           const streetLine = formatStreetLine(result);
           const cityLine = formatCityLine(result);
-          if (streetLine) setAddressLine1(streetLine);
-          if (cityLine) setAddressLine2(cityLine);
+          // Per line, so one typed field does not freeze the other. Never
+          // clobbers an address someone typed: before the flags existed at
+          // all, typing the address and then nudging the pin silently
+          // replaced it with whatever the geocoder said about the new spot.
+          if (streetLine && !addressLine1Edited.current) setAddressLine1(streetLine);
+          if (cityLine && !addressLine2Edited.current) setAddressLine2(cityLine);
         }
         // Captured even when the address is left alone: city and country are
         // never typed, so the geocoder is the only thing that can supply them,
@@ -254,7 +270,7 @@ export default function EditLocationScreen() {
    * could fix the words while leaving the place itself in the wrong town.
    */
   const handleAddressBlur = async () => {
-    if (!addressEdited.current) return;
+    if (!addressLine1Edited.current && !addressLine2Edited.current) return;
     const query = [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', ');
     if (!query) return;
     setGeocoding(true);
@@ -265,9 +281,9 @@ export default function EditLocationScreen() {
         setAddressPinFailed(true);
         return;
       }
-      // keepAddress: the pin moved *because* of what was typed, so the answer
-      // must not overwrite the question — but city and country still refresh.
-      handlePinChange({ latitude: hit.latitude, longitude: hit.longitude }, true);
+      // What was typed is protected by its own flag, so the answer cannot
+      // overwrite the question; city and country still refresh.
+      handlePinChange({ latitude: hit.latitude, longitude: hit.longitude });
     } catch {
       setAddressPinFailed(true);
     } finally {
@@ -482,7 +498,8 @@ export default function EditLocationScreen() {
             <TextInput
               value={addressLine1}
               onChangeText={(text) => {
-                addressEdited.current = true;
+                // Emptied means unedited — see the flags' declaration.
+                addressLine1Edited.current = text.trim().length > 0;
                 setAddressPinFailed(false);
                 setAddressLine1(text);
                 setSaved(false);
@@ -499,7 +516,7 @@ export default function EditLocationScreen() {
             <TextInput
               value={addressLine2}
               onChangeText={(text) => {
-                addressEdited.current = true;
+                addressLine2Edited.current = text.trim().length > 0;
                 setAddressPinFailed(false);
                 setAddressLine2(text);
                 setSaved(false);

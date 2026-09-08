@@ -141,9 +141,18 @@ export default function AddLocationScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [claimFailed, setClaimFailed] = useState(false);
 
-  // True once the person edits either address field themselves, so the
-  // reverse-geocoder stops rewriting what they wrote.
-  const addressEdited = useRef(false);
+  /*
+   * Whether each address line currently holds something the person typed, so
+   * the reverse-geocoder can refill the other one without clobbering it.
+   *
+   * One flag for both fields is what this replaces, and it read "has ever been
+   * touched" rather than "holds their words". Clearing the postal code still
+   * counted as an edit, so dropping the pin somewhere new left the city line
+   * blank for good. Emptying a field clears its flag: there is nothing left to
+   * protect, and someone who wipes a line is asking for it to be filled again.
+   */
+  const addressLine1Edited = useRef(false);
+  const addressLine2Edited = useRef(false);
 
   // Submitting is several writes in a row, and the later ones can fail on their
   // own (a photo upload especially). Without this, retrying re-ran the whole
@@ -185,25 +194,29 @@ export default function AddLocationScreen() {
   };
 
   /**
-   * @param keepAddress leave the typed address alone and take only city and
-   * country from the geocoder. Set when the pin moved *because* of the
-   * address, so the answer doesn't overwrite the question.
+   * Moves the pin, and refills whichever address lines are not someone's own.
+   *
+   * There used to be a `keepAddress` parameter, set when the pin moved
+   * *because* of a typed address so the answer would not overwrite the
+   * question. The per-field flags say that more precisely — a line somebody
+   * typed is left alone whatever moved the pin — so it had nothing left to do.
    */
-  const handlePinChange = (next: MapCoords, keepAddress = false) => {
+  const handlePinChange = (next: MapCoords) => {
     setPinCoords(next);
     checkForNearbyDuplicates(next);
     setGeocoding(true);
     Location.reverseGeocodeAsync(next)
       .then((results) => {
         const result = results[0];
-        // Never clobber an address someone typed themselves. Before this,
-        // typing the address and then nudging the pin silently replaced it
-        // with whatever the geocoder said about the new spot.
-        if (result && !keepAddress && !addressEdited.current) {
+        if (result) {
           const streetLine = formatStreetLine(result);
           const cityLine = formatCityLine(result);
-          if (streetLine) setAddressLine1(streetLine);
-          if (cityLine) setAddressLine2(cityLine);
+          // Per line, so one typed field does not freeze the other. Never
+          // clobbers an address someone typed: before the flags existed at
+          // all, typing the address and then nudging the pin silently
+          // replaced it with whatever the geocoder said about the new spot.
+          if (streetLine && !addressLine1Edited.current) setAddressLine1(streetLine);
+          if (cityLine && !addressLine2Edited.current) setAddressLine2(cityLine);
         }
         setGeocodedCity(result ? resolveCity(result) : null);
         setGeocodedCountry(result?.country ?? null);
@@ -252,7 +265,7 @@ export default function AddLocationScreen() {
    * the wrong place, and the geocoder is a network call.
    */
   const handleAddressBlur = async () => {
-    if (!addressEdited.current) return;
+    if (!addressLine1Edited.current && !addressLine2Edited.current) return;
     const query = [addressLine1.trim(), addressLine2.trim()].filter(Boolean).join(', ');
     if (!query) return;
 
@@ -264,7 +277,7 @@ export default function AddLocationScreen() {
         setAddressPinFailed(true);
         return;
       }
-      handlePinChange({ latitude: hit.latitude, longitude: hit.longitude }, true);
+      handlePinChange({ latitude: hit.latitude, longitude: hit.longitude });
     } catch {
       setAddressPinFailed(true);
     } finally {
@@ -578,7 +591,8 @@ export default function AddLocationScreen() {
           <TextInput
             value={addressLine1}
             onChangeText={(text) => {
-              addressEdited.current = true;
+              // Emptied means unedited — see the flags' declaration.
+              addressLine1Edited.current = text.trim().length > 0;
               setAddressPinFailed(false);
               setAddressLine1(text);
             }}
@@ -591,7 +605,7 @@ export default function AddLocationScreen() {
           <TextInput
             value={addressLine2}
             onChangeText={(text) => {
-              addressEdited.current = true;
+              addressLine2Edited.current = text.trim().length > 0;
               setAddressPinFailed(false);
               setAddressLine2(text);
             }}
