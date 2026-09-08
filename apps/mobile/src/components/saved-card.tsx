@@ -12,6 +12,10 @@ import { formatDistance } from '@/lib/distance';
 import type { CardLocation } from '@/types/location';
 
 const IMAGE_HEIGHT = 110;
+/** Saved. The card's own pink, not the green the map and search cards use. */
+const FAVORITE_COLOR = '#F5738A';
+/** Both overlay icons, so the pair cannot drift apart again. */
+const ICON_SIZE = 15;
 
 /** Whole days from now until then; negative once it has started. */
 function daysUntil(iso: string): number {
@@ -80,9 +84,18 @@ export function SavedCard({
             onPress={onToggleFavorite}
             hitSlop={8}
             accessibilityLabel={t('saved.favorites')}>
-            <ThemedText style={isFavorite ? styles.iconActiveFavorite : styles.iconInactive}>
-              {isFavorite ? '♥' : '♡'}
-            </ThemedText>
+            {/* An icon, not the ♥ / ♡ characters this used to draw. A text
+                heart is whatever font the platform finds for it: U+2665 is
+                common and U+2661 is not, so filled and hollow resolved to
+                different faces and came out at different sizes on Android,
+                while iOS picked one that drew both far smaller than the
+                bookmark beside them. fontSize is the em box, not the ink;
+                an icon's size is the icon. */}
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={ICON_SIZE}
+              color={isFavorite ? FAVORITE_COLOR : '#ffffff'}
+            />
           </Pressable>
           <Pressable
             style={styles.iconButton}
@@ -91,7 +104,7 @@ export function SavedCard({
             accessibilityLabel={t('saved.bucketList')}>
             <Ionicons
               name={isBucketListed ? 'bookmark' : 'bookmark-outline'}
-              size={15}
+              size={ICON_SIZE}
               color={isBucketListed ? '#F5C242' : '#ffffff'}
             />
           </Pressable>
@@ -173,16 +186,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // A scrim, because these sit on a photograph whose brightness is unknown.
     backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  iconActiveFavorite: {
-    color: '#F5738A',
-    fontSize: 15,
-    lineHeight: 18,
-  },
-  iconInactive: {
-    color: '#ffffff',
-    fontSize: 15,
-    lineHeight: 18,
   },
   body: {
     padding: Spacing.two,
