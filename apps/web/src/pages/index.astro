@@ -888,7 +888,20 @@ const jsonLd = [
       flex-wrap: wrap;
     }
 
-    .cell {
+    /*
+     * All three selectors, not a bare .cell.
+     *
+     * .cell.activity and .cell.narrow are declared outside this query and are
+     * more specific than .cell inside it, so this rule only ever reached the
+     * one cell with no second class. The other three kept their desktop
+     * flex (1.2 / 0.8, basis 0) while "where" alone got a 45% basis — which
+     * put all four back on one row with the city box at 56% of it, and
+     * squeezed TYPE until its own label clipped to "Place · Even". Swedish
+     * clips harder: "Plats · Evenemang".
+     */
+    .cell,
+    .cell.activity,
+    .cell.narrow {
       flex: 1 1 45%;
     }
 
@@ -924,9 +937,19 @@ const jsonLd = [
       grid-template-columns: repeat(2, 1fr);
     }
 
-    .cell {
+    /* Same specificity trap. Activity and Where take a row each, Type and
+       Season share the last one — which is what the phone already drew by
+       accident, now said on purpose. .narrow keeps its right border, so the
+       two on the shared row still have a divider between them. */
+    .cell,
+    .cell.activity {
       flex: 1 1 100%;
       border-right: 0;
+      border-bottom: 1px solid rgba(var(--ink-rgb), 0.14);
+    }
+
+    .cell.narrow {
+      flex: 1 1 45%;
       border-bottom: 1px solid rgba(var(--ink-rgb), 0.14);
     }
   }
