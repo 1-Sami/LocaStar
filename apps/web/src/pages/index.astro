@@ -875,6 +875,44 @@ const jsonLd = [
     margin-bottom: -14px;
   }
 
+  /*
+   * The phone mockups, once they stop fitting.
+   *
+   * The pair is 392px of flex that cannot shrink — 186 + 20 gap + 186, with
+   * flex: none — so on any viewport under about 430px the line overflowed its
+   * band. justify-content: center overflows *safely*: rather than let content
+   * spill past the start edge where it could never be reached, the browser
+   * clamps it there, so the pair pinned to the left and the whole overflow
+   * went off the right, into the band's overflow: hidden.
+   *
+   * That is the whole of the "not centred on my phone" report, and why it
+   * changed by device: a Fold 6 open is 904px, the band is 809px, the art fits
+   * and sits dead centre. An iPhone at 390px pushed 38px off the right edge; a
+   * Galaxy S10 at 360px, 68px. Narrower phone, further off.
+   *
+   * Width from the container and height from the aspect ratio, so the frames
+   * keep their proportions instead of becoming slots.
+   */
+  @media (max-width: 460px) {
+    .band-art {
+      gap: 12px;
+    }
+
+    .phone {
+      width: calc(50% - 6px);
+    }
+
+    .phone.tall {
+      height: auto;
+      aspect-ratio: 186 / 380;
+    }
+
+    .phone.short {
+      height: auto;
+      aspect-ratio: 186 / 330;
+    }
+  }
+
   @media (max-width: 1279px) {
     .grid-4 {
       grid-template-columns: repeat(2, 1fr);
