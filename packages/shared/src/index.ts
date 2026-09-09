@@ -7,6 +7,7 @@ export type { LegalDocument, LegalSectionContent, LegalBlock } from "./legal";
 export { fetchSearchResults, SearchPageOutOfRange } from "./api/siteSearch";
 export type { SearchParams, SearchResult, SearchResponse } from "./api/siteSearch";
 export {
+  CATEGORY_PAGE_SIZE,
   fetchCategoryBySlug,
   fetchAllCategories,
   fetchCategoryCityCounts,

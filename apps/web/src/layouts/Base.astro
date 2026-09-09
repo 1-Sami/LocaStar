@@ -29,6 +29,15 @@ interface Props {
   englishOnly?: boolean;
   /** JSON-LD objects. Emitted verbatim, so build them where the data is. */
   jsonLd?: unknown[];
+  /**
+   * A query string the alternates must keep, "?page=3" and nothing else so far.
+   *
+   * Not taken from Astro.url: most query strings here are filters that
+   * canonicalise away (?city=), and carrying those into hreflang would have it
+   * contradict the canonical tag directly below it. Pagination is the one case
+   * where the parameter really is a different page, so the page opts in.
+   */
+  altSearch?: string;
 }
 
 const {
@@ -38,6 +47,7 @@ const {
   image = null,
   englishOnly = false,
   jsonLd = [],
+  altSearch = '',
 } = Astro.props;
 
 /*
@@ -55,8 +65,8 @@ const bare = Astro.url.pathname.startsWith('/sv/')
     ? '/'
     : Astro.url.pathname;
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const enHref = origin + bare;
-const svHref = origin + (bare === '/' ? '/sv/' : '/sv' + bare);
+const enHref = origin + bare + altSearch;
+const svHref = origin + (bare === '/' ? '/sv/' : '/sv' + bare) + altSearch;
 
 /*
  * The address this page is at, in the language it is in.

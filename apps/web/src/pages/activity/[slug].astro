@@ -1,5 +1,6 @@
 ---
 import {
+  CATEGORY_PAGE_SIZE,
   categoryName,
   fetchAllCategories,
   fetchCategoryBySlug,
@@ -46,9 +47,35 @@ if (!category || !slug) return new Response(null, { status: 404 });
  */
 const cityParam = Astro.url.searchParams.get('city')?.trim() || undefined;
 
+/*
+ * Pagination, because without it this page was a dead end for the crawler.
+ *
+ * It listed 24 places and said "showing 24 of 1,202" with no way to reach the
+ * rest — a defect for a reader and a much larger one for Google. Measured on
+ * 2026-09-09: only 1,081 of 8,294 place pages were reachable within two links
+ * of the home page, so 7,213 of them existed in the sitemap and nowhere else.
+ * That is what "Discovered — currently not indexed" means. A URL Google knows
+ * only from a sitemap, with nothing linking to it, is a page the site itself
+ * is saying does not matter.
+ *
+ * 48 rather than 24 halves the number of pages, and the pager lists every one
+ * of them, so the deepest place sits three links from the home page instead of
+ * fifty-one.
+ */
+const PAGE_SIZE = CATEGORY_PAGE_SIZE;
+const rawPage = Astro.url.searchParams.get('page');
+const page = rawPage === null ? 1 : Number(rawPage);
+// A bad page number is a 404, not page 1. Otherwise ?page=abc and ?page=99999
+// are infinite crawlable copies of the first page.
+if (!Number.isInteger(page) || page < 1) return new Response(null, { status: 404 });
+
 const [cityCounts, listing, allCategories, counts] = await Promise.all([
   fetchCategoryCityCounts(supabase, slug).catch(() => []),
-  fetchCategoryPlaces(supabase, category.id, { city: cityParam, limit: 24 }).catch(() => ({
+  fetchCategoryPlaces(supabase, category.id, {
+    city: cityParam,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  }).catch(() => ({
     places: [],
     total: 0,
   })),
@@ -105,8 +132,25 @@ const cityBit =
 const description =
   t('activity.lead', { count: shownTotal, name: catLower, where }) + cityBit + t('activity.leadTail');
 
+const pageCount = Math.max(1, Math.ceil(listing.total / PAGE_SIZE));
+// Past the end is a 404 too — page 1 of an empty category is still a real page,
+// but page 9 of a three-page category is not.
+if (page > 1 && page > pageCount) return new Response(null, { status: 404 });
+
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const canonical = `${origin}/activity/${slug}`;
+/*
+ * Page 2 canonicalises to itself, never back to page 1 — pointing it at page 1
+ * would tell Google to drop exactly the pages that exist to be found.
+ *
+ * A city filter still canonicalises to the unfiltered page as before; those are
+ * robots-disallowed and are not what pagination is for.
+ */
+const pageSuffix = page > 1 ? `?page=${page}` : '';
+const canonical = cityParam
+  ? `${origin}/activity/${slug}`
+  : `${origin}/activity/${slug}${pageSuffix}`;
+
+const pageHref = (n: number) => p(n > 1 ? `/activity/${slug}?page=${n}` : `/activity/${slug}`);
 
 const jsonLd: Record<string, unknown>[] = [
   {
@@ -122,9 +166,10 @@ const jsonLd: Record<string, unknown>[] = [
     '@type': 'ItemList',
     name: heading,
     numberOfItems: listing.places.length,
-    itemListElement: listing.places.slice(0, 24).map((place, index) => ({
+    itemListElement: listing.places.map((place, index) => ({
       '@type': 'ListItem',
-      position: index + 1,
+      // Continues across pages, so page 2 starts at 49 rather than at 1 again.
+      position: (page - 1) * PAGE_SIZE + index + 1,
       name: place.name,
       url: `${origin}/location/${place.id}`,
     })),
@@ -153,7 +198,13 @@ jsonLd.push({
 });
 ---
 
-<Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
+<Base
+  title={page > 1 ? t('activity.titlePaged', { title, page }) : title}
+  description={description}
+  canonical={canonical}
+  jsonLd={jsonLd}
+  altSearch={cityParam ? '' : pageSuffix}
+>
   <SiteHeader current="categories" />
 
   <main id="main">
@@ -248,6 +299,36 @@ jsonLd.push({
           </div>
         )
       }
+
+      {/*
+        Every page number, not a next link.
+
+        A next-only pager puts page 40 forty clicks from page 1, and a crawler
+        weighs a page by how far it has to walk to reach it. Listing them all
+        puts the last place in the category three links from the home page.
+        The largest category is 1,202 places, so 26 numbers at this page size.
+      */}
+      {pageCount > 1 && (
+        <nav class="pager" aria-label={t('activity.pagerLabel')}>
+          {page > 1 && (
+            <a class="pager-step" href={pageHref(page - 1)} rel="prev">{t('activity.prev')}</a>
+          )}
+          <ol class="pager-nums">
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+              <li>
+                {n === page ? (
+                  <span class="pager-num on" aria-current="page">{n}</span>
+                ) : (
+                  <a class="pager-num" href={pageHref(n)}>{n}</a>
+                )}
+              </li>
+            ))}
+          </ol>
+          {page < pageCount && (
+            <a class="pager-step" href={pageHref(page + 1)} rel="next">{t('activity.next')}</a>
+          )}
+        </nav>
+      )}
     </section>
 
     <section class="wrap one-col">
@@ -349,6 +430,62 @@ jsonLd.push({
 
   .chip.muted {
     color: var(--text-42);
+  }
+
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 36px;
+  }
+
+  /*
+   * display: contents, so the numbered items join the pager's own flex row
+   * instead of forming a block of their own. With 26 pages the list was wide
+   * enough to fill a line by itself, which pushed Previous above the numbers
+   * and Next below them. The list element stays for its semantics.
+   */
+  .pager-nums {
+    display: contents;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pager-nums li {
+    display: flex;
+  }
+
+  .pager-num,
+  .pager-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding-inline: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .pager-num:hover,
+  .pager-step:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* The current page is not a link, so it carries the weight instead. */
+  .pager-num.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--page);
+    font-weight: 600;
   }
 
   .listing {

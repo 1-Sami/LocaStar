@@ -83,12 +83,21 @@ export async function fetchCategoryCityCounts(
  * useful first impression and the only ordering that means anything to a
  * crawler.
  */
+/**
+ * Places per page on a category listing.
+ *
+ * Exported because two places have to agree on it: the page that renders the
+ * pager, and the sitemap that advertises those pages. If they ever drift, the
+ * sitemap hands Google URLs the page answers with a 404.
+ */
+export const CATEGORY_PAGE_SIZE = 48;
+
 export async function fetchCategoryPlaces(
   client: SupabaseClient,
   categoryId: string,
   options: { city?: string; limit?: number; offset?: number } = {}
 ): Promise<{ places: CategoryPlace[]; total: number }> {
-  const { city, limit = 24, offset = 0 } = options;
+  const { city, limit = CATEGORY_PAGE_SIZE, offset = 0 } = options;
 
   let query = client
     .from("locations")
@@ -235,9 +244,24 @@ export async function fetchSitemapEntries(
     })),
     // Empty categories are left out on purpose — a "0 places" page is thin, and
     // a sitemap full of them costs the crawl budget the good pages need.
+    /*
+     * Every page of every category, not just the first.
+     *
+     * The listing used to show 24 of a category's places with no way to reach
+     * the rest, so 7,213 of 8,294 place pages had nothing linking to them and
+     * sat in Search Console as "Discovered — currently not indexed". The pager
+     * is what fixes that; listing its pages here is how Google finds the pager
+     * without waiting to re-crawl page one first.
+     */
     categories: counts
       .filter((row) => row.count > 0)
-      .map((row) => ({ path: `/activity/${row.slug}`, lastmod: null })),
+      .flatMap((row) => {
+        const pages = Math.max(1, Math.ceil(row.count / CATEGORY_PAGE_SIZE));
+        return Array.from({ length: pages }, (_, i) => ({
+          path: i === 0 ? `/activity/${row.slug}` : `/activity/${row.slug}?page=${i + 1}`,
+          lastmod: null,
+        }));
+      }),
   };
 }
 
