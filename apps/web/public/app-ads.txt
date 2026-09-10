@@ -1,0 +1,9 @@
+# LocaStar sells no advertising and has authorised nobody to sell ad space in
+# its apps. This placeholder record is the IAB's way of saying exactly that.
+#
+# Google fetches this file every day, because this is the developer website on
+# the store listings. Missing, it answered 404 on every visit — 30 of the 33
+# not-found errors in Search Console's crawl stats up to 2026-09-10.
+#
+# If an ad network is ever added, replace this line with its real record.
+placeholder.example.com, placeholder, DIRECT, placeholder
