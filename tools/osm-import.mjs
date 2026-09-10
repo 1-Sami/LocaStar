@@ -812,13 +812,34 @@ const MUNICIPALITIES_ENDING_IN_S = new Set([
  * imported places carried a name like that until migrations 0133–0135 — one
  * town split into two in every filter and on every card, and a category's town
  * page would have been titled "Basketball in Linköpings".
+ *
+ * In Västernorrland and Västerbotten Nominatim can also hand back a
+ * registration district — "Alnö distrikt", "Härnösands domkyrkodistrikt" — or
+ * a municipal part, "Indals-Lidens kommundel". Those name the local area, which
+ * is what the owner chose to keep (migration 0136): the word goes, and so does
+ * the genitive s it put on the name. A city-centre church district is the
+ * city: "Sundsvalls Gustav Adolfs" is Sundsvall. But "Stora Tuna" is a parish
+ * of its own, which is why only a first word that is itself a genitive counts.
  */
 function townFromNominatim(a) {
   const raw = a.city ?? a.town ?? a.municipality ?? '';
+
+  // Borås, Västerås; and -näs, which is a place-name ending, not a genitive:
+  // Arnäs, Ytterlännäs.
+  const ownS = (name) => MUNICIPALITIES_ENDING_IN_S.has(name) || /näs$/.test(name);
+  const ungenitive = (name) => (name.endsWith('s') && !ownS(name) ? name.slice(0, -1) : name);
+
+  const district = raw.match(/^(.*?)\s*(?:(?:domkyrko)?distrikt|kommundel)$/i);
+  if (district) {
+    let area = district[1].trim();
+    const first = area.split(' ')[0];
+    if (area.includes(' ') && first.endsWith('s')) area = first;
+    return ungenitive(area) || null;
+  }
+
   const bare = raw.replace(/\s+kommun$/i, '');
   if (bare === raw) return raw || null;
-  if (MUNICIPALITIES_ENDING_IN_S.has(bare)) return bare;
-  return bare.replace(/s$/, '') || null;
+  return ungenitive(bare) || null;
 }
 
 /**
