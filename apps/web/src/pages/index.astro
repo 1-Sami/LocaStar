@@ -169,6 +169,12 @@ const jsonLd = [
           <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
           <span class="badge-note">{t('home.storeSoon')}</span>
+          {/* Temporary, until Play approves. A greyed-out badge that is not a
+              link reads as a broken app, not an unreleased one, and sends
+              Android owners off searching the store for it. Hides itself once
+              STORE_LINKS.googlePlay is filled in — delete it then, with the
+              one in the band, .android-note and the key. */}
+          {!googlePlayReady && <span class="android-note">{t('home.androidNotYet')}</span>}
         </div>
 
         {/* Under the badges, not in with them: a badge only helps somebody
@@ -348,6 +354,9 @@ const jsonLd = [
           <div class="band-badges">
             <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
             <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
+            {/* Here too, because this band is where /get sends every Android
+                phone that scans the QR code. */}
+            {!googlePlayReady && <span class="android-note">{t('home.androidNotYet')}</span>}
           </div>
           <AppQr />
           <p class="band-note">{t('home.bandNote')}</p>
@@ -498,6 +507,16 @@ const jsonLd = [
     color: rgba(var(--ink-rgb), 0.62);
     max-width: 170px;
     padding-left: 8px;
+  }
+
+  /* A line of its own under the badges, so it wraps with them at every width
+     instead of drifting away from the badge it explains. A span, not a <p>:
+     .band-copy p would otherwise restyle it inside the band. */
+  .android-note {
+    flex-basis: 100%;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--accent);
   }
 
   /* ---- the finder, pinned to the hero's lower edge ---- */

@@ -21,6 +21,8 @@ export const STORE_LINKS = {
      to their own storefront, and the Swedish one resolves to the localised
      name, which is the listing Swedish search will find. */
   appStore: 'https://apps.apple.com/app/locastar/id6800435437',
+  /* Filling this in also hides the home page's "Android app not yet released"
+     note. Delete that note (home.androidNotYet) in the same change. */
   googlePlay: '',
 } as const;
 

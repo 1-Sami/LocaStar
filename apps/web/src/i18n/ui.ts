@@ -68,6 +68,9 @@ export const ui = {
       'One map of things to actually go and do — described by the people who have been there.',
     'home.appStoreAlt': 'Download on the App Store',
     'home.storeSoon': 'Free · iOS and Android · English and Swedish',
+    /* Temporary: shown only while STORE_LINKS.googlePlay is empty. Delete the
+       key in both languages once Play approves. */
+    'home.androidNotYet': 'Android app not yet released',
     'home.finderActivity': 'ACTIVITY',
     'home.finderAnyType': 'Place · Event',
     'home.finderAnyActivity': 'Any activity',
@@ -655,6 +658,7 @@ export const ui = {
       'En karta över saker att faktiskt göra — beskrivna av dem som har varit där.',
     'home.appStoreAlt': 'Ladda ned via App Store',
     'home.storeSoon': 'Gratis · iOS och Android · svenska och engelska',
+    'home.androidNotYet': 'Android-appen har inte släppts än',
     'home.finderActivity': 'AKTIVITET',
     'home.finderAnyType': 'Plats · Evenemang',
     'home.finderAnyActivity': 'Alla aktiviteter',
