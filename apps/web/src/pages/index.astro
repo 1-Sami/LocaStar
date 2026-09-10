@@ -414,9 +414,16 @@ const jsonLd = [
     pointer-events: none;
   }
 
+  /*
+   * 72px above the eyebrow, down from 150. That space was sized for the hero
+   * photograph described above, which has not been chosen; with only the
+   * gradient behind it, it read as a band of nothing under a 103px header.
+   * The phone layout already used 72, so one value now covers every width.
+   * If a photo goes in, this is the number that may want to grow again.
+   */
   .hero-inner {
     position: relative;
-    padding: 150px var(--gutter) 0;
+    padding: 72px var(--gutter) 0;
     display: flex;
     flex-direction: column;
     gap: 22px;
@@ -980,10 +987,6 @@ const jsonLd = [
   @media (max-width: 767px) {
     .hero {
       min-height: 400px;
-    }
-
-    .hero-inner {
-      padding-top: 72px;
     }
 
     .grid-4 {
