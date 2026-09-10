@@ -1,7 +1,9 @@
 ---
 import {
   CATEGORY_PAGE_SIZE,
+  CITY_PAGE_MIN_PLACES,
   categoryName,
+  citySlug,
   fetchAllCategories,
   fetchCategoryBySlug,
   fetchCategoryCityCounts,
@@ -17,7 +19,15 @@ import { anonClient } from '../../lib/supabase';
 
 export const prerender = false;
 
-const { slug } = Astro.params;
+/*
+ * One file for two kinds of page: /activity/<category> and, since 2026-09-10,
+ * /activity/<category>/<town>. A rest parameter rather than a second route
+ * file, so the two cannot drift apart — a town page is this page with one more
+ * filter, not a copy of it.
+ */
+const segments = (Astro.params.path ?? '').split('/').filter(Boolean);
+if (segments.length === 0 || segments.length > 2) return new Response(null, { status: 404 });
+const [slug, townSegment] = segments;
 const supabase = anonClient();
 const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
@@ -38,12 +48,20 @@ try {
 if (!category || !slug) return new Response(null, { status: 404 });
 
 /*
- * ?city= narrows the page without becoming a separate indexable URL.
+ * A town, two ways.
  *
- * The filtered view is genuinely useful to a person — "libraries in Järfälla"
- * — but it is the same content sliced, so it canonicalises back to the
- * unfiltered page. Otherwise 54 categories times 66 cities is 3,500 pages
- * competing with each other for the same terms.
+ * /activity/basketball/huddinge is a real page: indexable, its own canonical,
+ * in the sitemap. It exists only where the town has at least
+ * CITY_PAGE_MIN_PLACES places. Towns were deliberately not pages at first — the
+ * worry was 54 categories times hundreds of towns, thousands of near-empty
+ * pages competing for the same words. What changed it was the owner searching
+ * "basketplan huddinge" and finding nothing, because nothing on the site was
+ * *about* basketball in Huddinge. The threshold keeps the original worry
+ * answered: 297 pages, not 3,500.
+ *
+ * ?city=Huddinge is the older filter. It still serves towns too small for a
+ * page, and robots.txt keeps it out of search. For a town that has a page it
+ * now redirects there, so an old link lands on the version Google can see.
  */
 const cityParam = Astro.url.searchParams.get('city')?.trim() || undefined;
 
@@ -69,10 +87,45 @@ const page = rawPage === null ? 1 : Number(rawPage);
 // are infinite crawlable copies of the first page.
 if (!Number.isInteger(page) || page < 1) return new Response(null, { status: 404 });
 
+/*
+ * A town page has to turn its slug back into the town's real name before it can
+ * ask for that town's places, so it fetches the town list first. Every other
+ * page fetches it alongside the rest, as before.
+ */
+let town: { city: string; count: number } | undefined;
+let prefetchedTowns: Awaited<ReturnType<typeof fetchCategoryCityCounts>> | undefined;
+if (townSegment) {
+  try {
+    prefetchedTowns = await fetchCategoryCityCounts(supabase, slug);
+  } catch (error) {
+    // Not a 404: a blip must not tell Google the page is gone.
+    console.error('Failed to load towns', slug, error);
+    return new Response('Temporarily unavailable', {
+      status: 503,
+      headers: { 'Retry-After': '60' },
+    });
+  }
+  let decoded = townSegment;
+  try {
+    decoded = decodeURIComponent(townSegment);
+  } catch {
+    // A malformed escape is simply a town that does not exist.
+  }
+  const wanted = citySlug(decoded);
+  town = prefetchedTowns.find((row) => citySlug(row.city) === wanted);
+  if (!town || town.count < CITY_PAGE_MIN_PLACES) return new Response(null, { status: 404 });
+  // /activity/basketball/Göteborg and /goteborg both reach the page, but only
+  // one spelling may be its address.
+  if (townSegment !== citySlug(town.city)) {
+    return Astro.redirect(p(`/activity/${slug}/${citySlug(town.city)}${Astro.url.search}`), 301);
+  }
+}
+const city = town?.city ?? cityParam;
+
 const [cityCounts, listing, allCategories, counts] = await Promise.all([
-  fetchCategoryCityCounts(supabase, slug).catch(() => []),
+  prefetchedTowns ?? fetchCategoryCityCounts(supabase, slug).catch(() => []),
   fetchCategoryPlaces(supabase, category.id, {
-    city: cityParam,
+    city,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   }).catch(() => ({
@@ -82,6 +135,14 @@ const [cityCounts, listing, allCategories, counts] = await Promise.all([
   fetchAllCategories(supabase).catch(() => []),
   fetchCategoryCounts(supabase).catch(() => []),
 ]);
+
+// The old filter URL, for a town that now has a page of its own.
+if (cityParam && !townSegment) {
+  const match = cityCounts.find((row) => row.city === cityParam);
+  if (match && match.count >= CITY_PAGE_MIN_PLACES) {
+    return Astro.redirect(p(`/activity/${slug}/${citySlug(match.city)}`), 301);
+  }
+}
 
 const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
@@ -101,10 +162,14 @@ const catLower = catName.toLowerCase();
  * location total — both read as a number that is simply wrong.
  */
 const total = counts.find((row) => row.slug === slug)?.count ?? listing.total;
-const shownTotal = cityParam ? listing.total : total;
+const shownTotal = city ? listing.total : total;
 
 const topCities = cityCounts.slice(0, 6);
 const remainingCities = Math.max(0, cityCounts.length - topCities.length);
+// Alphabetical: this list is for finding your own town, not for ranking them.
+const townList = cityCounts
+  .filter((row) => row.count >= CITY_PAGE_MIN_PLACES)
+  .sort((a, b) => a.city.localeCompare(b.city, 'sv'));
 
 /*
  * Related activities: other categories, excluding this one.
@@ -114,7 +179,7 @@ const remainingCities = Math.max(0, cityCounts.length - topCities.length);
  */
 const related = allCategories.filter((c) => c.slug !== slug).slice(0, 10);
 
-const where = cityParam ?? t('activity.inSweden');
+const where = city ?? t('activity.inSweden');
 const heading = t('activity.headingIn', { name: catName, where });
 const title = `${heading} — ${t('activity.titleSuffix', { count: shownTotal })} | LocaStar`;
 
@@ -126,7 +191,7 @@ const title = `${heading} — ${t('activity.titleSuffix', { count: shownTotal })
  * changes as the map grows.
  */
 const cityBit =
-  !cityParam && cityCounts.length > 1
+  !city && cityCounts.length > 1
     ? t('activity.leadCities', { count: cityCounts.length, first: topCities[0].city })
     : '';
 const description =
@@ -142,15 +207,17 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
  * Page 2 canonicalises to itself, never back to page 1 — pointing it at page 1
  * would tell Google to drop exactly the pages that exist to be found.
  *
- * A city filter still canonicalises to the unfiltered page as before; those are
- * robots-disallowed and are not what pagination is for.
+ * The ?city= filter still canonicalises to the unfiltered page — it is
+ * robots-disallowed and only survives for towns too small for a page. A town
+ * page is its own canonical, page by page, exactly like the category.
  */
 const pageSuffix = page > 1 ? `?page=${page}` : '';
-const canonical = cityParam
-  ? `${origin}/activity/${slug}`
-  : `${origin}/activity/${slug}${pageSuffix}`;
+const listPath = town ? `/activity/${slug}/${citySlug(town.city)}` : `/activity/${slug}`;
+const canonical =
+  !town && cityParam ? `${origin}/activity/${slug}` : `${origin}${listPath}${pageSuffix}`;
 
-const pageHref = (n: number) => p(n > 1 ? `/activity/${slug}?page=${n}` : `/activity/${slug}`);
+const pageHref = (n: number) => p(n > 1 ? `${listPath}?page=${n}` : listPath);
+const townHref = (name: string) => p(`/activity/${slug}/${citySlug(name)}`);
 
 const jsonLd: Record<string, unknown>[] = [
   {
@@ -158,7 +225,8 @@ const jsonLd: Record<string, unknown>[] = [
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'LocaStar', item: `${origin}/` },
-      { '@type': 'ListItem', position: 2, name: catName, item: canonical },
+      { '@type': 'ListItem', position: 2, name: catName, item: `${origin}/activity/${slug}` },
+      ...(town ? [{ '@type': 'ListItem', position: 3, name: town.city, item: `${origin}${listPath}` }] : []),
     ],
   },
   {
@@ -203,7 +271,7 @@ jsonLd.push({
   description={description}
   canonical={canonical}
   jsonLd={jsonLd}
-  altSearch={cityParam ? '' : pageSuffix}
+  altSearch={!town && cityParam ? '' : pageSuffix}
 >
   <SiteHeader current="categories" />
 
@@ -214,7 +282,15 @@ jsonLd.push({
       <nav class="mono crumbs" aria-label="Breadcrumb">
         <a href={p('/')}>LocaStar</a>
         <span aria-hidden="true">/</span>
-        <span class="here">{catName}</span>
+        {town ? (
+          <>
+            <a href={p(`/activity/${slug}`)}>{catName}</a>
+            <span aria-hidden="true">/</span>
+            <span class="here">{town.city}</span>
+          </>
+        ) : (
+          <span class="here">{catName}</span>
+        )}
       </nav>
 
       <h1>{heading}</h1>
@@ -229,17 +305,21 @@ jsonLd.push({
         cityCounts.length > 0 && (
           <div class="chips">
             <a
-              class={`chip${cityParam ? '' : ' on'}`}
+              class={`chip${city ? '' : ' on'}`}
               href={p(`/activity/${slug}`)}
-              style={cityParam ? '' : `background:${colour};border-color:${colour}`}
+              style={city ? '' : `background:${colour};border-color:${colour}`}
             >
               {t('activity.all', { count: total })}
             </a>
             {topCities.map((row) => (
               <a
-                class={`chip${cityParam === row.city ? ' on' : ''}`}
-                href={p(`/activity/${slug}?city=${encodeURIComponent(row.city)}`)}
-                style={cityParam === row.city ? `background:${colour};border-color:${colour}` : ''}
+                class={`chip${city === row.city ? ' on' : ''}`}
+                href={
+                  row.count >= CITY_PAGE_MIN_PLACES
+                    ? townHref(row.city)
+                    : p(`/activity/${slug}?city=${encodeURIComponent(row.city)}`)
+                }
+                style={city === row.city ? `background:${colour};border-color:${colour}` : ''}
               >
                 {row.city} {row.count}
               </a>
@@ -252,7 +332,7 @@ jsonLd.push({
 
     <section class="wrap listing">
       <div class="listing-head">
-        <h2>{cityParam ? t('activity.inCity', { city: cityParam }) : t('activity.whereBeen')}</h2>
+        <h2>{city ? t('activity.inCity', { city }) : t('activity.whereBeen')}</h2>
         {listing.total > listing.places.length && (
           <span class="mono soft">{t('activity.showing', { shown: listing.places.length, total: listing.total })}</span>
         )}
@@ -344,6 +424,33 @@ jsonLd.push({
         }
       </div>
     </section>
+
+    {/*
+      Every town that has a page, so that every town page is linked from
+      somewhere. The chips at the top show only the six biggest; without this
+      list the rest would be reachable from the sitemap alone — the orphaned
+      page problem the pagination was built to fix.
+    */}
+    {
+      townList.length > 0 && (
+        <section class="wrap related towns">
+          <h2>{t('activity.byTown', { name: catName })}</h2>
+          <div class="chips">
+            {townList.map((row) => (
+              <a
+                class={`chip${city === row.city ? ' on' : ''}`}
+                href={townHref(row.city)}
+                style={
+                  city === row.city ? `background:${colour};border-color:${colour}` : `border-color:${colour}`
+                }
+              >
+                {row.city} {row.count}
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
 
     {
       related.length > 0 && (
@@ -665,6 +772,11 @@ jsonLd.push({
 
   .related {
     padding-block: 52px 64px;
+  }
+
+  /* Sits directly above "Other things to do", which brings its own spacing. */
+  .related.towns {
+    padding-bottom: 0;
   }
 
   .related h2 {

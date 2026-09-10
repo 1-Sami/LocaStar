@@ -92,6 +92,36 @@ export async function fetchCategoryCityCounts(
  */
 export const CATEGORY_PAGE_SIZE = 48;
 
+/**
+ * A category gets a page of its own in a town — /activity/basketball/huddinge
+ * — only when the town has at least this many places in it.
+ *
+ * Below that the page would be one to four entries under a title that promises
+ * a guide: thin to Google, and a letdown to anyone who arrived from a search.
+ * Those towns stay reachable as the ?city= filter, which robots.txt keeps out
+ * of search. Exported because the page and the sitemap have to agree on it, or
+ * the sitemap advertises pages the page answers with a 404.
+ */
+export const CITY_PAGE_MIN_PLACES = 5;
+
+/**
+ * A town's name as it appears in a URL: "Göteborg" becomes "goteborg" and
+ * "Upplands Väsby" becomes "upplands-vasby".
+ *
+ * Accents folded rather than kept: a Swedish reader types "goteborg" as often
+ * as "göteborg", and a URL with ö in it reaches Google percent-encoded. The
+ * page matches the slug back to a real town by running this same function over
+ * the town list, so the two cannot disagree.
+ */
+export function citySlug(city: string): string {
+  return city
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export async function fetchCategoryPlaces(
   client: SupabaseClient,
   categoryId: string,
@@ -233,6 +263,14 @@ export async function fetchSitemapEntries(
     fetchCategoryCounts(client),
   ]);
 
+  // Every category's towns, for the town pages. One call per category rather
+  // than a new database function: the sitemap is built at most once an hour.
+  const townsByCategory = await Promise.all(
+    counts
+      .filter((row) => row.count > 0)
+      .map(async (row) => ({ slug: row.slug, towns: await fetchCategoryCityCounts(client, row.slug) }))
+  );
+
   return {
     locations: locationRows.map((row) => ({
       path: `/location/${row.id}`,
@@ -253,7 +291,9 @@ export async function fetchSitemapEntries(
      * is what fixes that; listing its pages here is how Google finds the pager
      * without waiting to re-crawl page one first.
      */
-    categories: counts
+    categories: [
+      ...townPages(townsByCategory),
+      ...counts
       .filter((row) => row.count > 0)
       .flatMap((row) => {
         const pages = Math.max(1, Math.ceil(row.count / CATEGORY_PAGE_SIZE));
@@ -262,7 +302,29 @@ export async function fetchSitemapEntries(
           lastmod: null,
         }));
       }),
+    ],
   };
+}
+
+/**
+ * The town pages, and their own pages where a town has more than one page of
+ * places — basketball in Stockholm has 105.
+ */
+function townPages(
+  townsByCategory: { slug: string; towns: CategoryCityCount[] }[]
+): SitemapEntry[] {
+  return townsByCategory.flatMap(({ slug, towns }) =>
+    towns
+      .filter((town) => town.count >= CITY_PAGE_MIN_PLACES)
+      .flatMap((town) => {
+        const base = `/activity/${slug}/${citySlug(town.city)}`;
+        const pages = Math.max(1, Math.ceil(town.count / CATEGORY_PAGE_SIZE));
+        return Array.from({ length: pages }, (_, i) => ({
+          path: i === 0 ? base : `${base}?page=${i + 1}`,
+          lastmod: null,
+        }));
+      })
+  );
 }
 
 /**

@@ -8,6 +8,8 @@ export { fetchSearchResults, SearchPageOutOfRange } from "./api/siteSearch";
 export type { SearchParams, SearchResult, SearchResponse } from "./api/siteSearch";
 export {
   CATEGORY_PAGE_SIZE,
+  CITY_PAGE_MIN_PLACES,
+  citySlug,
   fetchCategoryBySlug,
   fetchAllCategories,
   fetchCategoryCityCounts,
