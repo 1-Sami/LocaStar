@@ -783,6 +783,44 @@ function toRow(el, categorySlug, batch, pointOverride = null) {
 const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/*
+ * Municipalities whose own name already ends in s. Their genitive adds nothing
+ * — "Borås kommun", not "Boråss kommun" — so that s is part of the name and has
+ * to survive. Every other municipality takes a genitive s before the word
+ * ("Linköpings kommun"), and that one has to come off.
+ *
+ * All 290 checked on 2026-09-10. Kalix and Överkalix end in x, so they never
+ * reach the s test at all.
+ */
+const MUNICIPALITIES_ENDING_IN_S = new Set([
+  'Alingsås', 'Bengtsfors', 'Bollnäs', 'Borås', 'Degerfors', 'Grums', 'Hagfors',
+  'Hällefors', 'Hofors', 'Höganäs', 'Kramfors', 'Munkfors', 'Mönsterås',
+  'Robertsfors', 'Sotenäs', 'Storfors', 'Strängnäs', 'Torsås', 'Tranås',
+  'Vännäs', 'Västerås',
+]);
+
+/**
+ * The town to print for a Nominatim reverse-geocode, or null.
+ *
+ * Nominatim falls back to the municipality when a point sits outside any named
+ * town, and Swedish municipalities carry the word: "Botkyrka kommun". In an
+ * address that reads like a council office rather than a place, so the word
+ * goes — "146 54 Botkyrka" is what anyone would write on an envelope.
+ *
+ * The first version stopped there, and that was the bug: the name in front of
+ * "kommun" is genitive, so "Linköpings kommun" became "Linköpings". 1,874
+ * imported places carried a name like that until migrations 0133–0135 — one
+ * town split into two in every filter and on every card, and a category's town
+ * page would have been titled "Basketball in Linköpings".
+ */
+function townFromNominatim(a) {
+  const raw = a.city ?? a.town ?? a.municipality ?? '';
+  const bare = raw.replace(/\s+kommun$/i, '');
+  if (bare === raw) return raw || null;
+  if (MUNICIPALITIES_ENDING_IN_S.has(bare)) return bare;
+  return bare.replace(/s$/, '') || null;
+}
+
 /**
  * Fills in address and name from the coordinates, for rows OSM left bare.
  *
@@ -829,12 +867,7 @@ async function geocodeMissing(rows, onProgress, verifyCountry = false) {
         const a = (await response.json()).address ?? {};
         if (verifyCountry) row.countryCode = a.country_code ?? null;
         const area = a.suburb ?? a.city_district ?? a.neighbourhood ?? a.village ?? null;
-        // Nominatim falls back to the municipality when a point sits outside any
-        // named town, and Swedish municipalities carry the word: "Botkyrka
-        // kommun". In an address line that reads like a council office rather
-        // than a place, so drop the suffix — "146 54 Botkyrka" is what anyone
-        // would write on an envelope.
-        const town = (a.city ?? a.town ?? a.municipality ?? '').replace(/\s+kommun$/i, '') || null;
+        const town = townFromNominatim(a);
 
         // Nominatim sometimes hands back a bare number as the road — a forest
         // track or an unnamed service road. Taken at face value that produced a
