@@ -594,7 +594,7 @@ const seasonLabel =
                 <input type="hidden" name="on" value={isFavourite ? '0' : '1'} />
                 <input type="hidden" name="back" value={backHere} />
                 <button class={`ghost${isFavourite ? ' on' : ''}`} type="submit">
-                  {isFavourite ? `♥ ${t('loc.saved')}` : `♡ ${t('loc.save')}`}
+                  {isFavourite ? t('loc.saved') : t('loc.save')}
                 </button>
               </form>
 
@@ -604,7 +604,7 @@ const seasonLabel =
                 <input type="hidden" name="on" value={isBookmarked ? '0' : '1'} />
                 <input type="hidden" name="back" value={backHere} />
                 <button class={`ghost${isBookmarked ? ' on' : ''}`} type="submit">
-                  {isBookmarked ? `🔖 ${t('loc.bookmarked')}` : t('loc.bookmark')}
+                  {isBookmarked ? t('loc.bookmarked') : t('loc.bookmark')}
                 </button>
               </form>
 
