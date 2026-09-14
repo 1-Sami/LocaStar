@@ -56,18 +56,13 @@ export const ui = {
     'common.results': 'RESULTS',
     'common.clearAll': 'CLEAR ALL',
 
-    /* Beside the QR code, which appears under the store badges wherever they
-       do. A sentence rather than a mono label: it is an instruction, and the
-       code next to it is small. */
-    'app.scan': 'Scan to install on your phone',
-
     'home.eyebrowPlaces': 'PLACES AND EVENTS',
     'home.eyebrowCategories': 'CATEGORIES',
     'home.title': 'Explore',
     'home.promise':
       'One map of things to actually go and do — described by the people who have been there.',
     'home.appStoreAlt': 'Download on the App Store',
-    'home.storeSoon': 'Free · iOS and Android · English and Swedish',
+    'home.storeSoon': 'Free · iOS and Android',
     /* Temporary: shown only while STORE_LINKS.googlePlay is empty. Delete the
        key in both languages once Play approves. */
     'home.androidNotYet': 'Android app not yet released',
@@ -647,18 +642,13 @@ export const ui = {
     'common.results': 'TRÄFFAR',
     'common.clearAll': 'RENSA ALLT',
 
-    /* "Skanna" rather than "läs av": it is what a Swedish phone camera calls
-       it. "I telefonen" rather than "på din telefon" — shorter, and Swedish
-       does not need the possessive to say whose phone it is. */
-    'app.scan': 'Skanna för att installera i telefonen',
-
     'home.eyebrowPlaces': 'PLATSER OCH EVENEMANG',
     'home.eyebrowCategories': 'KATEGORIER',
     'home.title': 'Utforska',
     'home.promise':
       'En karta över saker att faktiskt göra — beskrivna av dem som har varit där.',
     'home.appStoreAlt': 'Ladda ned via App Store',
-    'home.storeSoon': 'Gratis · iOS och Android · svenska och engelska',
+    'home.storeSoon': 'Gratis · iOS och Android',
     'home.androidNotYet': 'Android-appen har inte släppts än',
     'home.finderActivity': 'AKTIVITET',
     'home.finderAnyType': 'Plats · Evenemang',

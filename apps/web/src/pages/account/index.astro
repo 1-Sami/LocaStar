@@ -1101,10 +1101,10 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
    *
    * Only the desktop layout was meant to change, so rather than making one
    * shape reflow into the other -- which would have quietly altered the narrow
-   * view as well -- both are rendered and one is hidden. Same approach as the
-   * QR code in AppQr: the server cannot know the viewport, so the markup is
-   * always sent and CSS decides. It costs a few hundred bytes on a page that is
-   * behind a login and lists your own saves.
+   * view as well -- both are rendered and one is hidden. The server cannot
+   * know the viewport, so the markup is always sent and CSS decides. It costs
+   * a few hundred bytes on a page that is behind a login and lists your own
+   * saves.
    */
   .narrow-only {
     display: none;

@@ -1,5 +1,4 @@
 ---
-import AppQr from '../components/AppQr.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import StoreBadge from '../components/StoreBadge.astro';
@@ -58,15 +57,11 @@ const p = (href: string) => localePath(href, lang);
 
       {/*
         This page's whole message is "do it in the app", and until now it said
-        so without offering any way to get the app. The code is the useful half
-        on a desktop, where the badges cannot do anything.
+        so without offering any way to get the app.
       */}
       <div class="get">
-        <AppQr />
-        <div class="get-badges">
-          <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
-          <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
-        </div>
+        <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
+        <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
       </div>
 
       <div class="actions">
@@ -95,12 +90,7 @@ const p = (href: string) => localePath(href, lang);
   .notice h2 { font-size: 20px; margin-bottom: 12px; }
   .notice p { margin: 0 0 10px; font-size: 15px; line-height: 1.65; color: var(--text-70); max-width: 58ch; }
   .small { font-size: 13px; color: var(--text-55); }
-  /* The code beside the badges rather than above them: it is taller than they
-     are, and stacked it pushed the buttons below the fold on a laptop. */
-  /* Centred because the code is taller than a badge. Below 900px AppQr hides
-     itself, so this is just the badge row and there is nothing to align to. */
-  .get { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
-  .get-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+  .get { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
 
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
   .ghost { border: 1px solid var(--border); border-radius: 8px; padding: 11px 18px; font-weight: 500; font-size: 14px; color: var(--text); }

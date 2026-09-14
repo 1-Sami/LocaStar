@@ -5,12 +5,17 @@ import { STORE_LINKS, appStoreReady, googlePlayReady } from '../lib/site';
 export const prerender = false;
 
 /*
- * The address behind every QR code on the site, and the only one that can be.
+ * The address inside the QR codes the site used to show.
+ *
+ * The codes came off the pages on 2026-09-14, the owner's call. This stays: a
+ * QR is photographed, printed and screenshotted, and scanned months later, so
+ * every code that ever left a screen still points here and must still land
+ * somewhere. Deleting it would turn each of them into a 404.
  *
  * A scan happens on a phone we know nothing about until it arrives, so the
  * store is chosen here from the request rather than baked into the picture.
- * That also means the code on a poster keeps working the day Google Play goes
- * live: one line in site.ts, no reprint.
+ * That also means an old code keeps working the day Google Play goes live:
+ * one line in site.ts, no reprint.
  *
  * Anything that is not a phone — or a phone whose store we cannot serve yet —
  * lands on the home page's download band, which shows both badges and says out

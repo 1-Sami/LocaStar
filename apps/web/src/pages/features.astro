@@ -1,5 +1,4 @@
 ---
-import AppQr from '../components/AppQr.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
@@ -78,7 +77,6 @@ const bands = [
           <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
         </div>
-        <AppQr />
       </div>
     </section>
   </main>

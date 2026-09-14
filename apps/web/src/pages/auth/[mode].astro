@@ -1,6 +1,5 @@
 ---
 import { isValidUsername, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from '@locastar/shared';
-import AppQr from '../../components/AppQr.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import StoreBadge from '../../components/StoreBadge.astro';
@@ -229,9 +228,7 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
       {/*
         The panel beside the form was an empty gradient. It is the one place on
         the site where somebody has already decided they want an account, which
-        makes it the best place to offer the app — and the code is here rather
-        than a bare badge because this page is mostly opened on a laptop, where
-        a store link is the least useful thing we could offer.
+        makes it the best place to offer the app.
 
         No heading and no paragraph: the owner cut both. The two badges say
         what this is, and a pitch beside a sign-in form is talking over
@@ -242,7 +239,6 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
           <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
         </div>
-        <AppQr />
       </aside>
     </div>
   </main>
@@ -500,8 +496,7 @@ const description = isSignUp ? t('auth.signUpDesc') : t('auth.signInDesc');
     /*
      * Under the form rather than gone. It used to be display: none, which was
      * right while the panel was decoration — it offers the app now, and a
-     * phone is the one device that can act on that. The code inside it hides
-     * itself at this width; the badges are the part that works here.
+     * phone is the one device that can act on that.
      */
     .art {
       padding: 26px 24px 30px;
