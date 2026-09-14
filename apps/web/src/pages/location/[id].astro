@@ -97,6 +97,28 @@ const hasHours = Boolean(location.hours && Object.keys(location.hours).length > 
 const category = categoryName(location.category_slug, lang) ?? location.category_label;
 const city = location.city;
 
+/*
+ * The place's own website, shown as its domain.
+ *
+ * Stored as typed. Nearly all are full addresses, but a couple are a bare host
+ * ("Taby-park.se"), and a bare host in an href is a relative link to a page of
+ * ours that does not exist. Anything that will not parse is left out rather
+ * than linked — which is also what keeps a typed "javascript:" from becoming
+ * one. The label is the domain alone: 189 of the 803 are over 80 characters of
+ * council-site path.
+ */
+function websiteLink(raw: string | null): { href: string; host: string } | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return { href: url.href, host: url.hostname.replace(/^www\./, '') };
+  } catch {
+    return null;
+  }
+}
+const website = websiteLink(location.website);
+
 const title =
   [location.name, category ? `— ${category}` : null, city ? t('loc.inCity', { city }) : null].filter(Boolean).join(' ') +
   ' | LocaStar';
@@ -137,7 +159,7 @@ const jsonLd: Record<string, unknown>[] = [
     ...(photos.length
       ? { image: photos.map((photo) => photo.url), photo: photos.map((photo) => photo.url) }
       : {}),
-    ...(location.website ? { sameAs: location.website } : {}),
+    ...(website ? { sameAs: website.href } : {}),
     ...(rating.rated
       ? {
           aggregateRating: {
@@ -442,7 +464,7 @@ const seasonLabel =
             {location.kind === 'activity' && <span class="badge outline">{t('loc.activity')}</span>}
             {(location.available_summer || location.available_winter) && (
               <span class="mono season">
-                {[location.available_summer && 'Summer', location.available_winter && 'Winter']
+                {[location.available_summer && t('loc.summer'), location.available_winter && t('loc.winter')]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
@@ -493,6 +515,24 @@ const seasonLabel =
             </div>
             <span class="sub">{longDate(location.created_at)}</span>
           </div>
+          {/*
+            Nofollow when a person typed it rather than OpenStreetMap: a new
+            account can add a place, and a followed link from a page on a site
+            like this one is worth something to a spammer.
+          */}
+          {website && (
+            <a
+              class="card site"
+              href={website.href}
+              target="_blank"
+              rel={location.created_by ? 'ugc nofollow noopener' : 'noopener'}
+            >
+              <span class="mono label">{t('loc.website')}</span>
+              <span class="value">
+                {website.host} <span aria-hidden="true">↗</span>
+              </span>
+            </a>
+          )}
         </div>
 
         <div class="hairline" />
@@ -1215,6 +1255,29 @@ const seasonLabel =
   .sub {
     font-size: 12.5px;
     color: var(--text-55);
+  }
+
+  /*
+   * The whole width, under the three cards rather than a fourth beside them:
+   * the row is three columns at every size, so a fourth card sat on a line of
+   * its own a third wide. One line — label, then the domain.
+   */
+  .card.site {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .card.site .value {
+    margin-top: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .card.site:hover {
+    border-color: var(--accent);
   }
 
   .hairline {
