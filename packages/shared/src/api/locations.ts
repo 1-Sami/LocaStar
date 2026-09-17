@@ -78,6 +78,13 @@ export type NearbyLocationsParams = {
   sort?: "distance" | "rating";
   season?: "summer" | "winter" | null;
   /**
+   * Free to use, or costs money. Null means no preference.
+   *
+   * Three-valued in the database (migration 0138), so a place nobody has said
+   * either way about answers neither — the same as an untagged season.
+   */
+  price?: "free" | "paid" | null;
+  /**
    * Most rows to return. The RPC defaults to 100; before migration 0083 there
    * was no cap at all, so every search returned the entire table.
    */
@@ -112,7 +119,7 @@ export type NearbyLocationsParams = {
  */
 export async function fetchNearbyLocationsBrief(
   client: SupabaseClient,
-  params: Omit<NearbyLocationsParams, 'searchQuery' | 'sort' | 'offset'>
+  params: Omit<NearbyLocationsParams, 'searchQuery' | 'sort' | 'offset' | 'price'>
 ): Promise<NearbyLocation[]> {
   const { data, error } = await client.rpc('nearby_locations_brief', {
     lat: params.lat,
@@ -139,6 +146,7 @@ export async function fetchNearbyLocations(
     search_query: params.searchQuery ?? null,
     sort: params.sort ?? "distance",
     season_filter: params.season ?? null,
+    price_filter: params.price ?? null,
     max_results: params.maxResults ?? 100,
     kind_filter: params.kind ?? null,
     result_offset: params.offset ?? 0,
@@ -200,6 +208,8 @@ export type LocationDetail = {
   owner_username: string | null;
   available_summer: boolean;
   available_winter: boolean;
+  /** true free, false costs money, null nobody has said. */
+  is_free: boolean | null;
   other_category_detail: string | null;
   /** From generated columns on locations, so the screen can show how far away it is. */
   lat: number;
@@ -241,6 +251,7 @@ type LocationDetailRow = {
   location_categories: { categories: { slug: string; name: string } | null }[];
   available_summer: boolean;
   available_winter: boolean;
+  is_free: boolean | null;
   other_category_detail: string | null;
 };
 
@@ -268,6 +279,8 @@ export type LocationSubmission = {
   otherCategoryDetail?: string | null;
   availableSummer?: boolean;
   availableWinter?: boolean;
+  /** true free, false costs money, undefined or null leaves it unsaid. */
+  isFree?: boolean | null;
 };
 
 export async function submitLocation(client: SupabaseClient, input: LocationSubmission): Promise<string> {
@@ -295,6 +308,7 @@ export async function submitLocation(client: SupabaseClient, input: LocationSubm
       other_category_detail: input.otherCategoryDetail ?? null,
       available_summer: input.availableSummer ?? false,
       available_winter: input.availableWinter ?? false,
+      is_free: input.isFree ?? null,
     })
     .select("id")
     .single();
@@ -559,7 +573,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, city, country, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, city, country, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, is_free, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -600,6 +614,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     category_label: primaryCategory?.name ?? null,
     available_summer: row.available_summer,
     available_winter: row.available_winter,
+    is_free: row.is_free,
     other_category_detail: row.other_category_detail,
     lat: row.lat,
     lng: row.lng,
@@ -756,6 +771,8 @@ export type LocationUpdate = {
   hoursNotApplicable: boolean;
   availableSummer: boolean;
   availableWinter: boolean;
+  /** true free, false costs money, null unsaid. Always sent, like the seasons. */
+  isFree: boolean | null;
   /**
    * Whether the place is on the public map, or undefined to leave it alone.
    *
@@ -801,6 +818,7 @@ export async function updateLocation(
       hours_not_applicable: input.hoursNotApplicable,
       available_summer: input.availableSummer,
       available_winter: input.availableWinter,
+      is_free: input.isFree,
       // Each omitted unless the caller asked, so a screen that does not offer
       // the field cannot blank it by saving everything else.
       ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),

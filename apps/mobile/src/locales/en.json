@@ -187,13 +187,15 @@
     "noMatches": "No matches.",
     "backToTop": "Back to top",
     "thatsAll": "THAT’S ALL {{count}}",
-    "filterTitle": "Filter",
     "show": "SHOW",
     "onlyActivities": "Events",
     "onlyPlaces": "Places",
     "season": "SEASON",
     "summer": "Summer",
     "winter": "Winter",
+    "type": "TYPE",
+    "free": "Free",
+    "paid": "Paid",
     "categories": "CATEGORIES",
     "searchCategories": "Search categories",
     "noCategoriesMatch": "No categories match that search.",
@@ -345,7 +347,7 @@
     "emailInvalid": "That doesn’t look like an email address. Leave it empty if you’d rather not give one.",
     "phone": "Phone number",
     "phonePlaceholder": "Phone number (optional)",
-    "whenToVisit": "When to visit the location. (Optional)",
+    "placeType": "Type of place/activity? (optional)",
     "addPhotos": "Add photos",
     "categories": "Categories",
     "searchCategories": "Search categories",
@@ -421,9 +423,9 @@
       "place": "Tap or drag the pin to set exactly where this place is.",
       "activity": "Tap or drag the pin to set exactly where this event is."
     },
-    "whenAvailable": {
-      "place": "When is this place available? (optional)",
-      "activity": "When is this event available? (optional)"
+    "placeType": {
+      "place": "Type of place? (optional)",
+      "activity": "Type of event? (optional)"
     },
     "submitButton": {
       "place": "Submit place",

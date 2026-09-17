@@ -103,6 +103,7 @@ export default function EditLocationScreen() {
   const [hours, setHours] = useState<OpeningHours>({});
   const [availableSummer, setAvailableSummer] = useState(false);
   const [availableWinter, setAvailableWinter] = useState(false);
+  const [isFree, setIsFree] = useState<boolean | null>(null);
   /*
    * An event's dates, and whether it is on the public map.
    *
@@ -176,6 +177,7 @@ export default function EditLocationScreen() {
             // visible before you save, and it can be unticked like any other.
             setHours(location.hours_not_applicable ? ALWAYS_OPEN : (location.hours ?? {}));
             setAvailableSummer(location.available_summer);
+            setIsFree(location.is_free);
             setAvailableWinter(location.available_winter);
             setIsPrivate(location.visibility === 'private');
             setStartDate(location.starts_at ? new Date(location.starts_at) : null);
@@ -385,6 +387,7 @@ export default function EditLocationScreen() {
         hoursNotApplicable: false,
         availableSummer,
         availableWinter,
+        isFree,
         // Events only. Sending these for a place would write dates onto
         // something that has none and take it off the public map.
         visibility: isActivity && isPrivate !== null ? (isPrivate ? 'private' : 'public') : undefined,
@@ -634,26 +637,52 @@ export default function EditLocationScreen() {
             />
           </View>
 
+          {/* Same row as the add screen — see the note there. */}
           <View style={[styles.seasonRow, styles.section]}>
-            <ThemedText type="default">{t('form.whenToVisit')}</ThemedText>
-            <View style={styles.seasonOptions}>
+            <ThemedText type="default">{t('form.placeType')}</ThemedText>
+            <View style={styles.typeOptions}>
               <Pressable
-                style={styles.seasonOption}
+                style={[styles.typePill, { borderColor: theme.fieldBorder }, availableSummer && styles.typePillOn]}
                 onPress={() => {
                   setAvailableSummer((v) => !v);
                   setSaved(false);
                 }}>
-                <View style={[styles.checkbox, { borderColor: theme.fieldBorder }, availableSummer && styles.checkboxChecked]} />
-                <ThemedText type="small">☀ {t('search.summer')}</ThemedText>
+                <ThemedText type="small" style={availableSummer ? styles.typePillTextOn : undefined}>
+                  ☀ {t('search.summer')}
+                </ThemedText>
               </Pressable>
               <Pressable
-                style={styles.seasonOption}
+                style={[styles.typePill, { borderColor: theme.fieldBorder }, availableWinter && styles.typePillOn]}
                 onPress={() => {
                   setAvailableWinter((v) => !v);
                   setSaved(false);
                 }}>
-                <View style={[styles.checkbox, { borderColor: theme.fieldBorder }, availableWinter && styles.checkboxChecked]} />
-                <ThemedText type="small">❄ {t('search.winter')}</ThemedText>
+                <ThemedText type="small" style={availableWinter ? styles.typePillTextOn : undefined}>
+                  ❄ {t('search.winter')}
+                </ThemedText>
+              </Pressable>
+              {/* Season and price are different questions, and four bare pills
+                  in a row read as one set of four. */}
+              <View style={[styles.typeDivider, { backgroundColor: theme.fieldBorder }]} />
+              <Pressable
+                style={[styles.typePill, { borderColor: theme.fieldBorder }, isFree === true && styles.typePillOn]}
+                onPress={() => {
+                  setIsFree((v) => (v === true ? null : true));
+                  setSaved(false);
+                }}>
+                <ThemedText type="small" style={isFree === true ? styles.typePillTextOn : undefined}>
+                  {t('search.free')}
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.typePill, { borderColor: theme.fieldBorder }, isFree === false && styles.typePillOn]}
+                onPress={() => {
+                  setIsFree((v) => (v === false ? null : false));
+                  setSaved(false);
+                }}>
+                <ThemedText type="small" style={isFree === false ? styles.typePillTextOn : undefined}>
+                  {t('search.paid')}
+                </ThemedText>
               </Pressable>
             </View>
           </View>
@@ -836,14 +865,36 @@ const styles = StyleSheet.create({
   seasonRow: {
     gap: Spacing.two,
   },
-  seasonOptions: {
-    flexDirection: 'row',
-    gap: Spacing.five,
-  },
-  seasonOption: {
+  typeOptions: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: Spacing.two,
+  },
+  /* Spacing.two, not three: at three the four pills and their divider came to
+     351px against the 342 a 390pt phone has, so "Paid" wrapped onto a line of
+     its own. They fit on one line now, and still wrap rather than clip on the
+     narrowest phones in Swedish. */
+  typePill: {
+    borderWidth: 1,
+    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  /* The same teal a ticked checkbox used here before, so the screen did not
+     grow a second "chosen" colour when these stopped being checkboxes. */
+  typePillOn: {
+    backgroundColor: '#14747A',
+    borderColor: '#14747A',
+  },
+  typePillTextOn: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  typeDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    marginHorizontal: Spacing.one,
   },
   input: {
     // A full point rather than a hairline: the outline is the only thing that

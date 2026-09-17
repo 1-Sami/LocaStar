@@ -187,13 +187,15 @@
     "noMatches": "Inga träffar.",
     "backToTop": "Till toppen",
     "thatsAll": "DET VAR ALLA {{count}}",
-    "filterTitle": "Filter",
     "show": "VISA",
     "onlyActivities": "Evenemang",
     "onlyPlaces": "Platser",
     "season": "SÄSONG",
     "summer": "Sommar",
     "winter": "Vinter",
+    "type": "TYP",
+    "free": "Gratis",
+    "paid": "Avgift",
     "categories": "KATEGORIER",
     "searchCategories": "Sök kategorier",
     "noCategoriesMatch": "Inga kategorier matchar sökningen.",
@@ -345,7 +347,7 @@
     "emailInvalid": "Det ser inte ut som en mejladress. Lämna fältet tomt om du hellre avstår.",
     "phone": "Telefonnummer",
     "phonePlaceholder": "Telefonnummer (valfritt)",
-    "whenToVisit": "När platsen passar att besöka. (Valfritt)",
+    "placeType": "Typ av plats/evenemang? (valfritt)",
     "addPhotos": "Lägg till foton",
     "categories": "Kategorier",
     "searchCategories": "Sök kategorier",
@@ -421,9 +423,9 @@
       "place": "Tryck eller dra i nålen för att sätta exakt var platsen ligger.",
       "activity": "Tryck eller dra i nålen för att sätta exakt var evenemanget är."
     },
-    "whenAvailable": {
-      "place": "När är platsen tillgänglig? (valfritt)",
-      "activity": "När är evenemanget tillgängligt? (valfritt)"
+    "placeType": {
+      "place": "Typ av plats? (valfritt)",
+      "activity": "Typ av evenemang? (valfritt)"
     },
     "submitButton": {
       "place": "Skicka in plats",

@@ -1,6 +1,5 @@
 import { fetchCategories, fetchNearbyLocations, type Category, type NearbyLocation } from '@locastar/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -71,9 +70,6 @@ const SORT_OPTIONS = [
   { key: 'rating', labelKey: 'search.sortRating' },
 ] as const;
 
-// Pink → silver → green sheen for the "Filter" chip's border.
-const FILTER_BORDER_GRADIENT = ['#E84CA9', '#C9CDD3', '#4CD37A'] as const;
-
 export default function SearchScreen() {
   const {
     season: initialSeason,
@@ -125,6 +121,9 @@ export default function SearchScreen() {
   const [activeKind, setActiveKind] = useState<'place' | 'activity' | null>(
     initialKind === 'activity' || initialKind === 'place' ? initialKind : null
   );
+  // Free or paid, or no preference. Nothing links here carrying one, so unlike
+  // season and kind it has no param to read.
+  const [activePrice, setActivePrice] = useState<'free' | 'paid' | null>(null);
   // Results used to load once and never again, so a location added since the
   // app started never showed up. Bumping this on focus re-runs the query.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -166,6 +165,16 @@ export default function SearchScreen() {
    * would be spliced onto page one of the new one.
    */
   const searchGeneration = useRef(0);
+
+  /*
+   * What the badge on the filter button counts.
+   *
+   * Everything the sheet can set, not just the categories: the sheet is now the
+   * only way to reach kind, season and price, so a badge that ignored them
+   * would say "none" while three filters were quietly on.
+   */
+  const activeFilterCount =
+    activeSlugs.length + (activeKind ? 1 : 0) + (activeSeason ? 1 : 0) + (activePrice ? 1 : 0);
 
   /*
    * How many rows are on screen, and which search produced them.
@@ -217,7 +226,7 @@ export default function SearchScreen() {
 
     // A changed filter starts over at one page; anything else — coming back to
     // the tab, a location added elsewhere — keeps what is already on screen.
-    const filterKey = JSON.stringify([trimmed, [...activeSlugs].sort(), sortBy, activeSeason, activeKind]);
+    const filterKey = JSON.stringify([trimmed, [...activeSlugs].sort(), sortBy, activeSeason, activeKind, activePrice]);
     const isRefresh = lastFilterKey.current === filterKey;
     lastFilterKey.current = filterKey;
     const wanted = isRefresh
@@ -246,6 +255,7 @@ export default function SearchScreen() {
         searchQuery: trimmed.length > 0 ? trimmed : null,
         sort: sortBy,
         season: activeSeason,
+        price: activePrice,
         kind: activeKind,
         maxResults: wanted,
       })
@@ -298,7 +308,7 @@ export default function SearchScreen() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [coords, query, activeSlugs, sortBy, activeSeason, activeKind, refreshKey]);
+  }, [coords, query, activeSlugs, sortBy, activeSeason, activeKind, activePrice, refreshKey]);
 
   const cards = results.map(nearbyLocationToCard);
   const sortLabelKey = SORT_OPTIONS.find((o) => o.key === sortBy)?.labelKey ?? 'search.sortBy';
@@ -336,6 +346,7 @@ export default function SearchScreen() {
       searchQuery: trimmed.length > 0 ? trimmed : null,
       sort: sortBy,
       season: activeSeason,
+      price: activePrice,
       kind: activeKind,
       maxResults: PAGE_SIZE,
       offset: results.length,
@@ -359,7 +370,7 @@ export default function SearchScreen() {
     // loadingMore is deliberately absent: the guard is loadingMoreRef, and
     // depending on the state as well would rebuild this callback on every page
     // for no benefit.
-  }, [coords, loading, hasMore, query, activeSlugs, sortBy, activeSeason, activeKind, results.length]);
+  }, [coords, loading, hasMore, query, activeSlugs, sortBy, activeSeason, activeKind, activePrice, results.length]);
 
   /*
    * Drag down from the top to ask the database again.
@@ -423,37 +434,46 @@ export default function SearchScreen() {
               <Ionicons name="close-circle" size={18} color={palette.textMuted} />
             </Pressable>
           )}
+
+          {/* Inside the field, behind a divider, rather than a pill of its own
+              below it: it belongs to the search the way the sort control
+              belongs to the results. The badge is what tells you filters are on
+              now that the word FILTER is gone. */}
+          <View style={styles.searchBarDivider} />
+          <Pressable
+            onPress={() => setPickerVisible(true)}
+            hitSlop={8}
+            accessibilityLabel={t('search.filter')}
+            style={styles.searchFilterButton}>
+            <Ionicons name="options-sharp" size={18} color={palette.text} />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
 
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterRow}
-          contentContainerStyle={styles.filterRowContent}
-          data={categories.filter((c) => activeSlugs.includes(c.slug))}
-          keyExtractor={(item) => item.slug}
-          ListHeaderComponent={
-            <Pressable onPress={() => setPickerVisible(true)}>
-              <LinearGradient
-                colors={FILTER_BORDER_GRADIENT}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.filterButtonGradient}>
-                <View style={styles.filterButton}>
-                  <Ionicons name="options-sharp" size={14} color={palette.text} />
-                  <Text style={styles.filterButtonText}>{t('search.filter')}</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-          }
-          renderItem={({ item }) => (
-            <CategoryChip
-              label={categoryLabel(t, item.slug, item.name)}
-              categorySlug={item.slug}
-              onRemove={() => setActiveSlugs((current) => current.filter((s) => s !== item.slug))}
-            />
-          )}
-        />
+        {/* Only when there is something in it. The row used to be held open by
+            the FILTER button living in it; with that moved into the field
+            above, an empty row is 44px of nothing above the results. */}
+        {activeSlugs.length > 0 && (
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterRow}
+            contentContainerStyle={styles.filterRowContent}
+            data={categories.filter((c) => activeSlugs.includes(c.slug))}
+            keyExtractor={(item) => item.slug}
+            renderItem={({ item }) => (
+              <CategoryChip
+                label={categoryLabel(t, item.slug, item.name)}
+                categorySlug={item.slug}
+                onRemove={() => setActiveSlugs((current) => current.filter((s) => s !== item.slug))}
+              />
+            )}
+          />
+        )}
 
         {/*
           Typed text counts as something to clear, and clearing empties the box
@@ -461,17 +481,16 @@ export default function SearchScreen() {
           leaving the search term behind would have been a half-answer — and the
           term is usually the narrower filter of the two.
         */}
-        {(query.length > 0 ||
-          activeSlugs.length > 0 ||
-          activeSeason !== null ||
-          activeKind !== null) && (
+        {(query.length > 0 || activeFilterCount > 0) && (
           <Pressable
             style={styles.resetFiltersButton}
+            hitSlop={8}
             onPress={() => {
               setQuery('');
               setActiveSlugs([]);
               setActiveSeason(null);
               setActiveKind(null);
+              setActivePrice(null);
             }}>
             <Text style={styles.resetFiltersText}>{t('search.resetFilters')}</Text>
           </Pressable>
@@ -579,52 +598,77 @@ export default function SearchScreen() {
               a Pressable would make every tap inside it dismiss the sheet. */}
           <Pressable style={StyleSheet.absoluteFill} onPress={closePicker} />
           <Pressable style={styles.modalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>{t('search.filterTitle')}</Text>
+            {/* No title: the sheet only ever opens from the filter button, so
+                the word "Filter" was a heading that said what the tap already
+                said. Three columns rather than three stacked rows — six chips
+                in pairs fit across a phone, and the sheet opens over a keyboard
+                often enough that the height saved is worth having.
 
-            {/* Above Season because it is the broader cut, and visible at all
-                so that arriving here from Home's "Show more" is something you
-                can see and undo rather than a filter with no control. The
-                chips carry an icon each: the section below is headed
-                ACTIVITIES too, but means categories — a collision worth not
-                deepening with two bare words that look alike. */}
-            <Text style={styles.modalSectionLabel}>{t('search.show')}</Text>
-            <View style={styles.modalSeasonRow}>
-              <Pressable
-                style={[styles.modalSeasonChip, activeKind === 'activity' && styles.modalSeasonChipActive]}
-                onPress={() => setActiveKind((current) => (current === 'activity' ? null : 'activity'))}>
-                <Text
-                  style={[styles.modalSeasonChipText, activeKind === 'activity' && styles.modalSeasonChipTextActive]}>
-                  📅 {t('search.onlyActivities')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalSeasonChip, activeKind === 'place' && styles.modalSeasonChipActive]}
-                onPress={() => setActiveKind((current) => (current === 'place' ? null : 'place'))}>
-                <Text
-                  style={[styles.modalSeasonChipText, activeKind === 'place' && styles.modalSeasonChipTextActive]}>
-                  📍 {t('search.onlyPlaces')}
-                </Text>
-              </Pressable>
-            </View>
+                Show first because it is the broadest cut, and shown at all so
+                that arriving here from Home's "Show more" is something you can
+                see and undo. The chips carry an icon each: the section below is
+                headed ACTIVITIES too, but means categories — a collision worth
+                not deepening with two bare words that look alike. */}
+            <View style={styles.modalFilterGroups}>
+              <View style={styles.modalFilterGroup}>
+                <Text style={styles.modalSectionLabel}>{t('search.show')}</Text>
+                <Pressable
+                  style={[styles.modalFilterChip, activeKind === 'activity' && styles.modalSeasonChipActive]}
+                  onPress={() => setActiveKind((current) => (current === 'activity' ? null : 'activity'))}>
+                  <Text
+                    style={[styles.modalSeasonChipText, activeKind === 'activity' && styles.modalSeasonChipTextActive]}>
+                    📅 {t('search.onlyActivities')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalFilterChip, activeKind === 'place' && styles.modalSeasonChipActive]}
+                  onPress={() => setActiveKind((current) => (current === 'place' ? null : 'place'))}>
+                  <Text
+                    style={[styles.modalSeasonChipText, activeKind === 'place' && styles.modalSeasonChipTextActive]}>
+                    📍 {t('search.onlyPlaces')}
+                  </Text>
+                </Pressable>
+              </View>
 
-            <Text style={styles.modalSectionLabel}>{t('search.season')}</Text>
-            <View style={styles.modalSeasonRow}>
-              <Pressable
-                style={[styles.modalSeasonChip, activeSeason === 'summer' && styles.modalSeasonChipActive]}
-                onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
-                <Text
-                  style={[styles.modalSeasonChipText, activeSeason === 'summer' && styles.modalSeasonChipTextActive]}>
-                  ☀ {t('search.summer')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalSeasonChip, activeSeason === 'winter' && styles.modalSeasonChipActive]}
-                onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
-                <Text
-                  style={[styles.modalSeasonChipText, activeSeason === 'winter' && styles.modalSeasonChipTextActive]}>
-                  ❄ {t('search.winter')}
-                </Text>
-              </Pressable>
+              <View style={styles.modalFilterGroup}>
+                <Text style={styles.modalSectionLabel}>{t('search.season')}</Text>
+                <Pressable
+                  style={[styles.modalFilterChip, activeSeason === 'summer' && styles.modalSeasonChipActive]}
+                  onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
+                  <Text
+                    style={[styles.modalSeasonChipText, activeSeason === 'summer' && styles.modalSeasonChipTextActive]}>
+                    ☀ {t('search.summer')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalFilterChip, activeSeason === 'winter' && styles.modalSeasonChipActive]}
+                  onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
+                  <Text
+                    style={[styles.modalSeasonChipText, activeSeason === 'winter' && styles.modalSeasonChipTextActive]}>
+                    ❄ {t('search.winter')}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.modalFilterGroup}>
+                <Text style={styles.modalSectionLabel}>{t('search.type')}</Text>
+                <Pressable
+                  style={[styles.modalFilterChip, activePrice === 'free' && styles.modalSeasonChipActive]}
+                  onPress={() => setActivePrice((current) => (current === 'free' ? null : 'free'))}>
+                  <Text
+                    style={[styles.modalSeasonChipText, activePrice === 'free' && styles.modalSeasonChipTextActive]}>
+                    {t('search.free')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalFilterChip, activePrice === 'paid' && styles.modalSeasonChipActive]}
+                  onPress={() => setActivePrice((current) => (current === 'paid' ? null : 'paid'))}>
+                  <Text
+                    style={[styles.modalSeasonChipText, activePrice === 'paid' && styles.modalSeasonChipTextActive]}>
+                    {t('search.paid')}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
 
             <Text style={styles.modalSectionLabel}>{t('search.categories')}</Text>
@@ -749,63 +793,59 @@ const createStyles = (c: SearchPaletteColors) =>
     gap: Spacing.two,
     alignItems: 'center',
   },
-  filterButtonGradient: {
-    borderRadius: 10,
-    padding: 1.5,
+  /* A hairline between the text and the button, so the field reads as a box
+     with a control at its end rather than an icon floating in the input. */
+  searchBarDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    marginVertical: Spacing.two,
+    marginLeft: Spacing.two,
+    backgroundColor: c.inputBorder,
   },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    // Fixed height rather than padding around the text: a padding-driven pill
-    // is sized from font metrics, so it got squeezed and clipped its label when
-    // the keyboard opened.
-    height: 30,
+  searchFilterButton: {
+    paddingLeft: Spacing.two,
+    justifyContent: 'center',
+  },
+  /* Sits over the icon's top-right corner. Negative offsets rather than a
+     bigger button: the button is already a 44pt target with its hitSlop, and
+     growing it would push the text field in. */
+  filterBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -7,
+    minWidth: 16,
+    height: 16,
     borderRadius: 8,
-    backgroundColor: c.card,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CD37A',
   },
-  filterButtonText: {
+  filterBadgeText: {
     fontFamily: MONO_FONT,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 12,
     fontWeight: '700',
-    letterSpacing: 0.5,
-    color: c.text,
+    color: '#0A0A0A',
     includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   /*
-   * Built to the same pill as CategoryChip — height 34, radius 10, 1.5 border,
-   * × then an uppercase label — so it sits in the same visual family as the
-   * chips it clears rather than looking like a stray link under them.
-   *
-   * Red rather than a category colour: it undoes a selection, and it must not
-   * be mistaken for one more filter to add.
+   * Plain red text, the owner's call: as a bordered pill it was the loudest
+   * thing on the screen and looked like one more filter to add rather than the
+   * way to undo them. Red because it undoes, underlined because with no box
+   * around it nothing else says it can be tapped.
    */
   resetFiltersButton: {
     alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
     marginHorizontal: Spacing.three,
-    // Clear of the filter row: at Spacing.one the two crowded each other and
-    // read as a single control.
     marginTop: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    height: 28,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2564A',
-    // A red tint rather than a black wash, which was invisible on the dark
-    // theme and a dark smear on the light one.
-    backgroundColor: 'rgba(226,86,74,0.10)',
   },
   resetFiltersText: {
     fontFamily: MONO_FONT,
     fontSize: 11,
     letterSpacing: 0.3,
     color: '#E2564A',
+    textDecorationLine: 'underline',
     includeFontPadding: false,
   },
   metaRow: {
@@ -914,23 +954,36 @@ const createStyles = (c: SearchPaletteColors) =>
     letterSpacing: 0.5,
     color: c.textMuted,
   },
-  modalSeasonRow: {
+  modalFilterGroups: {
     flexDirection: 'row',
     gap: Spacing.two,
     marginBottom: Spacing.two,
   },
-  modalSeasonChip: {
+  modalFilterGroup: {
+    flex: 1,
+    gap: Spacing.two,
+  },
+  /* Fills its column rather than hugging its label: three columns of pills that
+     each sized themselves to their own word left the sheet looking ragged, and
+     the shorter labels ("Free") gave a smaller target than the longer ones. */
+  modalFilterChip: {
     borderWidth: 1,
     borderColor: c.inputBorder,
     borderRadius: Spacing.five,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
+    alignItems: 'center',
   },
   modalSeasonChipActive: {
     backgroundColor: c.accent,
     borderColor: c.accent,
   },
+  /* 13, not the default 14: three columns across a phone leave about 96px of
+     text per chip, and Swedish "📅 Evenemang" is the longest label there is.
+     Centred because the chips fill their column. */
   modalSeasonChipText: {
+    fontSize: 13,
+    textAlign: 'center',
     color: c.text,
   },
   modalSeasonChipTextActive: {
