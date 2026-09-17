@@ -233,14 +233,25 @@ async function fetchAllPages<T>(
   }
 }
 
+/* What the sitemap's locations query returns. The nested shape is PostgREST's:
+   one row per category link, each wrapping the category it points at. */
+type LocationSitemapRow = {
+  id: string;
+  created_at: string;
+  city: string | null;
+  location_categories: { categories: { slug: string } | null }[] | null;
+};
+
 export async function fetchSitemapEntries(
   client: SupabaseClient
 ): Promise<{ locations: SitemapEntry[]; lists: SitemapEntry[]; categories: SitemapEntry[] }> {
   const [locationRows, listRows, counts] = await Promise.all([
-    fetchAllPages<{ id: string; created_at: string }>((from, to) =>
+    fetchAllPages<LocationSitemapRow>((from, to) =>
       client
         .from("locations")
-        .select("id, created_at")
+        // The category and town come along so the category and town pages can
+        // carry a lastmod of their own: theirs is the newest place on them.
+        .select("id, created_at, city, location_categories(categories(slug))")
         .order("created_at", { ascending: false })
         // Tiebreak on the primary key, or the paging is unsound: the import
         // wrote 6,857 rows across 97 timestamps, so hundreds share one value
@@ -248,7 +259,10 @@ export async function fetchSitemapEntries(
         // repeat across page boundaries and others are skipped entirely — 290
         // duplicates and the same number missing, the first time this ran.
         .order("id", { ascending: true })
-        .range(from, to)
+        // Cast at the boundary, the way the rest of this file does: with no
+        // generated database types, the client types a to-one join as an
+        // array, while PostgREST returns the single category it is.
+        .range(from, to) as unknown as PromiseLike<{ data: LocationSitemapRow[] | null; error: unknown }>
     ),
     fetchAllPages<{ id: string; updated_at: string | null }>((from, to) =>
       client
@@ -271,6 +285,28 @@ export async function fetchSitemapEntries(
       .map(async (row) => ({ slug: row.slug, towns: await fetchCategoryCityCounts(client, row.slug) }))
   );
 
+  /*
+   * The newest place on a page is that page's lastmod.
+   *
+   * Both were null before, which left 1,071 of the sitemap's URLs — every
+   * category and town page, the substantial ones — with no date at all, while
+   * the 16,584 thin place pages each had one. Rows arrive newest first, so the
+   * first write per key is the newest.
+   */
+  const newestByCategory = new Map<string, string>();
+  const newestByTown = new Map<string, string>();
+  for (const row of locationRows) {
+    for (const link of row.location_categories ?? []) {
+      const slug = link.categories?.slug;
+      if (!slug) continue;
+      if (!newestByCategory.has(slug)) newestByCategory.set(slug, row.created_at);
+      if (row.city) {
+        const key = `${slug}|${row.city}`;
+        if (!newestByTown.has(key)) newestByTown.set(key, row.created_at);
+      }
+    }
+  }
+
   return {
     locations: locationRows.map((row) => ({
       path: `/location/${row.id}`,
@@ -292,14 +328,15 @@ export async function fetchSitemapEntries(
      * without waiting to re-crawl page one first.
      */
     categories: [
-      ...townPages(townsByCategory),
+      ...townPages(townsByCategory, newestByTown),
       ...counts
       .filter((row) => row.count > 0)
       .flatMap((row) => {
         const pages = Math.max(1, Math.ceil(row.count / CATEGORY_PAGE_SIZE));
+        const lastmod = newestByCategory.get(row.slug) ?? null;
         return Array.from({ length: pages }, (_, i) => ({
           path: i === 0 ? `/activity/${row.slug}` : `/activity/${row.slug}?page=${i + 1}`,
-          lastmod: null,
+          lastmod,
         }));
       }),
     ],
@@ -311,7 +348,8 @@ export async function fetchSitemapEntries(
  * places — basketball in Stockholm has 105.
  */
 function townPages(
-  townsByCategory: { slug: string; towns: CategoryCityCount[] }[]
+  townsByCategory: { slug: string; towns: CategoryCityCount[] }[],
+  newestByTown: Map<string, string>
 ): SitemapEntry[] {
   return townsByCategory.flatMap(({ slug, towns }) =>
     towns
@@ -319,9 +357,11 @@ function townPages(
       .flatMap((town) => {
         const base = `/activity/${slug}/${citySlug(town.city)}`;
         const pages = Math.max(1, Math.ceil(town.count / CATEGORY_PAGE_SIZE));
+        // Keyed on the town as stored, not its slug: two towns can slug alike.
+        const lastmod = newestByTown.get(`${slug}|${town.city}`) ?? null;
         return Array.from({ length: pages }, (_, i) => ({
           path: i === 0 ? base : `${base}?page=${i + 1}`,
-          lastmod: null,
+          lastmod,
         }));
       })
   );
