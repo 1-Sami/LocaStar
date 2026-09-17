@@ -140,8 +140,13 @@ export const ui = {
     'activity.headingIn': '{name} in {where}',
     'activity.inSweden': 'Sweden',
     'activity.titleSuffix': '{count} places',
-    'activity.lead': '{count} {name} in {where}, added and described by the people who go to them.',
-    'activity.leadCities': ' Across {count} towns and cities, from {first} downwards.',
+    /* Two sentences, not one with the name dropped out of the other: the
+       page has its heading right above the lead, while the search result has
+       nothing but this. Neither says "{count} {name}" — that read "17 soccer
+       in Gotland" for every category whose name is not a countable plural. */
+    'activity.lead': '{count} places, added and described by the people who go to them.',
+    'activity.metaLead': '{name} in {where}: {count} places, added and described by the people who go to them.',
+    'activity.leadCities': ' Across {count} towns and cities, with {first} at the top.',
     'activity.leadTail': ' Directions, photos and reviews on LocaStar.',
     'activity.emptyLead': 'Nothing here yet — nobody has added {name} in {where}.',
     'activity.all': 'All {count}',
@@ -158,7 +163,10 @@ export const ui = {
     'activity.nothingSub': 'If you know {name} around here, you know something the map does not.',
     'activity.questions': 'Questions',
     'activity.other': 'Other things to do',
-    'activity.faq1q': 'Is every {name} in Sweden listed here?',
+    /* Name first, not "every {name}": the name is a sport as often as a
+       countable thing, and "Is every soccer in Sweden listed here?" was on 404
+       category pages and in their FAQ rich results. */
+    'activity.faq1q': '{name} in Sweden: is everything listed here?',
     'activity.faq1a': 'No. The map is young and grows when people add what they know. Most entries came from OpenStreetMap; the descriptions and photos come from people who have been there.',
     'activity.faq2q': 'Does it cost anything?',
     'activity.faq2a': 'No. Browsing needs no account at all. An account is only needed to save places, write a review or add somewhere new.',
@@ -725,7 +733,8 @@ export const ui = {
     'activity.headingIn': '{name} i {where}',
     'activity.inSweden': 'Sverige',
     'activity.titleSuffix': '{count} platser',
-    'activity.lead': '{count} {name} i {where}, tillagda och beskrivna av dem som varit där.',
+    'activity.lead': '{count} platser, tillagda och beskrivna av dem som varit där.',
+    'activity.metaLead': '{name} i {where}: {count} platser, tillagda och beskrivna av dem som varit där.',
     'activity.leadCities': ' Spritt över {count} orter, med {first} i topp.',
     'activity.leadTail': ' Vägbeskrivning, foton och omdömen på LocaStar.',
     'activity.emptyLead': 'Inget här ännu — ingen har lagt till {name} i {where}.',
@@ -743,7 +752,7 @@ export const ui = {
     'activity.nothingSub': 'Kan du {name} i trakten vet du något som kartan inte vet.',
     'activity.questions': 'Frågor',
     'activity.other': 'Annat att göra',
-    'activity.faq1q': 'Finns alla {name} i Sverige med här?',
+    'activity.faq1q': '{name} i Sverige: finns allt med här?',
     'activity.faq1a': 'Nej. Kartan är ung och växer när folk lägger till det de kan. Det mesta kommer från OpenStreetMap; beskrivningarna och fotona kommer från dem som varit på plats.',
     'activity.faq2q': 'Kostar det något?',
     'activity.faq2a': 'Nej. Att titta runt kräver inget konto alls. Konto behövs bara för att spara platser, skriva omdömen eller lägga till något nytt.',

@@ -195,7 +195,10 @@ const cityBit =
     ? t('activity.leadCities', { count: cityCounts.length, first: topCities[0].city })
     : '';
 const description =
-  t('activity.lead', { count: shownTotal, name: catLower, where }) + cityBit + t('activity.leadTail');
+  t('activity.metaLead', { count: shownTotal, name: catName, where }) + cityBit + t('activity.leadTail');
+// The same sentence without the name and town, which the h1 directly above it
+// has already said.
+const pageLead = t('activity.lead', { count: shownTotal }) + cityBit + t('activity.leadTail');
 
 const pageCount = Math.max(1, Math.ceil(listing.total / PAGE_SIZE));
 // Past the end is a 404 too — page 1 of an empty category is still a real page,
@@ -250,7 +253,7 @@ const jsonLd: Record<string, unknown>[] = [
  * on the page — Google treats markup that is not visible as a violation.
  */
 const faqs = [
-  { q: t('activity.faq1q', { name: catLower }), a: t('activity.faq1a') },
+  { q: t('activity.faq1q', { name: catName }), a: t('activity.faq1a') },
   { q: t('activity.faq2q'), a: t('activity.faq2a') },
   { q: t('activity.faq3q'), a: t('activity.faq3a') },
 ];
@@ -298,7 +301,7 @@ jsonLd.push({
       <p class="lead">
         {shownTotal === 0
           ? t('activity.emptyLead', { name: catLower, where })
-          : description}
+          : pageLead}
       </p>
 
       {
