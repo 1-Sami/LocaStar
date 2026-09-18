@@ -4,6 +4,7 @@ import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { aboutCopy } from '@locastar/shared';
+import { FEATURE_DETAIL, type FeatureItem } from '../i18n/featureList';
 import { useTranslations } from '../i18n/ui';
 import { appStoreReady, googlePlayReady, STORE_LINKS } from '../lib/site';
 
@@ -28,12 +29,24 @@ const about = aboutCopy(lang);
 const title = t('features.title');
 const description = t('features.metaDesc');
 
+/*
+ * The promise, then what it actually means.
+ *
+ * The four leads are the app's own About copy; the lines under each come from
+ * featureList.ts. Before this the page made four claims and stopped, which
+ * left the one question a visitor arrives with — "so what can I actually do?"
+ * — answered nowhere on the site.
+ */
+const detail = FEATURE_DETAIL[lang === 'sv' ? 'sv' : 'en'];
+
 const bands = [
-  { lead: about.findLead, body: about.findBody, image: '01-find' },
-  { lead: about.saveLead, body: about.saveBody, image: '02-save' },
-  { lead: about.privateLead, body: about.privateBody, image: '03-plan' },
-  { lead: about.contributeLead, body: about.contributeBody, image: '04-contribute' },
+  { lead: about.findLead, body: about.findBody, image: '01-find', items: detail.find },
+  { lead: about.saveLead, body: about.saveBody, image: '02-save', items: detail.save },
+  { lead: about.privateLead, body: about.privateBody, image: '03-plan', items: detail.private },
+  { lead: about.contributeLead, body: about.contributeBody, image: '04-contribute', items: detail.contribute },
 ];
+
+const whereLabel = (item: FeatureItem) => (item.where === 'app' ? detail.whereApp : detail.whereBoth);
 ---
 
 <Base title={`${title} | LocaStar`} description={description} canonical={`${origin}/features`}>
@@ -52,6 +65,15 @@ const bands = [
             <div class="band-copy">
               <h2>{band.lead}</h2>
               <p>{band.body}</p>
+              <dl class="detail">
+                {band.items.map((item) => (
+                  <div class="item">
+                    <dt>{item.title}</dt>
+                    <dd>{item.body}</dd>
+                    <span class={`mono where${item.where === 'app' ? ' app' : ''}`}>{whereLabel(item)}</span>
+                  </div>
+                ))}
+              </dl>
             </div>
             <picture class="band-art">
               <source srcset={`/images/features/${band.image}.webp`} type="image/webp" />
@@ -69,14 +91,37 @@ const bands = [
       ))
     }
 
+    {
+      [detail.account, detail.safety].map((block) => (
+        <section class="wrap block">
+          <h2>{block.heading}</h2>
+          <p class="lead">{block.lead}</p>
+          <dl class="detail wide">
+            {block.items.map((item) => (
+              <div class="item">
+                <dt>{item.title}</dt>
+                <dd>{item.body}</dd>
+                <span class={`mono where${item.where === 'app' ? ' app' : ''}`}>{whereLabel(item)}</span>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))
+    }
+
     <section class="wrap closing">
-      <div class="closing-inner">
+      <div class="closing-inner on-dark">
         <h2>{t('features.freeTitle')}</h2>
         <p>{t('features.freeBody')}</p>
         <div class="badges">
           <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
         </div>
+        {/* Same note the home page carries, and for the same reason: a greyed
+            badge with no sentence beside it reads as a broken app rather than
+            an unreleased one. It hides itself the moment STORE_LINKS.googlePlay
+            is filled in — so does the one on the home page. */}
+        {!googlePlayReady && <span class="android-note">{t('home.androidNotYet')}</span>}
       </div>
     </section>
   </main>
@@ -144,6 +189,77 @@ const bands = [
   }
 
   /*
+   * A description list, because that is what it is: a name and what it means.
+   * Hairlines rather than cards — twenty-four boxes would read as twenty-four
+   * separate things, when it is one list per promise.
+   */
+  .detail {
+    margin: 6px 0 0;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 14px;
+    padding-block: 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .item dt {
+    grid-column: 1;
+    font-weight: 500;
+    font-size: 15.5px;
+  }
+
+  .item dd {
+    grid-column: 1;
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--text-55);
+  }
+
+  /* Which product a line belongs to. Most of the map reads on the website;
+     adding, reviewing, sharing with a friend and blocking are the app's. */
+  .where {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: start;
+    padding-top: 4px;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-42);
+    white-space: nowrap;
+  }
+
+  .where.app {
+    color: var(--brand-light);
+  }
+
+  /* The two sections with no illustration run the full column. */
+  .block {
+    padding-block: 44px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .block h2 {
+    font-size: clamp(22px, 3vw, 30px);
+  }
+
+  .block .lead {
+    font-size: 17px;
+    max-width: 56ch;
+  }
+
+  .detail.wide .item dd {
+    max-width: 78ch;
+  }
+
+  /*
    * aspect-ratio, not a fixed height: the source illustrations are 1304x880.
    * A fixed height on a fluid-width column meant the rendered box almost never
    * matched that ratio, so the image was stretched or cropped depending on
@@ -168,14 +284,25 @@ const bands = [
     padding-block: 56px 72px;
   }
 
+  /*
+   * The one dark panel on the page, and the last thing on it.
+   *
+   * The same gradient the home page's hero and download band use. Spent once:
+   * a page of alternating dark panels would make the home page's own panels
+   * ordinary, and half a page of reversed text is harder to read for the
+   * people who chose the light theme on purpose.
+   */
   .closing-inner {
-    border: 1px solid var(--hairline);
     border-radius: 14px;
     padding: 40px;
     display: flex;
     flex-direction: column;
     gap: 14px;
     align-items: flex-start;
+    background:
+      radial-gradient(620px 300px at 18% 8%, rgba(43, 163, 163, 0.28), transparent 62%),
+      linear-gradient(150deg, #125f6f 0%, #0a2a31 52%, #07100f 100%);
+    color: var(--text);
   }
 
   .closing h2 {
@@ -195,6 +322,12 @@ const bands = [
     gap: 10px;
     flex-wrap: wrap;
     margin-top: 6px;
+  }
+
+  .android-note {
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--accent);
   }
 
   .store {
