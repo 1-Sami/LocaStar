@@ -184,7 +184,22 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           )
         }
         <span class="who-text">
-          <span class="name">{name}</span>
+          <span class="name-row">
+            <span class="name">{name}</span>
+            {/*
+              Beside the name rather than a full-width button down in the rail:
+              it is the one control here nobody comes to the page to use, and at
+              the foot of a phone screen it was as loud as Saved and My lists.
+
+              On the name's own line, not the block's: the rail is 250px, and
+              sharing a line with "12 CONTRIBUTIONS" left the button about 55px
+              — so it wrapped its own label onto two lines. Its own form, too,
+              because a form cannot be nested inside the avatar's.
+            */}
+            <form method="post" action={p('/auth/sign-out')} class="signout-form">
+              <button class="mono signout" type="submit">{t('acct.logOut')}</button>
+            </form>
+          </span>
           {
             stats && (
               <span class="mono contributions">
@@ -193,16 +208,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
             )
           }
         </span>
-
-        {/*
-          Beside the name rather than a full-width button down in the rail:
-          it is the one control here nobody comes to the page to use, and at
-          the foot of a phone screen it was as loud as Saved and My lists.
-          Its own form, because a form cannot be nested inside the avatar's.
-        */}
-        <form method="post" action={p('/auth/sign-out')} class="signout-form">
-          <button class="mono signout" type="submit">{t('acct.logOut')}</button>
-        </form>
       </div>
 
       <form
@@ -852,6 +857,12 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     gap: 10px;
   }
 
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   .signout-form {
     margin-left: auto;
   }
@@ -862,10 +873,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     border: 1px solid var(--border);
     background: none;
     color: var(--text-55);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
+    font-size: 10px;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 6px 11px;
+    white-space: nowrap;
+    padding: 5px 9px;
     border-radius: 7px;
     cursor: pointer;
   }
@@ -947,6 +959,15 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+    flex: 1;
+  }
+
+  /* The name gives way first if a rail is ever narrower than this one. */
+  .name-row .name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Two short words that belong together. Nothing about "12 CONTRIBUTIONS"
