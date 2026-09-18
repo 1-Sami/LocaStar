@@ -175,32 +175,42 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         lines, but only for people who had not set a picture. Underneath, the
         label can be any length without moving anything else.
       */}
+      <div class="who-row">
+        {
+          profile?.avatar_url ? (
+            <span class="avatar" style={`background-image:url("${profile.avatar_url}")`} />
+          ) : (
+            <span class="avatar initial">{name.trim().charAt(0).toUpperCase()}</span>
+          )
+        }
+        <span class="who-text">
+          <span class="name">{name}</span>
+          {
+            stats && (
+              <span class="mono contributions">
+                {stats.contributions} {stats.contributions === 1 ? t('acct.contribution_one') : t('acct.contribution_other')}
+              </span>
+            )
+          }
+        </span>
+
+        {/*
+          Beside the name rather than a full-width button down in the rail:
+          it is the one control here nobody comes to the page to use, and at
+          the foot of a phone screen it was as loud as Saved and My lists.
+          Its own form, because a form cannot be nested inside the avatar's.
+        */}
+        <form method="post" action={p('/auth/sign-out')} class="signout-form">
+          <button class="mono signout" type="submit">{t('acct.logOut')}</button>
+        </form>
+      </div>
+
       <form
         class="who"
         method="post"
         action={p('/api/avatar')}
         enctype="multipart/form-data"
       >
-        <div class="who-row">
-          {
-            profile?.avatar_url ? (
-              <span class="avatar" style={`background-image:url("${profile.avatar_url}")`} />
-            ) : (
-              <span class="avatar initial">{name.trim().charAt(0).toUpperCase()}</span>
-            )
-          }
-          <span class="who-text">
-            <span class="name">{name}</span>
-            {
-              stats && (
-                <span class="mono contributions">
-                  {stats.contributions} {stats.contributions === 1 ? t('acct.contribution_one') : t('acct.contribution_other')}
-                </span>
-              )
-            }
-          </span>
-        </div>
-
         <input type="hidden" name="back" value={p('/account')} />
 
         <span class="avatar-actions">
@@ -264,20 +274,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         )
       }
 
-      <form method="post" action={p('/auth/sign-out')}>
-        <button class="signout" type="submit">{t('acct.logOut')}</button>
-      </form>
-
-      {/*
-        A red box rather than a quiet link, matching the app. This is the one
-        control here that destroys something, and it should not look like a
-        setting.
-
-        Just the control, no heading and no warning: /account/delete exists to
-        explain the consequences and ask again, so saying it here only made the
-        sidebar shout at somebody who has not asked for anything yet.
-      */}
-      <a class="danger-link" href={p('/account/delete')}>{t('acct.deleteLink')}</a>
     </aside>
 
     <section class="body">
@@ -296,7 +292,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {favourites.length === 0 ? (
                 <p class="empty-line">{t('acct.favouritesEmpty')}</p>
               ) : (
-                <div class="cards wide-only">
+                <div class="cards">
                   {favourites.map((place) => (
                     <PlaceCard
                       href={p(`/location/${place.location_id}`)}
@@ -306,21 +302,9 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                       avgRating={place.avg_rating}
                       reviewCount={place.review_count}
                       where={place.city}
+                      address={place.address}
                       imageUrl={publicUrl(place.cover_photo_path)}
                       startsAt={place.starts_at}
-                    />
-                  ))}
-                </div>
-                <div class="rows narrow-only">
-                  {favourites.map((place) => (
-                    <PlaceRow
-                      href={p(`/location/${place.location_id}`)}
-                      name={place.name}
-                      categorySlug={place.category_slug}
-                      avgRating={place.avg_rating}
-                      reviewCount={place.review_count}
-                      where={place.city}
-                      imageUrl={publicUrl(place.cover_photo_path)}
                     />
                   ))}
                 </div>
@@ -335,7 +319,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {bookmarks.length === 0 ? (
                 <p class="empty-line">{t('acct.bookmarksEmpty')}</p>
               ) : (
-                <div class="cards wide-only">
+                <div class="cards">
                   {bookmarks.map((place) => (
                     <PlaceCard
                       href={p(`/location/${place.location_id}`)}
@@ -345,21 +329,9 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                       avgRating={place.avg_rating}
                       reviewCount={place.review_count}
                       where={place.city}
+                      address={place.address}
                       imageUrl={publicUrl(place.cover_photo_path)}
                       startsAt={place.starts_at}
-                    />
-                  ))}
-                </div>
-                <div class="rows narrow-only">
-                  {bookmarks.map((place) => (
-                    <PlaceRow
-                      href={p(`/location/${place.location_id}`)}
-                      name={place.name}
-                      categorySlug={place.category_slug}
-                      avgRating={place.avg_rating}
-                      reviewCount={place.review_count}
-                      where={place.city}
-                      imageUrl={publicUrl(place.cover_photo_path)}
                     />
                   ))}
                 </div>
@@ -374,7 +346,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               {shares.length === 0 ? (
                 <p class="empty-line">{t('acct.sharedEmpty')}</p>
               ) : (
-                <div class="cards wide-only">
+                <div class="cards">
                   {shares.map((share) => (
                     <PlaceCard
                       href={p(`/location/${share.location_id}`)}
@@ -386,20 +358,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                       where={shareAside(share) ?? share.city}
                       imageUrl={publicUrl(share.cover_photo_path)}
                       startsAt={share.starts_at}
-                    />
-                  ))}
-                </div>
-                <div class="rows narrow-only">
-                  {shares.map((share) => (
-                    <PlaceRow
-                      href={p(`/location/${share.location_id}`)}
-                      name={share.name}
-                      categorySlug={share.category_slug}
-                      avgRating={share.avg_rating}
-                      reviewCount={share.review_count}
-                      where={share.city}
-                      imageUrl={publicUrl(share.cover_photo_path)}
-                      aside={shareAside(share)}
                     />
                   ))}
                 </div>
@@ -765,6 +723,20 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 </button>
               </form>
             </section>
+
+            {/*
+              Last thing on the settings page, which is where somebody looking
+              for it will look — and nowhere near the rail, where it sat under
+              Log out and shouted at people who had come to change a username.
+              /account/delete explains the consequences and asks again, so this
+              is only the way in.
+            */}
+            <section class="group">
+              <div class="group-head">
+                <h2>{t('acct.deleteLink')}</h2>
+              </div>
+              <a class="danger-link" href={p('/account/delete')}>{t('acct.deleteLink')}</a>
+            </section>
           </>
         )
       }
@@ -878,6 +850,29 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .signout-form {
+    margin-left: auto;
+  }
+
+  /* Small, and quiet: it sits beside the name, where it cannot be mistaken
+     for one of the things this page is actually for. */
+  .signout {
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-55);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+
+  .signout:hover {
+    color: var(--text);
+    border-color: var(--text-42);
   }
 
   .who-row {
@@ -1097,34 +1092,27 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   }
 
   /*
-   * Saved places are cards on the desktop layout and rows below it.
+   * Saved places are cards, at every width. Two-up below the desktop layout.
    *
-   * Only the desktop layout was meant to change, so rather than making one
-   * shape reflow into the other -- which would have quietly altered the narrow
-   * view as well -- both are rendered and one is hidden. The server cannot
-   * know the viewport, so the markup is always sent and CSS decides. It costs
-   * a few hundred bytes on a page that is behind a login and lists your own
-   * saves.
+   * They used to be cards here and rows below 1000px, both rendered with CSS
+   * hiding one — and the hiding silently failed: `.wide-only { display: none }`
+   * inside the media query and `.cards { display: grid }` after it are both one
+   * class, so the later rule won and a phone showed every saved place twice.
+   * The rows are gone rather than the collision patched: one shape is one
+   * thing to keep right, and the cards are the shape the app uses.
    */
-  .narrow-only {
-    display: none;
-  }
-
-  @media (max-width: 1000px) {
-    .wide-only {
-      display: none;
-    }
-
-    .rows.narrow-only {
-      display: flex;
-    }
-  }
-
   .cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 30px;
+  }
+
+  @media (max-width: 1000px) {
+    .cards {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
   }
 
   .empty-line {

@@ -24,6 +24,8 @@ interface Props {
   avgRating?: number;
   reviewCount?: number;
   where?: string | null;
+  /** Street and town. Shown under the rating, on its own line. */
+  address?: string | null;
   imageUrl?: string | null;
   /** ISO start, for an event. Replaces the rating line with the date. */
   startsAt?: string | null;
@@ -37,6 +39,7 @@ const {
   avgRating = 0,
   reviewCount = 0,
   where = null,
+  address = null,
   imageUrl = null,
   startsAt = null,
 } = Astro.props;
@@ -90,21 +93,24 @@ const startLabel = startsAt
   <span class="plate">
     <span class="name">{name}</span>
     {/*
-      One line, as the reference has it. The app shows "4.0 · 1.2 km" there; the
-      website has no idea where the reader is, so the city takes the distance's
-      place rather than the line being dropped or split in two.
+      The rating keeps its review count, and where the place is gets a line of
+      its own underneath.
+
+      It used to be one line, with the town replacing the count — so a saved
+      place told you either how it was rated or where it was, never both, and
+      a place with no town in its row said nothing about where it is at all.
+      The address is what a saved place is for: you are deciding whether to go.
     */}
     {
       startLabel ? (
         <span class="mono when">{startLabel}</span>
       ) : rating.rated ? (
-        <span class="mono star">
-          ★ {rating.avg}{where ? ` · ${where}` : ` (${rating.count})`}
-        </span>
+        <span class="mono star">★ {rating.avg} ({rating.count})</span>
       ) : (
-        <span class="mono unrated">{t('common.notRated')}{where ? ` · ${where}` : ''}</span>
+        <span class="mono unrated">{t('common.notRated')}</span>
       )
     }
+    {(address || where) && <span class="where">{address || where}</span>}
   </span>
 </a>
 
@@ -135,6 +141,21 @@ const startLabel = startsAt
     height: 118px;
     background-size: cover;
     background-position: center;
+  }
+
+  /* Two lines at most: an imported address runs to "Kanaans väg 12, 145 69
+     Botkyrka", and a card in a two-up grid on a phone is about 20 characters
+     wide. Clamped rather than truncated to one line, which cut most of them
+     off before the town. */
+  .where {
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--text-55);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
 
   .chip {
