@@ -28,6 +28,8 @@ export type SearchParams = {
   categorySlugs?: string[];
   kind?: "place" | "activity" | null;
   season?: "summer" | "winter" | null;
+  /** Free to use or not. Null means no preference; see migration 0138. */
+  price?: "free" | "paid" | null;
   sort?: "rating" | "reviews" | "name";
   /** Which end of the chosen sort comes first. */
   direction?: "desc" | "asc";
@@ -81,6 +83,7 @@ export async function fetchSearchResults(
     categorySlugs = [],
     kind,
     season,
+    price,
     sort = "rating",
     direction = "desc",
     page = 1,
@@ -120,6 +123,10 @@ export async function fetchSearchResults(
   if (kind) request = request.eq("kind", kind);
   if (season === "summer") request = request.eq("available_summer", true);
   if (season === "winter") request = request.eq("available_winter", true);
+  // is_free is three-valued, so a place nobody has answered for matches
+  // neither — the same bargain the seasons make.
+  if (price === "free") request = request.eq("is_free", true);
+  if (price === "paid") request = request.eq("is_free", false);
 
   /*
    * Rating first, then review count as the tiebreaker: every unreviewed place

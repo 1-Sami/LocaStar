@@ -103,9 +103,16 @@ export const ui = {
       '{count} results for {filters} on LocaStar — with directions, photos and reviews from people who have been there.',
     'season.summer': 'Summer',
     'season.winter': 'Winter',
+    /* SHOW is Places/Events and TYPE is Free/Paid, matching the app's filter
+       sheet. They were one label here — "TYPE" for Places/Events — and having
+       the same word mean two things across the two products is worse than
+       renaming one group. */
+    'search.show': 'SHOW',
     'search.type': 'TYPE',
     'search.places': 'Places',
     'search.activities': 'Events',
+    'search.free': 'Free',
+    'search.paid': 'Paid',
     'search.season': 'SEASON',
     'search.activity': 'ACTIVITY',
     'search.sortRating': 'Best rated',
@@ -696,9 +703,12 @@ export const ui = {
       '{count} träffar för {filters} på LocaStar — med vägbeskrivning, foton och omdömen från dem som varit där.',
     'season.summer': 'Sommar',
     'season.winter': 'Vinter',
+    'search.show': 'VISA',
     'search.type': 'TYP',
     'search.places': 'Platser',
     'search.activities': 'Evenemang',
+    'search.free': 'Gratis',
+    'search.paid': 'Avgift',
     'search.season': 'SÄSONG',
     'search.activity': 'AKTIVITET',
     'search.sortRating': 'Högst betyg',

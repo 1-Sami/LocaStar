@@ -40,6 +40,7 @@ const q =
 const activity = url.searchParams.getAll('activity').filter(Boolean);
 const kindParam = url.searchParams.get('kind');
 const seasonParam = url.searchParams.get('season');
+const priceParam = url.searchParams.get('price');
 const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
 /*
  * A–Z was a filing order, not a reason to pick one place over another — the
@@ -53,6 +54,7 @@ const direction = url.searchParams.get('dir') === 'asc' ? 'asc' : 'desc';
 
 const kind = kindParam === 'place' || kindParam === 'activity' ? kindParam : null;
 const season = seasonParam === 'summer' || seasonParam === 'winter' ? seasonParam : null;
+const price = priceParam === 'free' || priceParam === 'paid' ? priceParam : null;
 
 let response;
 let categoryCounts;
@@ -63,6 +65,7 @@ try {
       categorySlugs: activity,
       kind,
       season,
+      price,
       sort,
       direction,
       page,
@@ -149,6 +152,7 @@ const describedFilters = [
   activity.length ? activity.map((slug) => categoryName(slug, lang) ?? withPlaces.find((c) => c.slug === slug)?.name ?? slug).join(', ') : null,
   kind === 'place' ? t('search.places') : kind === 'activity' ? t('search.activities') : null,
   season === 'summer' ? t('season.summer') : season === 'winter' ? t('season.winter') : null,
+  price === 'free' ? t('search.free') : price === 'paid' ? t('search.paid') : null,
 ].filter(Boolean);
 
 /*
@@ -190,7 +194,7 @@ const canonical = `${origin}/search`;
     */}
     <div class="filterbar">
       <div class="group">
-        <span class="mono group-head">{t('search.type')}</span>
+        <span class="mono group-head">{t('search.show')}</span>
         <div class="pills">
           <a class={`pill${kind === 'place' ? ' on' : ''}`} href={withParam('kind', kind === 'place' ? null : 'place')}>
             {t('search.places')}
@@ -222,17 +226,30 @@ const canonical = `${origin}/search`;
         </div>
       </div>
 
+      <div class="group">
+        <span class="mono group-head">{t('search.type')}</span>
+        <div class="pills">
+          <a class={`pill${price === 'free' ? ' on' : ''}`} href={withParam('price', price === 'free' ? null : 'free')}>
+            {t('search.free')}
+          </a>
+          <a class={`pill${price === 'paid' ? ' on' : ''}`} href={withParam('price', price === 'paid' ? null : 'paid')}>
+            {t('search.paid')}
+          </a>
+        </div>
+      </div>
+
       <form class="searchbar" action={p("/search")} method="get">
         <span class="mono glyph" aria-hidden="true">⌕</span>
         <input name="q" value={q} placeholder={t('search.placeholder')} aria-label={t('common.search')} />
         {activity.map((slug) => <input type="hidden" name="activity" value={slug} />)}
         {kind && <input type="hidden" name="kind" value={kind} />}
         {season && <input type="hidden" name="season" value={season} />}
+        {price && <input type="hidden" name="price" value={price} />}
         <button type="submit">{t('common.search')}</button>
       </form>
 
       {
-        (q || activity.length > 0 || kind || season) && (
+        (q || activity.length > 0 || kind || season || price) && (
           <a class="clear" href={p('/search')}>
             {t('common.clearAll')}
           </a>
@@ -458,7 +475,7 @@ const canonical = `${origin}/search`;
     padding-top: 24px;
   }
 
-  /* ---- top bar: type, season, search, clear all ---- */
+  /* ---- top bar: show, season, type, search, clear all ---- */
   .filterbar {
     display: flex;
     align-items: flex-end;
