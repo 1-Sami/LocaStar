@@ -955,6 +955,18 @@ export default function LocationDetailScreen() {
               </View>
             )}
 
+            {/* Only when somebody has answered — null is "nobody has said",
+                not "free". Above the website and the phone because whether it
+                costs anything decides whether the rest matters. */}
+            {location.is_free !== null && (
+              <View style={styles.infoRow}>
+                <Ionicons name="pricetag-outline" size={16} color={theme.textSecondary} />
+                <ThemedText type="default" themeColor="textSecondary" style={styles.addressText}>
+                  {location.is_free ? t('search.free') : t('search.paid')}
+                </ThemedText>
+              </View>
+            )}
+
             {/* Both were collected when a place was added and then shown
                 nowhere, so a website someone had typed in was simply lost. */}
             {websiteUrl && (

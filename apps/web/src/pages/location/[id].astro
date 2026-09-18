@@ -469,6 +469,13 @@ const seasonLabel =
                   .join(' · ')}
               </span>
             )}
+            {/* Only when somebody has answered: is_free is three-valued, and
+                "not stated" is not a claim this page should make either way. */}
+            {location.is_free !== null && (
+              <span class={`mono price${location.is_free ? ' free' : ''}`}>
+                {location.is_free ? t('search.free') : t('search.paid')}
+              </span>
+            )}
           </div>
 
           <h1>{location.name}</h1>
@@ -1180,6 +1187,24 @@ const seasonLabel =
     font-size: 12px;
     letter-spacing: 0.08em;
     color: var(--text-42);
+  }
+
+  /* Outlined, not filled: the category badge beside it is the loud one, and a
+     second solid chip would compete with it for the same glance. Free takes
+     the accent colour because it is the answer people look for. */
+  .price {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-70);
+  }
+
+  .price.free {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   h1 {
