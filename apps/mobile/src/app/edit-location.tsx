@@ -648,7 +648,7 @@ export default function EditLocationScreen() {
                   setSaved(false);
                 }}>
                 <ThemedText type="small" style={availableSummer ? styles.typePillTextOn : undefined}>
-                  ☀ {t('search.summer')}
+                  {t('search.summer')}
                 </ThemedText>
               </Pressable>
               <Pressable
@@ -658,7 +658,7 @@ export default function EditLocationScreen() {
                   setSaved(false);
                 }}>
                 <ThemedText type="small" style={availableWinter ? styles.typePillTextOn : undefined}>
-                  ❄ {t('search.winter')}
+                  {t('search.winter')}
                 </ThemedText>
               </Pressable>
               {/* Season and price are different questions, and four bare pills

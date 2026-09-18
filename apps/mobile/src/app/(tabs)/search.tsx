@@ -637,7 +637,7 @@ export default function SearchScreen() {
                   onPress={() => setActiveSeason((current) => (current === 'summer' ? null : 'summer'))}>
                   <Text
                     style={[styles.modalSeasonChipText, activeSeason === 'summer' && styles.modalSeasonChipTextActive]}>
-                    ☀ {t('search.summer')}
+                    {t('search.summer')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -645,7 +645,7 @@ export default function SearchScreen() {
                   onPress={() => setActiveSeason((current) => (current === 'winter' ? null : 'winter'))}>
                   <Text
                     style={[styles.modalSeasonChipText, activeSeason === 'winter' && styles.modalSeasonChipTextActive]}>
-                    ❄ {t('search.winter')}
+                    {t('search.winter')}
                   </Text>
                 </Pressable>
               </View>

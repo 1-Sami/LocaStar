@@ -650,7 +650,7 @@ export default function AddLocationScreen() {
                   setAvailableSummer((v) => !v);
                 }}>
                 <ThemedText type="small" style={availableSummer ? styles.typePillTextOn : undefined}>
-                  ☀ {t('search.summer')}
+                  {t('search.summer')}
                 </ThemedText>
               </Pressable>
               <Pressable
@@ -659,7 +659,7 @@ export default function AddLocationScreen() {
                   setAvailableWinter((v) => !v);
                 }}>
                 <ThemedText type="small" style={availableWinter ? styles.typePillTextOn : undefined}>
-                  ❄ {t('search.winter')}
+                  {t('search.winter')}
                 </ThemedText>
               </Pressable>
               {/* Season and price are different questions, and four bare pills
