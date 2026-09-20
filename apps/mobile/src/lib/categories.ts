@@ -25,9 +25,22 @@ export function categoryLabel(t: TFunction, slug: string, fallback: string): str
  * the repo. A name the map does not know — because someone renamed it in the
  * database — falls through to the name itself, which is what was shown before.
  */
-const SLUG_BY_ENGLISH_NAME: Record<string, string> = Object.fromEntries(
-  Object.entries(CATEGORY_NAMES.en).map(([slug, name]) => [name, slug])
-);
+/*
+ * What the database still calls a category the catalogue above has renamed.
+ *
+ * `category_label` comes from the `categories` row, so renaming it only in
+ * CATEGORY_NAMES leaves this lookup with no slug to find — and the screens
+ * that have a name and nothing else would go on showing the old word. Each
+ * line here can go the day that row is renamed too.
+ */
+const RENAMED_SINCE: Record<string, string> = {
+  'Picnic parks': 'picknick-parks',
+};
+
+const SLUG_BY_ENGLISH_NAME: Record<string, string> = {
+  ...RENAMED_SINCE,
+  ...Object.fromEntries(Object.entries(CATEGORY_NAMES.en).map(([slug, name]) => [name, slug])),
+};
 
 export function categoryLabelFromName(t: TFunction, name: string): string {
   const slug = SLUG_BY_ENGLISH_NAME[name];
