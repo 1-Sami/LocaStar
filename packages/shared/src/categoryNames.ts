@@ -108,7 +108,7 @@ export const CATEGORY_NAMES: Record<"en" | "sv", Record<string, string>> = {
     "outdoor": "Friluftsplats",
     "paintball": "Paintball",
     "parkour": "Parkour",
-    "picknick-parks": "Parker",
+    "picknick-parks": "Park",
     "playgrounds": "Lekplatser",
     "public-art": "Offentlig konst",
     "race-tracks-vehicle": "Racerbanor",
