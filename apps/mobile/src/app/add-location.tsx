@@ -1,5 +1,6 @@
 import {
   addLocationPhoto,
+  canEditAnyLocation,
   fetchCategories,
   fetchNearbyLocations,
   submitBusinessClaim,
@@ -60,9 +61,14 @@ export default function AddLocationScreen() {
   // activity announced before there is anything to shoot. Everyone else still
   // brings a picture: an unphotographed listing from a stranger is the one we
   // can't tell apart from an invented one.
-  // Admins and partners may add without a photo: a bulk list from a kommun
-  // arrives as facts, and requiring a picture would stop it at the door.
-  const photoOptional = role === 'admin' || role === 'partner';
+  /*
+   * Added without a photo by anyone who may edit any place: a kommun's list
+   * arrives as facts, and requiring a picture would stop it at the door. The
+   * website has always let a moderator do this; the app asked only whether you
+   * were an admin, so the same person could and could not depending on which
+   * one they had open.
+   */
+  const photoOptional = canEditAnyLocation(role);
 
   const isActivity = kind === 'activity';
   /*
