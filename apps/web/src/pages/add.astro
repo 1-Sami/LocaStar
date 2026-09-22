@@ -1,34 +1,98 @@
 ---
+import { categoryName, DAY_KEYS, fetchCategories, fetchProfile, isModeratorRole, type Category } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import StoreBadge from '../components/StoreBadge.astro';
 import Base from '../layouts/Base.astro';
+import { addFormCopy } from '../i18n/addForm';
 import { useTranslations, localePath } from '../i18n/ui';
+import { addFromForm } from '../lib/addLocation';
 import { currentUser } from '../lib/auth';
 import { appStoreReady, googlePlayReady, STORE_LINKS } from '../lib/site';
 
 /*
- * Adding from the web is designed (section 10) but deliberately not built yet
- * — agreed with the owner. The pin picker needs a real web map library, and
- * that work would have delayed the half of the site that earns search traffic.
+ * Adding a place or an event from the website — without a map.
  *
- * So this page is honest about it rather than being a 404 behind a header link
- * that appears on every page.
+ * Deferred once because the app's pin picker cannot run in a browser and a web
+ * map costs money in tiles (see LeafletMap.astro). Neither turned out to be
+ * needed: the pin comes from a typed address, looked up with OpenStreetMap's
+ * address service, or from typed coordinates for somewhere with no address of
+ * its own — a court in a park, a trail, a beach. The owner's design, 2026-09-22.
+ *
+ * The form posts to this page and is handled here, as the location page does,
+ * so a mistake re-renders it with everything still filled in rather than
+ * losing a long form to a redirect. Photos are the exception — no browser will
+ * pre-fill a file input — and the page says so when it happens.
+ *
+ * Works with no script at all. The script adds the "Check location" preview,
+ * shrinks photos before they upload, and lets Free/Paid be un-ticked.
  */
 export const prerender = false;
 
-const { user } = await currentUser(Astro.cookies, Astro.request.headers);
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
 const origin = Astro.site?.origin ?? Astro.url.origin;
-const lang = Astro.locals.lang ?? 'en';
+const lang = Astro.locals.lang === 'sv' ? 'sv' : 'en';
 const t = useTranslations(lang);
+const copy = addFormCopy(lang);
 const p = (href: string) => localePath(href, lang);
+
+let categories: Category[] = [];
+let isModerator = false;
+let error: string | null = null;
+let values: Record<string, string> = {};
+let repick = false;
+
+if (user) {
+  const [cats, profile] = await Promise.all([
+    fetchCategories(supabase).catch(() => [] as Category[]),
+    fetchProfile(supabase, user.id).catch(() => null),
+  ]);
+  categories = cats;
+  isModerator = isModeratorRole(profile?.role ?? 'user');
+
+  if (Astro.request.method === 'POST') {
+    const outcome = await addFromForm({
+      form: await Astro.request.formData(),
+      supabase,
+      userId: user.id,
+      isModerator,
+      categories,
+      copy,
+      lang,
+    });
+    if (outcome.ok) {
+      const note = new URLSearchParams({ added: outcome.pinnedBy });
+      if (outcome.photosFailed) note.set('photos', 'failed');
+      if (outcome.claimFailed) note.set('claim', 'failed');
+      if (outcome.visibleNow) return Astro.redirect(p(`/location/${outcome.id}?${note}`));
+      /*
+       * A private event, or one set to appear later, is not public yet — and the
+       * place page reads as a signed-out visitor, so sending its own creator
+       * there would show them a 404 for the thing they just made. "Added by me"
+       * reads as them, and lists it.
+       */
+      note.set('show', 'added');
+      if (outcome.scheduledFor) note.set('scheduled', outcome.scheduledFor);
+      else note.set('private', '1');
+      return Astro.redirect(p(`/account?${note}`));
+    }
+    error = outcome.error;
+    values = outcome.values;
+    repick = outcome.photosWereSent;
+  }
+}
+
+/* Alphabetical in the reader's language, with Other last, as the app lists them. */
+const categoryOptions = categories
+  .map((c) => ({ id: c.id, slug: c.slug, label: categoryName(c.slug, lang) ?? c.name }))
+  .sort((a, b) => (a.slug === 'other' ? 1 : b.slug === 'other' ? -1 : a.label.localeCompare(b.label, lang)));
+
+const v = (key: string) => values[key] ?? '';
+const isEvent = v('kind') === 'activity';
+const isCoords = v('locmode') === 'coords';
 ---
 
-<Base
-  title={t('add.metaTitle')}
-  description={t('add.metaDesc')}
-  canonical={`${origin}/add`}
->
+<Base title={t('add.metaTitle')} description={t('add.metaDesc')} canonical={`${origin}/add`}>
   <SiteHeader />
 
   <main id="main" class="wrap">
@@ -37,63 +101,564 @@ const p = (href: string) => localePath(href, lang);
       <p class="lead">{t('add.lead')}</p>
     </header>
 
-    <div class="cards">
-      <div class="entry place">
-        <span class="mono kind">{t('add.aPlace')}</span>
-        <p>{t('add.aPlaceBody')}</p>
-      </div>
-      <div class="entry activity">
-        <span class="mono kind">{t('add.anActivity')}</span>
-        <p>{t('add.anActivityBody')}</p>
-      </div>
-    </div>
+    {
+      !user ? (
+        <>
+          <div class="cards">
+            <div class="entry place">
+              <span class="mono kind">{t('add.aPlace')}</span>
+              <p>{t('add.aPlaceBody')}</p>
+            </div>
+            <div class="entry activity">
+              <span class="mono kind">{t('add.anActivity')}</span>
+              <p>{t('add.anActivityBody')}</p>
+            </div>
+          </div>
 
-    <div class="notice">
-      <h2>{t('add.noticeTitle')}</h2>
-      <p>{t('add.noticeBody')}</p>
-      <p class="small">
-        {user ? t('add.signedIn') : t('add.needAccount')}
-      </p>
+          <div class="notice">
+            <p class="notice-lead">{copy.signInToAdd}</p>
+            <div class="actions">
+              <a class="primary" href={p(`/auth/sign-in?next=${encodeURIComponent(p('/add'))}`)}>{t('auth.signIn')}</a>
+              <a class="ghost" href={p(`/auth/sign-up?next=${encodeURIComponent(p('/add'))}`)}>{t('auth.createAccount')}</a>
+            </div>
+            <div class="get">
+              <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
+              <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
+            </div>
+          </div>
+        </>
+      ) : (
+        <form class="add" method="post" enctype="multipart/form-data">
+          {error && (
+            <div class="form-error" role="alert">
+              <p>{error}</p>
+              {repick && <p class="small">{copy.repickPhotos}</p>}
+            </div>
+          )}
 
-      {/*
-        This page's whole message is "do it in the app", and until now it said
-        so without offering any way to get the app.
-      */}
-      <div class="get">
-        <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
-        <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
-      </div>
+          {/* ---- place or event: the two cards are the choice ---- */}
+          <fieldset class="block">
+            <legend class="mono legend">{copy.whatAreYouAdding}</legend>
+            <div class="cards">
+              <label class="entry place choose">
+                <input type="radio" name="kind" value="place" checked={!isEvent} />
+                <span class="mono kind">{t('add.aPlace')}</span>
+                <span class="entry-body">{t('add.aPlaceBody')}</span>
+              </label>
+              <label class="entry activity choose">
+                <input type="radio" name="kind" value="activity" checked={isEvent} />
+                <span class="mono kind">{t('add.anActivity')}</span>
+                <span class="entry-body">{t('add.anActivityBody')}</span>
+              </label>
+            </div>
+          </fieldset>
 
-      <div class="actions">
-        <a class="ghost" href={p('/search')}>{t('add.lookAround')}</a>
-        {!user && <a class="ghost" href={p('/auth/sign-up')}>{t('auth.createAccount')}</a>}
-      </div>
-    </div>
+          {/* ---- photos ---- */}
+          <fieldset class="block">
+            <legend class="mono legend">
+              {copy.photos}{!isModerator && ' *'}
+            </legend>
+            <p class="hint">{copy.photosHint}</p>
+            <input id="photos" class="file" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required={!isModerator} />
+            <p class="hint">{copy.photosRule}</p>
+          </fieldset>
+
+          {/* ---- what it is ---- */}
+          <fieldset class="block">
+            <legend class="mono legend">{copy.name} *</legend>
+            <label class="field">
+              <span class="label place-only">{copy.namePlace}</span>
+              <span class="label event-only">{copy.nameEvent}</span>
+              <input id="name" name="name" value={v('name')} maxlength="120" required autocomplete="off" />
+            </label>
+
+            <label class="field">
+              <span class="label place-only">{copy.kindPlace} *</span>
+              <span class="label event-only">{copy.kindEvent} *</span>
+              <select id="category" name="category" required>
+                <option value="">{copy.chooseOne}</option>
+                {categoryOptions.map((c) => (
+                  <option value={c.id} data-slug={c.slug} selected={v('category') === c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label class="field other-only">
+              <span class="label">{copy.otherDetail} *</span>
+              <input id="otherDetail" name="otherDetail" value={v('otherDetail')} maxlength="80" />
+            </label>
+          </fieldset>
+
+          {/* ---- where: an address, or coordinates ---- */}
+          <fieldset class="block">
+            <legend class="mono legend">{copy.where} *</legend>
+            <div class="pills" role="radiogroup">
+              <label class="pill">
+                <input type="radio" name="locmode" value="address" checked={!isCoords} />
+                <span>{copy.modeAddress}</span>
+              </label>
+              <label class="pill">
+                <input type="radio" name="locmode" value="coords" checked={isCoords} />
+                <span>{copy.modeCoords}</span>
+              </label>
+            </div>
+
+            <div class="address-only stack">
+              <label class="field">
+                <span class="label">{copy.street}</span>
+                <input id="street" name="street" value={v('street')} maxlength="160" autocomplete="street-address" />
+              </label>
+              <label class="field">
+                <span class="label">{copy.area}</span>
+                <input id="area" name="area" value={v('area')} maxlength="80" autocomplete="postal-code" />
+              </label>
+              <p class="hint">{copy.addressHint}</p>
+            </div>
+
+            <div class="coords-only stack">
+              <label class="field">
+                <span class="label">{copy.coords}</span>
+                <input id="coords" name="coords" value={v('coords')} placeholder="59.32932, 18.06858" maxlength="60" inputmode="decimal" autocomplete="off" />
+              </label>
+              <p class="hint">{copy.coordsHint}</p>
+            </div>
+
+            <button id="check-location" class="ghost check-button" type="button" hidden>{copy.check}</button>
+            <div id="location-result" class="result" aria-live="polite" hidden></div>
+          </fieldset>
+
+          {/* ---- season and price, as on the app's form ---- */}
+          <fieldset class="block">
+            <legend class="mono legend">{copy.typeLabel}</legend>
+            <div class="pills">
+              <label class="pill">
+                <input type="checkbox" name="summer" value="1" checked={v('summer') === '1'} />
+                <span>{copy.summer}</span>
+              </label>
+              <label class="pill">
+                <input type="checkbox" name="winter" value="1" checked={v('winter') === '1'} />
+                <span>{copy.winter}</span>
+              </label>
+              <span class="divider" aria-hidden="true"></span>
+              <label class="pill">
+                <input class="untickable" type="radio" name="price" value="free" checked={v('price') === 'free'} />
+                <span>{copy.free}</span>
+              </label>
+              <label class="pill">
+                <input class="untickable" type="radio" name="price" value="paid" checked={v('price') === 'paid'} />
+                <span>{copy.paid}</span>
+              </label>
+            </div>
+          </fieldset>
+
+          {/* ---- details ---- */}
+          <fieldset class="block">
+            <label class="field">
+              <span class="label">{copy.description}</span>
+              <textarea id="description" name="description" rows="4" maxlength="2000">{v('description')}</textarea>
+            </label>
+
+            <label class="field">
+              <span class="label">{copy.website}</span>
+              <input id="website" name="website" value={v('website')} maxlength="300" inputmode="url" placeholder="https://" />
+            </label>
+
+            <label class="field place-only">
+              <span class="label">{copy.phone}</span>
+              <input id="phone" name="phone" value={v('phone')} maxlength="40" inputmode="tel" />
+            </label>
+
+            <label class="field event-only">
+              <span class="label">{copy.email}</span>
+              <input id="email" name="email" value={v('email')} maxlength="160" inputmode="email" />
+            </label>
+          </fieldset>
+
+          {/* ---- opening hours, places only ---- */}
+          <fieldset class="block place-only">
+            <legend class="mono legend">{copy.hours}</legend>
+            <label class="check">
+              <input type="checkbox" name="open247" value="1" checked={v('open247') === '1'} />
+              <span>{copy.open247}</span>
+            </label>
+            <div class="hours">
+              {DAY_KEYS.map((day) => (
+                <div class="hours-row">
+                  <span class="day">{copy.days[day]}</span>
+                  <input type="time" name={`${day}Open`} value={v(`${day}Open`)} aria-label={`${copy.days[day]} ${copy.opens}`} />
+                  <span class="dash" aria-hidden="true">–</span>
+                  <input type="time" name={`${day}Close`} value={v(`${day}Close`)} aria-label={`${copy.days[day]} ${copy.closes}`} />
+                </div>
+              ))}
+            </div>
+            <p class="hint">{copy.hoursHint}</p>
+          </fieldset>
+
+          {/* ---- when, events only ---- */}
+          <fieldset class="block event-only">
+            <div class="dates">
+              <label class="field">
+                <span class="label">{copy.startDate} *</span>
+                <input type="date" name="startDate" value={v('startDate')} />
+              </label>
+              <label class="field">
+                <span class="label">{copy.endDate} *</span>
+                <input type="date" name="endDate" value={v('endDate')} />
+              </label>
+              <label class="field">
+                <span class="label">{copy.publishDate}</span>
+                <input type="date" name="publishDate" value={v('publishDate')} />
+              </label>
+            </div>
+            <p class="hint">{copy.publishHint}</p>
+
+            <p class="label question">{copy.visibility} *</p>
+            <div class="pills">
+              <label class="pill">
+                <input type="radio" name="visibility" value="public" checked={v('visibility') === 'public'} />
+                <span>{copy.public}</span>
+              </label>
+              <label class="pill">
+                <input type="radio" name="visibility" value="private" checked={v('visibility') === 'private'} />
+                <span>{copy.private}</span>
+              </label>
+            </div>
+            <p class="hint">{copy.privateHint}</p>
+          </fieldset>
+
+          {/* ---- who ---- */}
+          <fieldset class="block">
+            <p class="label question">{copy.showCreator} *</p>
+            <div class="pills">
+              <label class="pill">
+                <input type="radio" name="showCreator" value="yes" checked={v('showCreator') === 'yes'} required />
+                <span>{copy.yes}</span>
+              </label>
+              <label class="pill">
+                <input type="radio" name="showCreator" value="no" checked={v('showCreator') === 'no'} />
+                <span>{copy.no}</span>
+              </label>
+            </div>
+
+            <p class="label question">
+              <span class="place-only">{copy.isOwnerPlace} *</span>
+              <span class="event-only">{copy.isOwnerEvent} *</span>
+            </p>
+            <div class="pills">
+              <label class="pill">
+                <input type="radio" name="isOwner" value="yes" checked={v('isOwner') === 'yes'} required />
+                <span>{copy.yes}</span>
+              </label>
+              <label class="pill">
+                <input type="radio" name="isOwner" value="no" checked={v('isOwner') === 'no'} />
+                <span>{copy.no}</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="submit-row">
+            <button id="submit" class="primary submit" type="submit">
+              <span class="place-only">{copy.submitPlace}</span>
+              <span class="event-only">{copy.submitEvent}</span>
+            </button>
+            <p class="fine">{copy.disclaimer}</p>
+          </div>
+        </form>
+      )
+    }
   </main>
 
   <SiteFooter />
 </Base>
+
+<script
+  is:inline
+  define:vars={{
+    text: {
+      check: copy.check,
+      checking: copy.checking,
+      pinnedAt: copy.pinnedAt,
+      pinnedAtCoords: copy.pinnedAtCoords,
+      nearbyTitle: copy.nearbyTitle,
+      nearbyBody: copy.nearbyBody,
+      metresAway: copy.metresAway,
+      submitting: copy.submitting,
+      errors: {
+        'not-found': copy.errNotFound,
+        imprecise: copy.errImprecise,
+        'bad-coords': copy.errBadCoords,
+        outside: copy.errOutside,
+        swapped: copy.errSwapped,
+        failed: copy.errLookupFailed,
+        empty: copy.errLocation,
+      },
+    },
+    locationBase: p('/location/'),
+  }}
+>
+  (() => {
+    const form = document.querySelector('form.add');
+    if (!form) return;
+
+    /* ---- Check location ------------------------------------------------ */
+    const checkButton = document.getElementById('check-location');
+    const result = document.getElementById('location-result');
+    checkButton.hidden = false;
+
+    const line = (tag, className, textContent) => {
+      const el = document.createElement(tag);
+      if (className) el.className = className;
+      if (textContent) el.textContent = textContent;
+      return el;
+    };
+
+    // Place names come from other people, so every one is set as text, never
+    // parsed as markup.
+    const render = (data, mode) => {
+      result.hidden = false;
+      result.replaceChildren();
+      result.classList.toggle('bad', !data.ok);
+      if (!data.ok) {
+        const message = (text.errors[data.error] || text.errors.failed).replace('{suggestion}', data.suggestion || '');
+        result.append(line('p', '', message));
+        return;
+      }
+      const pin = data.pin;
+      const where = [pin.street, pin.area].filter(Boolean).join(', ');
+      result.append(line('p', 'result-lead', mode === 'coords' ? text.pinnedAtCoords : text.pinnedAt));
+      if (where) result.append(line('p', 'result-where', where));
+      result.append(line('p', 'mono result-coords', `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`));
+
+      if (data.nearby && data.nearby.length) {
+        const box = line('div', 'nearby');
+        box.append(line('p', 'nearby-title', text.nearbyTitle));
+        box.append(line('p', 'hint', text.nearbyBody));
+        const list = line('ul', 'nearby-list');
+        for (const place of data.nearby) {
+          const item = line('li');
+          const link = line('a', '', place.name);
+          link.href = locationBase + place.id;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          item.append(link, line('span', 'mono nearby-distance', text.metresAway.replace('{m}', String(place.distance))));
+          list.append(item);
+        }
+        box.append(list);
+        result.append(box);
+      }
+    };
+
+    checkButton.addEventListener('click', async () => {
+      const mode = form.querySelector('input[name="locmode"]:checked')?.value || 'address';
+      const params = new URLSearchParams({ mode });
+      if (mode === 'coords') params.set('coords', form.coords.value);
+      else {
+        params.set('street', form.street.value);
+        params.set('area', form.area.value);
+      }
+      const slug = form.category.selectedOptions[0]?.dataset.slug;
+      if (slug) params.set('category', slug);
+
+      checkButton.disabled = true;
+      checkButton.textContent = text.checking;
+      try {
+        const res = await fetch('/api/geocode?' + params.toString(), { credentials: 'same-origin' });
+        render(await res.json(), mode);
+      } catch {
+        render({ ok: false, error: 'failed' }, mode);
+      } finally {
+        checkButton.disabled = false;
+        checkButton.textContent = text.check;
+      }
+    });
+
+    // A changed address makes the last answer about somewhere else.
+    for (const name of ['street', 'area', 'coords']) {
+      form[name].addEventListener('input', () => {
+        result.hidden = true;
+      });
+    }
+
+    /* ---- Free / Paid can be un-ticked, like the app's buttons ---------- */
+    for (const radio of form.querySelectorAll('input.untickable')) {
+      radio.addEventListener('mousedown', () => {
+        radio.dataset.was = radio.checked ? '1' : '';
+      });
+      radio.addEventListener('click', () => {
+        if (radio.dataset.was === '1') radio.checked = false;
+      });
+    }
+
+    /* ---- Photos, shrunk before upload --------------------------------- */
+    /*
+     * A phone photo straight off the camera is several megabytes and up to
+     * 8000px across, and a place photo is never shown near that size. The app
+     * re-encodes on the way out; a browser hands back the original bytes, so
+     * this does the same step here. Longest side 1600px, JPEG. A file the
+     * browser cannot decode is left as it is, and the server says why.
+     */
+    const photos = document.getElementById('photos');
+    const MAX_SIDE = 1600;
+    const shrink = async (file) => {
+      try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+        if (!blob) return file;
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      } catch {
+        return file;
+      }
+    };
+    photos?.addEventListener('change', async () => {
+      if (!photos.files || !photos.files.length || typeof DataTransfer === 'undefined') return;
+      const shrunk = await Promise.all([...photos.files].map(shrink));
+      const transfer = new DataTransfer();
+      shrunk.forEach((f) => transfer.items.add(f));
+      photos.files = transfer.files;
+    });
+
+    /* ---- One submission, not two -------------------------------------- */
+    form.addEventListener('submit', () => {
+      const button = document.getElementById('submit');
+      button.disabled = true;
+      button.textContent = text.submitting;
+    });
+  })();
+</script>
 
 <style>
   main { padding-block: 48px 72px; }
   .head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 30px; }
   h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.05; letter-spacing: -0.035em; }
   .lead { margin: 0; font-size: 18px; line-height: 1.6; color: var(--text-70); max-width: 58ch; }
+
   .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .entry { border: 1px solid; border-radius: 13px; padding: 24px; background: var(--surface); }
-  /* Purple for a place, amber for an activity — the same split the app uses. */
+  .entry { border: 1px solid; border-radius: 13px; padding: 24px; background: var(--surface); display: flex; flex-direction: column; gap: 10px; }
+  /* Purple for a place, amber for an event — the same split the app uses. */
   .entry.place { border-color: #c34ce8; }
   .entry.activity { border-color: rgba(232, 169, 59, 0.5); }
   .kind { font-size: 10px; letter-spacing: 0.16em; color: var(--text-55); }
-  .entry p { margin: 10px 0 0; font-size: 15px; line-height: 1.6; color: var(--text-70); }
-  .notice { margin-top: 24px; border: 1px solid var(--hairline); border-radius: 13px; padding: 28px; }
-  .notice h2 { font-size: 20px; margin-bottom: 12px; }
-  .notice p { margin: 0 0 10px; font-size: 15px; line-height: 1.65; color: var(--text-70); max-width: 58ch; }
-  .small { font-size: 13px; color: var(--text-55); }
-  .get { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .entry p, .entry-body { margin: 0; font-size: 15px; line-height: 1.6; color: var(--text-70); }
 
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
-  .ghost { border: 1px solid var(--border); border-radius: 8px; padding: 11px 18px; font-weight: 500; font-size: 14px; color: var(--text); }
+  /* The cards are the choice: a radio in each, the chosen one filled. */
+  .entry.choose { cursor: pointer; position: relative; }
+  .entry.choose input { position: absolute; opacity: 0; pointer-events: none; }
+  .entry.choose:not(:has(input:checked)) { opacity: 0.62; border-color: var(--hairline); }
+  .entry.choose:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .notice { margin-top: 24px; border: 1px solid var(--hairline); border-radius: 13px; padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+  .notice-lead { margin: 0; font-size: 16px; line-height: 1.6; color: var(--text-70); max-width: 58ch; }
+  .get { display: flex; gap: 10px; flex-wrap: wrap; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .primary { background: var(--accent-fill, var(--accent)); color: var(--page); border: 0; border-radius: 8px; padding: 12px 20px; font-weight: 600; font-size: 15px; cursor: pointer; }
+  .primary:hover { color: var(--page); filter: brightness(1.06); }
+  .ghost { border: 1px solid var(--border); border-radius: 8px; padding: 11px 18px; font-weight: 500; font-size: 14px; color: var(--text); background: none; cursor: pointer; }
   .ghost:hover { color: var(--accent); border-color: var(--accent); }
-  @media (max-width: 800px) { .cards { grid-template-columns: 1fr; } }
+
+  /* ---- the form ---- */
+  .add { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+  .block { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .legend { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-55); padding: 0; margin-bottom: 2px; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .label { font-size: 13.5px; color: var(--text-70); }
+  .question { margin: 6px 0 0; }
+  .hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-55); max-width: 64ch; }
+  .fine { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text-42); max-width: 64ch; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+
+  /* :where() so the specific rules below win without !important. */
+  :where(input:not([type='radio']):not([type='checkbox']):not([type='file']), select, textarea) {
+    width: 100%;
+    border: 1px solid rgba(var(--ink-rgb), 0.3);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 15px;
+  }
+  select { background: var(--page); }
+  textarea { resize: vertical; line-height: 1.5; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input::placeholder { color: var(--text-42); }
+  .file { font-size: 14px; color: var(--text-70); }
+
+  /* Pills: the app's buttons for season, price and yes/no. */
+  .pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pill { position: relative; cursor: pointer; }
+  .pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .pill span { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 7px 15px; font-size: 14px; color: var(--text); }
+  .pill input:checked + span { background: #14747a; border-color: #14747a; color: #fff; font-weight: 600; }
+  .pill input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .divider { width: 1px; align-self: stretch; background: var(--border); margin-inline: 4px; }
+
+  .check { display: flex; align-items: center; gap: 9px; font-size: 14.5px; cursor: pointer; }
+  .check input { width: 18px; height: 18px; accent-color: #14747a; }
+
+  .hours { display: flex; flex-direction: column; gap: 8px; }
+  .hours-row { display: grid; grid-template-columns: 110px 1fr auto 1fr; align-items: center; gap: 8px; }
+  .hours-row input { padding: 9px 10px; }
+  .day { font-size: 14px; color: var(--text-70); }
+  .dash { color: var(--text-42); }
+  /* Open 24/7 makes the days moot. */
+  .add:has(input[name='open247']:checked) .hours { opacity: 0.4; pointer-events: none; }
+
+  .dates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  /*
+   * Which fields show, from the choices made above — in CSS, so the form is
+   * right with no script. Nothing hidden this way is `required`: a browser
+   * refuses to submit a required field it cannot show, so those are checked
+   * on the server instead.
+   */
+  .event-only { display: none; }
+  .add:has(input[name='kind'][value='activity']:checked) .event-only { display: flex; }
+  .add:has(input[name='kind'][value='activity']:checked) span.event-only { display: inline; }
+  .add:has(input[name='kind'][value='activity']:checked) .place-only { display: none; }
+  .coords-only { display: none; }
+  .add:has(input[name='locmode'][value='coords']:checked) .coords-only { display: flex; }
+  .add:has(input[name='locmode'][value='coords']:checked) .address-only { display: none; }
+  .other-only { display: none; }
+  .add:has(option[data-slug='other']:checked) .other-only { display: flex; }
+
+  .check-button { align-self: flex-start; }
+  .result { border: 1px solid var(--hairline); border-left: 3px solid #14747a; border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  /* display: flex outranks the browser's own [hidden] rule. */
+  .result[hidden] { display: none; }
+  .result.bad { border-left-color: var(--danger, #c0392b); }
+  /*
+   * Everything inside the box is built by the script, so none of it carries
+   * Astro's scoping attribute and a scoped selector would never reach it.
+   */
+  .result :global(p) { margin: 0; font-size: 14px; line-height: 1.5; }
+  .result :global(.result-lead) { color: var(--text-55); }
+  .result :global(.result-where) { font-weight: 500; font-size: 15px; }
+  .result :global(.result-coords) { font-size: 12px; color: var(--text-42); letter-spacing: 0.04em; }
+  .result :global(.nearby) { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 6px; }
+  .result :global(.nearby-title) { font-weight: 600; color: var(--accent); }
+  .result :global(.hint) { font-size: 13px; color: var(--text-55); }
+  .result :global(.nearby-list) { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+  .result :global(.nearby-distance) { margin-left: 8px; font-size: 11px; color: var(--text-42); }
+
+  .form-error { border: 1px solid rgba(192, 57, 43, 0.5); background: rgba(192, 57, 43, 0.08); border-radius: 10px; padding: 14px 16px; }
+  .form-error p { margin: 0; font-size: 14.5px; color: var(--text); }
+  .form-error .small { margin-top: 6px; font-size: 13px; color: var(--text-70); }
+
+  .submit-row { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; padding-top: 6px; }
+  .submit { padding: 14px 26px; font-size: 16px; }
+  .submit:disabled { opacity: 0.6; cursor: default; }
+
+  @media (max-width: 800px) {
+    .cards { grid-template-columns: 1fr; }
+    .dates { grid-template-columns: 1fr; }
+    .hours-row { grid-template-columns: 84px 1fr auto 1fr; }
+  }
 </style>

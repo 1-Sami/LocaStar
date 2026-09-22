@@ -12,9 +12,10 @@
  * is a copy that drifts.
  *
  * `where` is the honest part: most of the map is readable on the website, but
- * adding, reviewing, photographing, sharing with a friend and blocking are all
- * things the app does. Saying so on the page is better than a visitor finding
- * out by looking for a button that is not there.
+ * reviewing, photographing, sharing with a friend and blocking are all things
+ * the app does. Saying so on the page is better than a visitor finding out by
+ * looking for a button that is not there. Adding moved to both on 2026-09-22,
+ * when the website got its own add form.
  */
 
 export type FeatureWhere = 'app' | 'both';
@@ -108,13 +109,13 @@ export const FEATURE_DETAIL: Record<'en' | 'sv', FeatureDetail> = {
     contribute: [
       {
         title: 'Add a place',
-        body: 'A court, a beach, a trail, an outdoor gym. One photo you took, a name, the activity, and a pin you drag to the exact spot — then season, free or paid, hours, website and phone if you know them.',
-        where: 'app',
+        body: 'A court, a beach, a trail, an outdoor gym. One photo you took, a name, the activity, and where it is — a pin you drag in the app, or an address or coordinates on the website — then season, free or paid, hours, website and phone if you know them.',
+        where: 'both',
       },
       {
         title: 'Add an event',
         body: 'A festival, a match, a meet-up. The same, plus the dates it runs.',
-        where: 'app',
+        where: 'both',
       },
       {
         title: 'It warns you about duplicates',
@@ -258,13 +259,13 @@ export const FEATURE_DETAIL: Record<'en' | 'sv', FeatureDetail> = {
     contribute: [
       {
         title: 'Lägg till en plats',
-        body: 'En plan, en strand, ett spår, ett utegym. Ett foto du tagit själv, ett namn, aktiviteten och en nål du drar till exakt rätt ställe — sedan säsong, gratis eller avgift, öppettider, webbplats och telefon om du vet.',
-        where: 'app',
+        body: 'En plan, en strand, ett spår, ett utegym. Ett foto du tagit själv, ett namn, aktiviteten och var den ligger — en nål du drar i appen, eller en adress eller koordinater på webbplatsen — sedan säsong, gratis eller avgift, öppettider, webbplats och telefon om du vet.',
+        where: 'both',
       },
       {
         title: 'Lägg till ett evenemang',
         body: 'En festival, en match, en träff. Samma sak, plus datumen det pågår.',
-        where: 'app',
+        where: 'both',
       },
       {
         title: 'Den varnar för dubbletter',

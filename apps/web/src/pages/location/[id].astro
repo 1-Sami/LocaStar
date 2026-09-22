@@ -19,6 +19,7 @@ import {
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
+import { addFormCopy } from '../../i18n/addForm';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { categoryColor, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
 import { isUuid } from '../../lib/ids';
@@ -347,6 +348,21 @@ const backHere = p(`/location/${location.id}`);
 const saved = Astro.url.searchParams.get('saved');
 const moderated = Astro.url.searchParams.get('moderated') === '1';
 
+/*
+ * Where the add form lands. Says how the pin was placed, because from an
+ * address it is only as exact as the address — and the fix, moving it in the
+ * app, is only useful to someone who knows it may need one. Anything that did
+ * not finish (photos, the ownership claim) is said too, rather than left for
+ * the person to notice.
+ */
+const addedBy = Astro.url.searchParams.get('added');
+const addCopy = addFormCopy(lang);
+const addedNotes = [
+  addedBy === 'address' ? addCopy.addedAddress : addedBy === 'coords' ? addCopy.addedCoords : null,
+  addedBy && Astro.url.searchParams.get('photos') === 'failed' ? addCopy.addedPhotosFailed : null,
+  addedBy && Astro.url.searchParams.get('claim') === 'failed' ? addCopy.addedClaimFailed : null,
+].filter((line): line is string => Boolean(line));
+
 const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`;
 const seasonLabel =
   location.available_summer && location.available_winter
@@ -458,6 +474,15 @@ const seasonLabel =
 
     <div class="wrap body">
       <div class="col-main">
+        {
+          addedNotes.length > 0 && (
+            <div class="added" role="status">
+              {addedNotes.map((line) => (
+                <p>{line}</p>
+              ))}
+            </div>
+          )
+        }
         <header class="head">
           <div class="badges">
             {category && <span class="badge" style={`background:${colour}`}>{category}</span>}
@@ -1485,6 +1510,22 @@ const seasonLabel =
   .cta:hover {
     background: #f0b94e;
     color: var(--page);
+  }
+
+  .added {
+    border: 1px solid var(--hairline);
+    border-left: 3px solid #14747a;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .added p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.55;
   }
 
   .note {

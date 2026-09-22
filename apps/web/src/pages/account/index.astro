@@ -25,6 +25,7 @@ import Base from '../../layouts/Base.astro';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { longDate } from '../../lib/format';
 import { currentUser } from '../../lib/auth';
+import { addFormCopy } from '../../i18n/addForm';
 
 export const prerender = false;
 const lang = Astro.locals.lang ?? 'en';
@@ -42,6 +43,25 @@ const avatarRemoved = Astro.url.searchParams.get('avatar') === 'removed';
 const avatarError = Astro.url.searchParams.get('avatarError');
 const done = Astro.url.searchParams.get('done');
 const accountError = Astro.url.searchParams.get('accountError') === '1';
+
+/*
+ * The add form lands here, instead of on the new place's page, for a private
+ * event or one set to appear later: that page reads as a signed-out visitor and
+ * would 404 for its own creator. Same notes the place page shows otherwise.
+ */
+const addCopy = addFormCopy(lang);
+const scheduledFor = Astro.url.searchParams.get('scheduled');
+const addedNotes = Astro.url.searchParams.get('added')
+  ? [
+      scheduledFor && /^\d{4}-\d{2}-\d{2}$/.test(scheduledFor)
+        ? addCopy.addedScheduled.replace('{date}', longDate(`${scheduledFor}T12:00:00Z`, lang === 'sv' ? 'sv-SE' : 'en-GB'))
+        : Astro.url.searchParams.get('private') === '1'
+          ? addCopy.addedPrivate
+          : null,
+      Astro.url.searchParams.get('photos') === 'failed' ? addCopy.addedPhotosFailed : null,
+      Astro.url.searchParams.get('claim') === 'failed' ? addCopy.addedClaimFailed : null,
+    ].filter((line): line is string => Boolean(line))
+  : [];
 
 /*
  * Everything is fetched with the visitor's own session, so RLS returns their
@@ -284,6 +304,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     <section class="body">
       {accountError && <p class="err-line">{t('acct.actionFailed')}</p>}
       {done && !accountError && <p class="ok-line">{t('acct.actionDone')}</p>}
+      {addedNotes.map((line) => <p class="ok-line">{line}</p>)}
       {
         section === 'saved' && (
           <>

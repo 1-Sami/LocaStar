@@ -284,11 +284,6 @@ export const ui = {
     'add.aPlaceBody': 'Somewhere that is simply there — a court, a beach, an outdoor gym, a trail.',
     'add.anActivity': 'AN EVENT',
     'add.anActivityBody': 'Something with dates — a festival, a market, a tournament. It retires itself once it has passed.',
-    'add.noticeTitle': 'For now, adding happens in the app',
-    'add.noticeBody': 'Placing the pin needs a proper map, and that part of the website is not finished. The app does it already, and anything you add there shows up here straight away — it is the same map.',
-    'add.signedIn': 'You are signed in, so it will be under your account.',
-    'add.needAccount': 'You will need an account, which is free.',
-    'add.lookAround': 'Look around instead',
 
     // Report
     'report.thanks': 'Thank you — that is with a moderator',
@@ -873,11 +868,6 @@ export const ui = {
     'add.aPlaceBody': 'Något som helt enkelt finns där — en plan, en strand, ett utegym, en led.',
     'add.anActivity': 'ETT EVENEMANG',
     'add.anActivityBody': 'Något med datum — en festival, en marknad, en turnering. Den plockas bort av sig själv när den passerat.',
-    'add.noticeTitle': 'Just nu sker tillägg i appen',
-    'add.noticeBody': 'Att sätta nålen kräver en riktig karta, och den delen av webbplatsen är inte klar. Appen gör det redan, och allt du lägger till där dyker upp här direkt — det är samma karta.',
-    'add.signedIn': 'Du är inloggad, så den hamnar under ditt konto.',
-    'add.needAccount': 'Du behöver ett konto, vilket är gratis.',
-    'add.lookAround': 'Titta runt i stället',
 
     // Rapportera
     'report.thanks': 'Tack — den ligger hos en moderator',
