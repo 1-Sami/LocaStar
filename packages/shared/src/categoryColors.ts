@@ -71,6 +71,7 @@ export const CategoryColors: Record<string, string> = {
   bowling: '#4A2E5C',
 
   // Culture & other
+  events: '#8A2E4A',
   festival: '#5C1B3A',
   'historical-ruins-places': '#5C4A5C',
   'public-art': '#6B3A6B',
