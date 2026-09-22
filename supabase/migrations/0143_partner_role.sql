@@ -1,0 +1,25 @@
+-- A fourth account type: partner.
+--
+-- For a kommun or a company that looks after many places — Huddinge kommun
+-- knows its own opening hours and fees, and today has no way to tell us except
+-- by filing one claim per place and waiting for an admin on each.
+--
+-- It is not a rung on the moderation ladder, which is why it is not simply
+-- Superuser with a different label. A Superuser's power is over other people's
+-- content, nationally: the report queue, hiding reviews and photos, proposing
+-- bans. A partner's power is over *facts* — a name, an address, a fee, a
+-- photo — and it stops dead at anything a person wrote. Handing a kommun a
+-- Superuser badge would hand them every LocaStar user's reviews and the ban
+-- tool, which is not what they asked for and is a problem the first time an
+-- employee hides a review criticising the kommun.
+--
+-- Where it sits in the enum only matters for sort order, and the value is
+-- placed before 'superuser' so the ordering still reads as increasing reach
+-- over other people's content: user < partner < superuser < admin.
+--
+-- Its own migration, and nothing here uses the value: Postgres refuses to use
+-- a newly added enum value in the transaction that adds it (see 0041, which
+-- learned this when 'superuser' arrived). What a partner may actually do is
+-- 0144.
+
+alter type user_role add value if not exists 'partner' before 'superuser';
