@@ -162,6 +162,7 @@ export {
   fetchMyActiveBan,
   searchUsers,
   setUserRole,
+  describeLocationEdit,
   fetchModerationActions,
   issueWarning,
   fetchWarningsForUser,

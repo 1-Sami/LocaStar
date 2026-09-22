@@ -647,6 +647,32 @@ export async function setUserRole(client: SupabaseClient, userId: string, role: 
 
 /* ----------------------------------------------------------- audit log --- */
 
+/** Neither too long to scan nor so short the value is unrecognisable. */
+const EDIT_VALUE_MAX = 60;
+
+function editValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  return text.length > EDIT_VALUE_MAX ? `${text.slice(0, EDIT_VALUE_MAX - 1)}…` : text;
+}
+
+/**
+ * A `location_edited` entry in words: one line per field, old value → new.
+ *
+ * The audit row (migration 0142) keeps both values so a bad edit can be put
+ * back, and this is the readable half of that. Callers decide how many lines
+ * they have room for — the underscored column names are left alone apart from
+ * their underscores, because a screen that renames them is a screen that has to
+ * be updated every time the table grows a column.
+ */
+export function describeLocationEdit(detail: Record<string, unknown> | null): string[] {
+  const changes = detail?.changes;
+  if (!changes || typeof changes !== "object") return [];
+  return Object.entries(changes as Record<string, { from?: unknown; to?: unknown }>).map(
+    ([field, change]) => `${field.replace(/_/g, " ")}: ${editValue(change?.from)} → ${editValue(change?.to)}`
+  );
+}
+
 export type ModerationAction = {
   id: string;
   actorName: string;

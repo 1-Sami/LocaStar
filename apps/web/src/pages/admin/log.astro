@@ -1,5 +1,5 @@
 ---
-import { fetchModerationActions, fetchProfile, isModeratorRole } from '@locastar/shared';
+import { describeLocationEdit, fetchModerationActions, fetchProfile, isModeratorRole } from '@locastar/shared';
 import AdminNav from '../../components/AdminNav.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -56,7 +56,15 @@ const ACTION_LABEL: Record<string, string> = {
   photo_deleted: t('log.aPhotoDeleted'),
   photo_removal_changed: t('log.aPhotoRemoval'),
   list_deleted: t('log.aListDeleted'),
+  location_edited: t('log.aLocationEdited'),
 };
+
+/*
+ * An edit lists the fields it changed, old value → new. Four at a time: the
+ * point here is "who touched this and roughly what", and the row itself keeps
+ * every value for when the answer is "put it back".
+ */
+const EDIT_LINES = 4;
 
 /* The parts of `detail` worth reading, in the order they make sense. */
 const readable = (detail: Record<string, unknown> | null): string[] => {
@@ -68,7 +76,8 @@ const readable = (detail: Record<string, unknown> | null): string[] => {
   else if (to) out.push(String(to));
   if (detail.action) out.push(String(detail.action));
   if (detail.note) out.push(`“${detail.note}”`);
-  if (detail.name) out.push(String(detail.name));
+  // An edit already names the place in its subject line; twice reads as a stutter.
+  if (detail.name && !detail.changes) out.push(String(detail.name));
   return out;
 };
 
@@ -108,6 +117,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
               </p>
               {readable(entry.detail).length > 0 && (
                 <p class="detail">{readable(entry.detail).join(' · ')}</p>
+              )}
+              {describeLocationEdit(entry.detail).slice(0, EDIT_LINES).map((line) => (
+                <p class="detail edit">{line}</p>
+              ))}
+              {describeLocationEdit(entry.detail).length > EDIT_LINES && (
+                <p class="detail edit">
+                  {t('log.moreFields').replace('{n}', String(describeLocationEdit(entry.detail).length - EDIT_LINES))}
+                </p>
               )}
             </div>
             {entry.actorRole && <span class="mono role">{entry.actorRole}</span>}
@@ -157,6 +174,8 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .verb { color: var(--text-70); }
   .subject { color: var(--text-70); }
   .detail { margin: 0; font-size: 14px; color: var(--text-55); }
+  /* Values as they were written, so a wrong one is recognisable at a glance. */
+  .edit { font-family: var(--mono, monospace); font-size: 12.5px; word-break: break-word; }
   .role {
     font-size: 10px;
     letter-spacing: .1em;

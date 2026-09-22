@@ -1,4 +1,5 @@
 import {
+  describeLocationEdit,
   fetchModerationActions,
   fetchProfile,
   isModeratorRole,
@@ -28,6 +29,9 @@ const ACTION_LABELS: Record<string, string> = {
   report_resolved: 'Report resolved',
   warning_issued: 'Warning issued',
   photo_deleted: 'Photo taken down',
+  photo_removal_changed: 'Photo visibility changed',
+  list_deleted: 'List deleted',
+  location_edited: 'Place edited',
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -39,6 +43,9 @@ const ACTION_COLORS: Record<string, string> = {
   review_status_changed: '#C34CE8',
   report_resolved: '#4CD37A',
   photo_deleted: '#C34CE8',
+  photo_removal_changed: '#C34CE8',
+  list_deleted: '#C34CE8',
+  location_edited: '#3AB7B0',
 };
 
 /*
@@ -53,6 +60,7 @@ const FILTERS: { key: string; label: string; actions: string[] }[] = [
   { key: 'takedowns', label: 'Takedowns', actions: ['location_status_changed', 'review_status_changed', 'photo_deleted'] },
   { key: 'reports', label: 'Reports', actions: ['report_resolved'] },
   { key: 'people', label: 'People', actions: ['ban_issued', 'ban_reviewed', 'warning_issued', 'role_changed'] },
+  { key: 'edits', label: 'Edits', actions: ['location_edited'] },
 ];
 
 /** What the entry is about, in words rather than a table name. */
@@ -113,9 +121,12 @@ function detailLines(detail: Record<string, unknown> | null, names: Record<strin
   for (const [key, value] of Object.entries(detail)) {
     if (key === 'from' || key === 'to' || value === null || value === undefined) continue;
     if (key.endsWith('_id')) continue;
+    // Every field an edit touched, old value to new, rather than "[object Object]".
+    if (key === 'changes') continue;
     const label = DETAIL_LABELS[key] ?? key.replace(/_/g, ' ');
     lines.push(`${label}: ${formatDetailValue(key, value, names)}`);
   }
+  lines.push(...describeLocationEdit(detail));
   return lines;
 }
 
