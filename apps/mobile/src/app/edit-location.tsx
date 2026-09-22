@@ -1,6 +1,7 @@
 import {
   ALWAYS_OPEN,
   addLocationPhoto,
+  canEditAnyLocation,
   fetchCategories,
   fetchLocationById,
   fetchLocationCategoryIds,
@@ -59,7 +60,8 @@ export default function EditLocationScreen() {
   const theme = useTheme();
 
   const { session } = useAuth();
-  const { isModerator } = useSharedProfile();
+  const { role } = useSharedProfile();
+  const canEditAnyPlace = canEditAnyLocation(role);
 
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -308,7 +310,7 @@ export default function EditLocationScreen() {
    */
   const cannotEdit = Boolean(
     permissions &&
-      !isModerator &&
+      !canEditAnyPlace &&
       !(session && permissions.isVerified && permissions.claimedBy === session.user.id) &&
       !(session && permissions.createdBy === session.user.id)
   );
@@ -749,7 +751,7 @@ export default function EditLocationScreen() {
             locations that arrived with no picture and no creator left inside
             the edit window to give them one.
           */}
-          {isModerator && (
+          {canEditAnyPlace && (
             <View style={styles.section}>
               <ThemedText type="smallBold" style={styles.photoLabel}>
                 {t('form.addPhotos')}

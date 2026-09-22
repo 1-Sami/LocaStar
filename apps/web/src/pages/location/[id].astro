@@ -11,6 +11,7 @@ import {
   fetchProfile,
   isAlwaysOpen,
   isModeratorRole,
+  canEditAnyLocation,
   makeCoverPhoto,
   placeholderFocusY,
   placeholderImageUrl,
@@ -224,6 +225,7 @@ let viewerId: string | null = null;
  * regardless — the flag chooses what to draw, not what is permitted.
  */
 let isModerator = false;
+let canSetCover = false;
 let modPhotos: GalleryPhoto[] = [];
 let modError: string | null = null;
 let isFavourite = false;
@@ -238,12 +240,15 @@ if (hasSession) {
     viewerId = user.id;
     const profile = await fetchProfile(authed, user.id).catch(() => null);
     isModerator = isModeratorRole(profile?.role ?? 'user');
+    // A partner looks after a place's facts, which includes which photo leads
+    // it — but not taking anybody's photo or review down. That stays moderation.
+    canSetCover = canEditAnyLocation(profile?.role ?? 'user');
 
     if (postForm) {
-      if (!isModerator) return new Response(null, { status: 403 });
       const form = postForm;
-
       const intent = String(form.get('intent') ?? '');
+      if (!(intent === 'cover' ? canSetCover : isModerator)) return new Response(null, { status: 403 });
+
       try {
         if (intent === 'cover') {
           await makeCoverPhoto(authed, location.id, String(form.get('photoId') ?? ''));
@@ -813,7 +818,7 @@ const seasonLabel =
       )
     }
     {
-      isModerator && (
+      (isModerator || canSetCover) && (
         <div
           class="gallery-mod"
           data-gallery-mod
@@ -831,6 +836,7 @@ const seasonLabel =
             <input type="hidden" name="photoId" value="" data-mod-cover-id />
             <button class="gallery-mod-btn" type="submit">{t('loc.modMakeCover')}</button>
           </form>
+          {isModerator && (
           <form method="POST">
             <input type="hidden" name="intent" value="photo" />
             <input type="hidden" name="photoId" value="" data-mod-photo-id />
@@ -840,6 +846,7 @@ const seasonLabel =
               {t('loc.modRemovePhoto')}
             </button>
           </form>
+          )}
         </div>
       )
     }
@@ -890,7 +897,7 @@ const seasonLabel =
 </script>
 
 {
-  isModerator && (
+  (isModerator || canSetCover) && (
     <script is:inline>
       (function () {
         /*
@@ -916,7 +923,8 @@ const seasonLabel =
         var reviewPhotoId = bar.querySelector('[data-mod-review-photo-id]');
         var removed = bar.querySelector('[data-mod-removed]');
         var toggle = bar.querySelector('[data-mod-toggle]');
-        var removeLabel = toggle.textContent.trim();
+        /* A partner's bar carries Make cover and nothing to remove with. */
+        var removeLabel = toggle ? toggle.textContent.trim() : '';
         var restoreLabel = bar.getAttribute('data-restore-label') || removeLabel;
 
         document.getElementById('gallery').addEventListener('photochange', function (event) {
@@ -926,12 +934,14 @@ const seasonLabel =
           bar.hidden = !photo;
           if (!photo) return;
 
-          photoId.value = photo.p || '';
-          reviewPhotoId.value = photo.r || '';
-          removed.value = photo.x ? '0' : '1';
-          toggle.textContent = photo.x ? restoreLabel : removeLabel;
-          if (photo.x) toggle.removeAttribute('data-confirm');
-          else toggle.setAttribute('data-confirm', bar.getAttribute('data-remove-confirm') || '');
+          if (toggle) {
+            photoId.value = photo.p || '';
+            reviewPhotoId.value = photo.r || '';
+            removed.value = photo.x ? '0' : '1';
+            toggle.textContent = photo.x ? restoreLabel : removeLabel;
+            if (photo.x) toggle.removeAttribute('data-confirm');
+            else toggle.setAttribute('data-confirm', bar.getAttribute('data-remove-confirm') || '');
+          }
 
           /* Only a photo the place itself owns can become the cover. */
           coverForm.hidden = !photo.p || photo.x;

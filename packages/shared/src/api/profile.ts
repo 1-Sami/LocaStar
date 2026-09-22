@@ -159,12 +159,26 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
  * "superuser" is the moderation tier (handles reports, can flag/hide/remove
  * content). "admin" is the company tier and keeps every superuser power plus
  * role management, hard deletes and claim decisions.
+ *
+ * "partner" is not a rung on that ladder but a different axis: a kommun or a
+ * company the company vouched for, which corrects facts on any place and has
+ * no power at all over what people wrote. See migration 0143.
  */
-export type UserRole = "user" | "superuser" | "admin";
+export type UserRole = "user" | "partner" | "superuser" | "admin";
 
 /** Roles allowed to handle reports and moderate content. */
 export function isModeratorRole(role: UserRole): boolean {
   return role === "superuser" || role === "admin";
+}
+
+/**
+ * Allowed to correct any place's facts, photos and categories.
+ *
+ * Moderators included: everything a partner may do, they may do too, and every
+ * screen that asks this question means "may this person fix this place".
+ */
+export function canEditAnyLocation(role: UserRole): boolean {
+  return role === "partner" || isModeratorRole(role);
 }
 
 export type Profile = {

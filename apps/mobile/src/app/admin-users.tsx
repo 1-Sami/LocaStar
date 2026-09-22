@@ -39,6 +39,7 @@ const DURATIONS: { days: number | null }[] = [
 function roleLabel(role: UserRole, t: TFunction): string {
   if (role === 'admin') return t('admin.roleAdmin');
   if (role === 'superuser') return t('admin.roleSuperuser');
+  if (role === 'partner') return t('admin.rolePartner');
   return t('admin.roleUser');
 }
 

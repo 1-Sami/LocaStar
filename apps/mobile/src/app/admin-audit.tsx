@@ -80,6 +80,7 @@ const TARGET_LABELS: Record<string, string> = {
 function roleLabel(role: UserRole | null): string {
   if (role === 'admin') return 'Admin';
   if (role === 'superuser') return 'Superuser';
+  if (role === 'partner') return 'Partner';
   return 'User';
 }
 

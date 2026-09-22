@@ -60,7 +60,9 @@ export default function AddLocationScreen() {
   // activity announced before there is anything to shoot. Everyone else still
   // brings a picture: an unphotographed listing from a stranger is the one we
   // can't tell apart from an invented one.
-  const isAdmin = role === 'admin';
+  // Admins and partners may add without a photo: a bulk list from a kommun
+  // arrives as facts, and requiring a picture would stop it at the door.
+  const photoOptional = role === 'admin' || role === 'partner';
 
   const isActivity = kind === 'activity';
   /*
@@ -371,7 +373,7 @@ export default function AddLocationScreen() {
         addressLine1.trim() &&
         addressLine2.trim() &&
         categoryIds.length > 0 &&
-        (hasPhoto || isAdmin) &&
+        (hasPhoto || photoOptional) &&
         pinCoords &&
         emailValid &&
         otherCategoryValid &&
@@ -512,7 +514,7 @@ export default function AddLocationScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="smallBold" style={styles.photoLabel}>
-            {isAdmin ? t('form.picturesAdmin') : t('form.picturesRequired')}
+            {photoOptional ? t('form.picturesAdmin') : t('form.picturesRequired')}
           </ThemedText>
           {/* Above the picker, not below it: after the photo is chosen is too
               late to be told what may not be chosen. */}

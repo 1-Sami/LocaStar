@@ -1,4 +1,5 @@
 import {
+  canEditAnyLocation,
   deleteLocation,
   setPhotoRemoved,
   deleteReview,
@@ -186,7 +187,10 @@ export default function LocationDetailScreen() {
   const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const { favoriteIds, bucketListIds, toggleFavorite, toggleBucketList } = useSaves();
-  const { isModerator } = useSharedProfile();
+  const { isModerator, role } = useSharedProfile();
+  // A partner (0143) may correct any place, so every "can this person fix this
+  // place" question below asks this rather than isModerator alone.
+  const canEditAnyPlace = canEditAnyLocation(role);
   const { coords: userCoords, usingFallback } = useUserLocation();
 
   const [location, setLocation] = useState<LocationDetail | null>(null);
@@ -379,7 +383,7 @@ export default function LocationDetailScreen() {
   // Reordering is limited to moderators and the verified owner. RLS enforces
   // the same rule (0072), so this only decides whether the control is shown.
   const canReorderPhotos =
-    isModerator || Boolean(session && location.claimed_by === session.user.id && location.is_verified);
+    canEditAnyPlace || Boolean(session && location.claimed_by === session.user.id && location.is_verified);
 
   // Suppressed when useUserLocation is on its Stockholm fallback: that is a
   // stand-in so search has somewhere to look from, and quoting a distance
@@ -400,7 +404,7 @@ export default function LocationDetailScreen() {
    */
   const isCreator = Boolean(session && location.created_by === session.user.id);
   const canEditLocation =
-    isModerator ||
+    canEditAnyPlace ||
     Boolean(session && location.is_verified && location.claimed_by === session.user.id) ||
     isCreator;
 

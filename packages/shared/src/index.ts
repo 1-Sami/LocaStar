@@ -126,6 +126,7 @@ export {
   fetchProfile,
   fetchMyPrivateProfile,
   updateProfile,
+  canEditAnyLocation,
   isModeratorRole,
   DELETED_ACCOUNT_NAME,
   DEFAULT_NOTIFICATION_PREFERENCES,

@@ -1,5 +1,13 @@
 ---
-import { categoryName, DAY_KEYS, fetchCategories, fetchProfile, isModeratorRole, type Category } from '@locastar/shared';
+import {
+  canEditAnyLocation,
+  categoryName,
+  DAY_KEYS,
+  fetchCategories,
+  fetchProfile,
+  isModeratorRole,
+  type Category,
+} from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import StoreBadge from '../components/StoreBadge.astro';
@@ -38,6 +46,7 @@ const p = (href: string) => localePath(href, lang);
 
 let categories: Category[] = [];
 let isModerator = false;
+let photoOptional = false;
 let error: string | null = null;
 let values: Record<string, string> = {};
 let repick = false;
@@ -49,6 +58,9 @@ if (user) {
   ]);
   categories = cats;
   isModerator = isModeratorRole(profile?.role ?? 'user');
+  // A partner may add without a photo, as a moderator may: their lists come
+  // from the organisation's own records, not from somebody standing there.
+  photoOptional = canEditAnyLocation(profile?.role ?? 'user');
 
   if (Astro.request.method === 'POST') {
     const outcome = await addFromForm({
@@ -156,10 +168,10 @@ const isCoords = v('locmode') === 'coords';
           {/* ---- photos ---- */}
           <fieldset class="block">
             <legend class="mono legend">
-              {copy.photos}{!isModerator && ' *'}
+              {copy.photos}{!photoOptional && ' *'}
             </legend>
             <p class="hint">{copy.photosHint}</p>
-            <input id="photos" class="file" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required={!isModerator} />
+            <input id="photos" class="file" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required={!photoOptional} />
             <p class="hint">{copy.photosRule}</p>
           </fieldset>
 

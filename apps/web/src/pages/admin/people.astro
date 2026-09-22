@@ -189,6 +189,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                         <input type="hidden" name="q" value={query} />
                         <select name="role" aria-label={t('ppl.role')}>
                           <option value="user" selected={person.role === 'user'}>user</option>
+                          <option value="partner" selected={person.role === 'partner'}>partner</option>
                           <option value="superuser" selected={person.role === 'superuser'}>superuser</option>
                           <option value="admin" selected={person.role === 'admin'}>admin</option>
                         </select>
