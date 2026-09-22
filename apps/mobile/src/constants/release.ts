@@ -22,4 +22,4 @@
  *
  * When a new native build ships, set both to the same number and carry on.
  */
-export const APP_RELEASE = '1.0.84';
+export const APP_RELEASE = '1.0.85';
