@@ -291,6 +291,23 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
             )}
 
             <fieldset class="block">
+              <legend class="mono legend">{editCopy.closed}</legend>
+              <label class="check">
+                <input type="checkbox" name="closed" value="1" checked={checked('closed', location.temporarily_closed)} />
+                <span>{editCopy.closed}</span>
+              </label>
+              <label class="field closed-only">
+                <span class="label">{editCopy.closedUntil}</span>
+                <input type="date" name="closedUntil" value={v('closedUntil', location.closed_until)} />
+              </label>
+              <p class="hint">{editCopy.closedHint}</p>
+              <p class="hint">
+                {editCopy.askRemoval}{' '}
+                <a href={p(`/report?location=${location.id}`)}>{editCopy.askRemovalLink}</a>
+              </p>
+            </fieldset>
+
+            <fieldset class="block">
               <legend class="mono legend">{editCopy.morePhotos}</legend>
               <p class="hint">{editCopy.morePhotosHint}</p>
               <input id="photos" class="file" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple />
@@ -480,6 +497,9 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .add:has(input[name='hoursNa']:checked) .check:has(input[name='open247']) { opacity: 0.4; pointer-events: none; }
 
   .dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+
+  .closed-only { display: none; }
+  .add:has(input[name='closed']:checked) .closed-only { display: flex; }
 
   .other-only { display: none; }
   .add:has(option[data-slug='other']:checked) .other-only { display: flex; }

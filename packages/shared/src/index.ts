@@ -62,6 +62,7 @@ export {
   makeCoverPhoto,
   deleteLocationPhoto,
   reportLocation,
+  isTemporarilyClosed,
   updateLocation,
   fetchLocationCategoryIds,
   setLocationCategories,

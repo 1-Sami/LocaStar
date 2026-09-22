@@ -44,7 +44,7 @@ export type EditOutcome =
 /** Every text field the form has, for sending back when something is wrong. */
 const ECHOED = [
   'name', 'category', 'otherDetail', 'address', 'coords', 'summer', 'winter', 'price',
-  'description', 'open247', 'hoursNa', 'website', 'phone', 'email',
+  'description', 'open247', 'hoursNa', 'closed', 'closedUntil', 'website', 'phone', 'email',
   'startDate', 'endDate', 'publishDate',
   ...DAY_KEYS.flatMap((d) => [`${d}Open`, `${d}Close`]),
 ];
@@ -137,6 +137,9 @@ export async function editFromForm(args: {
       isFree: values.price === 'free' ? true : values.price === 'paid' ? false : null,
       ...(isEvent ? { startsAt, expiresAt, ...(publishAt ? { publishAt } : {}) } : {}),
       otherCategoryDetail: category.slug === 'other' ? values.otherDetail : null,
+      temporarilyClosed: values.closed === '1',
+      // A date only means anything while it is shut, so reopening clears it.
+      closedUntil: values.closed === '1' ? (values.closedUntil || null) : null,
     });
   } catch (error) {
     console.error('Editing from the website failed', error);

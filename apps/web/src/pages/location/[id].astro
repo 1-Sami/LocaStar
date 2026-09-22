@@ -11,6 +11,7 @@ import {
   fetchProfile,
   isAlwaysOpen,
   isModeratorRole,
+  isTemporarilyClosed,
   canEditAnyLocation,
   makeCoverPhoto,
   placeholderFocusY,
@@ -383,6 +384,17 @@ const addedNotes = [
   addedBy && Astro.url.searchParams.get('claim') === 'failed' ? addCopy.addedClaimFailed : null,
 ].filter((line): line is string => Boolean(line));
 
+/*
+ * Shut for now (0145). Said at the top, before the hours a reader would
+ * otherwise act on: the door being locked outranks when it usually opens.
+ */
+const closedNow = isTemporarilyClosed(location);
+const closedLine = !closedNow
+  ? null
+  : location.closed_until
+    ? t('loc.closedUntilDate', { date: longDate(`${location.closed_until}T12:00:00Z`, lang === 'sv' ? 'sv-SE' : 'en-GB') })
+    : t('loc.closedNow');
+
 const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`;
 const seasonLabel =
   location.available_summer && location.available_winter
@@ -514,6 +526,7 @@ const seasonLabel =
             </div>
           )
         }
+        {closedLine && <p class="closed-banner" role="status">{closedLine}</p>}
         <header class="head">
           <div class="badges">
             {category && <span class="badge" style={`background:${colour}`}>{category}</span>}
@@ -1126,6 +1139,19 @@ const seasonLabel =
   .no-photo {
     max-width: 1440px;
     margin-inline: auto;
+  }
+
+  /* Amber rather than red: shut for now is not the same as gone. */
+  .closed-banner {
+    margin: 0 0 18px;
+    padding: 11px 15px;
+    border: 1px solid rgba(232, 169, 59, 0.5);
+    border-left-width: 3px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    background: rgba(232, 169, 59, 0.1);
   }
 
   /*

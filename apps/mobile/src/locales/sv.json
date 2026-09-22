@@ -266,6 +266,8 @@
     "sun": "Söndag"
   },
   "location": {
+    "closedNow": "Tillfälligt stängt",
+    "closedUntil": "Tillfälligt stängt till {{date}}",
     "illustration": "Illustration · inget foto än",
     "open24": "Öppet dygnet runt",
     "everyDay": "Alla dagar",

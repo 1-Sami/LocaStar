@@ -266,6 +266,8 @@
     "sun": "Sunday"
   },
   "location": {
+    "closedNow": "Temporarily closed",
+    "closedUntil": "Temporarily closed until {{date}}",
     "illustration": "Illustration · no photo yet",
     "open24": "Open 24 hours",
     "everyDay": "Every day",

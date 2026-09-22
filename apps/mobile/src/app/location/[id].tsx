@@ -5,6 +5,7 @@ import {
   deleteReview,
   fetchLocationById,
   isAlwaysOpen,
+  isTemporarilyClosed,
   fetchLocationPhotos,
   fetchMyClaimForLocation,
   makeCoverPhoto,
@@ -877,6 +878,22 @@ export default function LocationDetailScreen() {
           </View>
 
           <View style={styles.body}>
+            {/* Shut for now (0145): said before the opening hours it overrides. */}
+            {isTemporarilyClosed(location) && (
+              <View style={styles.closedBanner}>
+                <Ionicons name="lock-closed-outline" size={15} color="#E8A93B" />
+                <ThemedText type="smallBold" style={styles.closedText}>
+                  {location.closed_until
+                    ? t('location.closedUntil', {
+                        date: new Date(`${location.closed_until}T12:00:00Z`).toLocaleDateString(
+                          i18n.language === 'sv' ? 'sv-SE' : 'en-GB',
+                          { day: 'numeric', month: 'long' }
+                        ),
+                      })
+                    : t('location.closedNow')}
+                </ThemedText>
+              </View>
+            )}
             <View style={styles.titleRow}>
               <View style={styles.titleRowLeft}>
                 {location.category_label && (
@@ -1816,6 +1833,21 @@ const styles = StyleSheet.create({
   },
   photoCountText: {
     color: '#ffffff',
+  },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    borderWidth: 1,
+    borderColor: 'rgba(232,169,59,0.5)',
+    backgroundColor: 'rgba(232,169,59,0.12)',
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    marginBottom: Spacing.two,
+  },
+  closedText: {
+    color: '#E8A93B',
   },
   illustrationTag: {
     position: 'absolute',

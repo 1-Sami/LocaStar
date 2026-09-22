@@ -320,6 +320,11 @@ export interface EditFormCopy {
   findFromAddress: string;
   finding: string;
   hoursNa: string;
+  closed: string;
+  closedHint: string;
+  closedUntil: string;
+  askRemoval: string;
+  askRemovalLink: string;
   morePhotos: string;
   morePhotosHint: string;
   save: string;
@@ -348,6 +353,12 @@ export const EDIT_FORM: Record<'en' | 'sv', EditFormCopy> = {
     findFromAddress: 'Find from the address',
     finding: 'Looking…',
     hoursNa: 'Opening hours don’t apply here',
+    closed: 'Temporarily closed',
+    closedHint:
+      'The page stays as it is and says the door is locked. Use this rather than asking for the place to be taken off the map — people who look for it later will find it again.',
+    closedUntil: 'Open again on (optional)',
+    askRemoval: 'Gone for good, or should never have been listed?',
+    askRemovalLink: 'Ask us to remove it',
     morePhotos: 'Add photos',
     morePhotosHint: 'Added to the ones already there. Nothing is replaced.',
     save: 'Save changes',
@@ -375,6 +386,12 @@ export const EDIT_FORM: Record<'en' | 'sv', EditFormCopy> = {
     findFromAddress: 'Hämta från adressen',
     finding: 'Söker…',
     hoursNa: 'Öppettider gäller inte här',
+    closed: 'Tillfälligt stängt',
+    closedHint:
+      'Sidan står kvar som den är och säger att dörren är låst. Använd det här hellre än att be om att platsen tas bort — den som letar efter den senare hittar den då igen.',
+    closedUntil: 'Öppnar igen den (valfritt)',
+    askRemoval: 'Borta för gott, eller borde aldrig ha funnits här?',
+    askRemovalLink: 'Be oss ta bort den',
     morePhotos: 'Lägg till foton',
     morePhotosHint: 'Läggs till de som redan finns. Inget ersätts.',
     save: 'Spara ändringar',

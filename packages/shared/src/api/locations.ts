@@ -173,6 +173,24 @@ export async function fetchCategories(client: SupabaseClient): Promise<Category[
   return [...rows.filter((c) => c.slug !== "other"), ...rows.filter((c) => c.slug === "other")];
 }
 
+/**
+ * Is this place shut right now?
+ *
+ * The flag is the fact and the date is informational, so a closure with a date
+ * that has passed reads as open again — which is the safe way round: the worst
+ * a forgotten flag does is nothing. Mirrors is_temporarily_closed() in the
+ * database (0145); keep the two in step.
+ */
+export function isTemporarilyClosed(place: {
+  temporarily_closed?: boolean | null;
+  closed_until?: string | null;
+}): boolean {
+  if (!place.temporarily_closed) return false;
+  if (!place.closed_until) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  return place.closed_until >= today;
+}
+
 export type LocationDetail = {
   id: string;
   kind: LocationKind;
@@ -187,6 +205,10 @@ export type LocationDetail = {
   website: string | null;
   hours: OpeningHours | null;
   hours_not_applicable: boolean;
+  /** Shut for now. Read it through isTemporarilyClosed, never on its own. */
+  temporarily_closed: boolean;
+  /** When it is expected back, if anyone said. Null is "no date", not "never". */
+  closed_until: string | null;
   avg_rating: number;
   review_count: number;
   category_slug: string | null;
@@ -229,6 +251,8 @@ type LocationDetailRow = {
   phone: string | null;
   email: string | null;
   website: string | null;
+  temporarily_closed: boolean | null;
+  closed_until: string | null;
   hours: OpeningHours | null;
   hours_not_applicable: boolean;
   avg_rating: number;
@@ -573,7 +597,7 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
   const { data, error } = await client
     .from("locations")
     .select(
-      "id, kind, name, description, address, city, country, phone, email, website, hours, hours_not_applicable, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, is_free, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
+      "id, kind, name, description, address, city, country, phone, email, website, hours, hours_not_applicable, temporarily_closed, closed_until, avg_rating, review_count, created_by, creator_visible, visibility, status, starts_at, publish_at, created_at, expires_at, is_boosted, is_verified, claimed_by, available_summer, available_winter, is_free, other_category_detail, lat, lng, creator:profiles!locations_created_by_fkey(username), owner:profiles!locations_claimed_by_fkey(username), location_categories(categories(slug, name))"
     )
     .eq("id", id)
     .maybeSingle();
@@ -596,6 +620,8 @@ export async function fetchLocationById(client: SupabaseClient, id: string): Pro
     website: row.website,
     hours: row.hours,
     hours_not_applicable: row.hours_not_applicable,
+    temporarily_closed: row.temporarily_closed ?? false,
+    closed_until: row.closed_until ?? null,
     avg_rating: row.avg_rating,
     review_count: row.review_count,
     is_verified: row.is_verified,
@@ -794,6 +820,15 @@ export type LocationUpdate = {
   /** When it becomes visible. Same story as the dates above. */
   publishAt?: string;
   /**
+   * Shut for now, and when it is expected back.
+   *
+   * Offered to whoever looks after the place, because it destroys nothing: the
+   * page keeps its reviews, its photos and its address, and says the door is
+   * locked. Taking a place off the map is the thing that needs an admin.
+   */
+  temporarilyClosed?: boolean;
+  closedUntil?: string | null;
+  /**
    * What an "Other" place actually is, or null to clear it.
    *
    * Only meaningful while the place is tagged Other, so a screen that re-tags
@@ -833,6 +868,8 @@ export async function updateLocation(
       ...(input.expiresAt !== undefined ? { expires_at: input.expiresAt } : {}),
       ...(input.publishAt !== undefined ? { publish_at: input.publishAt } : {}),
       ...(input.otherCategoryDetail !== undefined ? { other_category_detail: input.otherCategoryDetail } : {}),
+      ...(input.temporarilyClosed !== undefined ? { temporarily_closed: input.temporarilyClosed } : {}),
+      ...(input.closedUntil !== undefined ? { closed_until: input.closedUntil } : {}),
     })
     .eq("id", locationId);
   if (error) throw error;
