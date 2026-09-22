@@ -1,16 +1,24 @@
 import {
-  addLocationPhoto,
   DAY_KEYS,
   fetchMyActiveBan,
   submitBusinessClaim,
   submitLocation,
   type Category,
-  type OpeningHours,
 } from '@locastar/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { AddFormCopy } from '../i18n/addForm';
-import { lookupAddress, lookupCoordinates, type Lookup } from './geocode';
+import { lookupAddress, lookupCoordinates } from './geocode';
+import {
+  checkPhotos,
+  dayEnd,
+  dayStart,
+  EMAIL,
+  lookupMessage,
+  MAX_EVENT_DAYS,
+  readHours,
+  uploadPhotos,
+} from './locationForm';
 
 /*
  * Adding a place or an event from the website.
@@ -46,18 +54,6 @@ export type AddOutcome =
     }
   | { ok: false; error: string; values: Record<string, string>; photosWereSent: boolean };
 
-const MAX_PHOTOS = 6;
-/* The same ceiling the avatar route uses. The page's script shrinks photos in
-   the browser first, so a phone picture arrives well under it. */
-const MAX_BYTES = 8 * 1024 * 1024;
-const EXTENSION = new Map([
-  ['image/jpeg', 'jpg'],
-  ['image/png', 'png'],
-  ['image/webp', 'webp'],
-]);
-const MAX_EVENT_DAYS = 120;
-const EMAIL = /\S+@\S+\.\S+/;
-
 /** Every text field the form has, for sending back when something is wrong. */
 const ECHOED = [
   'kind', 'name', 'category', 'otherDetail', 'locmode', 'street', 'area', 'coords',
@@ -65,80 +61,6 @@ const ECHOED = [
   'startDate', 'endDate', 'publishDate', 'visibility', 'showCreator', 'isOwner',
   ...DAY_KEYS.flatMap((d) => [`${d}Open`, `${d}Close`]),
 ];
-
-/*
- * The first and last instant of a date, in Stockholm.
- *
- * The app pins an event's days to the phone's own midnight; a Worker has no
- * clock of the reader's to ask, and runs in UTC, where midnight is two hours
- * late in a Swedish summer — the exact slip that once made a festival vanish at
- * 19:12 on its last day (see apps/mobile/src/lib/activity-dates.ts). Every
- * event on LocaStar is Swedish, so the day's edges are Stockholm's.
- */
-function stockholmOffsetMinutes(at: Date): number {
-  try {
-    const name = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Stockholm', timeZoneName: 'shortOffset' })
-      .formatToParts(at)
-      .find((part) => part.type === 'timeZoneName')?.value;
-    const match = name?.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
-    if (match) return Number(match[1]) * 60 + Math.sign(Number(match[1])) * Number(match[2] ?? 0);
-  } catch {
-    // fall through
-  }
-  return 60;
-}
-
-function stockholmInstant(date: string, hours: number, minutes: number, seconds: number, ms: number): string | null {
-  const parts = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!parts) return null;
-  const guess = new Date(Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), hours, minutes, seconds, ms));
-  return new Date(guess.getTime() - stockholmOffsetMinutes(guess) * 60_000).toISOString();
-}
-
-const dayStart = (date: string) => stockholmInstant(date, 0, 0, 0, 0);
-const dayEnd = (date: string) => stockholmInstant(date, 23, 59, 59, 999);
-
-/*
- * Opening hours in the column's own shape. Open 24/7 is seven full days rather
- * than a flag, as in the app; a day with no times is left out, which the app
- * reads as "not stated".
- */
-function readHours(values: Record<string, string>): OpeningHours | null {
-  if (values.open247 === '1') {
-    return Object.fromEntries(DAY_KEYS.map((day) => [day, { open: '00:00', close: '24:00' }])) as OpeningHours;
-  }
-  const hours: OpeningHours = {};
-  for (const day of DAY_KEYS) {
-    const open = values[`${day}Open`];
-    const close = values[`${day}Close`];
-    if (/^\d{2}:\d{2}$/.test(open) && /^\d{2}:\d{2}$/.test(close)) hours[day] = { open, close };
-  }
-  return Object.keys(hours).length > 0 ? hours : null;
-}
-
-function lookupMessage(lookup: Extract<Lookup, { ok: false }>, copy: AddFormCopy): string {
-  switch (lookup.error) {
-    case 'not-found':
-      return copy.errNotFound;
-    case 'imprecise':
-      return copy.errImprecise;
-    case 'bad-coords':
-      return copy.errBadCoords;
-    case 'swapped':
-      return copy.errSwapped.replace('{suggestion}', lookup.suggestion ?? '');
-    case 'outside':
-      return copy.errOutside;
-    default:
-      return copy.errLookupFailed;
-  }
-}
-
-function photoPath(locationId: string, extension: string): string {
-  // The app's shape (apps/mobile/src/lib/media-path.ts): the purge job deletes
-  // storage objects by the paths the database records, so all of them must be
-  // somewhere it expects. Built from the new row's id, never from the form.
-  return `locations/${locationId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-}
 
 export async function addFromForm(args: {
   form: FormData;
@@ -171,11 +93,8 @@ export async function addFromForm(args: {
   if (isEvent && values.email && !EMAIL.test(values.email)) return fail(copy.errEmail);
 
   if (photos.length === 0 && !isModerator) return fail(copy.errPhoto);
-  if (photos.length > MAX_PHOTOS) return fail(copy.errTooManyPhotos);
-  for (const photo of photos) {
-    if (!EXTENSION.has(photo.type)) return fail(copy.errPhotoType);
-    if (photo.size > MAX_BYTES) return fail(copy.errPhotoSize);
-  }
+  const photoProblem = checkPhotos(photos, copy);
+  if (photoProblem) return fail(photoProblem);
 
   // ---- event dates, the app's rules --------------------------------------
   let startsAt: string | null = null;
@@ -259,19 +178,7 @@ export async function addFromForm(args: {
   // ---- after the row: photos and the claim ----------------------------------
   // Neither undoes the row if it fails — the place exists either way, and the
   // person is told what is missing rather than being made to start again.
-  let photosFailed = false;
-  for (const photo of photos) {
-    try {
-      const path = photoPath(id, EXTENSION.get(photo.type)!);
-      const { error } = await supabase.storage.from('media').upload(path, photo, { contentType: photo.type, upsert: false });
-      if (error) throw error;
-      await addLocationPhoto(supabase, id, userId, path);
-    } catch (error) {
-      console.error('Photo upload failed', error);
-      photosFailed = true;
-      break;
-    }
-  }
+  const photosFailed = !(await uploadPhotos(supabase, id, userId, photos));
 
   let claimFailed = false;
   if (values.isOwner === 'yes') {

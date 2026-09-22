@@ -300,3 +300,97 @@ export const ADD_FORM: Record<'en' | 'sv', AddFormCopy> = {
 export function addFormCopy(lang: string): AddFormCopy {
   return ADD_FORM[lang === 'sv' ? 'sv' : 'en'];
 }
+
+/*
+ * The edit form's own words.
+ *
+ * Everything it shares with adding — field labels, the lookup errors, the
+ * season and price words — comes from ADD_FORM above; only what is peculiar to
+ * changing something that already exists lives here.
+ */
+export interface EditFormCopy {
+  titlePlace: string;
+  titleEvent: string;
+  lead: string;
+  leadPartner: string;
+  addressLine: string;
+  addressHint: string;
+  pin: string;
+  pinHint: string;
+  findFromAddress: string;
+  finding: string;
+  hoursNa: string;
+  morePhotos: string;
+  morePhotosHint: string;
+  save: string;
+  saving: string;
+  cancel: string;
+  saved: string;
+  savedPinMoved: string;
+  savedPhotosFailed: string;
+  notAllowed: string;
+  notAllowedBody: string;
+  errSave: string;
+  errCategorySave: string;
+}
+
+export const EDIT_FORM: Record<'en' | 'sv', EditFormCopy> = {
+  en: {
+    titlePlace: 'Edit this place',
+    titleEvent: 'Edit this event',
+    lead: 'Corrections go live straight away. What you change is recorded.',
+    leadPartner:
+      'You are signed in as a partner, so you can correct any place on the map. Every change is recorded with what it said before.',
+    addressLine: 'Address',
+    addressHint: 'As you would write it on an envelope. This is what people read on the page.',
+    pin: 'Coordinates',
+    pinHint: 'Where the pin sits. Change these to move it, or fill them in from the address.',
+    findFromAddress: 'Find from the address',
+    finding: 'Looking…',
+    hoursNa: 'Opening hours don’t apply here',
+    morePhotos: 'Add photos',
+    morePhotosHint: 'Added to the ones already there. Nothing is replaced.',
+    save: 'Save changes',
+    saving: 'Saving…',
+    cancel: 'Cancel',
+    saved: 'Saved.',
+    savedPinMoved: 'Saved, and the pin moved.',
+    savedPhotosFailed: 'Saved, but the photos didn’t finish uploading. Try them again.',
+    notAllowed: 'This isn’t yours to edit',
+    notAllowedBody:
+      'Places are edited by whoever added them, by a verified owner, and by LocaStar. If something here is wrong, report it and we will look.',
+    errSave: 'Something went wrong saving it. Try again.',
+    errCategorySave: 'The details were saved, but the category was not. Try that part again.',
+  },
+  sv: {
+    titlePlace: 'Redigera platsen',
+    titleEvent: 'Redigera evenemanget',
+    lead: 'Rättelser syns direkt. Det du ändrar registreras.',
+    leadPartner:
+      'Du är inloggad som partner och kan rätta vilken plats som helst på kartan. Varje ändring registreras tillsammans med vad det stod innan.',
+    addressLine: 'Adress',
+    addressHint: 'Som du skulle skriva den på ett kuvert. Det är den som visas på sidan.',
+    pin: 'Koordinater',
+    pinHint: 'Där nålen sitter. Ändra dem för att flytta den, eller hämta dem från adressen.',
+    findFromAddress: 'Hämta från adressen',
+    finding: 'Söker…',
+    hoursNa: 'Öppettider gäller inte här',
+    morePhotos: 'Lägg till foton',
+    morePhotosHint: 'Läggs till de som redan finns. Inget ersätts.',
+    save: 'Spara ändringar',
+    saving: 'Sparar…',
+    cancel: 'Avbryt',
+    saved: 'Sparat.',
+    savedPinMoved: 'Sparat, och nålen flyttades.',
+    savedPhotosFailed: 'Sparat, men fotona hann inte laddas upp. Försök med dem igen.',
+    notAllowed: 'Den här är inte din att redigera',
+    notAllowedBody:
+      'Platser redigeras av den som lade till dem, av en verifierad ägare och av LocaStar. Är något fel här — anmäl det, så tittar vi på det.',
+    errSave: 'Något gick fel när det skulle sparas. Försök igen.',
+    errCategorySave: 'Uppgifterna sparades, men inte kategorin. Försök med den delen igen.',
+  },
+};
+
+export function editFormCopy(lang: string): EditFormCopy {
+  return EDIT_FORM[lang === 'sv' ? 'sv' : 'en'];
+}

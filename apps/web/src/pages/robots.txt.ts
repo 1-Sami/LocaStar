@@ -35,7 +35,7 @@ const CLOSED = [...PRIVATE_PATHS, '/search?'];
  * Deliberately not repeated under /sv/ like the rules above: the leading
  * wildcard matches any path, so /sv/activity/basketball?city=Lund is covered.
  */
-const CLOSED_QUERIES = ['/*?city='];
+const CLOSED_QUERIES = ['/*?city=', '/location/*/edit'];
 
 /*
  * Crawlers that cost us the site and send nobody back.

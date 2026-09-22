@@ -143,7 +143,12 @@ function applyHeaders(url: URL, request: Request, response: Response) {
    * address when something links to it — the header is the part that says do
    * not list it, for anything that does fetch the page.
    */
-  if (PRIVATE_PATHS.some((prefix) => stripLocale(url.pathname).startsWith(prefix))) {
+  if (
+    PRIVATE_PATHS.some((prefix) => stripLocale(url.pathname).startsWith(prefix)) ||
+    // The edit form hangs off a public place page rather than sitting under a
+    // private prefix, so it needs saying separately.
+    url.pathname.endsWith('/edit')
+  ) {
     headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 

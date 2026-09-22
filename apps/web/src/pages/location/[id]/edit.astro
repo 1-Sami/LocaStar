@@ -1,0 +1,505 @@
+---
+import {
+  canEditAnyLocation,
+  categoryName,
+  DAY_KEYS,
+  fetchCategories,
+  fetchLocationById,
+  fetchProfile,
+  type Category,
+} from '@locastar/shared';
+import SiteFooter from '../../../components/SiteFooter.astro';
+import SiteHeader from '../../../components/SiteHeader.astro';
+import Base from '../../../layouts/Base.astro';
+import { addFormCopy, editFormCopy } from '../../../i18n/addForm';
+import { useTranslations, localePath } from '../../../i18n/ui';
+import { currentUser } from '../../../lib/auth';
+import { editFromForm } from '../../../lib/editLocation';
+import { dateInput, hoursToFields } from '../../../lib/locationForm';
+
+/*
+ * Correcting a place from a desk.
+ *
+ * Editing existed only in the app until now, which was survivable while the
+ * only person who could edit a place was whoever added it from their phone. A
+ * kommun with two hundred places to fix will not do it on a phone, so the
+ * partner account (0143) would have been a login with nowhere to go.
+ *
+ * The fields are the add form's, minus the ones that are not an edit: what kind
+ * of thing it is, who added it, and whether it is public. The pin is the only
+ * one that behaves differently — see editLocation.ts.
+ */
+export const prerender = false;
+
+const lang = Astro.locals.lang === 'sv' ? 'sv' : 'en';
+const t = useTranslations(lang);
+const copy = addFormCopy(lang);
+const editCopy = editFormCopy(lang);
+const p = (href: string) => localePath(href, lang);
+const { id } = Astro.params;
+
+const { user, supabase } = await currentUser(Astro.cookies, Astro.request.headers);
+if (!user) return Astro.redirect(p(`/auth/sign-in?next=${encodeURIComponent(p(`/location/${id}/edit`))}`));
+
+const location = await fetchLocationById(supabase, id!).catch(() => null);
+if (!location) return new Response(null, { status: 404 });
+
+const profile = await fetchProfile(supabase, user.id).catch(() => null);
+const role = profile?.role ?? 'user';
+/*
+ * The same question the database asks, asked again here only to decide what to
+ * draw. A partner may correct anything; the person who added it may correct
+ * their own; a verified owner may correct the place they proved is theirs.
+ */
+const canEdit =
+  canEditAnyLocation(role) ||
+  location.created_by === user.id ||
+  (location.is_verified && location.claimed_by === user.id);
+
+const categories: Category[] = canEdit ? await fetchCategories(supabase).catch(() => [] as Category[]) : [];
+const isEvent = location.kind === 'activity';
+
+let error: string | null = null;
+let values: Record<string, string> = {};
+let repick = false;
+
+if (canEdit && Astro.request.method === 'POST') {
+  const outcome = await editFromForm({
+    form: await Astro.request.formData(),
+    supabase,
+    userId: user.id,
+    location,
+    categories,
+    copy,
+    editCopy,
+    lang,
+  });
+  if (outcome.ok) {
+    const note = new URLSearchParams({ edited: outcome.movedPin ? 'moved' : '1' });
+    if (outcome.photosFailed) note.set('photos', 'failed');
+    return Astro.redirect(p(`/location/${location.id}?${note}`));
+  }
+  error = outcome.error;
+  values = outcome.values;
+  repick = outcome.photosWereSent;
+}
+
+/* Alphabetical in the reader's language, with Other last, as the app lists them. */
+const categoryOptions = categories
+  .map((c) => ({ id: c.id, slug: c.slug, label: categoryName(c.slug, lang) ?? c.name }))
+  .sort((a, b) => (a.slug === 'other' ? 1 : b.slug === 'other' ? -1 : a.label.localeCompare(b.label, lang)));
+
+const currentCategoryId = categoryOptions.find((c) => c.slug === location.category_slug)?.id ?? '';
+const storedHours = hoursToFields(location.hours);
+const pinNow = location.lat !== null && location.lng !== null ? `${location.lat}, ${location.lng}` : '';
+
+/* What the form shows: what was typed on a failed save, else what is stored. */
+const v = (key: string, stored: string | null | undefined = '') =>
+  Object.keys(values).length > 0 ? (values[key] ?? '') : (stored ?? '');
+const checked = (key: string, stored: boolean) =>
+  Object.keys(values).length > 0 ? values[key] === '1' : stored;
+const price = Object.keys(values).length > 0
+  ? values.price
+  : location.is_free === true
+    ? 'free'
+    : location.is_free === false
+      ? 'paid'
+      : '';
+const origin = Astro.site?.origin ?? Astro.url.origin;
+---
+
+<Base
+  title={`${isEvent ? editCopy.titleEvent : editCopy.titlePlace} · ${location.name}`}
+  description={editCopy.lead}
+  canonical={`${origin}/location/${location.id}/edit`}
+>
+  <SiteHeader />
+
+  <main id="main" class="wrap">
+    {
+      !canEdit ? (
+        <div class="notice">
+          <h1>{editCopy.notAllowed}</h1>
+          <p>{editCopy.notAllowedBody}</p>
+          <a class="ghost" href={p(`/location/${location.id}`)}>{location.name}</a>
+        </div>
+      ) : (
+        <>
+          <header class="head">
+            <p class="mono where">
+              <a href={p(`/location/${location.id}`)}>{location.name}</a>
+            </p>
+            <h1>{isEvent ? editCopy.titleEvent : editCopy.titlePlace}</h1>
+            <p class="lead">{role === 'partner' ? editCopy.leadPartner : editCopy.lead}</p>
+          </header>
+
+          <form class="add" method="post" enctype="multipart/form-data">
+            {error && (
+              <div class="form-error" role="alert">
+                <p>{error}</p>
+                {repick && <p class="small">{copy.repickPhotos}</p>}
+              </div>
+            )}
+
+            <fieldset class="block">
+              <legend class="mono legend">{copy.name} *</legend>
+              <label class="field">
+                <span class="label">{isEvent ? copy.nameEvent : copy.namePlace}</span>
+                <input name="name" value={v('name', location.name)} maxlength="120" required autocomplete="off" />
+              </label>
+
+              <label class="field">
+                <span class="label">{isEvent ? copy.kindEvent : copy.kindPlace} *</span>
+                <select id="category" name="category" required>
+                  <option value="">{copy.chooseOne}</option>
+                  {categoryOptions.map((c) => (
+                    <option value={c.id} data-slug={c.slug} selected={v('category', currentCategoryId) === c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label class="field other-only">
+                <span class="label">{copy.otherDetail} *</span>
+                <input name="otherDetail" value={v('otherDetail', location.other_category_detail)} maxlength="80" />
+              </label>
+            </fieldset>
+
+            <fieldset class="block">
+              <legend class="mono legend">{copy.where}</legend>
+              <label class="field">
+                <span class="label">{editCopy.addressLine}</span>
+                <input id="address" name="address" value={v('address', location.address)} maxlength="240" autocomplete="off" />
+                <span class="hint">{editCopy.addressHint}</span>
+              </label>
+
+              <label class="field">
+                <span class="label">{editCopy.pin}</span>
+                <input id="coords" name="coords" value={v('coords', pinNow)} maxlength="60" inputmode="decimal" autocomplete="off" />
+                <span class="hint">{editCopy.pinHint}</span>
+              </label>
+
+              <button id="find-pin" class="ghost check-button" type="button" data-city={location.city ?? ''} hidden>
+                {editCopy.findFromAddress}
+              </button>
+              <div id="find-result" class="result" aria-live="polite" hidden></div>
+            </fieldset>
+
+            <fieldset class="block">
+              <legend class="mono legend">{copy.typeLabel}</legend>
+              <div class="pills">
+                <label class="pill">
+                  <input type="checkbox" name="summer" value="1" checked={checked('summer', location.available_summer)} />
+                  <span>{copy.summer}</span>
+                </label>
+                <label class="pill">
+                  <input type="checkbox" name="winter" value="1" checked={checked('winter', location.available_winter)} />
+                  <span>{copy.winter}</span>
+                </label>
+                <span class="divider" aria-hidden="true"></span>
+                <label class="pill">
+                  <input class="untickable" type="radio" name="price" value="free" checked={price === 'free'} />
+                  <span>{copy.free}</span>
+                </label>
+                <label class="pill">
+                  <input class="untickable" type="radio" name="price" value="paid" checked={price === 'paid'} />
+                  <span>{copy.paid}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="block">
+              <label class="field">
+                <span class="label">{copy.description}</span>
+                <textarea name="description" rows="4" maxlength="2000">{v('description', location.description)}</textarea>
+              </label>
+
+              <label class="field">
+                <span class="label">{copy.website}</span>
+                <input name="website" value={v('website', location.website)} maxlength="300" inputmode="url" placeholder="https://" />
+              </label>
+
+              {!isEvent && (
+                <label class="field">
+                  <span class="label">{copy.phone}</span>
+                  <input name="phone" value={v('phone', location.phone)} maxlength="40" inputmode="tel" />
+                </label>
+              )}
+
+              {isEvent && (
+                <label class="field">
+                  <span class="label">{copy.email}</span>
+                  <input name="email" value={v('email', location.email)} maxlength="160" inputmode="email" />
+                </label>
+              )}
+            </fieldset>
+
+            {!isEvent && (
+              <fieldset class="block">
+                <legend class="mono legend">{copy.hours}</legend>
+                <label class="check">
+                  <input type="checkbox" name="hoursNa" value="1" checked={checked('hoursNa', location.hours_not_applicable)} />
+                  <span>{editCopy.hoursNa}</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" name="open247" value="1" checked={checked('open247', storedHours.open247 === '1')} />
+                  <span>{copy.open247}</span>
+                </label>
+                <div class="hours">
+                  {DAY_KEYS.map((day) => (
+                    <div class="hours-row">
+                      <span class="day">{copy.days[day]}</span>
+                      <input
+                        type="time"
+                        name={`${day}Open`}
+                        value={v(`${day}Open`, storedHours[`${day}Open`] ?? '')}
+                        aria-label={`${copy.days[day]} ${copy.opens}`}
+                      />
+                      <span class="dash" aria-hidden="true">–</span>
+                      <input
+                        type="time"
+                        name={`${day}Close`}
+                        value={v(`${day}Close`, storedHours[`${day}Close`] ?? '')}
+                        aria-label={`${copy.days[day]} ${copy.closes}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p class="hint">{copy.hoursHint}</p>
+              </fieldset>
+            )}
+
+            {isEvent && (
+              <fieldset class="block">
+                <div class="dates">
+                  <label class="field">
+                    <span class="label">{copy.startDate} *</span>
+                    <input type="date" name="startDate" value={v('startDate', dateInput(location.starts_at))} />
+                  </label>
+                  <label class="field">
+                    <span class="label">{copy.endDate} *</span>
+                    <input type="date" name="endDate" value={v('endDate', dateInput(location.expires_at))} />
+                  </label>
+                  <label class="field">
+                    <span class="label">{copy.publishDate}</span>
+                    <input type="date" name="publishDate" value={v('publishDate', dateInput(location.publish_at))} />
+                  </label>
+                </div>
+                <p class="hint">{copy.publishHint}</p>
+              </fieldset>
+            )}
+
+            <fieldset class="block">
+              <legend class="mono legend">{editCopy.morePhotos}</legend>
+              <p class="hint">{editCopy.morePhotosHint}</p>
+              <input id="photos" class="file" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple />
+              <p class="hint">{copy.photosRule}</p>
+            </fieldset>
+
+            <div class="submit-row">
+              <button id="submit" class="primary submit" type="submit">{editCopy.save}</button>
+              <a class="ghost" href={p(`/location/${location.id}`)}>{editCopy.cancel}</a>
+            </div>
+          </form>
+        </>
+      )
+    }
+  </main>
+
+  <SiteFooter />
+</Base>
+
+<script
+  is:inline
+  define:vars={{
+    text: {
+      finding: editCopy.finding,
+      find: editCopy.findFromAddress,
+      saving: editCopy.saving,
+      errors: {
+        'not-found': copy.errNotFound,
+        imprecise: copy.errImprecise,
+        'bad-coords': copy.errBadCoords,
+        outside: copy.errOutside,
+        swapped: copy.errSwapped,
+        failed: copy.errLookupFailed,
+        empty: copy.errLocation,
+      },
+    },
+  }}
+>
+  (() => {
+    const form = document.querySelector('form.add');
+    if (!form) return;
+
+    /* ---- Coordinates from the address ---------------------------------- */
+    const button = document.getElementById('find-pin');
+    const result = document.getElementById('find-result');
+    const address = document.getElementById('address');
+    const coords = document.getElementById('coords');
+    if (button && result && address && coords) {
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        const params = new URLSearchParams({
+          mode: 'address',
+          street: address.value,
+          area: button.getAttribute('data-city') || address.value,
+        });
+        button.disabled = true;
+        button.textContent = text.finding;
+        try {
+          const res = await fetch('/api/geocode?' + params.toString(), { credentials: 'same-origin' });
+          const data = await res.json();
+          result.hidden = false;
+          result.replaceChildren();
+          result.classList.toggle('bad', !data.ok);
+          if (!data.ok) {
+            const message = (text.errors[data.error] || text.errors.failed).replace('{suggestion}', data.suggestion || '');
+            const p = document.createElement('p');
+            p.textContent = message;
+            result.append(p);
+          } else {
+            /* Filled in rather than saved: the person still decides. */
+            coords.value = data.pin.lat.toFixed(5) + ', ' + data.pin.lng.toFixed(5);
+            const p = document.createElement('p');
+            p.textContent = [data.pin.street, data.pin.area].filter(Boolean).join(', ');
+            result.append(p);
+          }
+        } catch {
+          result.hidden = false;
+          result.textContent = text.errors.failed;
+        } finally {
+          button.disabled = false;
+          button.textContent = text.find;
+        }
+      });
+    }
+
+    /* ---- Free / Paid can be un-ticked, like the app's buttons ---------- */
+    for (const radio of form.querySelectorAll('input.untickable')) {
+      radio.addEventListener('mousedown', () => {
+        radio.dataset.was = radio.checked ? '1' : '';
+      });
+      radio.addEventListener('click', () => {
+        if (radio.dataset.was === '1') radio.checked = false;
+      });
+    }
+
+    /* ---- Photos, shrunk before upload --------------------------------- */
+    const photos = document.getElementById('photos');
+    const MAX_SIDE = 1600;
+    const shrink = async (file) => {
+      try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+        if (!blob) return file;
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      } catch {
+        return file;
+      }
+    };
+    photos?.addEventListener('change', async () => {
+      if (!photos.files || !photos.files.length || typeof DataTransfer === 'undefined') return;
+      const shrunk = await Promise.all([...photos.files].map(shrink));
+      const transfer = new DataTransfer();
+      shrunk.forEach((f) => transfer.items.add(f));
+      photos.files = transfer.files;
+    });
+
+    /* ---- One save, not two -------------------------------------------- */
+    form.addEventListener('submit', () => {
+      const submit = document.getElementById('submit');
+      submit.disabled = true;
+      submit.textContent = text.saving;
+    });
+  })();
+</script>
+
+<style>
+  main { padding-block: 48px 72px; max-width: 760px; }
+  .head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .where { font-size: 11px; letter-spacing: 0.14em; color: var(--text-55); }
+  .where a { color: inherit; }
+  h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.1; letter-spacing: -0.03em; }
+  .lead { margin: 0; font-size: 16px; line-height: 1.6; color: var(--text-70); max-width: 58ch; }
+
+  .notice { border: 1px solid var(--hairline); border-radius: 13px; padding: 28px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  .notice h1 { font-size: 26px; }
+  .notice p { margin: 0; color: var(--text-70); line-height: 1.6; max-width: 58ch; }
+
+  .primary { background: var(--accent-fill, var(--accent)); color: var(--page); border: 0; border-radius: 8px; padding: 12px 20px; font-weight: 600; font-size: 15px; cursor: pointer; }
+  .primary:hover { color: var(--page); filter: brightness(1.06); }
+  .ghost { border: 1px solid var(--border); border-radius: 8px; padding: 11px 18px; font-weight: 500; font-size: 14px; color: var(--text); background: none; cursor: pointer; }
+  .ghost:hover { color: var(--accent); border-color: var(--accent); }
+
+  .add { display: flex; flex-direction: column; gap: 26px; }
+  .block { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  .legend { font-size: 10px; letter-spacing: 0.16em; color: var(--text-55); padding: 0; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .label { font-size: 14px; color: var(--text-70); }
+  .hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-55); }
+
+  .add :where(input[type='text'], input:not([type]), input[type='date'], input[type='time'], select, textarea) {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+  }
+  textarea { resize: vertical; }
+
+  .file { font-size: 14px; }
+
+  .pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pill { position: relative; cursor: pointer; }
+  .pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .pill span { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 7px 15px; font-size: 14px; color: var(--text); }
+  .pill input:checked + span { background: #14747a; border-color: #14747a; color: #fff; font-weight: 600; }
+  .pill input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .divider { width: 1px; align-self: stretch; background: var(--border); margin-inline: 4px; }
+
+  .check { display: flex; align-items: center; gap: 9px; font-size: 14.5px; cursor: pointer; }
+  .check input { width: 18px; height: 18px; accent-color: #14747a; }
+
+  .hours { display: flex; flex-direction: column; gap: 8px; }
+  .hours-row { display: grid; grid-template-columns: 96px 1fr 12px 1fr; align-items: center; gap: 8px; }
+  .day { font-size: 14px; color: var(--text-70); }
+  .dash { text-align: center; color: var(--text-42); }
+  /* Times are stated for the whole week, so a day left empty is "not stated". */
+  .add:has(input[name='open247']:checked) .hours { opacity: 0.4; pointer-events: none; }
+  .add:has(input[name='hoursNa']:checked) .hours,
+  .add:has(input[name='hoursNa']:checked) .check:has(input[name='open247']) { opacity: 0.4; pointer-events: none; }
+
+  .dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+
+  .other-only { display: none; }
+  .add:has(option[data-slug='other']:checked) .other-only { display: flex; }
+
+  .check-button { align-self: flex-start; }
+  .result { border: 1px solid var(--hairline); border-left: 3px solid #14747a; border-radius: 8px; padding: 12px 14px; }
+  .result[hidden] { display: none; }
+  .result.bad { border-left-color: var(--danger, #c0392b); }
+  .result :global(p) { margin: 0; font-size: 14px; line-height: 1.5; }
+
+  .form-error { border: 1px solid var(--danger, #c0392b); border-left-width: 3px; border-radius: 9px; padding: 12px 14px; }
+  .form-error p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+  .form-error .small { font-size: 13px; color: var(--text-55); margin-top: 6px; }
+
+  .submit-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 6px; }
+  .submit { padding: 14px 26px; font-size: 16px; }
+  .submit:disabled { opacity: 0.6; cursor: default; }
+  .submit-row .ghost { text-decoration: none; }
+
+  @media (max-width: 560px) {
+    .hours-row { grid-template-columns: 74px 1fr 10px 1fr; }
+  }
+</style>

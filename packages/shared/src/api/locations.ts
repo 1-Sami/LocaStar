@@ -793,6 +793,13 @@ export type LocationUpdate = {
   expiresAt?: string | null;
   /** When it becomes visible. Same story as the dates above. */
   publishAt?: string;
+  /**
+   * What an "Other" place actually is, or null to clear it.
+   *
+   * Only meaningful while the place is tagged Other, so a screen that re-tags
+   * it to something real sends null rather than leaving a stale line behind.
+   */
+  otherCategoryDetail?: string | null;
 };
 
 export async function updateLocation(
@@ -825,6 +832,7 @@ export async function updateLocation(
       ...(input.startsAt !== undefined ? { starts_at: input.startsAt } : {}),
       ...(input.expiresAt !== undefined ? { expires_at: input.expiresAt } : {}),
       ...(input.publishAt !== undefined ? { publish_at: input.publishAt } : {}),
+      ...(input.otherCategoryDetail !== undefined ? { other_category_detail: input.otherCategoryDetail } : {}),
     })
     .eq("id", locationId);
   if (error) throw error;

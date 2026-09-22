@@ -22,7 +22,7 @@ import {
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
-import { addFormCopy } from '../../i18n/addForm';
+import { addFormCopy, editFormCopy } from '../../i18n/addForm';
 import { useTranslations, localePath } from '../../i18n/ui';
 import { categoryColor, coverStyle, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
 import { isUuid } from '../../lib/ids';
@@ -226,6 +226,7 @@ let viewerId: string | null = null;
  */
 let isModerator = false;
 let canSetCover = false;
+let canEditThis = false;
 let modPhotos: GalleryPhoto[] = [];
 let modError: string | null = null;
 let isFavourite = false;
@@ -243,6 +244,10 @@ if (hasSession) {
     // A partner looks after a place's facts, which includes which photo leads
     // it — but not taking anybody's photo or review down. That stays moderation.
     canSetCover = canEditAnyLocation(profile?.role ?? 'user');
+    canEditThis =
+      canSetCover ||
+      location.created_by === user.id ||
+      Boolean(location.is_verified && location.claimed_by === user.id);
 
     if (postForm) {
       const form = postForm;
@@ -366,9 +371,15 @@ const moderated = Astro.url.searchParams.get('moderated') === '1';
  */
 const addedBy = Astro.url.searchParams.get('added');
 const addCopy = addFormCopy(lang);
+const editCopy = editFormCopy(lang);
+// Where the edit form lands, on the same strip as the add form's notes.
+const edited = Astro.url.searchParams.get('edited');
 const addedNotes = [
   addedBy === 'address' ? addCopy.addedAddress : addedBy === 'coords' ? addCopy.addedCoords : null,
-  addedBy && Astro.url.searchParams.get('photos') === 'failed' ? addCopy.addedPhotosFailed : null,
+  edited === 'moved' ? editCopy.savedPinMoved : edited ? editCopy.saved : null,
+  (addedBy || edited) && Astro.url.searchParams.get('photos') === 'failed'
+    ? (edited ? editCopy.savedPhotosFailed : addCopy.addedPhotosFailed)
+    : null,
   addedBy && Astro.url.searchParams.get('claim') === 'failed' ? addCopy.addedClaimFailed : null,
 ].filter((line): line is string => Boolean(line));
 
@@ -759,6 +770,12 @@ const seasonLabel =
         <div class="panel quiet">
           {t('loc.getApp')} <a href={p('/')}>{t('loc.getAppLink')}</a>
         </div>
+
+        {canEditThis && (
+          <div class="panel quiet">
+            {editCopy.lead} <a href={p(`/location/${location.id}/edit`)}>{location.kind === 'activity' ? editCopy.titleEvent : editCopy.titlePlace}</a>
+          </div>
+        )}
 
         <div class="panel quiet">
           {t('loc.wrong')} <a href={p(`/report?location=${location.id}`)}>{t('loc.reportIt')}</a>
