@@ -1,6 +1,6 @@
 ---
 import { useTranslations } from '../i18n/ui';
-import { categoryColor, ratingLabel } from '../lib/format';
+import { categoryColor, coverStyle, ratingLabel } from '../lib/format';
 
 /*
  * One place as a row, matching the shape "My reviews" uses.
@@ -38,13 +38,14 @@ const {
 
 const t = useTranslations(Astro.locals.lang ?? 'en');
 const colour = categoryColor(categorySlug);
+const cover = coverStyle(imageUrl, categorySlug);
 const rating = ratingLabel(avgRating, reviewCount);
 ---
 
 <a class="row" href={href} style={`border-color:${colour}`}>
   {
-    imageUrl ? (
-      <span class="thumb" style={`background-image:url("${imageUrl}")`} />
+    cover ? (
+      <span class="thumb" style={cover} />
     ) : (
       <span class="thumb flat" style={`background:${colour}`} />
     )

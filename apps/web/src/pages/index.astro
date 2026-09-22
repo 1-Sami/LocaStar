@@ -10,7 +10,7 @@ import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
-import { byCategoryName, categoryColor, ratingLabel, roundedCount } from '../lib/format';
+import { byCategoryName, categoryColor, coverStyle, ratingLabel, roundedCount } from '../lib/format';
 import { appStoreReady, googlePlayReady, STORE_LINKS } from '../lib/site';
 import { anonClient } from '../lib/supabase';
 import { categoryName } from '@locastar/shared';
@@ -231,11 +231,11 @@ const jsonLd = [
             {featured.map((place) => {
               const colour = categoryColor(place.categorySlug ?? null);
               const rating = ratingLabel(place.avgRating, place.reviewCount);
-              const cover = publicUrl(place.coverPhotoPath);
+              const cover = coverStyle(publicUrl(place.coverPhotoPath), place.categorySlug);
               return (
                 <a class="card" href={p(`/location/${place.id}`)} style={`border-color:${colour}`}>
                   {cover ? (
-                    <div class="card-photo" style={`background-image:url("${cover}")`} />
+                    <div class="card-photo" style={cover} />
                   ) : (
                     <div class="card-photo flat" style={`background:${colour}`}>
                       <span class="mono">{categoryName(place.categorySlug ?? null, lang) ?? place.categoryName ?? ''}</span>

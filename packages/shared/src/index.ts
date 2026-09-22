@@ -27,6 +27,7 @@ export type {
   SitemapEntry,
 } from "./api/categoryPages";
 export { CategoryColors } from "./categoryColors";
+export { placeholderFocusY, placeholderImageUrl } from "./placeholderImages";
 export { createSupabaseClient } from "./supabaseClient";
 export {
   reportCrash,

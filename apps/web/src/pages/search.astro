@@ -1,10 +1,15 @@
 ---
-import { categoryName, fetchCategoryCounts, fetchSearchResults, SearchPageOutOfRange } from '@locastar/shared';
+import {
+  categoryName,
+  fetchCategoryCounts,
+  fetchSearchResults,
+  SearchPageOutOfRange,
+} from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
-import { byCategoryName, categoryColor, ratingLabel } from '../lib/format';
+import { byCategoryName, categoryColor, coverStyle, ratingLabel } from '../lib/format';
 import { anonClient } from '../lib/supabase';
 
 export const prerender = false;
@@ -368,12 +373,12 @@ const canonical = `${origin}/search`;
               {response.results.map((place) => {
                 const colour = categoryColor(place.categorySlug);
                 const rating = ratingLabel(place.avgRating, place.reviewCount);
-                const cover = publicUrl(place.coverPhotoPath);
+                const cover = coverStyle(publicUrl(place.coverPhotoPath), place.categorySlug);
                 return (
                   <article class="row" style={`border-color:${colour}`}>
                     <a class="row-link" href={p(`/location/${place.id}`)}>
                       {cover ? (
-                        <div class="row-photo" style={`background-image:url("${cover}")`} />
+                        <div class="row-photo" style={cover} />
                       ) : (
                         <div class="row-photo flat" style={`background:${colour}`}>
                           <span class="mono">{categoryName(place.categorySlug, lang) ?? place.categoryName ?? ''}</span>

@@ -1,4 +1,17 @@
-import { CategoryColors } from '@locastar/shared';
+import { CategoryColors, placeholderFocusY, placeholderImageUrl } from '@locastar/shared';
+
+/**
+ * The inline style for a cover tile: the place's photo, or — with none — its
+ * category's illustration, cropped on the drawing's subject rather than its
+ * middle (see placeholderImages.ts in shared). Null when there is neither, for
+ * the flat category-colour tile.
+ */
+export function coverStyle(photoUrl: string | null, categorySlug: string | null | undefined): string | null {
+  if (photoUrl) return `background-image:url("${photoUrl}")`;
+  const illustration = placeholderImageUrl(categorySlug);
+  if (!illustration) return null;
+  return `background-image:url("${illustration}");background-position:center ${placeholderFocusY(categorySlug)}%`;
+}
 
 /** Category tile / badge / border colour, falling back to the map's own default. */
 export function categoryColor(slug: string | null): string {

@@ -1,16 +1,24 @@
-import { CATEGORY_NAMES, type ListItemLocation, type NearbyLocation, type SavedLocation } from '@locastar/shared';
+import {
+  CATEGORY_NAMES,
+  placeholderImageUrl,
+  type ListItemLocation,
+  type NearbyLocation,
+  type SavedLocation,
+} from '@locastar/shared';
 
 import { supabase } from '@/lib/supabase';
 import type { CardLocation } from '@/types/location';
 
 /**
- * Public URL for a photo in the media bucket, or null when there isn't one.
+ * Public URL for a place's cover: its photo in the media bucket, or its
+ * category's illustration when it has none, or null when neither exists.
  *
  * Cards used to fill the gap with a random stock photo, which read as an image
- * whoever added the place had chosen. A location with no photo now says so.
+ * whoever added the place had chosen. The illustrations are drawings, not
+ * photos of anywhere — see packages/shared/src/placeholderImages.ts.
  */
-function photoUrl(storagePath: string | null): string | null {
-  if (!storagePath) return null;
+function photoUrl(storagePath: string | null, categorySlug: string | null): string | null {
+  if (!storagePath) return placeholderImageUrl(categorySlug);
   return supabase.storage.from('media').getPublicUrl(storagePath).data.publicUrl;
 }
 
@@ -42,7 +50,7 @@ export function nearbyLocationToCard(location: NearbyLocation): CardLocation {
     country: location.country,
     distanceM: location.distance_m,
     coords: { lat: location.result_lat, lng: location.result_lng },
-    imageUrl: photoUrl(location.cover_photo_path),
+    imageUrl: photoUrl(location.cover_photo_path, location.category_slug),
     startsAt: location.starts_at,
   };
 }
@@ -64,7 +72,7 @@ export function savedLocationToCard(location: SavedLocation): CardLocation {
     // Both were null here until the saved query started fetching them, which is
     // why Directions from Saved searched for the name instead of opening the pin.
     coords: location.lat !== null && location.lng !== null ? { lat: location.lat, lng: location.lng } : null,
-    imageUrl: photoUrl(location.cover_photo_path),
+    imageUrl: photoUrl(location.cover_photo_path, location.category_slug),
     startsAt: location.starts_at,
   };
 }
@@ -84,7 +92,7 @@ export function listItemToCard(item: ListItemLocation): CardLocation {
     country: item.country,
     distanceM: null,
     coords: null,
-    // fetchListItems already resolves this to a public URL.
+    // fetchListItems already resolves this to a public URL, illustration included.
     imageUrl: item.imageUrl,
     startsAt: null,
   };

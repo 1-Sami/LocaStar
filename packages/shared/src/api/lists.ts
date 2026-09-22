@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { placeholderImageUrl } from "../placeholderImages";
 import { coverPhotoPath } from "./saves";
 
 export type ListPreviewLocation = {
   locationId: string;
-  /** Public URL of that location's first photo, null if it has none. */
+  /** Public URL of that location's first photo, or its category's illustration
+      when it has none (see placeholderImages.ts); null if neither. */
   imageUrl: string | null;
 };
 
@@ -72,7 +74,9 @@ async function fetchPreviewLocations(
 ): Promise<Map<string, ListPreviewLocation[]>> {
   const { data, error } = await client
     .from("list_items")
-    .select("list_id, location_id, location:locations(location_photos(storage_path, created_at))")
+    .select(
+      "list_id, location_id, location:locations(location_photos(storage_path, created_at), location_categories(categories(slug)))"
+    )
     .in("list_id", listIds)
     .order("added_at", { ascending: false });
   if (error) throw error;
@@ -80,7 +84,10 @@ async function fetchPreviewLocations(
   type PreviewRow = {
     list_id: string;
     location_id: string;
-    location: { location_photos: { storage_path: string; created_at: string }[] } | null;
+    location: {
+      location_photos: { storage_path: string; created_at: string }[];
+      location_categories: { categories: { slug: string } | null }[];
+    } | null;
   };
 
   const byList = new Map<string, ListPreviewLocation[]>();
@@ -94,7 +101,9 @@ async function fetchPreviewLocations(
       const path = coverPhotoPath(row.location?.location_photos);
       existing.push({
         locationId: row.location_id,
-        imageUrl: path ? client.storage.from("media").getPublicUrl(path).data.publicUrl : null,
+        imageUrl: path
+          ? client.storage.from("media").getPublicUrl(path).data.publicUrl
+          : placeholderImageUrl(row.location.location_categories?.[0]?.categories?.slug),
       });
       byList.set(row.list_id, existing);
     }
@@ -330,6 +339,7 @@ export async function fetchListItems(client: SupabaseClient, listId: string): Pr
     .filter((row) => row.location !== null)
     .map((row) => {
       const firstPhotoPath = row.location!.location_photos?.[0]?.storage_path ?? null;
+      const categorySlug = row.location!.location_categories?.[0]?.categories?.slug ?? null;
       return {
         locationId: row.location!.id,
         name: row.location!.name,
@@ -340,9 +350,11 @@ export async function fetchListItems(client: SupabaseClient, listId: string): Pr
         avgRating: row.location!.avg_rating,
         reviewCount: row.location!.review_count,
         kind: row.location!.kind,
-        categorySlug: row.location!.location_categories?.[0]?.categories?.slug ?? null,
+        categorySlug,
         note: row.note,
-        imageUrl: firstPhotoPath ? client.storage.from("media").getPublicUrl(firstPhotoPath).data.publicUrl : null,
+        imageUrl: firstPhotoPath
+          ? client.storage.from("media").getPublicUrl(firstPhotoPath).data.publicUrl
+          : placeholderImageUrl(categorySlug),
       };
     });
 }

@@ -14,7 +14,7 @@ import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { useTranslations, localePath } from '../../i18n/ui';
-import { categoryColor, ratingLabel } from '../../lib/format';
+import { categoryColor, coverStyle, ratingLabel } from '../../lib/format';
 import { anonClient } from '../../lib/supabase';
 
 export const prerender = false;
@@ -353,11 +353,11 @@ jsonLd.push({
           <div class="grid">
             {listing.places.map((place) => {
               const rating = ratingLabel(place.avgRating, place.reviewCount);
-              const cover = publicUrl(place.coverPhotoPath);
+              const cover = coverStyle(publicUrl(place.coverPhotoPath), slug);
               return (
                 <a class="card" href={p(`/location/${place.id}`)} style={`border-color:${colour}`}>
                   {cover ? (
-                    <div class="card-photo" style={`background-image:url("${cover}")`} />
+                    <div class="card-photo" style={cover} />
                   ) : (
                     <div class="card-photo flat" style={`background:${colour}`}>
                       <span class="mono">{catName}</span>

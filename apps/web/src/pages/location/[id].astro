@@ -12,6 +12,8 @@ import {
   isAlwaysOpen,
   isModeratorRole,
   makeCoverPhoto,
+  placeholderFocusY,
+  placeholderImageUrl,
   setPhotoRemoved,
   updateReviewStatus,
   type GalleryPhoto,
@@ -21,7 +23,7 @@ import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { addFormCopy } from '../../i18n/addForm';
 import { useTranslations, localePath } from '../../i18n/ui';
-import { categoryColor, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
+import { categoryColor, coverStyle, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
 import { isUuid } from '../../lib/ids';
 import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
@@ -96,6 +98,8 @@ const alwaysOpen = location.hours ? isAlwaysOpen(location.hours) : false;
 const hasHours = Boolean(location.hours && Object.keys(location.hours).length > 0);
 
 const category = categoryName(location.category_slug, lang) ?? location.category_label;
+// Stands in for a photo until there is one: packages/shared/src/placeholderImages.ts.
+const illustration = photos.length === 0 ? placeholderImageUrl(location.category_slug) : null;
 const city = location.city;
 
 /*
@@ -462,8 +466,19 @@ const seasonLabel =
           set:html={JSON.stringify(photos.map((photo) => photo.url))}
         />
         </>
+      ) : illustration ? (
+        /* No photo yet, but the category has an illustration: a drawing, said to
+           be one, never a photo of somewhere else. It opens no gallery and is
+           left out of the structured data — Google would read it as a picture
+           of this place. */
+        <div
+          class="illustration"
+          style={`background-color:${colour};background-image:url("${illustration}");background-position:center ${placeholderFocusY(location.category_slug)}%`}
+        >
+          <span class="mono illustration-tag">{t('loc.illustration')}</span>
+        </div>
       ) : (
-        /* The common case: 985 of 996 places have no photo. A flat tile in the
+        /* The common case once: most places have no photo. A flat tile in the
            category colour with the category named — never a broken image, never
            a grey box, never a stock photo of somewhere else. */
         <div class="no-photo" style={`background:${colour}`}>
@@ -754,11 +769,11 @@ const seasonLabel =
             {nearby.map((place) => {
               const placeColour = categoryColor(place.category_slug);
               const placeRating = ratingLabel(place.avg_rating, place.review_count);
-              const cover = publicUrl(place.cover_photo_path);
+              const cover = coverStyle(publicUrl(place.cover_photo_path), place.category_slug);
               return (
                 <a class="near-card" href={`/location/${place.id}`} style={`border-color:${placeColour}`}>
                   {cover ? (
-                    <div class="near-photo" style={`background-image:url("${cover}")`} />
+                    <div class="near-photo" style={cover} />
                   ) : (
                     <div class="near-photo flat" style={`background:${placeColour}`}>
                       <span class="mono">{place.category_label ?? ''}</span>
@@ -1146,6 +1161,28 @@ const seasonLabel =
     background: rgba(7, 16, 15, 0.66);
     padding: 8px 12px;
     border-radius: 6px;
+  }
+
+  .illustration {
+    position: relative;
+    max-width: 1440px;
+    height: 420px;
+    margin-inline: auto;
+    background-size: cover;
+    /* background-position is inline: each drawing's subject sits at its own height. */
+    background-repeat: no-repeat;
+  }
+
+  .illustration-tag {
+    position: absolute;
+    right: var(--gutter);
+    bottom: 16px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: #fff;
+    background: rgba(7, 16, 15, 0.62);
+    padding: 6px 10px;
+    border-radius: 999px;
   }
 
   .no-photo {
@@ -1875,6 +1912,10 @@ const seasonLabel =
 
     .mosaic > .shot:first-child {
       height: 220px;
+    }
+
+    .illustration {
+      height: 260px;
     }
 
     /* Columns from however many tiles there are, not a fixed three: a place

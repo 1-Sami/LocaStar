@@ -8,6 +8,7 @@ import {
   fetchMyClaimForLocation,
   makeCoverPhoto,
   fetchProfile,
+  placeholderImageUrl,
   fetchReviews,
   reportLocation,
   reportReview,
@@ -546,8 +547,13 @@ export default function LocationDetailScreen() {
 
   const isFavorite = favoriteIds.has(location.id);
   const isBucketListed = bucketListIds.has(location.id);
-  // No stand-in image: a place with no photo says so rather than borrowing one.
   const heroImages = photos.map((photo) => photo.url);
+  /*
+   * With no photo, the category's illustration stands in (placeholderImages.ts)
+   * — a drawing, labelled as one, never a photo of somewhere else. It is not in
+   * heroImages: it opens no viewer and counts as no photo.
+   */
+  const illustration = heroImages.length === 0 ? placeholderImageUrl(location.category_slug) : null;
   const ratingCounts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
   const maxCount = Math.max(1, ...ratingCounts);
   const myReview = session ? reviews.find((r) => r.user_id === session.user.id) : undefined;
@@ -813,7 +819,16 @@ export default function LocationDetailScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.heroWrapper} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
-            {heroImages.length === 0 ? (
+            {illustration ? (
+              <View>
+                <Image source={{ uri: illustration }} style={[styles.hero, { width: heroWidth }]} contentFit="cover" />
+                <View style={styles.illustrationTag} pointerEvents="none">
+                  <ThemedText type="small" style={styles.photoCountText}>
+                    {t('location.illustration')}
+                  </ThemedText>
+                </View>
+              </View>
+            ) : heroImages.length === 0 ? (
               <LocationPhoto url={null} style={[styles.hero, { width: heroWidth }]} iconSize={44} />
             ) : (
               <ScrollView
@@ -1797,6 +1812,15 @@ const styles = StyleSheet.create({
   },
   photoCountText: {
     color: '#ffffff',
+  },
+  illustrationTag: {
+    position: 'absolute',
+    bottom: Spacing.two,
+    right: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+    borderRadius: Spacing.five,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   galleryHeader: {
     flexDirection: 'row',

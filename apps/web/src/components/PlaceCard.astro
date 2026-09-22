@@ -1,6 +1,6 @@
 ---
 import { useTranslations } from '../i18n/ui';
-import { categoryColor, ratingLabel } from '../lib/format';
+import { categoryColor, coverStyle, ratingLabel } from '../lib/format';
 
 /*
  * One saved place, as a card.
@@ -47,6 +47,7 @@ const {
 const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
 const colour = categoryColor(categorySlug);
+const cover = coverStyle(imageUrl, categorySlug);
 const rating = ratingLabel(avgRating, reviewCount);
 const isEvent = Boolean(startsAt);
 
@@ -68,8 +69,8 @@ const startLabel = startsAt
 <a class="card" href={href}>
   <span class="frame">
     {
-      imageUrl ? (
-        <span class="shot" style={`background-image:url("${imageUrl}")`} />
+      cover ? (
+        <span class="shot" style={cover} />
       ) : (
         <span class="shot flat" style={`background:${colour}`} />
       )
@@ -81,8 +82,8 @@ const startLabel = startsAt
       court does not need the word "Basketball" over it.
     */}
     {
-      categoryName && (isEvent || !imageUrl) && (
-        <span class:list={['mono', 'chip', imageUrl ? 'on-shot' : 'on-flat']}>
+      categoryName && (isEvent || !cover) && (
+        <span class:list={['mono', 'chip', cover ? 'on-shot' : 'on-flat']}>
           {categoryName}
           {daysLeft !== null && daysLeft >= 0 ? ` · ${t('acct.daysLeft').replace('{n}', String(daysLeft))}` : ''}
         </span>
