@@ -26,21 +26,14 @@ export function categoryLabel(t: TFunction, slug: string, fallback: string): str
  * database — falls through to the name itself, which is what was shown before.
  */
 /*
- * What the database still calls a category the catalogue above has renamed.
- *
- * `category_label` comes from the `categories` row, so renaming it only in
- * CATEGORY_NAMES leaves this lookup with no slug to find — and the screens
- * that have a name and nothing else would go on showing the old word. Each
- * line here can go the day that row is renamed too.
+ * Keyed on the database row's English name, so a rename has to happen in both
+ * places at once — here in CATEGORY_NAMES and on the `categories` row — or the
+ * screens that have only `category_label` lose the slug and show the old word.
+ * 0140 is an example: "Picnic parks" became "Parks" in both.
  */
-const RENAMED_SINCE: Record<string, string> = {
-  'Picnic parks': 'picknick-parks',
-};
-
-const SLUG_BY_ENGLISH_NAME: Record<string, string> = {
-  ...RENAMED_SINCE,
-  ...Object.fromEntries(Object.entries(CATEGORY_NAMES.en).map(([slug, name]) => [name, slug])),
-};
+const SLUG_BY_ENGLISH_NAME: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_NAMES.en).map(([slug, name]) => [name, slug])
+);
 
 export function categoryLabelFromName(t: TFunction, name: string): string {
   const slug = SLUG_BY_ENGLISH_NAME[name];
