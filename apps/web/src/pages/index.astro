@@ -4,13 +4,14 @@ import {
   fetchLocationTotal,
   fetchMostLikedPlaces,
   fetchPublicLists,
+  fetchUpcomingEvents,
 } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
 import StoreBadge from '../components/StoreBadge.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Base from '../layouts/Base.astro';
 import { useTranslations, localePath } from '../i18n/ui';
-import { byCategoryName, categoryColor, coverStyle, ratingLabel, roundedCount } from '../lib/format';
+import { byCategoryName, categoryColor, coverStyle, dateRange, ratingLabel, roundedCount } from '../lib/format';
 import { appStoreReady, googlePlayReady, STORE_LINKS } from '../lib/site';
 import { anonClient } from '../lib/supabase';
 import { categoryName } from '@locastar/shared';
@@ -48,6 +49,17 @@ const lists = await fetchPublicLists(supabase).catch((error) => {
   console.error('Failed to load shared lists', error);
   return [];
 });
+
+/*
+ * What is on, soonest first — the row the app leads with and the website did
+ * not have. Supplementary in the same way the lists are: a failure costs the
+ * row, not the page.
+ */
+const events = await fetchUpcomingEvents(supabase, 4).catch((error) => {
+  console.error('Failed to load events', error);
+  return [];
+});
+const dateLocale = lang === 'sv' ? 'sv-SE' : 'en-GB';
 
 const withPlaces = categoryCounts.filter((row) => row.count > 0);
 
@@ -172,7 +184,7 @@ const jsonLd = [
               link reads as a broken app, not an unreleased one, and sends
               Android owners off searching the store for it. Hides itself once
               STORE_LINKS.googlePlay is filled in — delete it then, with the
-              one in the band, .android-note and the key. */}
+              one in the footer, .android-note and the key. */}
           {!googlePlayReady && <span class="android-note">{t('home.androidNotYet')}</span>}
         </div>
       </div>
@@ -219,6 +231,42 @@ const jsonLd = [
     </section>
 
     {
+      events.length > 0 && (
+        <section class="wrap strip">
+          <div class="strip-head">
+            <h2>{t('home.events')}</h2>
+            <a class="mono see-all" href={p('/search?kind=activity')}>
+              {t('home.eventsAll')} →
+            </a>
+          </div>
+          <div class="grid-4">
+            {events.map((event) => {
+              const colour = categoryColor(event.categorySlug ?? null);
+              const cover = coverStyle(publicUrl(event.coverPhotoPath), event.categorySlug);
+              return (
+                <a class="card" href={p(`/location/${event.id}`)} style={`border-color:${colour}`}>
+                  {cover ? (
+                    <div class="card-photo" style={cover} />
+                  ) : (
+                    <div class="card-photo flat" style={`background:${colour}`}>
+                      <span class="mono">{categoryName(event.categorySlug ?? null, lang) ?? event.categoryName ?? ''}</span>
+                    </div>
+                  )}
+                  <div class="card-body">
+                    <span class="card-badge event-badge">{t('home.eventBadge')}</span>
+                    <span class="card-name">{event.name}</span>
+                    <span class="mono card-when">{dateRange(event.startsAt, event.expiresAt, dateLocale)}</span>
+                    {event.city && <span class="card-where">{event.city}</span>}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )
+    }
+
+    {
       featured.length > 0 && (
         <section class="wrap strip">
           <div class="strip-head">
@@ -262,32 +310,6 @@ const jsonLd = [
         </section>
       )
     }
-
-    <section class="wrap browse">
-      <div class="strip-head tight">
-        <h2>{t('home.browse')}</h2>
-        <span class="soft">{roundedCount(withPlaces.length)} {t('home.browseSub')}</span>
-      </div>
-      <div class="cat-grid">
-        {
-          frontCategories.map((row) => (
-            <a class="cat" href={p(`/activity/${row.slug}`)} style={`background:${categoryColor(row.slug)}`}>
-              <span class="cat-name">{categoryName(row.slug, lang) ?? row.name}</span>
-              <span class="mono cat-count">{row.count}</span>
-            </a>
-          ))
-        }
-        {
-          withPlaces.length > frontCategories.length && (
-            <a class="cat more" href={p('/categories')}>
-              <span class="cat-name">
-                +{withPlaces.length - frontCategories.length} {t('home.more')}
-              </span>
-            </a>
-          )
-        }
-      </div>
-    </section>
 
     {
       lists.length > 0 && (
@@ -334,34 +356,29 @@ const jsonLd = [
       )
     }
 
-    <section class="wrap" id="get-the-app">
-      <div class="band on-dark">
-        <div class="band-copy">
-          <h2>{t('home.bandTitle')}</h2>
-          {/*
-            t('home.bandBody'), not the sentence typed out here. Both
-            translations existed all along — the key was written and never
-            reached, so the Swedish page rendered this paragraph in English.
-          */}
-          <p>{t('home.bandBody')}</p>
-          <div class="band-badges">
-            <StoreBadge store="apple" over="DOWNLOAD ON THE" name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
-            <StoreBadge store="google" over="GET IT ON" name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
-            {/* Here too, because this band is where /get sends every Android
-                phone. */}
-            {!googlePlayReady && <span class="android-note">{t('home.androidNotYet')}</span>}
-          </div>
-          <p class="band-note">{t('home.bandNote')}</p>
-        </div>
-
-        <div class="band-art">
-          <div class="phone tall">
-            <img src="/app/screen-1.jpg" alt={t('home.shot1Alt')} loading="lazy" />
-          </div>
-          <div class="phone short">
-            <img src="/app/screen-2.jpg" alt={t('home.shot2Alt')} loading="lazy" />
-          </div>
-        </div>
+    <section class="wrap browse">
+      <div class="strip-head tight">
+        <h2>{t('home.browse')}</h2>
+        <span class="soft">{roundedCount(withPlaces.length)} {t('home.browseSub')}</span>
+      </div>
+      <div class="cat-grid">
+        {
+          frontCategories.map((row) => (
+            <a class="cat" href={p(`/activity/${row.slug}`)} style={`background:${categoryColor(row.slug)}`}>
+              <span class="cat-name">{categoryName(row.slug, lang) ?? row.name}</span>
+              <span class="mono cat-count">{row.count}</span>
+            </a>
+          ))
+        }
+        {
+          withPlaces.length > frontCategories.length && (
+            <a class="cat more" href={p('/categories')}>
+              <span class="cat-name">
+                +{withPlaces.length - frontCategories.length} {t('home.more')}
+              </span>
+            </a>
+          )
+        }
       </div>
     </section>
 
@@ -513,8 +530,7 @@ const jsonLd = [
   }
 
   /* A line of its own under the badges, so it wraps with them at every width
-     instead of drifting away from the badge it explains. A span, not a <p>:
-     .band-copy p would otherwise restyle it inside the band. */
+     instead of drifting away from the badge it explains. */
   .android-note {
     flex-basis: 100%;
     font-size: 14px;
@@ -711,6 +727,17 @@ const jsonLd = [
     color: var(--text-42);
   }
 
+  .event-badge {
+    background: #e8a93b;
+    color: #1a1207;
+  }
+
+  .card-when {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--text-70);
+  }
+
   .card-where {
     font-size: 13px;
     color: var(--text-55);
@@ -818,123 +845,6 @@ const jsonLd = [
     margin-top: 12px;
   }
 
-  /* ---- download band ---- */
-  .band {
-    margin-top: 72px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    align-items: end;
-    background: linear-gradient(150deg, #125f6f, #0a2a31);
-    border-radius: 14px;
-    overflow: hidden;
-    padding-left: 44px;
-  }
-
-  .band-copy {
-    padding-block: 44px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    align-items: flex-start;
-    align-self: center;
-  }
-
-  .band-copy h2 {
-    font-size: clamp(24px, 3vw, 32px);
-  }
-
-  .band-copy p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: rgba(var(--ink-rgb), 0.75);
-    margin: 0;
-    max-width: 46ch;
-  }
-
-  .band-badges {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-  }
-
-  .band-note {
-    font-size: 13px;
-    color: rgba(var(--ink-rgb), 0.55);
-  }
-
-  .band-art {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 20px;
-    padding-top: 44px;
-  }
-
-  .phone {
-    width: 186px;
-    border-radius: 26px 26px 0 0;
-    border: 7px solid #05100f;
-    background: #0a0a0d;
-    overflow: hidden;
-    flex: none;
-  }
-
-  .phone img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .phone.tall {
-    height: 380px;
-  }
-
-  .phone.short {
-    height: 330px;
-    margin-bottom: -14px;
-  }
-
-  /*
-   * The phone mockups, once they stop fitting.
-   *
-   * The pair is 392px of flex that cannot shrink — 186 + 20 gap + 186, with
-   * flex: none — so on any viewport under about 430px the line overflowed its
-   * band. justify-content: center overflows *safely*: rather than let content
-   * spill past the start edge where it could never be reached, the browser
-   * clamps it there, so the pair pinned to the left and the whole overflow
-   * went off the right, into the band's overflow: hidden.
-   *
-   * That is the whole of the "not centred on my phone" report, and why it
-   * changed by device: a Fold 6 open is 904px, the band is 809px, the art fits
-   * and sits dead centre. An iPhone at 390px pushed 38px off the right edge; a
-   * Galaxy S10 at 360px, 68px. Narrower phone, further off.
-   *
-   * Width from the container and height from the aspect ratio, so the frames
-   * keep their proportions instead of becoming slots.
-   */
-  @media (max-width: 460px) {
-    .band-art {
-      gap: 12px;
-    }
-
-    .phone {
-      width: calc(50% - 6px);
-    }
-
-    .phone.tall {
-      height: auto;
-      aspect-ratio: 186 / 380;
-    }
-
-    .phone.short {
-      height: auto;
-      aspect-ratio: 186 / 330;
-    }
-  }
-
   @media (max-width: 1279px) {
     .grid-4 {
       grid-template-columns: repeat(2, 1fr);
@@ -970,14 +880,7 @@ const jsonLd = [
       padding-block: 16px;
     }
 
-    .band {
-      grid-template-columns: 1fr;
-      padding-left: 0;
-    }
 
-    .band-copy {
-      padding-inline: 28px;
-    }
   }
 
   @media (max-width: 767px) {

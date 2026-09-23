@@ -431,3 +431,99 @@ export async function fetchMostLikedPlaces(
     categoryName: row.location_categories?.[0]?.categories?.name ?? null,
   }));
 }
+
+/** A place plus the day it happens, for the events row on the home page. */
+export type UpcomingEvent = CategoryPlace & { startsAt: string | null; expiresAt: string | null };
+
+/**
+ * Events that have not finished yet, soonest first.
+ *
+ * The app leads its home screen with these and the website did not, so a
+ * festival added on Monday was invisible to anyone who came in through
+ * locastar.se. The filters repeat what RLS already enforces for a signed-out
+ * reader — published, public, active — because this list is also read by a
+ * moderator, for whom RLS enforces none of it.
+ */
+export async function fetchUpcomingEvents(client: SupabaseClient, limit = 4): Promise<UpcomingEvent[]> {
+  const now = new Date().toISOString();
+  const { data, error } = await client
+    .from("locations")
+    .select(
+      "id, name, address, city, starts_at, expires_at, avg_rating, review_count, location_photos(storage_path), location_categories(categories(slug, name))"
+    )
+    .eq("kind", "activity")
+    .eq("visibility", "public")
+    .eq("status", "active")
+    .lte("publish_at", now)
+    .gte("expires_at", now)
+    .order("starts_at", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    name: string;
+    address: string | null;
+    city: string | null;
+    starts_at: string | null;
+    expires_at: string | null;
+    avg_rating: number;
+    review_count: number;
+    location_photos: { storage_path: string }[] | null;
+    location_categories: { categories: { slug: string; name: string } | null }[] | null;
+  };
+
+  return ((data ?? []) as unknown as Row[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    address: row.address,
+    city: row.city,
+    startsAt: row.starts_at,
+    expiresAt: row.expires_at,
+    avgRating: row.avg_rating,
+    reviewCount: row.review_count,
+    coverPhotoPath: row.location_photos?.[0]?.storage_path ?? null,
+    categorySlug: row.location_categories?.[0]?.categories?.slug ?? null,
+    categoryName: row.location_categories?.[0]?.categories?.name ?? null,
+  }));
+}
+
+/**
+ * The middle of a town, worked out from the places we already have in it.
+ *
+ * So that searching "Huddinge" can show what is around Huddinge rather than
+ * only what a geocoder filed under that exact name: the kommun's places sit in
+ * Segeltorp, Stuvsta, Trångsund and Vårby, and a reader typing the kommun's
+ * name means all of them. No external lookup — our own pins are the source, and
+ * they are the pins the answer will be measured from anyway.
+ *
+ * Null when the text is not a town we hold, which is the signal to fall back to
+ * an ordinary text search.
+ */
+export async function fetchTownCentre(
+  client: SupabaseClient,
+  town: string
+): Promise<{ lat: number; lng: number; places: number } | null> {
+  const name = town.trim();
+  if (name.length < 2) return null;
+
+  const { data, error } = await client
+    .from("locations")
+    .select("lat, lng")
+    .ilike("city", name)
+    .eq("visibility", "public")
+    .eq("status", "active")
+    .not("lat", "is", null)
+    .limit(300);
+  if (error) throw error;
+
+  const rows = (data ?? []) as { lat: number | null; lng: number | null }[];
+  const pins = rows.filter((row): row is { lat: number; lng: number } => row.lat !== null && row.lng !== null);
+  if (pins.length === 0) return null;
+
+  return {
+    lat: pins.reduce((sum, pin) => sum + pin.lat, 0) / pins.length,
+    lng: pins.reduce((sum, pin) => sum + pin.lng, 0) / pins.length,
+    places: pins.length,
+  };
+}

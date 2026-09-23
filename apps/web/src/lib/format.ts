@@ -49,6 +49,24 @@ export function relativeDate(iso: string, now = Date.now()): string {
   return years === 1 ? '1 YEAR AGO' : `${years} YEARS AGO`;
 }
 
+/**
+ * "25–27 Sept" for an event, or "28 Sept – 3 Oct" when it crosses a month.
+ *
+ * Both ends, because an event is a span: a festival listed as its first day
+ * reads as over the moment that day passes, which is the opposite of true.
+ */
+export function dateRange(startIso: string | null, endIso: string | null, locale = 'en-GB'): string {
+  if (!startIso) return '';
+  const start = new Date(startIso);
+  const end = endIso ? new Date(endIso) : null;
+  const dayMonth = (d: Date) => d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  if (!end || start.toDateString() === end.toDateString()) return dayMonth(start);
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  return sameMonth
+    ? `${start.toLocaleDateString(locale, { day: 'numeric' })}–${dayMonth(end)}`
+    : `${dayMonth(start)} – ${dayMonth(end)}`;
+}
+
 export function longDate(iso: string, locale = 'en-GB'): string {
   return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }

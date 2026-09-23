@@ -806,7 +806,7 @@ const seasonLabel =
               const placeRating = ratingLabel(place.avg_rating, place.review_count);
               const cover = coverStyle(publicUrl(place.cover_photo_path), place.category_slug);
               return (
-                <a class="near-card" href={`/location/${place.id}`} style={`border-color:${placeColour}`}>
+                <a class="near-card" href={p(`/location/${place.id}`)} style={`border-color:${placeColour}`}>
                   {cover ? (
                     <div class="near-photo" style={cover} />
                   ) : (

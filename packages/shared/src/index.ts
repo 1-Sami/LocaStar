@@ -18,6 +18,8 @@ export {
   fetchSitemapEntries,
   fetchLocationTotal,
   fetchMostLikedPlaces,
+  fetchTownCentre,
+  fetchUpcomingEvents,
 } from "./api/categoryPages";
 export type {
   CategoryCityCount,
@@ -25,6 +27,7 @@ export type {
   CategorySummary,
   CategoryCount,
   SitemapEntry,
+  UpcomingEvent,
 } from "./api/categoryPages";
 export { CategoryColors } from "./categoryColors";
 export { placeholderFocusY, placeholderImageUrl } from "./placeholderImages";

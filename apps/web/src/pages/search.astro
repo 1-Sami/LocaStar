@@ -2,7 +2,9 @@
 import {
   categoryName,
   fetchCategoryCounts,
+  fetchNearbyLocations,
   fetchSearchResults,
+  fetchTownCentre,
   SearchPageOutOfRange,
 } from '@locastar/shared';
 import SiteFooter from '../components/SiteFooter.astro';
@@ -57,15 +59,114 @@ const sortParam = url.searchParams.get('sort');
 const sort = sortParam === 'reviews' ? 'reviews' : 'rating';
 const direction = url.searchParams.get('dir') === 'asc' ? 'asc' : 'desc';
 
+/*
+ * Searching from somewhere, rather than searching everything.
+ *
+ * Two ways in. "Near me" puts the browser's own coordinates in the URL, so the
+ * answer stays a linkable, server-rendered page. Typing a town gets the same
+ * treatment with no permission prompt: the middle of that town is worked out
+ * from the places we already hold in it, and the search runs around that point.
+ * That is the whole answer to "Huddinge finds nothing, because the places are
+ * filed under Segeltorp and Stuvsta".
+ *
+ * ?exact=1 turns the widening off for a reader who really did mean the word.
+ */
+const RADII = [5, 10, 25, 50, 100];
+const DEFAULT_RADIUS_KM = 25;
+const latParam = Number.parseFloat(url.searchParams.get('lat') ?? '');
+const lngParam = Number.parseFloat(url.searchParams.get('lng') ?? '');
+const hasOwnPoint = Number.isFinite(latParam) && Number.isFinite(lngParam);
+const kmParam = Number.parseInt(url.searchParams.get('km') ?? '', 10);
+const radiusKm = RADII.includes(kmParam) ? kmParam : DEFAULT_RADIUS_KM;
+const exact = url.searchParams.get('exact') === '1';
+
 const kind = kindParam === 'place' || kindParam === 'activity' ? kindParam : null;
 const season = seasonParam === 'summer' || seasonParam === 'winter' ? seasonParam : null;
 const price = priceParam === 'free' || priceParam === 'paid' ? priceParam : null;
 
-let response;
+const PER_PAGE = 20;
+
+/** One row as the list draws it, whichever query produced it. */
+type ResultRow = {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  avgRating: number;
+  reviewCount: number;
+  categorySlug: string | null;
+  categoryName: string | null;
+  coverPhotoPath: string | null;
+  distanceM: number | null;
+  /** For the Directions link, which is a plain maps URL and always has been. */
+  lat: number;
+  lng: number;
+};
+
+let rows: ResultRow[] = [];
+let total: number | null = null;
+let pageCount = 1;
+let hasNextPage = false;
 let categoryCounts;
+/** Where the search is anchored, and what to call that place on screen. */
+let centre: { lat: number; lng: number } | null = null;
+let centreLabel: string | null = null;
+
 try {
-  [response, categoryCounts] = await Promise.all([
-    fetchSearchResults(supabase, {
+  categoryCounts = await fetchCategoryCounts(supabase);
+
+  if (hasOwnPoint) {
+    centre = { lat: latParam, lng: lngParam };
+    centreLabel = t('search.you');
+  } else if (q && !exact) {
+    const town = await fetchTownCentre(supabase, q).catch(() => null);
+    if (town) {
+      centre = { lat: town.lat, lng: town.lng };
+      centreLabel = q;
+    }
+  }
+
+  if (centre) {
+    /*
+     * One row more than a page, which is how the page knows there is a next
+     * one: nearby_locations answers with places, not with a count, and asking
+     * for a count would mean running the whole radius twice.
+     */
+    const nearbySort = sortParam === 'rating' ? 'rating' : 'distance';
+    const found = await fetchNearbyLocations(supabase, {
+      lat: centre.lat,
+      lng: centre.lng,
+      radiusM: radiusKm * 1000,
+      categorySlugs: activity,
+      // In town mode the words are the town's name, and matching them again
+      // would throw away every place in it that is not called after it.
+      searchQuery: hasOwnPoint ? q || null : null,
+      sort: nearbySort,
+      season,
+      price,
+      kind,
+      maxResults: PER_PAGE + 1,
+      offset: (page - 1) * PER_PAGE,
+    });
+    hasNextPage = found.length > PER_PAGE;
+    rows = found.slice(0, PER_PAGE).map((place) => ({
+      id: place.id,
+      name: place.name,
+      address: place.address,
+      city: place.city,
+      avgRating: place.avg_rating,
+      reviewCount: place.review_count,
+      categorySlug: place.category_slug,
+      categoryName: place.category_label,
+      coverPhotoPath: place.cover_photo_path,
+      distanceM: place.distance_m,
+      lat: place.result_lat,
+      lng: place.result_lng,
+    }));
+    pageCount = page + (hasNextPage ? 1 : 0);
+    if (rows.length === 0 && page > 1) return new Response(null, { status: 404 });
+  } else {
+    const response = await fetchSearchResults(supabase, {
       query: q,
       categorySlugs: activity,
       kind,
@@ -74,10 +175,26 @@ try {
       sort,
       direction,
       page,
-      perPage: 20,
-    }),
-    fetchCategoryCounts(supabase),
-  ]);
+      perPage: PER_PAGE,
+    });
+    rows = response.results.map((place) => ({
+      id: place.id,
+      name: place.name,
+      address: place.address,
+      city: place.city,
+      avgRating: place.avgRating,
+      reviewCount: place.reviewCount,
+      categorySlug: place.categorySlug,
+      categoryName: place.categoryName,
+      coverPhotoPath: place.coverPhotoPath,
+      distanceM: null,
+      lat: place.lat,
+      lng: place.lng,
+    }));
+    total = response.total;
+    pageCount = response.pageCount;
+    hasNextPage = response.page < response.pageCount;
+  }
 } catch (error) {
   /*
    * A page past the last one is a page that does not exist, so it 404s. Only a
@@ -130,6 +247,15 @@ function toggleActivity(slug: string) {
   return qs ? `${p('/search')}?${qs}` : p('/search');
 }
 
+/** Back to searching everywhere: the point, the radius and its sort all go. */
+function nearbyOff() {
+  const next = new URLSearchParams(url.search);
+  for (const key of ['lat', 'lng', 'km', 'page']) next.delete(key);
+  if (next.get('sort') === 'distance') next.delete('sort');
+  const qs = next.toString();
+  return qs ? `${p('/search')}?${qs}` : p('/search');
+}
+
 function pageHref(target: number) {
   const next = new URLSearchParams(url.search);
   if (target <= 1) next.delete('page');
@@ -138,17 +264,19 @@ function pageHref(target: number) {
   return qs ? `${p('/search')}?${qs}` : p('/search');
 }
 
-const first = response.total === 0 ? 0 : (response.page - 1) * response.perPage + 1;
-const last = Math.min(response.page * response.perPage, response.total);
-const progress = response.total === 0 ? 0 : Math.round((last / response.total) * 100);
+const first = rows.length === 0 ? 0 : (page - 1) * PER_PAGE + 1;
+const last = (page - 1) * PER_PAGE + rows.length;
+/* A radius search knows what it found, not how much there is; the bar is only
+   honest when a total exists. */
+const progress = total === null || total === 0 ? 0 : Math.round((last / total) * 100);
 
 /*
  * Page numbers worth rendering: the first three, the last, and the current
  * neighbourhood. A crawler follows these; a person uses the button.
  */
 const pageNumbers: (number | '…')[] = [];
-for (let i = 1; i <= response.pageCount; i += 1) {
-  if (i <= 3 || i === response.pageCount || Math.abs(i - response.page) <= 1) pageNumbers.push(i);
+for (let i = 1; i <= pageCount; i += 1) {
+  if (i <= 3 || i === pageCount || Math.abs(i - page) <= 1) pageNumbers.push(i);
   else if (pageNumbers[pageNumbers.length - 1] !== '…') pageNumbers.push('…');
 }
 
@@ -165,12 +293,13 @@ const describedFilters = [
  * have to be Swedish. They were hardcoded English while every other page on
  * /sv was translated, which quietly undid the translation where it counted.
  */
+const countForMeta = String(total ?? rows.length);
 const title = describedFilters.length
-  ? t('search.metaTitleFiltered', { filters: describedFilters.join(' · '), count: String(response.total) })
-  : t('search.metaTitle', { count: String(response.total) });
+  ? t('search.metaTitleFiltered', { filters: describedFilters.join(' · '), count: countForMeta })
+  : t('search.metaTitle', { count: countForMeta });
 
 const description = describedFilters.length
-  ? t('search.metaDescFiltered', { filters: describedFilters.join(', '), count: String(response.total) })
+  ? t('search.metaDescFiltered', { filters: describedFilters.join(', '), count: countForMeta })
   : t('search.metaDesc');
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
@@ -253,14 +382,82 @@ const canonical = `${origin}/search`;
         <button type="submit">{t('common.search')}</button>
       </form>
 
+      <div class="group">
+        <span class="mono group-head">{t('search.from')}</span>
+        <div class="pills">
+          {hasOwnPoint ? (
+            <a class="pill on" href={nearbyOff()}>{t('search.nearYouClear')}</a>
+          ) : (
+            <button
+              class="pill locate"
+              type="button"
+              data-near-me
+              data-km={String(radiusKm)}
+              data-busy={t('search.locating')}
+            >
+              {t('search.nearMe')}
+            </button>
+          )}
+        </div>
+      </div>
+
       {
-        (q || activity.length > 0 || kind || season || price) && (
+        (q || activity.length > 0 || kind || season || price || hasOwnPoint) && (
           <a class="clear" href={p('/search')}>
             {t('common.clearAll')}
           </a>
         )
       }
     </div>
+
+    <p class="locate-failed" data-locate-note hidden>{t('search.locateFailed')}</p>
+
+    {
+      centre && !hasOwnPoint && (
+        <p class="widened">
+          {t('search.aroundTown', { town: centreLabel ?? q })}{' '}
+          <a href={withParam('exact', '1')}>{t('search.exactInstead')}</a>
+        </p>
+      )
+    }
+
+    <script is:inline>
+      (function () {
+        var button = document.querySelector('[data-near-me]');
+        if (!button) return;
+        /* No geolocation, no button: a control that cannot work is worse than
+           one that is not there. */
+        if (!navigator.geolocation) {
+          button.hidden = true;
+          return;
+        }
+        button.addEventListener('click', function () {
+          var label = button.textContent;
+          button.textContent = button.getAttribute('data-busy');
+          button.disabled = true;
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              var next = new URL(window.location.href);
+              /* Five decimals is about a metre — more than enough to sort by,
+                 and it keeps a readable URL out of somebody's exact doorstep. */
+              next.searchParams.set('lat', position.coords.latitude.toFixed(5));
+              next.searchParams.set('lng', position.coords.longitude.toFixed(5));
+              next.searchParams.set('km', button.getAttribute('data-km') || '25');
+              next.searchParams.delete('page');
+              next.searchParams.delete('exact');
+              window.location.href = next.toString();
+            },
+            function () {
+              button.disabled = false;
+              button.textContent = label;
+              var note = document.querySelector('[data-locate-note]');
+              if (note) note.hidden = false;
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+          );
+        });
+      })();
+    </script>
 
     <div class="layout">
       <aside class="rail" aria-label={t('search.filters')}>
@@ -331,30 +528,53 @@ const canonical = `${origin}/search`;
           {q ? t('search.headingFor', { query: q }) : t('search.heading')}
         </h1>
         <div class="results-head">
-          <span class="mono count">{response.total} {t('common.results')}</span>
-          <label class="sort">
-            <span class="mono sort-label">{t('common.sort')}</span>
-            <select onchange="location.href = this.value" aria-label={t('search.sortResults')}>
-              <option value={withParam('sort', 'rating', false)} selected={sort === 'rating'}>
-                {t('search.sortRating')}
-              </option>
-              <option value={withParam('sort', 'reviews', false)} selected={sort === 'reviews'}>
-                {t('search.sortReviews')}
-              </option>
-            </select>
-            <a
-              class="flip"
-              href={withParam('dir', direction === 'asc' ? null : 'asc', false)}
-              aria-label={direction === 'asc' ? t('search.showBestFirst') : t('search.showWorstFirst')}
-              title={direction === 'asc' ? t('search.showBestFirst') : t('search.showWorstFirst')}
-            >
-              {direction === 'asc' ? '↑' : '↓'}
-            </a>
-          </label>
+          <span class="mono count">
+            {total !== null ? `${total} ${t('common.results')}` : `${rows.length}${hasNextPage ? '+' : ''} ${t('common.results')}`}
+          </span>
+          {centre ? (
+            <label class="sort">
+              <span class="mono sort-label">{t('search.within')}</span>
+              <select onchange="location.href = this.value" aria-label={t('search.radiusLabel')}>
+                {RADII.map((km) => (
+                  <option value={withParam('km', String(km))} selected={km === radiusKm}>
+                    {km} km
+                  </option>
+                ))}
+              </select>
+              <select onchange="location.href = this.value" aria-label={t('search.sortResults')}>
+                <option value={withParam('sort', 'distance', false)} selected={sortParam !== 'rating'}>
+                  {t('search.sortDistance')}
+                </option>
+                <option value={withParam('sort', 'rating', false)} selected={sortParam === 'rating'}>
+                  {t('search.sortRating')}
+                </option>
+              </select>
+            </label>
+          ) : (
+            <label class="sort">
+              <span class="mono sort-label">{t('common.sort')}</span>
+              <select onchange="location.href = this.value" aria-label={t('search.sortResults')}>
+                <option value={withParam('sort', 'rating', false)} selected={sort === 'rating'}>
+                  {t('search.sortRating')}
+                </option>
+                <option value={withParam('sort', 'reviews', false)} selected={sort === 'reviews'}>
+                  {t('search.sortReviews')}
+                </option>
+              </select>
+              <a
+                class="flip"
+                href={withParam('dir', direction === 'asc' ? null : 'asc', false)}
+                aria-label={direction === 'asc' ? t('search.showBestFirst') : t('search.showWorstFirst')}
+                title={direction === 'asc' ? t('search.showBestFirst') : t('search.showWorstFirst')}
+              >
+                {direction === 'asc' ? '↑' : '↓'}
+              </a>
+            </label>
+          )}
         </div>
 
         {
-          response.results.length === 0 ? (
+          rows.length === 0 ? (
             /* Named actions, not just an absence — the handoff's rule for every
                empty state on the site. */
             <div class="empty">
@@ -370,7 +590,7 @@ const canonical = `${origin}/search`;
           ) : (
             <>
               <div class="list">
-              {response.results.map((place) => {
+              {rows.map((place) => {
                 const colour = categoryColor(place.categorySlug);
                 const rating = ratingLabel(place.avgRating, place.reviewCount);
                 const cover = coverStyle(publicUrl(place.coverPhotoPath), place.categorySlug);
@@ -401,7 +621,16 @@ const canonical = `${origin}/search`;
                         ) : (
                           <span class="mono row-unrated">{t('common.notRated')}</span>
                         )}
-                        <span class="row-where">{[place.address, place.city].filter(Boolean).join(', ')}</span>
+                        <span class="row-where">
+                          {[place.address, place.city].filter(Boolean).join(', ')}
+                          {place.distanceM !== null && (
+                            <span class="mono row-away">
+                              {place.distanceM < 1000
+                                ? t('search.awayMetres', { m: String(Math.round(place.distanceM / 10) * 10) })
+                                : t('search.awayKm', { km: (place.distanceM / 1000).toFixed(1) })}
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </a>
                     <div class="row-side">
@@ -421,30 +650,34 @@ const canonical = `${origin}/search`;
 
             <div class="pager">
               <span class="mono showing">
-                {t('search.showing')} {first}–{last} {t('search.of')} {response.total}
+                {total !== null
+                  ? `${t('search.showing')} ${first}–${last} ${t('search.of')} ${total}`
+                  : `${t('search.showing')} ${first}–${last}`}
               </span>
-              <div class="bar" aria-hidden="true">
-                <div class="bar-fill" style={`width:${progress}%`} />
-              </div>
+              {total !== null && (
+                <div class="bar" aria-hidden="true">
+                  <div class="bar-fill" style={`width:${progress}%`} />
+                </div>
+              )}
               {/*
                 Real numbered links, not a script. A crawler follows these, and
                 somebody can link page 3 — which is the whole reason the search
                 page is server-rendered rather than an endless scroll.
               */}
               {
-                response.pageCount > 1 && (
+                pageCount > 1 && (
                   <nav class="pages" aria-label={t('search.pagination')}>
                     {pageNumbers.map((n) =>
                       n === '…' ? (
                         <span class="mono gap">…</span>
                       ) : (
-                        <a class={`page${n === response.page ? ' on' : ''}`} href={pageHref(n)}>
+                        <a class={`page${n === page ? ' on' : ''}`} href={pageHref(n)}>
                           {n}
                         </a>
                       )
                     )}
-                    {response.page < response.pageCount && (
-                      <a class="page next" href={pageHref(response.page + 1)} aria-label={t('search.nextPage')}>
+                    {hasNextPage && (
+                      <a class="page next" href={pageHref(page + 1)} aria-label={t('search.nextPage')}>
                         →
                       </a>
                     )}
@@ -849,6 +1082,37 @@ const canonical = `${origin}/search`;
     font-size: 11.5px;
     letter-spacing: 0.14em;
     color: var(--text-42);
+  }
+
+  .row-away {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .locate {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .locate:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .locate-failed,
+  .widened {
+    margin: 0 0 14px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--text-70);
+  }
+
+  .locate-failed[hidden] {
+    display: none;
   }
 
   .row-where {
