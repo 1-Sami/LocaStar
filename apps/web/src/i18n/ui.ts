@@ -90,7 +90,6 @@ export const ui = {
     'home.eventBadge': 'EVENT',
 
     'search.placeholder': 'Search a place, an event, a town…',
-    'search.from': 'From',
     'search.nearMe': 'Near me',
     'search.nearYouClear': 'Near you ✕',
     'search.locating': 'Finding you…',
@@ -701,7 +700,6 @@ export const ui = {
     'home.eventBadge': 'EVENEMANG',
 
     'search.placeholder': 'Sök en plats, ett evenemang, en ort…',
-    'search.from': 'Från',
     'search.nearMe': 'Nära mig',
     'search.nearYouClear': 'Nära dig ✕',
     'search.locating': 'Hittar dig…',

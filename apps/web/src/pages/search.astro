@@ -382,25 +382,6 @@ const canonical = `${origin}/search`;
         <button type="submit">{t('common.search')}</button>
       </form>
 
-      <div class="group">
-        <span class="mono group-head">{t('search.from')}</span>
-        <div class="pills">
-          {hasOwnPoint ? (
-            <a class="pill on" href={nearbyOff()}>{t('search.nearYouClear')}</a>
-          ) : (
-            <button
-              class="pill locate"
-              type="button"
-              data-near-me
-              data-km={String(radiusKm)}
-              data-busy={t('search.locating')}
-            >
-              {t('search.nearMe')}
-            </button>
-          )}
-        </div>
-      </div>
-
       {
         (q || activity.length > 0 || kind || season || price || hasOwnPoint) && (
           <a class="clear" href={p('/search')}>
@@ -409,8 +390,6 @@ const canonical = `${origin}/search`;
         )
       }
     </div>
-
-    <p class="locate-failed" data-locate-note hidden>{t('search.locateFailed')}</p>
 
     {
       centre && !hasOwnPoint && (
@@ -533,6 +512,25 @@ const canonical = `${origin}/search`;
           <span class="mono count">
             {total !== null ? `${total} ${t('common.results')}` : `${rows.length}${hasNextPage ? '+' : ''} ${t('common.results')}`}
           </span>
+          {/* Beside the radius and the order, because all three answer "from
+              where, how far, in what order" — and a control that changes the
+              results belongs above them, not up in the filter bar. */}
+          <div class="from">
+            {hasOwnPoint ? (
+              <a class="pill on" href={nearbyOff()}>{t('search.nearYouClear')}</a>
+            ) : (
+              <button
+                class="pill locate"
+                type="button"
+                data-near-me
+                data-km={String(radiusKm)}
+                data-busy={t('search.locating')}
+              >
+                {t('search.nearMe')}
+              </button>
+            )}
+          </div>
+
           {centre ? (
             <label class="sort">
               <span class="mono sort-label">{t('search.within')}</span>
@@ -574,6 +572,8 @@ const canonical = `${origin}/search`;
             </label>
           )}
         </div>
+
+        <p class="locate-failed" data-locate-note hidden>{t('search.locateFailed')}</p>
 
         {
           rows.length === 0 ? (
@@ -915,10 +915,21 @@ const canonical = `${origin}/search`;
 
   .results-head {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
     margin-bottom: 16px;
+  }
+
+  .from {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  /* The sort sits next to it, not pushed to the far edge on its own. */
+  .from + .sort {
+    margin-left: 0;
   }
 
   .count {
@@ -1095,9 +1106,18 @@ const canonical = `${origin}/search`;
     white-space: nowrap;
   }
 
+  /* A button among links: without this it keeps the browser's grey face and
+     reads as disabled next to the pills it sits beside. */
   .locate {
     font: inherit;
+    font-size: 12px;
+    background: none;
     cursor: pointer;
+  }
+
+  .locate:hover {
+    color: var(--text);
+    border-color: var(--accent);
   }
 
   .locate:disabled {
