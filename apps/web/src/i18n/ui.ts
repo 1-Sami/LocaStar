@@ -38,7 +38,6 @@ export const ui = {
 
     'footer.locastar': 'LocaStar',
     'footer.getTheApp': 'Get the app',
-    'footer.freeNote': 'Free, no ads. English and Swedish.',
     'footer.legal': 'Legal',
     'footer.about': 'About',
     'footer.features': 'Features',
@@ -652,7 +651,6 @@ export const ui = {
 
     'footer.locastar': 'LocaStar',
     'footer.getTheApp': 'Hämta appen',
-    'footer.freeNote': 'Gratis, inga annonser. Svenska och engelska.',
     'footer.legal': 'Juridik',
     'footer.about': 'Om oss',
     'footer.features': 'Funktioner',
