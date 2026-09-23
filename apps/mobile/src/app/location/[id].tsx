@@ -240,6 +240,7 @@ export default function LocationDetailScreen() {
   // reads and clears it. Declared up here for the same early-return reason
   // as the refs above it.
   const galleryViewerIndexRef = useRef<number | null>(null);
+  const viewerReportRef = useRef<GalleryPhoto | null>(null);
   /*
    * Positions the viewer's ScrollView at viewerIndex — but only when the
    * viewer opens or the device rotates, never when viewerIndex changes on
@@ -793,6 +794,35 @@ export default function LocationDetailScreen() {
     if (galleryViewerIndexRef.current !== null) {
       openViewerAt(galleryViewerIndexRef.current);
       galleryViewerIndexRef.current = null;
+    }
+  };
+
+  /*
+   * Reporting the photo you are looking at.
+   *
+   * The viewer is a Modal and so is the report sheet, and on iOS a Modal asked
+   * to present while another one is up arrives *underneath* it: the sheet
+   * opened behind the photo, so the tap looked like it had done nothing, and
+   * the form was sitting there when you closed the picture. Same family as the
+   * gallery-to-viewer race above, and the same cure — hand the viewer the
+   * photo, close it, and open the sheet once iOS says the dismissal is done.
+   *
+   * Android presents the second Modal over the first, and has no onDismiss, so
+   * it keeps opening the sheet directly.
+   */
+  const reportPhotoFromViewer = (photo: GalleryPhoto) => {
+    if (Platform.OS === 'ios') {
+      viewerReportRef.current = photo;
+      setViewerIndex(null);
+    } else {
+      setReportingPhoto(photo);
+    }
+  };
+
+  const handleViewerDismiss = () => {
+    if (viewerReportRef.current) {
+      setReportingPhoto(viewerReportRef.current);
+      viewerReportRef.current = null;
     }
   };
 
@@ -1520,7 +1550,14 @@ export default function LocationDetailScreen() {
             locationPhotoId: reportingPhoto.photoId,
           });
         }}
-      />
+      >
+        {/* The photo itself, for the same reason a reported review carries its
+            pictures: the viewer has just closed, and nobody should have to
+            describe a picture they can no longer see. */}
+        {reportingPhoto && (
+          <Image source={{ uri: reportingPhoto.url }} style={styles.reportPhotoThumb} contentFit="cover" />
+        )}
+      </ReportModal>
 
       <ShareModal
         visible={shareVisible}
@@ -1595,6 +1632,7 @@ export default function LocationDetailScreen() {
         visible={viewerIndex !== null}
         animationType="fade"
         onRequestClose={() => setViewerIndex(null)}
+        onDismiss={handleViewerDismiss}
         supportedOrientations={['portrait', 'landscape']}>
         <View
           style={styles.viewerRoot}
@@ -1721,7 +1759,7 @@ export default function LocationDetailScreen() {
                 {canReportCurrentPhoto && (
                   <Pressable
                     style={styles.reportPhotoButton}
-                    onPress={() => setReportingPhoto(viewerPhoto)}
+                    onPress={() => viewerPhoto && reportPhotoFromViewer(viewerPhoto)}
                     hitSlop={8}>
                     <Ionicons name="flag" size={13} color="#ffffff" />
                     <ThemedText type="smallBold" style={styles.reportPhotoText}>
