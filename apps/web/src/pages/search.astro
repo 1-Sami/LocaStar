@@ -438,10 +438,12 @@ const canonical = `${origin}/search`;
           navigator.geolocation.getCurrentPosition(
             function (position) {
               var next = new URL(window.location.href);
-              /* Five decimals is about a metre — more than enough to sort by,
-                 and it keeps a readable URL out of somebody's exact doorstep. */
-              next.searchParams.set('lat', position.coords.latitude.toFixed(5));
-              next.searchParams.set('lng', position.coords.longitude.toFixed(5));
+              /* Three decimals is about 100 metres. The URL is shareable, and
+                 it ends up in logs and in somebody's history, so it carries the
+                 neighbourhood rather than the doorstep — and nothing sorted by
+                 kilometres can tell the difference. */
+              next.searchParams.set('lat', position.coords.latitude.toFixed(3));
+              next.searchParams.set('lng', position.coords.longitude.toFixed(3));
               next.searchParams.set('km', button.getAttribute('data-km') || '25');
               next.searchParams.delete('page');
               next.searchParams.delete('exact');
