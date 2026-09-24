@@ -206,19 +206,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
         <span class="who-text">
           <span class="name-row">
             <span class="name">{name}</span>
-            {/*
-              Beside the name rather than a full-width button down in the rail:
-              it is the one control here nobody comes to the page to use, and at
-              the foot of a phone screen it was as loud as Saved and My lists.
-
-              On the name's own line, not the block's: the rail is 250px, and
-              sharing a line with "12 CONTRIBUTIONS" left the button about 55px
-              — so it wrapped its own label onto two lines. Its own form, too,
-              because a form cannot be nested inside the avatar's.
-            */}
-            <form method="post" action={p('/auth/sign-out')} class="signout-form">
-              <button class="mono signout" type="submit">{t('acct.logOut')}</button>
-            </form>
           </span>
           {
             stats && (
@@ -298,6 +285,18 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
           </a>
         )
       }
+
+      {/*
+        Last in the rail, under everything the page is actually for. It used to
+        sit beside the name to keep it quiet; down here it stays quiet by being
+        the thing you scroll past, so it is bordered and muted rather than
+        filled — nothing in this column should compete with the admin button.
+
+        Its own form, because a form cannot be nested inside the avatar's.
+      */}
+      <form method="post" action={p('/auth/sign-out')} class="signout-form">
+        <button class="signout" type="submit">{t('acct.logOut')}</button>
+      </form>
 
     </aside>
 
@@ -884,30 +883,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     gap: 10px;
   }
 
-  .signout-form {
-    margin-left: auto;
-  }
-
-  /* Small, and quiet: it sits beside the name, where it cannot be mistaken
-     for one of the things this page is actually for. */
-  .signout {
-    border: 1px solid var(--border);
-    background: none;
-    color: var(--text-55);
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    padding: 5px 9px;
-    border-radius: 7px;
-    cursor: pointer;
-  }
-
-  .signout:hover {
-    color: var(--text);
-    border-color: var(--text-42);
-  }
-
   .who-row {
     display: flex;
     align-items: center;
@@ -1052,6 +1027,14 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     color: #ffffff;
   }
 
+  /* A little further down than the rail's own 22px gap: below 1000px the rail
+     stacks straight on top of the page's content, and without the extra air
+     this reads as the first thing in the list rather than the last thing in
+     the column. */
+  .signout-form {
+    margin-top: 6px;
+  }
+
   .signout {
     background: transparent;
     border: 1px solid var(--border);
@@ -1060,7 +1043,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     font-family: var(--font-display);
     font-weight: 500;
     font-size: 14px;
-    color: var(--text);
+    color: var(--text-55);
     cursor: pointer;
     width: 100%;
   }
@@ -1069,8 +1052,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
     color: var(--accent);
     border-color: var(--accent);
   }
-
-
 
 
 
