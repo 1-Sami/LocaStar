@@ -2,9 +2,18 @@
 /**
  * Bump APP_RELEASE and publish the over-the-air update in one step.
  *
- *   npm run release            → patch  (1.0.2 → 1.0.3)
- *   npm run release -- minor   → minor  (1.0.3 → 1.1.0)
- *   npm run release -- major   → major  (1.1.0 → 2.0.0)
+ *   npm run release                     → 1.3.4 → 1.3.5
+ *   npm run release "what you fixed"    → same, with a message
+ *
+ * **There is no bump argument any more, by the owner's rule (2026-09-24): the
+ * last number counts all the way to 99 before the middle one moves.** So
+ * 1.3.98 → 1.3.99 → 1.4.0, and 1.99.99 → 2.0.0. Nothing else.
+ *
+ * It used to take patch/minor/major, and v1.2.0 went straight to v1.3.0 for no
+ * reason except that the change felt like a feature. That is exactly the call
+ * this script no longer lets anyone make: these numbers are a running count of
+ * over-the-air releases, not a claim about how big any one of them was. Asking
+ * for `minor` or `major` now fails loudly rather than doing it quietly.
  *
  * One step on purpose. Bumping the constant and publishing are only useful
  * together: bump without publish and the About screen claims a version nobody
@@ -44,11 +53,19 @@ const BRANCHES = ['production'];
 // ships without them and the app starts up unable to talk to anything.
 const ENVIRONMENT = 'production';
 
-const bump = process.argv[2] ?? 'patch';
-if (!['patch', 'minor', 'major'].includes(bump)) {
-  console.error(`Unknown bump "${bump}". Expected patch, minor or major.`);
+const args = process.argv.slice(2);
+
+if (args[0] === 'minor' || args[0] === 'major') {
+  console.error(
+    `"${args[0]}" is not a thing here any more.\n` +
+      'The last number runs to 99 before the middle one moves — 1.3.98, 1.3.99, 1.4.0.\n' +
+      'Just run: npm run release -- "what you fixed"'
+  );
   process.exit(1);
 }
+
+// Still accepted, because it is what every run does and the habit is harmless.
+if (args[0] === 'patch') args.shift();
 
 const original = readFileSync(releaseFile, 'utf8');
 const match = original.match(/export const APP_RELEASE = '(\d+)\.(\d+)\.(\d+)';/);
@@ -57,15 +74,27 @@ if (!match) {
   process.exit(1);
 }
 
+/*
+ * Count, carrying at 99.
+ *
+ * The three numbers are one counter, not three judgements: 1.3.99 is followed
+ * by 1.4.0 and nothing else can produce a 1.4.0. Whether a release felt large
+ * has no bearing on it, which is the point — that judgement is what put v1.2.0
+ * next to v1.3.0 with a day between them.
+ */
 const [major, minor, patch] = match.slice(1, 4).map(Number);
 const next =
-  bump === 'major' ? `${major + 1}.0.0` : bump === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
+  patch < 99
+    ? `${major}.${minor}.${patch + 1}`
+    : minor < 99
+      ? `${major}.${minor + 1}.0`
+      : `${major + 1}.0.0`;
 
 const updated = original.replace(match[0], `export const APP_RELEASE = '${next}';`);
 writeFileSync(releaseFile, updated);
 console.log(`APP_RELEASE ${match[1]}.${match[2]}.${match[3]} → ${next}`);
 
-const message = process.argv.slice(3).join(' ').trim();
+const message = args.join(' ').trim();
 
 const argsFor = (branch) => [
   'eas-cli@latest',

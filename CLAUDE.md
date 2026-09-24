@@ -30,8 +30,8 @@ stored once so the copy Apple reviewed cannot drift from the copy on the site.
 npm run typecheck        # all three workspaces — run this after every change
 npm run lint             # ESLint via expo lint (apps/mobile only)
 npm run emails           # regenerate supabase/templates/ from the shared layout
-cd apps/mobile && npm run release            # bump APP_RELEASE + publish OTA
-cd apps/mobile && npm run release -- minor   # or major
+cd apps/mobile && npm run release                  # bump APP_RELEASE + publish OTA
+cd apps/mobile && npm run release -- "what you fixed"
 cd apps/web && npm run deploy                # astro build + wrangler deploy
 ```
 
@@ -81,6 +81,12 @@ Two version numbers, deliberately: `app.json`'s `version` is the native/store
 one and drives `runtimeVersion`, so bumping it stops existing installs receiving
 updates. `APP_RELEASE` in `src/constants/release.ts` is what users see and moves
 once per OTA. `npm run release` handles it.
+
+**`APP_RELEASE` counts, it does not judge.** The last number runs all the way
+to 99 before the middle one moves: 1.3.98, 1.3.99, **1.4.0**. There is no
+patch/minor/major choice any more, and the script refuses one — v1.2.0 became
+v1.3.0 a day later purely because the change felt like a feature, which is not
+what these digits are for.
 
 ## Working on the database
 
