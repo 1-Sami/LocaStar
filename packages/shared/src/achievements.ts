@@ -1,11 +1,12 @@
 /**
  * Points, badges and levels.
  *
- * Everything here is arithmetic over the counts `my_achievement_counts()`
- * returns (migration 0147). It is kept in TypeScript rather than in SQL for two
- * reasons: the app and the website must agree on the number without asking the
- * server twice, and these are the figures the owner will want to move. Changing
- * what a review is worth should be one line here, not a migration.
+ * Everything here is arithmetic over the counts `achievement_counts_of()`
+ * returns (migrations 0147 and 0149). It is kept in TypeScript rather than in
+ * SQL for two reasons: the app and the website must agree on the number without
+ * asking the server twice, and these are the figures the owner will want to
+ * move. Changing what a review is worth should be one line here, not a
+ * migration — as it was on 2026-09-24, when a review went from 8 to 5.
  *
  * The principle underneath the weights: **pay for what it costs the person, not
  * for what is easy to count.** A photo means standing in the place with a
@@ -57,18 +58,26 @@ export const EMPTY_COUNTS: AchievementCounts = {
  * A review shorter than this earns nothing at all.
  *
  * Without a floor the cheapest possible contribution is also the most
- * repeatable one, and the ratings are what the rest of the app rests on. The
- * same number is enforced in SQL — the client only repeats it so a review can
- * say so while it is being written.
+ * repeatable one, and the ratings are what the rest of the app rests on.
+ *
+ * It was 40 for a day. The live data said that was too high: only two reviews
+ * in the whole database cleared it, and "Jätte mysigt lekplats" — a real note
+ * from a real tester — scored nothing. Twenty still stops a one-word rating
+ * farming points and lets the short honest review count, which is the kind
+ * most people write.
+ *
+ * ⚠ The same number is enforced in SQL (migration 0149). The client repeats it
+ * only so a review can say so while it is being written. Change both or
+ * neither.
  */
-export const REVIEW_MIN_CHARACTERS = 40;
+export const REVIEW_MIN_CHARACTERS = 20;
 
 export const POINTS = {
   placeAdded: 30,
   firstPhoto: 25,
   eventAdded: 20,
   photo: 10,
-  review: 8,
+  review: 5,
   firstReviewBonus: 15,
   reviewWithPhotoBonus: 10,
   reportUpheld: 5,
@@ -147,6 +156,12 @@ type BadgeDefinition = {
   progress: (counts: AchievementCounts) => number;
   /** One entry per tier. A single-entry list is an untiered badge. */
   tiers: { need: number; bonus: number }[];
+  /**
+   * True for a badge that waits rather than one you can go and finish. It is
+   * kept out of "closest to done", whose whole job is to name something the
+   * person could do this afternoon.
+   */
+  passive?: boolean;
 };
 
 /**
@@ -240,6 +255,10 @@ const BADGES: BadgeDefinition[] = [
     group: "habit",
     progress: (c) => Math.min(c.summerContributions, c.winterContributions),
     tiers: [{ need: 1, bonus: 50 }],
+    // Needs half a year to pass, not an afternoon. Without this it ranked
+    // second on a brand-new account's "closest to done" — a target of 1, and
+    // nothing whatever the person could do about it today.
+    passive: true,
   },
 ];
 
@@ -247,6 +266,8 @@ const BADGES: BadgeDefinition[] = [
 export type BadgeState = {
   id: BadgeId;
   group: BadgeGroup;
+  /** See BadgeDefinition.passive — excluded from "closest to done". */
+  passive: boolean;
   /** 1-based; 0 for an untiered badge. */
   tier: number;
   /** `pioneer` or `pioneer:2` — what the app stores to know what is new. */
@@ -265,6 +286,7 @@ function stateOf(badge: BadgeDefinition, counts: AchievementCounts): BadgeState[
   return badge.tiers.map((tier, index) => ({
     id: badge.id,
     group: badge.group,
+    passive: badge.passive === true,
     tier: tiered ? index + 1 : 0,
     key: tiered ? `${badge.id}:${index + 1}` : badge.id,
     need: tier.need,
@@ -301,7 +323,7 @@ export function badgeBonusPoints(counts: AchievementCounts): number {
  */
 export function closestBadges(counts: AchievementCounts, limit = 3): BadgeState[] {
   return badgeStates(counts)
-    .filter((state) => !state.earned)
+    .filter((state) => !state.earned && !state.passive)
     .sort((a, b) => {
       if (b.fraction !== a.fraction) return b.fraction - a.fraction;
       return a.need - a.have - (b.need - b.have);

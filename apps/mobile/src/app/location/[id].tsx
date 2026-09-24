@@ -11,6 +11,7 @@ import {
   makeCoverPhoto,
   fetchProfile,
   placeholderImageUrl,
+  fetchLevelsFor,
   fetchReviews,
   reportLocation,
   reportReview,
@@ -22,6 +23,7 @@ import {
   type BusinessClaim,
   type DayKey,
   type GalleryPhoto,
+  type LevelState,
   type LocationDetail,
   type OpeningHours,
   type Review,
@@ -40,6 +42,7 @@ import { useBlockAndReport } from '@/lib/block-and-report';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { AddToListModal } from '@/components/add-to-list-modal';
 import { ClaimBusinessModal } from '@/components/claim-business-modal';
+import { LevelBadge } from '@/components/level-badge';
 import { LocationPhoto } from '@/components/location-photo';
 import { ReportModal } from '@/components/report-modal';
 import { ShareModal } from '@/components/share-modal';
@@ -196,6 +199,7 @@ export default function LocationDetailScreen() {
 
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewerLevels, setReviewerLevels] = useState<Map<string, LevelState>>(new Map());
   const [allPhotos, setAllPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -294,6 +298,23 @@ export default function LocationDetailScreen() {
           setLocation(locationResult);
           setReviews(reviewsResult);
           setAllPhotos(photosResult);
+
+          // After the reviews are on screen, not alongside them: the badges are
+          // decoration on content that has already arrived, and holding the
+          // whole page for them would trade something people came for against
+          // something they did not.
+          const authors = reviewsResult
+            .map((review) => review.user_id)
+            .filter((userId): userId is string => Boolean(userId));
+          if (authors.length === 0) return;
+          fetchLevelsFor(supabase, authors)
+            .then((levels) => {
+              if (!cancelled) setReviewerLevels(levels);
+            })
+            .catch((err) => {
+              // A missing badge is a missing badge. Nothing else depends on it.
+              console.error('Failed to load reviewer levels', err);
+            });
         })
         .catch((err) => {
           // fetchLocationById returns null when the row genuinely is not there
@@ -1337,7 +1358,10 @@ export default function LocationDetailScreen() {
                         </View>
                       )}
                       <View style={styles.reviewAuthorColumn}>
-                        <ThemedText type="smallBold">{review.author_name}</ThemedText>
+                        <View style={styles.reviewAuthorLine}>
+                          <ThemedText type="smallBold">{review.author_name}</ThemedText>
+                          {review.user_id && <LevelBadge level={reviewerLevels.get(review.user_id) ?? null} />}
+                        </View>
                         <ThemedText type="small" themeColor="textSecondary">
                           {new Date(review.created_at).toLocaleDateString()}
                         </ThemedText>
@@ -2403,6 +2427,12 @@ const styles = StyleSheet.create({
   },
   reviewAuthorColumn: {
     flex: 1,
+  },
+  reviewAuthorLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   reviewTitle: {
     marginTop: Spacing.half,

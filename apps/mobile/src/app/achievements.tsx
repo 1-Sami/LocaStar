@@ -1,6 +1,5 @@
 import {
   fetchMyAchievementCounts,
-  fetchProfile,
   hasAchievements,
   summarise,
   type Achievements,
@@ -22,6 +21,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { markBadgesSeen } from '@/lib/achievements-seen';
 import { useAuth } from '@/lib/auth-context';
+import { useSharedProfile } from '@/lib/profile-context';
 import { supabase } from '@/lib/supabase';
 
 const AMBER = '#E8A93B';
@@ -87,10 +87,15 @@ export default function AchievementsScreen() {
   const theme = useTheme();
   const { width: windowWidth } = useWindowDimensions();
 
+  // The role is already in the shared profile every screen reads from, so
+  // asking the server for it again would be a second round trip for something
+  // this app has had in memory since launch.
+  const { role } = useSharedProfile();
+
   const [data, setData] = useState<Achievements | null>(null);
-  const [allowed, setAllowed] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
 
   const gridWidth = Math.min(windowWidth, MaxContentWidth) - Spacing.three * 2;
   const tileWidth = Math.floor((gridWidth - Spacing.two * 2) / 3);
@@ -99,22 +104,19 @@ export default function AchievementsScreen() {
     useCallback(() => {
       // Reachable signed out by going back far enough. Without this the screen
       // sits on its spinner forever, because nothing ever resolves to turn it
-      // off — a blank wait is a worse answer than an honest one.
+      // off — and "could not load" would be a lie, since nothing was tried.
       if (!session) {
         setLoading(false);
-        setLoadFailed(true);
+        setSignedOut(true);
         return;
       }
       let cancelled = false;
+      setSignedOut(false);
       setLoading(true);
-      Promise.all([
-        fetchMyAchievementCounts(supabase),
-        fetchProfile(supabase, session.user.id),
-      ])
-        .then(([counts, profile]) => {
+      fetchMyAchievementCounts(supabase)
+        .then((counts) => {
           if (cancelled) return;
           setLoadFailed(false);
-          setAllowed(hasAchievements(profile.role));
           const summary = summarise(counts);
           setData(summary);
           // Opening the screen is what makes them no longer new, so the count
@@ -148,12 +150,12 @@ export default function AchievementsScreen() {
     );
   }
 
-  if (loadFailed && !data) {
+  if ((signedOut || loadFailed) && !data) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.notice}>
-            {t('achievements.loadFailed')}
+            {t(signedOut ? 'achievements.signedOut' : 'achievements.loadFailed')}
           </ThemedText>
         </SafeAreaView>
       </ThemedView>
@@ -162,7 +164,7 @@ export default function AchievementsScreen() {
 
   // Reachable by going back to a screen opened before a role changed, so it
   // says why rather than quietly showing an empty shelf.
-  if (!allowed) {
+  if (!hasAchievements(role)) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>

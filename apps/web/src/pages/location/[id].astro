@@ -1,6 +1,8 @@
 ---
 import {
+  achievementCopy,
   categoryName,
+  fetchLevelsFor,
   fetchLocationById,
   fetchLocationPhotos,
   fetchNearbyLocationsBrief,
@@ -19,6 +21,7 @@ import {
   setPhotoRemoved,
   updateReviewStatus,
   type GalleryPhoto,
+  type LevelState,
 } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -74,6 +77,20 @@ const [photos, reviews] = await Promise.all([
   fetchLocationPhotos(supabase, location.id).catch(() => []),
   fetchReviews(supabase, location.id).catch(() => []),
 ]);
+
+/*
+ * The level beside each reviewer's name, in one request for the whole page.
+ *
+ * Open to signed-out readers too, because they are most of this page's
+ * audience and a badge that only appears once you have an account would be the
+ * odd case rather than the safe one. A failure costs the badges and nothing
+ * else — the reviews are already here.
+ */
+const ach = achievementCopy(lang);
+const reviewerLevels = await fetchLevelsFor(
+  supabase,
+  reviews.map((review) => review.user_id).filter((id): id is string => Boolean(id))
+).catch(() => new Map<string, LevelState>());
 
 /*
  * "More basketball nearby" — internal linking between category pages and place
@@ -640,11 +657,17 @@ const seasonLabel =
                     <div class="review-body">
                       <div class="review-head">
                         <span class="who">{review.author_name}</span>
+                        {review.user_id && (reviewerLevels.get(review.user_id)?.number ?? 1) > 1 && (
+                          <span class="level-tag">
+                            <span aria-hidden="true">◆</span>
+                            {ach.level[reviewerLevels.get(review.user_id)!.id]}
+                          </span>
+                        )}
                         <span class="mono star" aria-label={`${review.rating} out of 5`}>
                           {'★'.repeat(review.rating)}
                           {'☆'.repeat(5 - review.rating)}
                         </span>
-                        <span class="mono when">{relativeDate(review.created_at)}</span>
+                        <span class="mono when">{relativeDate(review.created_at, lang)}</span>
                         <a class="mono report" href={`/report?review=${review.id}&location=${location.id}`}>
                           REPORT
                         </a>
@@ -1484,6 +1507,23 @@ const seasonLabel =
   .who {
     font-weight: 500;
     font-size: 15px;
+  }
+
+  /* The reviewer's level. A name, never a number: a score beside a review has
+     nothing to compare it to except the score above it, which is the ranking
+     this design deliberately does not have. */
+  .level-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(232, 169, 59, 0.45);
+    background: rgba(232, 169, 59, 0.12);
+    color: #c98b1d;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   .review-head .star {

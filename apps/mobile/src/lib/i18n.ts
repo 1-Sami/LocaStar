@@ -9,7 +9,7 @@ import i18next, { changeLanguage, init, use as registerPlugin } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { Platform } from 'react-native';
 
-import { ABOUT, CATEGORY_NAMES } from '@locastar/shared';
+import { ABOUT, ACHIEVEMENT_COPY, CATEGORY_NAMES } from '@locastar/shared';
 
 import en from '@/locales/en.json';
 import sv from '@/locales/sv.json';
@@ -81,8 +81,8 @@ registerPlugin(initReactI18next);
  */
 init({
   resources: {
-    en: { translation: { ...en, about: ABOUT.en, categories: CATEGORY_NAMES.en } },
-    sv: { translation: { ...sv, about: ABOUT.sv, categories: CATEGORY_NAMES.sv } },
+    en: { translation: { ...en, about: ABOUT.en, categories: CATEGORY_NAMES.en, achievements: ACHIEVEMENT_COPY.en } },
+    sv: { translation: { ...sv, about: ABOUT.sv, categories: CATEGORY_NAMES.sv, achievements: ACHIEVEMENT_COPY.sv } },
   },
   lng: deviceLanguage(),
   fallbackLng: 'en',

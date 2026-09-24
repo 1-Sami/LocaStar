@@ -56,7 +56,13 @@ export type {
   ScoreLine,
   ScoreLineId,
 } from "./achievements";
-export { fetchMyAchievementCounts } from "./api/achievements";
+export {
+  fetchLevelsFor,
+  fetchMyAchievementCounts,
+  fetchMyLevel,
+} from "./api/achievements";
+export { ACHIEVEMENT_COPY, achievementCopy, fillCopy } from "./achievementCopy";
+export type { AchievementCopy } from "./achievementCopy";
 export { createSupabaseClient } from "./supabaseClient";
 export {
   reportCrash,

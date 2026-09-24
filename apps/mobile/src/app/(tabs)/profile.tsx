@@ -1,6 +1,8 @@
 import {
   acknowledgeWarning,
   badgeStates,
+  levelFor,
+  summarise,
   fetchMyAchievementCounts,
   fetchMyActiveBan,
   fetchPendingFriendRequestCount,
@@ -9,6 +11,7 @@ import {
   fetchWarningsForUser,
   hasAchievements,
   isModeratorRole,
+  type LevelState,
   type ProfileStats,
   type UserBan,
   type UserRole,
@@ -22,6 +25,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View }
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
+import { LevelBadge } from '@/components/level-badge';
 import { MenuRow, MENU_ROW_WIDTH } from '@/components/menu-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -140,6 +144,7 @@ export default function ProfileScreen() {
   const [myRole, setMyRole] = useState<UserRole>('user');
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const [newBadges, setNewBadges] = useState(0);
+  const [myLevel, setMyLevel] = useState<LevelState | null>(null);
   // Reports, crashes and new feedback in one number — see use-admin-alerts.
   const adminAlerts = useAdminAlerts(isModerator);
   const [myBan, setMyBan] = useState<UserBan | null>(null);
@@ -190,15 +195,17 @@ export default function ProfileScreen() {
           // Superusers moderate too, so the reports queue isn't admin-only.
           setIsModerator(isModeratorRole(profile.role));
 
-          // Only for the accounts that have the row at all, and only to put a
-          // number on it — the screen behind it does its own loading. A badge
-          // earned on another device simply arrives as new here once.
+          // Only for the accounts that have the row at all. One call answers
+          // two things: the level shown under the email, and how many earned
+          // badges this device has not shown yet. A badge earned on another
+          // phone simply arrives as new here once.
           if (!hasAchievements(profile.role)) return;
           const [counts, seen] = await Promise.all([
             fetchMyAchievementCounts(supabase),
             readSeenBadges(session.user.id),
           ]);
           if (cancelled) return;
+          setMyLevel(levelFor(summarise(counts).points));
           const unseen = badgeStates(counts).filter(
             (badge) => badge.earned && !seen.includes(badge.key)
           );
@@ -310,6 +317,13 @@ export default function ProfileScreen() {
             <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
               {session.user.email}
             </ThemedText>
+            {/* Under the email, where the role pill is not: that one says what
+                you are allowed to do, this one says what you have given. */}
+            {myLevel && (
+              <View style={styles.levelRow}>
+                <LevelBadge level={myLevel} size="large" />
+              </View>
+            )}
           </View>
           <Pressable
             style={[styles.notificationBellButton, { borderColor: theme.text }]}
@@ -562,6 +576,9 @@ const styles = StyleSheet.create({
   emailText: {
     fontSize: 14,
     lineHeight: 18,
+  },
+  levelRow: {
+    marginTop: Spacing.one + 2,
   },
   loggedOutPrompt: {
     gap: Spacing.three,

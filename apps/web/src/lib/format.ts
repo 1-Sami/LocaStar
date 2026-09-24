@@ -37,15 +37,36 @@ export function ratingLabel(avg: number, count: number): { rated: false } | { ra
 }
 
 /** "2 weeks ago" — mono, uppercase, as the mockup sets it. */
-export function relativeDate(iso: string, now = Date.now()): string {
+/*
+ * How long ago, in the reader's language.
+ *
+ * The language argument is not optional, and deliberately so: this read "3 DAYS
+ * AGO" on the Swedish place page for as long as the page has existed, because
+ * an optional parameter is one every caller forgets. There is exactly one
+ * caller, and now it cannot.
+ */
+export function relativeDate(iso: string, lang: 'en' | 'sv', now = Date.now()): string {
   const days = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+
+  if (lang === 'sv') {
+    if (days < 1) return 'I DAG';
+    if (days === 1) return 'I GÅR';
+    if (days < 7) return `FÖR ${days} DAGAR SEDAN`;
+    if (days < 14) return 'FÖR EN VECKA SEDAN';
+    if (days < 60) return `FÖR ${weeks} VECKOR SEDAN`;
+    if (days < 365) return `FÖR ${months} MÅNADER SEDAN`;
+    return years === 1 ? 'FÖR ETT ÅR SEDAN' : `FÖR ${years} ÅR SEDAN`;
+  }
+
   if (days < 1) return 'TODAY';
   if (days === 1) return 'YESTERDAY';
   if (days < 7) return `${days} DAYS AGO`;
   if (days < 14) return '1 WEEK AGO';
-  if (days < 60) return `${Math.floor(days / 7)} WEEKS AGO`;
-  if (days < 365) return `${Math.floor(days / 30)} MONTHS AGO`;
-  const years = Math.floor(days / 365);
+  if (days < 60) return `${weeks} WEEKS AGO`;
+  if (days < 365) return `${months} MONTHS AGO`;
   return years === 1 ? '1 YEAR AGO' : `${years} YEARS AGO`;
 }
 
