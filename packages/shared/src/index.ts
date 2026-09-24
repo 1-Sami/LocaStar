@@ -31,6 +31,32 @@ export type {
 } from "./api/categoryPages";
 export { CategoryColors } from "./categoryColors";
 export { placeholderFocusY, placeholderImageUrl } from "./placeholderImages";
+export {
+  EMPTY_COUNTS,
+  LEVELS,
+  POINTS,
+  REVIEW_MIN_CHARACTERS,
+  badgeBonusPoints,
+  badgeStates,
+  closestBadges,
+  contributionPoints,
+  hasAchievements,
+  levelFor,
+  scoreLines,
+  summarise,
+} from "./achievements";
+export type {
+  AchievementCounts,
+  Achievements,
+  BadgeGroup,
+  BadgeId,
+  BadgeState,
+  LevelId,
+  LevelState,
+  ScoreLine,
+  ScoreLineId,
+} from "./achievements";
+export { fetchMyAchievementCounts } from "./api/achievements";
 export { createSupabaseClient } from "./supabaseClient";
 export {
   reportCrash,

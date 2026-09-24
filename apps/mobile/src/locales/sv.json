@@ -134,6 +134,7 @@
   "menu": {
     "myLists": "Mina listor",
     "friends": "Vänner",
+    "achievements": "Utmärkelser",
     "addLocation": "Lägg till plats",
     "addActivity": "Lägg till evenemang",
     "settings": "Inställningar",
@@ -539,6 +540,91 @@
     "notRatedYet": "INGA OMDÖMEN ÄN",
     "daysLeft_one": "{{count}} DAG KVAR",
     "daysLeft_other": "{{count}} DAGAR KVAR"
+  },
+  "achievements": {
+    "levelOf": "Nivå {{number}} av {{total}}",
+    "points": "poäng",
+    "toNext": "{{points}} till {{level}}",
+    "atTheTop": "Du har nått den högsta nivån. Härifrån handlar det om kartan, inte om siffran.",
+    "closest": "Närmast att bli klar",
+    "earnedOf": "{{earned}} av {{total}} uppnådda",
+    "bonus": "+{{points}}",
+    "howPoints": "Så räknas poängen",
+    "fromBadges": "Uppnådda utmärkelser",
+    "footnote": "Poängen kommer från det som fortfarande finns på kartan — det en moderator tar bort tar med sig sina poäng. Ingenting här jämförs med någon annan.",
+    "loadFailed": "Kunde inte hämta dina utmärkelser just nu. Gå tillbaka och försök igen.",
+    "notForThisAccount": "Utmärkelser är till för dem som bidrar till kartan, så partner- och adminkonton samlar inte på dem.",
+    "group": {
+      "coverage": "Täckning — det kartan saknar",
+      "range": "Räckvidd — var du har varit",
+      "habit": "Vana — att hålla i det"
+    },
+    "level": {
+      "newcomer": "Nykomling",
+      "contributor": "Bidragsgivare",
+      "regular": "Stammis",
+      "localExpert": "Lokalkännare",
+      "guide": "Guide",
+      "seniorGuide": "Erfaren guide",
+      "mapmaker": "Kartmakare",
+      "legend": "Legend"
+    },
+    "line": {
+      "placesAdded": "Tillagda platser",
+      "firstPhotos": "Första bilden på en plats",
+      "eventsAdded": "Tillagda evenemang",
+      "otherPhotos": "Fler bilder",
+      "reviews": "Skrivna recensioner",
+      "firstReviews": "Första recensionen på en plats",
+      "reviewsWithPhoto": "Recensioner med egen bild",
+      "reportsUpheld": "Anmälningar som ledde till åtgärd"
+    },
+    "badge": {
+      "firstOnTheMap": {
+        "name": "Först på kartan",
+        "need": "Den första recensionen på en plats som saknade en"
+      },
+      "pioneer": {
+        "name": "Pionjär",
+        "need": "Första bilden på platser som saknade bild"
+      },
+      "mapmaker": {
+        "name": "Kartmakare",
+        "need": "Platser du lagt till som finns kvar på kartan"
+      },
+      "eventHost": {
+        "name": "Evenemangsvärd",
+        "need": "Evenemang du lagt till som ägde rum"
+      },
+      "knowsTheArea": {
+        "name": "Känner området",
+        "need": "Bidrag på en och samma ort"
+      },
+      "explorer": {
+        "name": "Upptäckare",
+        "need": "Olika orter du har bidragit på"
+      },
+      "wellTravelled": {
+        "name": "Berest",
+        "need": "Olika orter du har bidragit på"
+      },
+      "specialist": {
+        "name": "Specialist",
+        "need": "Bidrag inom en och samma kategori"
+      },
+      "photographer": {
+        "name": "Fotograf",
+        "need": "Bilder du har lagt till"
+      },
+      "regular": {
+        "name": "Flitig recensent",
+        "need": "Recensioner på minst 40 tecken"
+      },
+      "allSeasons": {
+        "name": "Alla årstider",
+        "need": "Bidra under båda halvorna av året"
+      }
+    }
   },
   "friends": {
     "blockTitle": "Blockera {{name}}?",

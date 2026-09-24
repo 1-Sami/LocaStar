@@ -1,10 +1,13 @@
 import {
   acknowledgeWarning,
+  badgeStates,
+  fetchMyAchievementCounts,
   fetchMyActiveBan,
   fetchPendingFriendRequestCount,
   fetchProfile,
   fetchProfileStats,
   fetchWarningsForUser,
+  hasAchievements,
   isModeratorRole,
   type ProfileStats,
   type UserBan,
@@ -26,6 +29,7 @@ import type { MenuId } from '@/constants/menu-icons';
 import { SUPPORT_EMAIL } from '@/constants/support';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { readSeenBadges } from '@/lib/achievements-seen';
 import { useAuth } from '@/lib/auth-context';
 import { confirmAsync } from '@/lib/confirm';
 import { useNotificationsBadge } from '@/lib/notifications-context';
@@ -101,6 +105,12 @@ const STAT_SECTIONS: Partial<Record<StatId, string>> = {
 // in the app and offers both kinds; repeating them here bought a second route
 // to a form that was never hard to reach, at the cost of two rows between the
 // profile and the things only the profile has.
+//
+// Achievements joins this group for the accounts that have it — under Friends,
+// which is where the owner put it. Partners and admins do not get the row: an
+// organisation correcting four hundred of its own places would hold every badge
+// on the shelf, which is their job rather than a contribution. See
+// hasAchievements in packages/shared.
 const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends'];
 const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
 // Its own group rather than an entry in the list above, because that list is
@@ -129,6 +139,7 @@ export default function ProfileScreen() {
   const [isModerator, setIsModerator] = useState(false);
   const [myRole, setMyRole] = useState<UserRole>('user');
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
+  const [newBadges, setNewBadges] = useState(0);
   // Reports, crashes and new feedback in one number — see use-admin-alerts.
   const adminAlerts = useAdminAlerts(isModerator);
   const [myBan, setMyBan] = useState<UserBan | null>(null);
@@ -171,13 +182,27 @@ export default function ProfileScreen() {
         })
         .catch(() => {});
       fetchProfile(supabase, session.user.id)
-        .then((profile) => {
+        .then(async (profile) => {
           if (cancelled) return;
           setAvatarUrl(profile.avatar_url);
           setUsername(profile.username);
           setMyRole(profile.role);
           // Superusers moderate too, so the reports queue isn't admin-only.
           setIsModerator(isModeratorRole(profile.role));
+
+          // Only for the accounts that have the row at all, and only to put a
+          // number on it — the screen behind it does its own loading. A badge
+          // earned on another device simply arrives as new here once.
+          if (!hasAchievements(profile.role)) return;
+          const [counts, seen] = await Promise.all([
+            fetchMyAchievementCounts(supabase),
+            readSeenBadges(session.user.id),
+          ]);
+          if (cancelled) return;
+          const unseen = badgeStates(counts).filter(
+            (badge) => badge.earned && !seen.includes(badge.key)
+          );
+          setNewBadges(unseen.length);
         })
         .catch(() => {});
       return () => {
@@ -198,6 +223,7 @@ export default function ProfileScreen() {
   const handleMenuPress = (item: MenuId) => {
     if (item === 'myLists') router.push('/lists' as never);
     if (item === 'friends') router.push('/friends' as never);
+    if (item === 'achievements') router.push('/achievements' as never);
     if (item === 'settings') router.push('/settings' as never);
     if (item === 'about') router.push('/about');
     if (item === 'sendFeedback') router.push('/send-feedback' as never);
@@ -284,9 +310,6 @@ export default function ProfileScreen() {
             <ThemedText type="small" themeColor="textSecondary" style={styles.emailText}>
               {session.user.email}
             </ThemedText>
-            <Pressable onPress={handleSignOut}>
-              <ThemedText style={styles.logOutText}>{t('profile.logOut')}</ThemedText>
-            </Pressable>
           </View>
           <Pressable
             style={[styles.notificationBellButton, { borderColor: theme.text }]}
@@ -399,6 +422,13 @@ export default function ProfileScreen() {
               onPress={() => handleMenuPress(item)}
             />
           ))}
+          {hasAchievements(myRole) && (
+            <MenuRow
+              item="achievements"
+              badgeCount={newBadges}
+              onPress={() => handleMenuPress('achievements')}
+            />
+          )}
         </View>
 
         <View style={[styles.menu, styles.menuGroupGap]}>
@@ -425,6 +455,18 @@ export default function ProfileScreen() {
             <MenuRow item="admin" badgeCount={adminAlerts.total} onPress={() => handleMenuPress('admin')} />
           </View>
         )}
+
+        {/* Last thing on the screen rather than under the email, where it was
+            the first thing a thumb met.
+
+            A wide gap, *not* marginTop: 'auto'. Anchoring it to the bottom of
+            the remaining space put it underneath the tab bar — this screen
+            does not reserve the tab bar's height, so "the bottom" is further
+            down than anything you can see or tap. A fixed gap can only ever be
+            too small, which costs some air; the other way costs the button. */}
+        <Pressable style={styles.logOutRow} onPress={handleSignOut}>
+          <ThemedText style={styles.logOutText}>{t('profile.logOut')}</ThemedText>
+        </Pressable>
       </SafeAreaView>
     </ThemedView>
   );
@@ -506,12 +548,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 11,
   },
+  logOutRow: {
+    alignSelf: 'flex-start',
+    marginTop: Spacing.four * 2,
+    paddingVertical: Spacing.two,
+  },
   logOutText: {
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '600',
     textDecorationLine: 'underline',
-    marginTop: Spacing.two,
   },
   emailText: {
     fontSize: 14,

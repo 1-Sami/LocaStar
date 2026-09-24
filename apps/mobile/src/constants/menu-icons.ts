@@ -14,6 +14,7 @@ export type MenuIcon =
 export type MenuId =
   | 'myLists'
   | 'friends'
+  | 'achievements'
   | 'addLocation'
   | 'addActivity'
   | 'settings'
@@ -53,6 +54,10 @@ export type MenuId =
 export const MENU_ICONS: Record<MenuId, MenuIcon> = {
   myLists: { icon: 'folder-marker-outline', family: 'material', color: '#4C8FE8' },
   friends: { icon: 'people-outline', color: '#F5738A' },
+  // A medal, not a trophy. A trophy is what you win off somebody else, and
+  // there is no leaderboard here by design — every number on that screen
+  // compares you to a threshold and never to another person.
+  achievements: { icon: 'medal-outline', color: '#E8A93B' },
   addLocation: { icon: 'add-circle-outline', color: '#C34CE8' },
   addActivity: { icon: 'time-outline', color: '#E8A93B' },
   settings: { icon: 'settings-outline', color: '#B0B4BA' },

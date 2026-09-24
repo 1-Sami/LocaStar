@@ -111,6 +111,7 @@ function ThemedNavigation() {
           <Stack.Screen name="lists/index" options={{ headerTitle: () => <ScreenTitle titleKey="myLists" /> }} />
           <Stack.Screen name="lists/[id]" options={{ title: t('nav.list') }} />
           <Stack.Screen name="friends" options={{ headerTitle: () => <ScreenTitle titleKey="friends" /> }} />
+          <Stack.Screen name="achievements" options={{ headerTitle: () => <ScreenTitle titleKey="achievements" /> }} />
           <Stack.Screen name="notifications" options={{ headerTitle: () => <ScreenTitle titleKey="notifications" /> }} />
         </Stack>
         <UpdateBanner />
