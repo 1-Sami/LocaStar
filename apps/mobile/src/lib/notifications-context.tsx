@@ -1,6 +1,6 @@
 import { fetchUnreadNotificationCount } from '@locastar/shared';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { useAuth } from '@/lib/auth-context';
 import { registerForPushNotifications } from '@/lib/push-registration';
@@ -73,9 +73,26 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
    * failures. Push is an extra, and nothing about finding a basketball court
    * should depend on it working.
    */
+  /*
+   * Signed out as well, since migration 0153.
+   *
+   * An Expo token belongs to the install, not the account, and requiring a
+   * session to ask for one meant a closed tester who downloaded the app and
+   * stopped at the sign-in screen could never be reached — including by the
+   * notification asking them to sign up. Eight of twelve testers were in
+   * exactly that state and invisible to us.
+   *
+   * Registering signed out stores the token with a null user_id; whoever signs
+   * in on this device later claims it, and the fifteen-day campaign keeps its
+   * place because it is keyed on the token rather than the person.
+   *
+   * Android only. iOS is live on the App Store, and asking a stranger for
+   * notification permission on the launch screen — before they have seen what
+   * the app is — is a good way to be told no once and for ever.
+   */
   const userId = session?.user.id ?? null;
   useEffect(() => {
-    if (!userId) return;
+    if (!userId && Platform.OS !== 'android') return;
     registerForPushNotifications();
   }, [userId]);
 
