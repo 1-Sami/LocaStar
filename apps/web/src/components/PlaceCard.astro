@@ -1,6 +1,6 @@
 ---
 import { useTranslations } from '../i18n/ui';
-import { categoryColor, coverStyle, ratingLabel } from '../lib/format';
+import { categoryColor, coverStyle, eventDaysUntil, ratingLabel } from '../lib/format';
 
 /*
  * One saved place, as a card.
@@ -52,16 +52,19 @@ const rating = ratingLabel(avgRating, reviewCount);
 const isEvent = Boolean(startsAt);
 
 /*
- * Whole days, compared as dates rather than instants — "tomorrow" should not
- * become "0 days" because the event starts 23 hours from now.
+ * Both counted and printed in Swedish days — see EVENT_TZ in lib/format.
+ * starts_at is a Stockholm midnight, which is the evening before in UTC, and
+ * this Worker runs in UTC. Doing either of these without the timezone put every
+ * event on the site a day early.
  */
-const startOfDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-const daysLeft = startsAt
-  ? Math.round((startOfDay(new Date(startsAt)) - startOfDay(new Date())) / 86_400_000)
-  : null;
+const daysLeft = startsAt ? eventDaysUntil(startsAt) : null;
 const startLabel = startsAt
   ? new Date(startsAt)
-      .toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { day: 'numeric', month: 'short' })
+      .toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', {
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'Europe/Stockholm',
+      })
       .toUpperCase()
   : null;
 ---

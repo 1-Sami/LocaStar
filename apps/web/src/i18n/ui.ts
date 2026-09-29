@@ -194,6 +194,7 @@ export const ui = {
 // Location pages
     'loc.activity': 'Event',
     'loc.openingHours': 'Opening hours',
+    'loc.eventDates': 'Dates',
     'loc.open247': 'Open 24/7',
     'loc.variesByDay': 'Varies by day',
     'loc.notStated': 'Not stated',
@@ -794,6 +795,7 @@ export const ui = {
 // Platssidor
     'loc.activity': 'Evenemang',
     'loc.openingHours': 'Öppettider',
+    'loc.eventDates': 'Datum',
     'loc.open247': 'Öppet dygnet runt',
     'loc.variesByDay': 'Varierar per dag',
     'loc.notStated': 'Ej angivet',

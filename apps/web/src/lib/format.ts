@@ -76,16 +76,95 @@ export function relativeDate(iso: string, lang: 'en' | 'sv', now = Date.now()): 
  * Both ends, because an event is a span: a festival listed as its first day
  * reads as over the moment that day passes, which is the opposite of true.
  */
+/*
+ * Event dates are Swedish calendar dates, and must be formatted as such.
+ *
+ * Migration 0092 pins starts_at to local midnight, so an event on the 29th is
+ * stored as 22:00 UTC on the *28th*. This Worker runs in UTC, so formatting
+ * that instant without a timezone printed the day before — every event on the
+ * site started a day early, on the cards and in the countdown both. It read
+ * correctly in the app only because a phone in Sweden is already on this clock.
+ *
+ * Pinned rather than taken from the reader: the festival opens on the 29th in
+ * Linköping whether you are reading in Malmö or in Tokyo.
+ */
+const EVENT_TZ = 'Europe/Stockholm';
+
+/** Y/M/D as Sweden sees them. en-CA because it yields YYYY-MM-DD. */
+function stockholmParts(d: Date): { year: number; month: number; day: number } {
+  const [year, month, day] = d
+    .toLocaleDateString('en-CA', { timeZone: EVENT_TZ })
+    .split('-')
+    .map(Number);
+  return { year, month, day };
+}
+
+/**
+ * Whole days from today until an event starts, counted in Swedish days.
+ *
+ * Comparing instants would make "tomorrow" read as 0 days for anything less
+ * than 24 hours away; comparing UTC days would shift the boundary two hours
+ * into the previous evening.
+ */
+export function eventDaysUntil(startIso: string, now = new Date()): number {
+  const a = stockholmParts(new Date(startIso));
+  const b = stockholmParts(now);
+  return Math.round(
+    (Date.UTC(a.year, a.month - 1, a.day) - Date.UTC(b.year, b.month - 1, b.day)) / 86_400_000
+  );
+}
+
 export function dateRange(startIso: string | null, endIso: string | null, locale = 'en-GB'): string {
   if (!startIso) return '';
   const start = new Date(startIso);
   const end = endIso ? new Date(endIso) : null;
-  const dayMonth = (d: Date) => d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
-  if (!end || start.toDateString() === end.toDateString()) return dayMonth(start);
-  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const dayMonth = (d: Date) =>
+    d.toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: EVENT_TZ });
+  if (!end) return dayMonth(start);
+
+  const a = stockholmParts(start);
+  const b = stockholmParts(end);
+  if (a.year === b.year && a.month === b.month && a.day === b.day) return dayMonth(start);
+
+  const sameMonth = a.year === b.year && a.month === b.month;
   return sameMonth
-    ? `${start.toLocaleDateString(locale, { day: 'numeric' })}–${dayMonth(end)}`
+    ? `${start.toLocaleDateString(locale, { day: 'numeric', timeZone: EVENT_TZ })}–${dayMonth(end)}`
     : `${dayMonth(start)} – ${dayMonth(end)}`;
+}
+
+/**
+ * The same range, spelled out with the month and year, for a page rather than
+ * a card. "29 september – 3 oktober 2026".
+ */
+export function longDateRange(
+  startIso: string | null,
+  endIso: string | null,
+  locale = 'en-GB'
+): string {
+  if (!startIso) return '';
+  const start = new Date(startIso);
+  const end = endIso ? new Date(endIso) : null;
+  const full = (d: Date) =>
+    d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: EVENT_TZ });
+  if (!end) return full(start);
+
+  const a = stockholmParts(start);
+  const b = stockholmParts(end);
+  if (a.year === b.year && a.month === b.month && a.day === b.day) return full(start);
+
+  // The year is said once, at the end, unless the event crosses into another.
+  if (a.year === b.year && a.month === b.month) {
+    return `${start.toLocaleDateString(locale, { day: 'numeric', timeZone: EVENT_TZ })}–${full(end)}`;
+  }
+  if (a.year === b.year) {
+    const dayMonth = start.toLocaleDateString(locale, {
+      day: 'numeric',
+      month: 'long',
+      timeZone: EVENT_TZ,
+    });
+    return `${dayMonth} – ${full(end)}`;
+  }
+  return `${full(start)} – ${full(end)}`;
 }
 
 export function longDate(iso: string, locale = 'en-GB'): string {

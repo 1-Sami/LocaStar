@@ -28,7 +28,7 @@ import SiteHeader from '../../components/SiteHeader.astro';
 import Base from '../../layouts/Base.astro';
 import { addFormCopy, editFormCopy } from '../../i18n/addForm';
 import { useTranslations, localePath } from '../../i18n/ui';
-import { categoryColor, coverStyle, longDate, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
+import { categoryColor, coverStyle, longDate, longDateRange, metaDescription, ratingLabel, relativeDate } from '../../lib/format';
 import { isUuid } from '../../lib/ids';
 import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
@@ -115,6 +115,8 @@ const colour = categoryColor(location.category_slug);
 const rating = ratingLabel(location.avg_rating, location.review_count);
 const alwaysOpen = location.hours ? isAlwaysOpen(location.hours) : false;
 const hasHours = Boolean(location.hours && Object.keys(location.hours).length > 0);
+const isEvent = location.kind === 'activity' && Boolean(location.starts_at);
+const dateLocale = lang === 'sv' ? 'sv-SE' : 'en-GB';
 
 const category = categoryName(location.category_slug, lang) ?? location.category_label;
 // Stands in for a photo until there is one: packages/shared/src/placeholderImages.ts.
@@ -593,10 +595,27 @@ const seasonLabel =
         {location.description && <p class="description">{location.description}</p>}
 
         <div class="info">
-          <div class="card">
-            <span class="mono label">{t('loc.openingHours')}</span>
-            <div class="value">{alwaysOpen ? t('loc.open247') : hasHours ? t('loc.variesByDay') : t('loc.notStated')}</div>
-          </div>
+          {/*
+            For an event this box carries the dates, not the hours. "Opening
+            hours: varies by day" is true and useless on a festival page — the
+            one thing somebody needs is when it runs, and until now that was
+            visible on the card that linked here but nowhere on the page it led
+            to. The hours drop underneath, where they still say something.
+          */}
+          {isEvent ? (
+            <div class="card">
+              <span class="mono label">{t('loc.eventDates')}</span>
+              <div class="value">{longDateRange(location.starts_at, location.expires_at, dateLocale)}</div>
+              {(alwaysOpen || hasHours) && (
+                <span class="sub">{alwaysOpen ? t('loc.open247') : t('loc.variesByDay')}</span>
+              )}
+            </div>
+          ) : (
+            <div class="card">
+              <span class="mono label">{t('loc.openingHours')}</span>
+              <div class="value">{alwaysOpen ? t('loc.open247') : hasHours ? t('loc.variesByDay') : t('loc.notStated')}</div>
+            </div>
+          )}
           <div class="card">
             <span class="mono label">{t('loc.season')}</span>
             <div class="value">{seasonLabel}</div>
@@ -606,7 +625,7 @@ const seasonLabel =
             <div class="value">
               {location.creator_visible && location.creator_username ? location.creator_username : t('loc.someone')}
             </div>
-            <span class="sub">{longDate(location.created_at)}</span>
+            <span class="sub">{longDate(location.created_at, dateLocale)}</span>
           </div>
           {/*
             Nofollow when a person typed it rather than OpenStreetMap: a new
