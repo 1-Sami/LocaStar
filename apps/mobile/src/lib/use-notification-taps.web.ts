@@ -1,3 +1,7 @@
+/** Mirrors the native module so the two cannot drift apart. */
+export type TappedNudge = { key: string; day: number; title: string; body: string };
+export type NotificationTaps = { nudge: TappedNudge | null; dismissNudge: () => void };
+
 /**
  * The web build has no notifications to be tapped.
  *
@@ -19,6 +23,8 @@
  * the fix is to not call the native hook at all, and a conditional call would
  * break the rules of hooks to do it.
  */
-export function useNotificationTaps(): void {
-  // Deliberately empty.
+export function useNotificationTaps(): NotificationTaps {
+  // Deliberately inert. The shape has to match the native hook so the root
+  // layout can render the same way on both.
+  return { nudge: null, dismissNudge: () => {} };
 }

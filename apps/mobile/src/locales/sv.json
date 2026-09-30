@@ -40,7 +40,8 @@
     "no": "NEJ",
     "public": "Offentlig",
     "continue": "Fortsätt",
-    "openApp": "Öppna LocaStar"
+    "openApp": "Öppna LocaStar",
+    "close": "Stäng"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",

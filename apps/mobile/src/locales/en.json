@@ -40,7 +40,8 @@
     "no": "NO",
     "public": "Public",
     "continue": "Continue",
-    "openApp": "Open LocaStar"
+    "openApp": "Open LocaStar",
+    "close": "Close"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { NudgeCard } from '@/components/nudge-card';
 import { ScreenTitle } from '@/components/screen-title';
 import { UpdateBanner } from '@/components/update-banner';
 import { AuthProvider } from '@/lib/auth-context';
@@ -33,7 +34,7 @@ function ThemedNavigation() {
   const { t } = useTranslation();
   // Here rather than in RootLayout: it needs a router to push onto, and the
   // navigation tree only exists from this component down.
-  useNotificationTaps();
+  const { nudge, dismissNudge } = useNotificationTaps();
   /*
    * Tell the crash reporter where we are.
    *
@@ -115,6 +116,10 @@ function ThemedNavigation() {
           <Stack.Screen name="notifications" options={{ headerTitle: () => <ScreenTitle titleKey="notifications" /> }} />
         </Stack>
         <UpdateBanner />
+        {/* Last inside the same View, so it covers the navigator and the
+            banner both. A tapped nudge has nowhere to navigate to — it is a
+            sentence, and this is where it gets read. */}
+        <NudgeCard nudge={nudge} onClose={dismissNudge} />
       </View>
     </ThemeProvider>
   );
