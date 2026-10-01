@@ -131,7 +131,28 @@ Deno.serve(async (req) => {
   const sent = await sendMail({ to: SUPPORT_EMAIL, subject, html, text });
   if (!sent.ok) {
     const released = await release(sent.reason);
-    return json({ claimed: claims.length, emailed: false, released }, 200);
+    /*
+     * 502, not 200. The claim is already back, so nothing is lost either way —
+     * this is about being *seen*.
+     *
+     * On 2026-10-01 Brevo began rejecting this function's API calls because an
+     * IP allowlist had been switched on against a sender that is serverless and
+     * therefore has a new address nearly every run. It failed every fifteen
+     * minutes for four and a half hours while the dashboard showed an unbroken
+     * line of green 200s, and the only thing that surfaced it was Brevo mailing
+     * the owner to ask whether the unfamiliar IP was an intruder. The reason was
+     * in the logs the whole time; nobody reads logs that nothing points at.
+     *
+     * A failing status puts it on the error graph instead, which is where an
+     * infrastructure fault belongs. Nothing retries on it — pg_cron's
+     * net.http_post ignores the status — so this costs a red line and nothing
+     * else.
+     *
+     * delete-account deliberately does the opposite and must keep doing it: the
+     * account is genuinely gone by the time its mail fails, and a person is
+     * waiting on the answer. Telling them the deletion failed would be a lie.
+     */
+    return json({ claimed: claims.length, emailed: false, released, reason: sent.reason }, 502);
   }
 
   return json({ claimed: claims.length, emailed: true }, 200);
