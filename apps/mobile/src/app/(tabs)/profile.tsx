@@ -117,11 +117,19 @@ const STAT_SECTIONS: Partial<Record<StatId, string>> = {
 // hasAchievements in packages/shared.
 const PRIMARY_MENU_ITEMS: MenuId[] = ['myLists', 'friends'];
 const SECONDARY_MENU_ITEMS: MenuId[] = ['settings', 'about'];
-// Its own group rather than an entry in the list above, because that list is
-// deliberately shared with the signed-out branch and this needs an account.
-// Not for the account's sake — feedback is stored with nothing identifying on
-// it — but because requiring one is the whole of the spam defence.
-const ACCOUNT_MENU_ITEMS: MenuId[] = ['sendFeedback'];
+// Shown signed out as well, since migration 0155 — ⚠ temporarily.
+//
+// It used to need an account, and not for the account's sake: feedback is
+// stored with nothing identifying on it, and requiring a login *was* the spam
+// defence. But five of the twelve closed testers installed the app and never
+// signed up, and asking somebody to make an account before they can say why
+// they did not make an account is a closed loop. One tester hit precisely that.
+//
+// The database decides whether an anonymous submission is accepted, not this
+// list — see the `anonymous_feedback` flag in app_flags. **When Google Play
+// grants production access, turn that flag off and move this back into its own
+// signed-in group.**
+const FEEDBACK_MENU_ITEMS: MenuId[] = ['sendFeedback'];
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
@@ -282,6 +290,14 @@ export default function ProfileScreen() {
               two cannot drift apart. */}
           <View style={[styles.menu, styles.loggedOutMenu]}>
             {SECONDARY_MENU_ITEMS.map((item) => (
+              <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
+            ))}
+          </View>
+
+          {/* ⚠ Temporary — see FEEDBACK_MENU_ITEMS. The one thing somebody who
+              has not signed up most needs to be able to say is why. */}
+          <View style={[styles.menu, styles.loggedOutMenu, styles.menuGroupGap]}>
+            {FEEDBACK_MENU_ITEMS.map((item) => (
               <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
             ))}
           </View>
@@ -452,7 +468,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.menu, styles.menuGroupGap]}>
-          {ACCOUNT_MENU_ITEMS.map((item) => (
+          {FEEDBACK_MENU_ITEMS.map((item) => (
             <MenuRow key={item} item={item} onPress={() => handleMenuPress(item)} />
           ))}
         </View>

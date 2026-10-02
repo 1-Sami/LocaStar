@@ -88,6 +88,30 @@ patch/minor/major choice any more, and the script refuses one — v1.2.0 became
 v1.3.0 a day later purely because the change felt like a feature, which is not
 what these digits are for.
 
+## ⚠ Undo this when Google Play approves the app
+
+**Anyone can send feedback without an account right now.** It is on for the
+closed test only, because five of the twelve testers installed the app and
+never signed up — and requiring an account to report why you have not made one
+is a closed loop.
+
+It is not spam-proof and is not meant to be: a signed-out caller has no
+`auth.uid()`, PostgREST hides the client IP, and any identity the client sends
+it can forge. What makes it acceptable is that feedback is private, the volume
+is capped at ten an hour, and the undo is one statement.
+
+**On the day production access is granted:**
+
+```sql
+update app_flags set enabled = false where flag = 'anonymous_feedback';
+```
+
+Then move `FEEDBACK_MENU_ITEMS` in `apps/mobile/src/app/(tabs)/profile.tsx`
+back out of the signed-out branch and publish. See migration `0155`.
+
+Check it is still on with:
+`select * from app_flags where flag = 'anonymous_feedback';`
+
 ## Working on the database
 
 Migrations are applied through the Supabase MCP tools and committed to
