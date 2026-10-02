@@ -843,6 +843,57 @@ function townFromNominatim(a) {
 }
 
 /**
+ * Whether a road name would read as the name of a place.
+ *
+ * Nominatim's `road` is the right answer for an address and often the wrong one
+ * for a name, and the two failures took 565 rows to undo in 0156-0159:
+ *
+ *   * a route designation — "I 568", "AC 791", "E 4". Five separate playgrounds
+ *     came out called "E 4", a motorway that runs the length of the country, so
+ *     the name located nothing and collided with itself.
+ *   * a footpath. Beside an exercise track the nearest road IS the track, so a
+ *     skatepark came out called "Dalarö elljusspår" — while the real Dalarö
+ *     elljusspår was a separate row 500 m away under jogging-trails. Checked
+ *     against Nominatim, every one of the 31 cases was this.
+ *   * the path's own length, "2,5 km", which is not a name in any category and
+ *     is not even true of a football pitch.
+ */
+function namesAPlace(road) {
+  if (!road) return false;
+  const n = road.trim();
+  if (/^[A-ZÅÄÖ]{1,2}[\s:]*\d+[A-Za-z]?$/.test(n)) return false;
+  if (/^\d+(?:[.,]\d+)?\s*(?:km|m)$/i.test(n)) return false;
+  return !/elljus|el\s*ljus|eljus|motionssp|löpsp|skidsp|reflexbana|mtb-?sp|naturstig|tvärled/i.test(n);
+}
+
+/**
+ * A suburb fit to print, or null.
+ *
+ * Västernorrland returns statistical areas rather than place names — "Glesbygd
+ * Lucksta" (glesbygd being sparse countryside), "Vattjom + glesbygd",
+ * "Nedansjö(gb)" — and Kiruna returns "Kiruna nya centrum" because the town was
+ * physically moved. None is what anybody calls the spot. The classifier comes
+ * off and the settlement stays.
+ *
+ * city_district is deliberately absent from the caller's chain: it hands back
+ * compass points and administrative areas — "Nordost", "Innerstaden", "Väster"
+ * — which would stamp one name onto every row in the district.
+ */
+function placeArea(raw) {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/\(.*?\)/g, '')
+    .replace(/\s*\+\s*glesbygd/gi, '')
+    .replace(/^glesbygd\s+/i, '')
+    .replace(/\s+nya\s+centrum$/i, '')
+    .replace(/\s*(?:(?:domkyrko)?distrikt|kommundel|kommun)$/i, '')
+    .split(',')[0]
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || null;
+}
+
+/**
  * Fills in address and name from the coordinates, for rows OSM left bare.
  *
  * Needed because these categories carry almost no addr:* tags — not one of
@@ -887,7 +938,7 @@ async function geocodeMissing(rows, onProgress, verifyCountry = false) {
       if (response.ok) {
         const a = (await response.json()).address ?? {};
         if (verifyCountry) row.countryCode = a.country_code ?? null;
-        const area = a.suburb ?? a.city_district ?? a.neighbourhood ?? a.village ?? null;
+        const area = placeArea(a.suburb ?? a.neighbourhood ?? a.village ?? a.hamlet);
         const town = townFromNominatim(a);
 
         // Nominatim sometimes hands back a bare number as the road — a forest
@@ -903,8 +954,11 @@ async function geocodeMissing(rows, onProgress, verifyCountry = false) {
           row.address = [street, locality].filter(Boolean).join(', ') || null;
           row.city = row.city ?? town;
         }
-        // Street, then area, then town — most specific first.
-        if (!row.name) row.name = road ?? area ?? town ?? null;
+        // Street, then area, then town — most specific first, but only a street
+        // that names a place. A route number or a footpath is still the correct
+        // address; as a name it says nothing, which cost 565 rows and migrations
+        // 0156-0159 to undo. See namesAPlace.
+        if (!row.name) row.name = (namesAPlace(road) ? road : null) ?? area ?? town ?? null;
       }
     } catch {
       // Leave the row bare; the address filter below drops it.
