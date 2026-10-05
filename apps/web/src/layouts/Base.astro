@@ -38,6 +38,19 @@ interface Props {
    * where the parameter really is a different page, so the page opts in.
    */
   altSearch?: string;
+  /**
+   * Keep this page out of the index while leaving its links crawlable.
+   *
+   * Emits `noindex,follow`, never a bare `noindex`: the page is being withheld
+   * because it has nothing to read, not because it is a dead end, and the links
+   * on it — its category, its town, the places around it — are the whole reason
+   * it is still rendered and still crawled.
+   *
+   * A page that sets this must also be absent from the sitemap, or Search
+   * Console reports the contradiction. See isIndexablePlace, which both sides
+   * call so they cannot disagree.
+   */
+  noindex?: boolean;
 }
 
 const {
@@ -48,6 +61,7 @@ const {
   englishOnly = false,
   jsonLd = [],
   altSearch = '',
+  noindex = false,
 } = Astro.props;
 
 /*
@@ -102,6 +116,7 @@ const theme = themeCookie === 'light' || themeCookie === 'dark' ? themeCookie : 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex,follow" />}
     <link rel="canonical" href={selfHref} />
     {
       !englishOnly && (

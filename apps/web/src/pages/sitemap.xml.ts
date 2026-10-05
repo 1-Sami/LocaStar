@@ -45,6 +45,23 @@ const STATIC_PATHS = [
  */
 const ENGLISH_ONLY = ['/legal/privacy', '/legal/terms', '/legal/delete-account'];
 
+/*
+ * A place page is listed once, in English, and not again under /sv/.
+ *
+ * The Swedish copy is the English one with the interface translated. Diffed on
+ * 2026-10-05: 986 words against 979, and every word that differed was chrome —
+ * Bokmärk for Bookmark, Vägbeskrivning for Directions. The part a searcher came
+ * for, the name and the address, is identical, and a description written by a
+ * visitor is shown in whatever language they wrote it, on both.
+ *
+ * So the second copy was 8,296 URLs — 47% of this file — asking Google to crawl
+ * the same content twice. The pages still exist, still render, and hreflang on
+ * each still declares the pair; they are simply not what the crawl budget is
+ * spent on. Category and town pages keep their Swedish entries, because those
+ * carry real translated prose.
+ */
+const isPlacePath = (path: string) => path.startsWith('/location/');
+
 const escapeXml = (value: string) =>
   value.replace(/[<>&'"]/g, (char) => {
     switch (char) {
@@ -124,7 +141,7 @@ export const GET: APIRoute = async ({ site, url, request, locals }) => {
   const urls = [
     ...english,
     ...english
-      .filter(({ path }) => !ENGLISH_ONLY.includes(path))
+      .filter(({ path }) => !ENGLISH_ONLY.includes(path) && !isPlacePath(path))
       .map(({ path, lastmod }) => ({ path: path === '/' ? '/sv/' : `/sv${path}`, lastmod })),
   ];
 

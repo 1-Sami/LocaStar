@@ -1,8 +1,12 @@
 ---
 import {
+  CITY_PAGE_MIN_PLACES,
   achievementCopy,
   categoryName,
+  citySlug,
+  fetchCategoryCityCounts,
   fetchLevelsFor,
+  isIndexablePlace,
   fetchLocationById,
   fetchLocationPhotos,
   fetchNearbyLocationsBrief,
@@ -97,16 +101,31 @@ const reviewerLevels = await fetchLevelsFor(
  * pages is what earns rankings, so this block is load-bearing rather than
  * decoration. One extra is requested because this place matches its own query.
  */
-const nearbyRaw = location.category_slug
-  ? await fetchNearbyLocationsBrief(supabase, {
-      lat: location.lat,
-      lng: location.lng,
-      categorySlugs: [location.category_slug],
-      maxResults: 5,
-    }).catch(() => [])
-  : [];
+const [nearbyRaw, townCounts] = await Promise.all([
+  location.category_slug
+    ? fetchNearbyLocationsBrief(supabase, {
+        lat: location.lat,
+        lng: location.lng,
+        categorySlugs: [location.category_slug],
+        // Twelve shown rather than four. This page is a leaf — the only way out
+        // of it is these links, and four was a thin thread for a crawler that
+        // has 8,296 of these to work through.
+        maxResults: 13,
+      }).catch(() => [])
+    : Promise.resolve([]),
+  /*
+   * Only to find out whether this place's town page exists.
+   *
+   * A town becomes a page at CITY_PAGE_MIN_PLACES, so linking one without
+   * checking would point a crawler at a 404 from thousands of pages. Asked in
+   * parallel with the places above, so it costs no extra round trip.
+   */
+  location.category_slug && location.city
+    ? fetchCategoryCityCounts(supabase, location.category_slug).catch(() => [])
+    : Promise.resolve([]),
+]);
 
-const nearby = nearbyRaw.filter((place) => place.id !== location.id).slice(0, 4);
+const nearby = nearbyRaw.filter((place) => place.id !== location.id).slice(0, 12);
 
 const publicUrl = (path: string | null) =>
   path ? supabase.storage.from('media').getPublicUrl(path).data.publicUrl : null;
@@ -122,6 +141,34 @@ const category = categoryName(location.category_slug, lang) ?? location.category
 // Stands in for a photo until there is one: packages/shared/src/placeholderImages.ts.
 const illustration = photos.length === 0 ? placeholderImageUrl(location.category_slug) : null;
 const city = location.city;
+
+/*
+ * The trail back up: this place -> its town -> its category -> home.
+ *
+ * Until now the page named its category eight times — title, og:title,
+ * twitter:title, the badge — and linked to it zero times. The only reference
+ * was the BreadcrumbList below, and JSON-LD is how Google renders a breadcrumb,
+ * not how it finds or weighs a page. So 8,296 pages took signal from the
+ * category and town pages and gave none back.
+ *
+ * The town step is dropped when that town has too few places to have a page.
+ */
+const categoryHref = location.category_slug ? `/activity/${location.category_slug}` : null;
+const townPlaceCount = city ? (townCounts.find((row) => row.city === city)?.count ?? 0) : 0;
+const townHref =
+  location.category_slug && city && townPlaceCount >= CITY_PAGE_MIN_PLACES
+    ? `/activity/${location.category_slug}/${citySlug(city)}`
+    : null;
+
+/*
+ * A name and an address is not a page worth indexing — see isIndexablePlace.
+ * The same three facts decide this and decide whether the sitemap lists it.
+ */
+const indexable = isIndexablePlace({
+  description: location.description,
+  review_count: location.review_count,
+  photoCount: photos.length,
+});
 
 /*
  * The place's own website, shown as its domain.
@@ -199,13 +246,15 @@ const jsonLd: Record<string, unknown>[] = [
   {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
+    // Built by pushing, not by counting: the town step appears only when that
+    // town has a page, and hand-numbering around an optional middle rung is how
+    // you end up with two position 3s.
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'LocaStar', item: `${origin}/` },
-      ...(category && location.category_slug
-        ? [{ '@type': 'ListItem', position: 2, name: category, item: `${origin}/activity/${location.category_slug}` }]
-        : []),
-      { '@type': 'ListItem', position: category ? 3 : 2, name: location.name, item: canonical },
-    ],
+      { name: 'LocaStar', item: `${origin}/` },
+      ...(category && categoryHref ? [{ name: category, item: origin + categoryHref }] : []),
+      ...(city && townHref ? [{ name: city, item: origin + townHref }] : []),
+      { name: location.name, item: canonical },
+    ].map((crumb, i) => ({ '@type': 'ListItem', position: i + 1, ...crumb })),
   },
 ];
 
@@ -431,10 +480,28 @@ const seasonLabel =
   canonical={canonical}
   image={photos[0]?.url ?? null}
   jsonLd={jsonLd}
+  noindex={!indexable}
 >
   <SiteHeader />
 
   <main id="main">
+    {
+      categoryHref && (
+        <nav class="wrap crumbs" aria-label={t('loc.breadcrumb')}>
+          <a href={p('/categories')}>{t('nav.categories')}</a>
+          <span aria-hidden="true">/</span>
+          <a href={p(categoryHref)}>{category}</a>
+          {townHref && city && (
+            <>
+              <span aria-hidden="true">/</span>
+              <a href={p(townHref)}>{city}</a>
+            </>
+          )}
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{location.name}</span>
+        </nav>
+      )
+    }
     {
       photos.length > 0 ? (
         <>
@@ -1912,6 +1979,34 @@ const seasonLabel =
     font-weight: 500;
     font-size: 14.5px;
     color: var(--text);
+  }
+
+  /* ---- breadcrumbs ---- */
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-block: 16px 0;
+    font-size: 13px;
+    color: var(--text-55);
+  }
+
+  .crumbs a {
+    color: var(--text-55);
+    text-decoration: none;
+  }
+
+  .crumbs a:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
+
+  /* The place's own name closes the trail and is not a link to here. */
+  .crumbs [aria-current='page'] {
+    color: var(--text);
+    /* The one part that can be long; the rungs above it never wrap mid-word. */
+    overflow-wrap: anywhere;
   }
 
   /* ---- nearby ---- */

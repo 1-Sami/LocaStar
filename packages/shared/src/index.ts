@@ -16,6 +16,7 @@ export {
   fetchCategoryPlaces,
   fetchCategoryCounts,
   fetchSitemapEntries,
+  isIndexablePlace,
   fetchLocationTotal,
   fetchMostLikedPlaces,
   fetchTownCentre,

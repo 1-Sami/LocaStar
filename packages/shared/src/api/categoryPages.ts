@@ -239,8 +239,42 @@ type LocationSitemapRow = {
   id: string;
   created_at: string;
   city: string | null;
+  description: string | null;
+  review_count: number | null;
+  location_photos: { id: string }[] | null;
   location_categories: { categories: { slug: string } | null }[] | null;
 };
+
+/**
+ * Whether a place page is worth offering to a search engine.
+ *
+ * 8,272 of 8,296 places are a name and an address and nothing else, because
+ * the OpenStreetMap import brought the pin and not a word about it. Listing
+ * them was asking Google to crawl 16,592 near-identical pages, and Google
+ * answered by indexing seventeen: "Discovered — currently not indexed" is a
+ * prediction about value, and for those pages the prediction was right.
+ *
+ * So the sitemap and the place page agree on one rule — a description, a
+ * review, or a photo — and everything else is `noindex,follow`: still rendered,
+ * still linked, still reachable from the app's Copy link, simply not offered.
+ *
+ * It reverses itself. The sitemap is built per request and the page decides at
+ * render, so the first review or photo promotes a place with nothing to run
+ * and nothing to deploy.
+ *
+ * Both callers must pass the same three facts, which is why this lives here
+ * rather than in either of them: a sitemap advertising a page that serves
+ * noindex is a contradiction Search Console reports as an error.
+ */
+export function isIndexablePlace(place: {
+  description?: string | null;
+  review_count?: number | null;
+  photoCount?: number | null;
+}): boolean {
+  if ((place.description ?? "").trim().length > 0) return true;
+  if ((place.review_count ?? 0) > 0) return true;
+  return (place.photoCount ?? 0) > 0;
+}
 
 export async function fetchSitemapEntries(
   client: SupabaseClient
@@ -251,7 +285,15 @@ export async function fetchSitemapEntries(
         .from("locations")
         // The category and town come along so the category and town pages can
         // carry a lastmod of their own: theirs is the newest place on them.
-        .select("id, created_at, city, location_categories(categories(slug))")
+        //
+        // The three facts isIndexablePlace needs come too. Every row is still
+        // fetched, indexable or not, because the category and town lastmods are
+        // computed from all of them — it is only the `locations` list below
+        // that is filtered. location_photos is embedded rather than counted so
+        // RLS can do its job: a hidden or removed photo is not readable by
+        // `anon`, so it simply does not arrive, and a reported photo stops
+        // propping up a page the moment it is hidden.
+        .select("id, created_at, city, description, review_count, location_photos(id), location_categories(categories(slug))")
         .order("created_at", { ascending: false })
         // Tiebreak on the primary key, or the paging is unsound: the import
         // wrote 6,857 rows across 97 timestamps, so hundreds share one value
@@ -308,10 +350,23 @@ export async function fetchSitemapEntries(
   }
 
   return {
-    locations: locationRows.map((row) => ({
-      path: `/location/${row.id}`,
-      lastmod: row.created_at,
-    })),
+    /*
+     * Only the places that have something to read. See isIndexablePlace — the
+     * page serves noindex to exactly the ones left out here, and the two must
+     * not drift.
+     */
+    locations: locationRows
+      .filter((row) =>
+        isIndexablePlace({
+          description: row.description,
+          review_count: row.review_count,
+          photoCount: row.location_photos?.length ?? 0,
+        })
+      )
+      .map((row) => ({
+        path: `/location/${row.id}`,
+        lastmod: row.created_at,
+      })),
     lists: listRows.map((row) => ({
       path: `/lists/${row.id}`,
       lastmod: row.updated_at,
