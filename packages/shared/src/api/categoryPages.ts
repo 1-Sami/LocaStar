@@ -278,7 +278,19 @@ export function isIndexablePlace(place: {
 
 export async function fetchSitemapEntries(
   client: SupabaseClient
-): Promise<{ locations: SitemapEntry[]; lists: SitemapEntry[]; categories: SitemapEntry[] }> {
+): Promise<{
+  locations: SitemapEntry[];
+  lists: SitemapEntry[];
+  categories: SitemapEntry[];
+  /*
+   * Town pages kept apart from category pages, though both live under
+   * /activity/. Search Console reports coverage per submitted sitemap and
+   * nothing finer, so whatever is grouped here is what can be told apart
+   * later — and "are the town pages indexing?" is the question the whole
+   * CITY_PAGE_MIN_PLACES experiment turns on.
+   */
+  towns: SitemapEntry[];
+}> {
   const [locationRows, listRows, counts] = await Promise.all([
     fetchAllPages<LocationSitemapRow>((from, to) =>
       client
@@ -382,9 +394,7 @@ export async function fetchSitemapEntries(
      * is what fixes that; listing its pages here is how Google finds the pager
      * without waiting to re-crawl page one first.
      */
-    categories: [
-      ...townPages(townsByCategory, newestByTown),
-      ...counts
+    categories: counts
       .filter((row) => row.count > 0)
       .flatMap((row) => {
         const pages = Math.max(1, Math.ceil(row.count / CATEGORY_PAGE_SIZE));
@@ -394,7 +404,7 @@ export async function fetchSitemapEntries(
           lastmod,
         }));
       }),
-    ],
+    towns: townPages(townsByCategory, newestByTown),
   };
 }
 
