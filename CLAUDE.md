@@ -118,6 +118,33 @@ Migrations are applied through the Supabase MCP tools and committed to
 `supabase/migrations/`. The project is live with real user data — treat every
 row as someone's.
 
+**Applying and committing are two separate acts and nothing links them.** The
+MCP tool records a migration in the database's own table; writing the `.sql`
+into `supabase/migrations/` is a manual step afterwards, and skipping it raises
+no error anywhere. Six migrations went unwritten that way between 2 August and
+24 September and were only found on 2026-10-06 by comparing the two lists —
+including two security fixes, so a rebuild from the repo would have silently
+reopened both holes. They are now `0076a`, `0118a`, `0120a`, `0121a`, `0129a`
+and `0149a`, reconstructed from `supabase_migrations.schema_migrations`, which
+stores every statement it ran.
+
+After applying anything, check the two agree:
+
+```sql
+select name from supabase_migrations.schema_migrations order by version;
+```
+
+```
+ls supabase/migrations/ | sed 's/^[0-9]*[a-z]\?_//; s/\.sql$//' | sort
+```
+
+Two pairs differ in name only and are the same migration — don't "fix" them:
+`business_claims_verification` is `0012_business_claims.sql`, and
+`last_day_reminders_v2` is `0100_last_day_reminders.sql`.
+
+A number may take a letter — `0094a`, `0118a` — when a migration has to slot
+between two that already exist.
+
 **Verify permission changes with a self-rolling-back probe, not by reading the
 policy.** Set `request.jwt.claims`, `set local role authenticated`, do the
 thing, then `raise exception` to roll it all back. This has repeatedly found
