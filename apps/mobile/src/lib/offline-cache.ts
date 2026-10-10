@@ -30,7 +30,8 @@ const storageKey = (name: string, userId: string) => `offline.${name}.${userId}`
  */
 export const SAVED_CACHE = 'saved';
 export const LISTS_CACHE = 'lists';
-export const OFFLINE_CACHES = [SAVED_CACHE, LISTS_CACHE] as const;
+export const PLACES_CACHE = 'places';
+export const OFFLINE_CACHES = [SAVED_CACHE, LISTS_CACHE, PLACES_CACHE] as const;
 
 /**
  * Past this, don't write.
@@ -82,6 +83,50 @@ export async function writeCache(name: string, userId: string, data: unknown): P
     // The screen already has its data. Losing the copy costs the next cold
     // start its head start and nothing else.
   }
+}
+
+/**
+ * How many opened places to keep.
+ *
+ * One key holding a map rather than a key per place: AsyncStorage has no way
+ * to list keys by prefix cheaply, so a key per place would be a set that
+ * sign-out could not reliably clear and nothing could bound. Sixty places is
+ * well under a hundred kilobytes and far more than anyone saves for one trip.
+ */
+const MAX_PLACES = 60;
+
+type PlaceEntry<T> = { at: number; place: T };
+
+/**
+ * A place as it was when you last opened it, and its photos.
+ *
+ * Written on every successful load of the place screen — on view rather than
+ * on save, which costs no extra request, because the places someone actually
+ * needs offline are the ones they looked at before setting off.
+ *
+ * Reviews are deliberately not here. They are other people's words and a
+ * report can withdraw one instantly; a copy on a phone would outlive that.
+ */
+export async function readPlace<T>(userId: string, placeId: string): Promise<Cached<T> | null> {
+  const all = await readCache<Record<string, PlaceEntry<T>>>(PLACES_CACHE, userId);
+  const hit = all?.data?.[placeId];
+  if (!hit) return null;
+  return { savedAt: new Date(hit.at).toISOString(), data: hit.place };
+}
+
+export async function writePlace(userId: string, placeId: string, place: unknown): Promise<void> {
+  const all = (await readCache<Record<string, PlaceEntry<unknown>>>(PLACES_CACHE, userId))?.data ?? {};
+  all[placeId] = { at: Date.now(), place };
+
+  // Oldest out first. Without this the map only ever grows, and the 512 KB
+  // guard in writeCache would eventually start refusing every write — which
+  // would freeze the cache at whatever it held that day rather than keep it
+  // current, the worst of both.
+  const ids = Object.keys(all).sort((a, b) => all[b].at - all[a].at);
+  const kept: Record<string, PlaceEntry<unknown>> = {};
+  for (const id of ids.slice(0, MAX_PLACES)) kept[id] = all[id];
+
+  await writeCache(PLACES_CACHE, userId, kept);
 }
 
 /**

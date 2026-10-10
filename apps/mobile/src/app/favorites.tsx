@@ -36,6 +36,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSaves } from '@/hooks/use-saves';
 import { SAVED_CACHE, readCache, writeCache } from '@/lib/offline-cache';
+import { withTimeout } from '@/lib/with-timeout';
 import { useAuth } from '@/lib/auth-context';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { confirmAsync } from '@/lib/confirm';
@@ -201,6 +202,14 @@ export default function FavoritesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   /** When the copy on screen was saved, or null while it is live. */
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  /**
+   * Whether anything is on screen yet, cached or fresh.
+   *
+   * A ref, not state: reload reads it and would otherwise have to list it as a
+   * dependency, which would rebuild the callback and re-fire the focus effect
+   * every time it flipped.
+   */
+  const painted = useRef(false);
   const theme = useTheme();
 
   /*
@@ -251,16 +260,39 @@ export default function FavoritesScreen() {
 
   const reload = useCallback(async () => {
     if (!session) return;
-    setLoading(true);
     setLoadFailed(false);
+
+    /*
+     * The saved copy goes up before the network is touched.
+     *
+     * Reading it only in the catch — which is what this did first — meant
+     * waiting for an offline request to give up before anything appeared, and
+     * nothing here times out, so on a phone with no signal that is tens of
+     * seconds of empty screen. Offline this paint is the whole screen; online
+     * it is the few hundred milliseconds before fresh rows replace it.
+     */
+    if (!painted.current) {
+      setLoading(true);
+      const saved = await readCache<SavedScreen>(SAVED_CACHE, session.user.id);
+      if (saved) {
+        applySaved(saved.data);
+        setCachedAt(saved.savedAt);
+        setHasLoadedOnce(true);
+        setLoading(false);
+        painted.current = true;
+      }
+    }
+
     try {
-      const [favoriteRows, bucketListRows, shareRows, sharedListRows, savedListRows] = await Promise.all([
-        fetchSavedLocations(supabase, session.user.id, 'favorite'),
-        fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
-        fetchMyShares(supabase, session.user.id),
-        fetchMyListShares(supabase, session.user.id),
-        fetchSavedLists(supabase, session.user.id),
-      ]);
+      const [favoriteRows, bucketListRows, shareRows, sharedListRows, savedListRows] = await withTimeout(
+        Promise.all([
+          fetchSavedLocations(supabase, session.user.id, 'favorite'),
+          fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
+          fetchMyShares(supabase, session.user.id),
+          fetchMyListShares(supabase, session.user.id),
+          fetchSavedLists(supabase, session.user.id),
+        ])
+      );
       const next = {
         favorites: favoriteRows.map(savedLocationToCard),
         bucketList: bucketListRows.map(savedLocationToCard),
@@ -271,6 +303,7 @@ export default function FavoritesScreen() {
       applySaved(next);
       setHasLoadedOnce(true);
       setCachedAt(null);
+      painted.current = true;
       /*
        * All five sections, not only the two that matter offline.
        *
@@ -288,19 +321,13 @@ export default function FavoritesScreen() {
        * — tap the heart on a location". Rendering that because a request failed
        * tells them their saves are gone.
        *
-       * So: the saved copy first, and only the failure state when there is
-       * none. Someone who reached a trailhead with no signal gets the addresses
-       * they came for, with the bar above saying when they were last true.
+       * The saved copy is already on screen by now if there was one — see the
+       * paint above — so this only has to decide what to do when there was
+       * not. The failure state is for that case alone; otherwise the cached
+       * rows stand, with the bar above them saying when they were last true.
        */
       console.error('Failed to load saved places', err);
-      const cached = await readCache<SavedScreen>(SAVED_CACHE, session.user.id);
-      if (cached) {
-        applySaved(cached.data);
-        setCachedAt(cached.savedAt);
-        setHasLoadedOnce(true);
-      } else {
-        setLoadFailed(true);
-      }
+      if (!painted.current) setLoadFailed(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
