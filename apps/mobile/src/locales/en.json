@@ -870,5 +870,8 @@
   "placeCount": {
     "label_one": "place",
     "label_other": "places"
+  },
+  "offline": {
+    "showingSaved": "No internet connection — showing data from {{time}}"
   }
 }

@@ -10,7 +10,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CompactLocationCard } from '@/components/compact-location-card';
@@ -20,6 +20,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSaves } from '@/hooks/use-saves';
+import { useTheme } from '@/hooks/use-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { useAuth } from '@/lib/auth-context';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
@@ -184,6 +185,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { coords } = useUserLocation();
+  const theme = useTheme();
   const { bucketListIds, toggleBucketList } = useSaves();
 
   const [nearby, setNearby] = useState<NearbyLocation[]>([]);
@@ -197,18 +199,30 @@ export default function HomeScreen() {
   // shelf immediately, not at the next reload.
   const visiblePublicLists = publicLists.filter((list) => !isBlocked(list.ownerId));
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
+  const [refreshing, setRefreshing] = useState(false);
 
   const reload = useCallback(() => {
     let cancelled = false;
+    /*
+     * Every request this pass fires, so pull-to-refresh knows when to stop
+     * spinning. Each chain already ends in a .catch, so none of these reject
+     * and allSettled below is about timing rather than outcome.
+     *
+     * Home is deliberately not cached and deliberately still refetches on
+     * focus: every strip is ordered by distance from where you are standing
+     * now, so a saved copy is not stale, it is wrong. Pull-to-refresh is the
+     * deliberate control; this array is what makes it honest.
+     */
+    const pending: Promise<unknown>[] = [];
 
-    fetchPublicLists(supabase, session?.user.id ?? null)
+    pending.push(fetchPublicLists(supabase, session?.user.id ?? null)
       .then((rows) => {
         if (!cancelled) setPublicLists(rows);
       })
       .catch((err) => {
         console.error('Failed to load public lists', err);
         if (!cancelled) setPublicLists([]);
-      });
+      }));
 
     if (coords) {
       /*
@@ -218,7 +232,7 @@ export default function HomeScreen() {
        * not something the RPC filters on.
        */
       if (SHOW_BOOSTED_SECTION) {
-        fetchNearbyLocations(supabase, {
+        pending.push(fetchNearbyLocations(supabase, {
           lat: coords.latitude,
           lng: coords.longitude,
           radiusM: HOME_RADIUS_M,
@@ -231,7 +245,7 @@ export default function HomeScreen() {
           .catch((err) => {
             console.error('Failed to load nearby locations', err);
             if (!cancelled) setNearby([]);
-          });
+          }));
       }
 
       /*
@@ -243,7 +257,7 @@ export default function HomeScreen() {
        * nearest activities in the country rather than the activities among the
        * nearest anything.
        */
-      fetchNearbyLocations(supabase, {
+      pending.push(fetchNearbyLocations(supabase, {
         lat: coords.latitude,
         lng: coords.longitude,
         radiusM: HOME_RADIUS_M,
@@ -257,7 +271,7 @@ export default function HomeScreen() {
         .catch((err) => {
           console.error('Failed to load nearby activities', err);
           if (!cancelled) setNearbyActivities([]);
-        });
+        }));
 
       /*
        * Most liked, sorted in the database rather than here.
@@ -272,7 +286,7 @@ export default function HomeScreen() {
        * ratings are the common case — only four locations within 30 km of the
        * owner have been reviewed at all.
        */
-      fetchNearbyLocations(supabase, {
+      pending.push(fetchNearbyLocations(supabase, {
         lat: coords.latitude,
         lng: coords.longitude,
         radiusM: HOME_NEARBY_RADIUS_M,
@@ -285,13 +299,13 @@ export default function HomeScreen() {
         .catch((err) => {
           console.error('Failed to load most liked', err);
           if (!cancelled) setNearbyMostLiked([]);
-        });
+        }));
 
       // One query per season, filtered in the database — so this is the nearest
       // fifteen of that season, not whichever fifteen survived a general
       // proximity query.
       (['summer', 'winter'] as const).forEach((season) => {
-        fetchNearbyLocations(supabase, {
+        pending.push(fetchNearbyLocations(supabase, {
           lat: coords.latitude,
           lng: coords.longitude,
           radiusM: HOME_NEARBY_RADIUS_M,
@@ -309,12 +323,12 @@ export default function HomeScreen() {
             if (cancelled) return;
             if (season === 'summer') setNearbySummer([]);
             else setNearbyWinter([]);
-          });
+          }));
       });
     }
 
     if (session) {
-      fetchProfileStats(supabase, session.user.id)
+      pending.push(fetchProfileStats(supabase, session.user.id)
         .then((result) => {
           if (!cancelled) setStats(result);
         })
@@ -323,15 +337,25 @@ export default function HomeScreen() {
           // nothing, which is a statement about them rather than about the
           // request. Leave whatever was last known standing.
           console.error('Failed to load profile stats', err);
-        });
+        }));
     } else {
       setStats(EMPTY_STATS);
     }
+
+    void Promise.allSettled(pending).then(() => {
+      if (!cancelled) setRefreshing(false);
+    });
 
     return () => {
       cancelled = true;
     };
   }, [coords, session]);
+
+  /* The spinner is cleared where the requests settle, above. */
+  const onPullToRefresh = useCallback(() => {
+    setRefreshing(true);
+    reload();
+  }, [reload]);
 
   useFocusEffect(
     useCallback(() => {
@@ -419,7 +443,21 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onPullToRefresh}
+              // Both are needed: iOS draws the spinner in tintColor, Android
+              // in colors, and the default is a dark grey that disappears on
+              // the dark theme.
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+              progressBackgroundColor={theme.backgroundElement}
+            />
+          }
+        >
           <View style={styles.header}>
             <LocaStarLogo size={HEADER_LOGO_SIZE} />
             <View style={styles.headerText}>

@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   type LayoutChangeEvent,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -26,12 +27,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
+import { OfflineNotice } from '@/components/offline-notice';
 import { SavedCard } from '@/components/saved-card';
 import { SectionBadge } from '@/components/section-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useSaves } from '@/hooks/use-saves';
+import { SAVED_CACHE, readCache, writeCache } from '@/lib/offline-cache';
 import { useAuth } from '@/lib/auth-context';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { confirmAsync } from '@/lib/confirm';
@@ -158,6 +162,21 @@ function FavoritesSection({
   );
 }
 
+/**
+ * The whole screen, as it is written to and read from the device.
+ *
+ * Plain data only — what the five sections render, nothing derived and nothing
+ * about where the person was standing. See lib/offline-cache: places may be
+ * cached, positions never.
+ */
+type SavedScreen = {
+  favorites: CardLocation[];
+  bucketList: CardLocation[];
+  shares: LocationShare[];
+  sharedLists: SharedList[];
+  savedLists: PublicList[];
+};
+
 export default function FavoritesScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -179,6 +198,22 @@ export default function FavoritesScreen() {
   /** Set only by a load that worked, so a first load that failed is not "empty". */
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  /** When the copy on screen was saved, or null while it is live. */
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const theme = useTheme();
+
+  /*
+   * One place that fills the five sections, so the live path and the cached
+   * path cannot drift into setting different subsets of the screen.
+   */
+  const applySaved = useCallback((next: SavedScreen) => {
+    setFavorites(next.favorites);
+    setBucketList(next.bucketList);
+    setShares(next.shares);
+    setSharedLists(next.sharedLists);
+    setSavedLists(next.savedLists);
+  }, []);
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Partial<Record<string, number>>>({});
@@ -226,25 +261,60 @@ export default function FavoritesScreen() {
         fetchMyListShares(supabase, session.user.id),
         fetchSavedLists(supabase, session.user.id),
       ]);
-      setFavorites(favoriteRows.map(savedLocationToCard));
-      setBucketList(bucketListRows.map(savedLocationToCard));
-      setShares(shareRows);
-      setSharedLists(sharedListRows);
-      setSavedLists(savedListRows);
+      const next = {
+        favorites: favoriteRows.map(savedLocationToCard),
+        bucketList: bucketListRows.map(savedLocationToCard),
+        shares: shareRows,
+        sharedLists: sharedListRows,
+        savedLists: savedListRows,
+      };
+      applySaved(next);
       setHasLoadedOnce(true);
+      setCachedAt(null);
+      /*
+       * All five sections, not only the two that matter offline.
+       *
+       * Caching favourites alone would leave the other three rendering their
+       * "nothing here yet" copy from a cache that simply does not hold them —
+       * the same lie the catch below exists to avoid, arriving by a tidier
+       * route. They are all this person's own screen, and together they are
+       * tens of kilobytes.
+       */
+      void writeCache(SAVED_CACHE, session.user.id, next);
     } catch (err) {
       /*
        * Five sections of somebody's own saved places, and every one of them has
        * an empty message written as a statement about them — "Nothing saved yet
        * — tap the heart on a location". Rendering that because a request failed
        * tells them their saves are gone.
+       *
+       * So: the saved copy first, and only the failure state when there is
+       * none. Someone who reached a trailhead with no signal gets the addresses
+       * they came for, with the bar above saying when they were last true.
        */
       console.error('Failed to load saved places', err);
-      setLoadFailed(true);
+      const cached = await readCache<SavedScreen>(SAVED_CACHE, session.user.id);
+      if (cached) {
+        applySaved(cached.data);
+        setCachedAt(cached.savedAt);
+        setHasLoadedOnce(true);
+      } else {
+        setLoadFailed(true);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [session]);
+  }, [session, applySaved]);
+
+  /*
+   * The spinner is cleared where the request settles, in reload's finally —
+   * clearing it here would stop it a frame after it started.
+   */
+  const onPullToRefresh = useCallback(() => {
+    setRefreshing(true);
+    reload().catch((err) => console.error('Reload failed', err));
+  }, [reload]);
 
   // On focus rather than on mount: saving or sharing something from another
   // screen used to leave this list stale until the app was restarted.
@@ -352,7 +422,23 @@ export default function FavoritesScreen() {
             {t('common.somethingWentWrong')}
           </ThemedText>
         ) : (
-          <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onPullToRefresh}
+                // Both are needed: iOS draws the spinner in tintColor, Android
+                // in colors, and the default is a dark grey that disappears on
+                // the dark theme.
+                tintColor={theme.primary}
+                colors={[theme.primary]}
+                progressBackgroundColor={theme.backgroundElement}
+              />
+            }
+          >
+            {cachedAt && <OfflineNotice savedAt={cachedAt} />}
             <FavoritesSection
               items={favorites}
               favoriteIds={favoriteIds}

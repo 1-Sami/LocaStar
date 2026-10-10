@@ -9,6 +9,8 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
+import { OFFLINE_CACHES, clearCache } from '@/lib/offline-cache';
+
 import { authRedirectTo } from '@/lib/auth-redirect';
 import { unregisterPushNotifications } from '@/lib/push-registration';
 import { authErrorKey } from '@/lib/auth-errors';
@@ -102,6 +104,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // them to still be signed in — afterwards there is no auth left to do it
     // with, and the row would outlive the account that owns it.
     await unregisterPushNotifications();
+    /*
+     * The saved copies of this person's own screens go with the session.
+     *
+     * Not a leak if it stayed — the keys carry the user id, so the next person
+     * to sign in on this handset reads their own and never sees these. It goes
+     * because a shared phone should not keep a list of the places you saved
+     * after you have signed out of it, which is a different thing from safety
+     * and the one people actually notice.
+     *
+     * Needs the id, so it happens while there is still a session to read it
+     * from — the same reason the push token is dropped above and not after.
+     */
+    const userId = session?.user.id;
+    if (userId) await clearCache(userId, OFFLINE_CACHES);
     await supabase.auth.signOut();
   };
 

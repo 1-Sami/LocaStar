@@ -870,5 +870,8 @@
   "placeCount": {
     "label_one": "plats",
     "label_other": "platser"
+  },
+  "offline": {
+    "showingSaved": "Ingen internetanslutning — visar data från {{time}}"
   }
 }

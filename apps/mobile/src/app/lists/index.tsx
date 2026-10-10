@@ -2,18 +2,33 @@ import { createList, fetchLists, fetchProfile, setListLiked, type LocationList }
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
+import { OfflineNotice } from '@/components/offline-notice';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { LISTS_CACHE, readCache, writeCache } from '@/lib/offline-cache';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
+
+/** What this screen renders, as it is stored on the device. */
+type ListsScreen = { lists: LocationList[]; username: string };
 
 export default function MyListsScreen() {
   const { t } = useTranslation();
@@ -31,29 +46,56 @@ export default function MyListsScreen() {
   const [creating, setCreating] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  /** When the copy on screen was saved, or null while it is live. */
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     if (!session) return;
     setLoading(true);
     setLoadFailed(false);
-    Promise.all([fetchLists(supabase, session.user.id), fetchProfile(supabase, session.user.id).catch(() => null)])
-      .then(([listRows, profile]) => {
-        setLists(listRows);
-        setUsername(profile?.username ?? profile?.display_name ?? 'you');
-      })
-      .catch((err) => {
-        // "No lists yet. Create one to start organizing places you love." is a
-        // sentence about this person, and a failed request is not entitled to
-        // say it over lists they have already made.
-        console.error('Failed to load your lists', err);
+    try {
+      const [listRows, profile] = await Promise.all([
+        fetchLists(supabase, session.user.id),
+        fetchProfile(supabase, session.user.id).catch(() => null),
+      ]);
+      const next = {
+        lists: listRows,
+        username: profile?.username ?? profile?.display_name ?? 'you',
+      };
+      setLists(next.lists);
+      setUsername(next.username);
+      setCachedAt(null);
+      void writeCache(LISTS_CACHE, session.user.id, next);
+    } catch (err) {
+      // "No lists yet. Create one to start organizing places you love." is a
+      // sentence about this person, and a failed request is not entitled to
+      // say it over lists they have already made. The copy on the device says
+      // it better than the failure state does, when there is one.
+      console.error('Failed to load your lists', err);
+      const cached = await readCache<ListsScreen>(LISTS_CACHE, session.user.id);
+      if (cached) {
+        setLists(cached.data.lists);
+        setUsername(cached.data.username);
+        setCachedAt(cached.savedAt);
+      } else {
         setLoadFailed(true);
-      })
-      .finally(() => setLoading(false));
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [session]);
+
+  /* The spinner is cleared in reload's finally, where the request settles. */
+  const onPullToRefresh = useCallback(() => {
+    setRefreshing(true);
+    reload().catch((err) => console.error('Reload failed', err));
+  }, [reload]);
 
   useFocusEffect(
     useCallback(() => {
-      reload();
+      reload().catch((err) => console.error('Reload failed', err));
     }, [reload])
   );
 
@@ -96,7 +138,22 @@ export default function MyListsScreen() {
         {loading ? (
           <ActivityIndicator style={styles.loadingIndicator} />
         ) : (
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onPullToRefresh}
+                // Both are needed: iOS draws the spinner in tintColor, Android
+                // in colors, and the default is a dark grey that disappears on
+                // the dark theme.
+                tintColor={theme.primary}
+                colors={[theme.primary]}
+                progressBackgroundColor={theme.backgroundElement}
+              />
+            }
+          >
+            {cachedAt && <OfflineNotice savedAt={cachedAt} />}
             <Pressable style={styles.newListButton} onPress={() => setCreateVisible(true)}>
               <ThemedText type="smallBold" style={styles.newListButtonText}>
                 {t('lists.newListButton')}
