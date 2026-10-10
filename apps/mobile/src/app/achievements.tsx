@@ -12,9 +12,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -96,6 +105,15 @@ export default function AchievementsScreen() {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
+  /*
+   * The badge whose sheet is open.
+   *
+   * A tile said what a badge was called and nothing about what it wanted, so
+   * unless it happened to be in "Closest to done" there was no way to find out
+   * what any of them meant. Everything the sheet shows is already on BadgeState
+   * — have, need, bonus, tier — so this is presentation, not new data.
+   */
+  const [openBadge, setOpenBadge] = useState<BadgeState | null>(null);
 
   const gridWidth = Math.min(windowWidth, MaxContentWidth) - Spacing.three * 2;
   const tileWidth = Math.floor((gridWidth - Spacing.two * 2) / 3);
@@ -269,13 +287,15 @@ export default function AchievementsScreen() {
                 {badges
                   .filter((badge) => badge.group === group)
                   .map((badge) => (
-                    <ThemedView
+                    <Pressable
                       key={badge.key}
-                      type="backgroundElement"
-                      style={[
+                      onPress={() => setOpenBadge(badge)}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [
                         styles.tile,
-                        { width: tileWidth },
+                        { width: tileWidth, backgroundColor: theme.backgroundElement },
                         badge.earned && styles.tileEarned,
+                        pressed && styles.tilePressed,
                       ]}
                     >
                       <View
@@ -305,7 +325,7 @@ export default function AchievementsScreen() {
                           ? t('achievements.bonus', { points: badge.bonus })
                           : `${badge.have}/${badge.need}`}
                       </ThemedText>
-                    </ThemedView>
+                    </Pressable>
                   ))}
               </View>
             </View>
@@ -347,6 +367,66 @@ export default function AchievementsScreen() {
           </ThemedText>
         </ScrollView>
       </SafeAreaView>
+
+      <Modal
+        visible={openBadge !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setOpenBadge(null)}>
+        <SheetRoot>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpenBadge(null)} />
+          {openBadge && (
+            <ThemedView type="backgroundElement" style={styles.sheet}>
+              <View style={styles.sheetHead}>
+                <View
+                  style={[
+                    styles.tileGlyph,
+                    { backgroundColor: openBadge.earned ? AMBER : theme.backgroundSelected },
+                  ]}>
+                  <Ionicons
+                    name={BADGE_ICONS[openBadge.id]}
+                    size={16}
+                    color={openBadge.earned ? '#201603' : theme.textSecondary}
+                  />
+                </View>
+                <ThemedText type="subtitle" style={styles.sheetTitle}>
+                  {badgeLabel(t, openBadge)}
+                </ThemedText>
+              </View>
+
+              <ThemedText type="default" themeColor="textSecondary" style={styles.sheetNeed}>
+                {t(`achievements.badge.${openBadge.id}.need`)}
+              </ThemedText>
+
+              {/* The bar is the answer to "how far off am I", which is the
+                  question a name alone could never answer. */}
+              <View style={styles.sheetBarTrack}>
+                <View
+                  style={[
+                    styles.sheetBarFill,
+                    { width: `${Math.round(openBadge.fraction * 100)}%` },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.sheetFoot}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {openBadge.have}/{openBadge.need}
+                </ThemedText>
+                <ThemedText type="small" themeColor={openBadge.earned ? 'text' : 'textSecondary'}>
+                  {openBadge.earned
+                    ? t('achievements.earnedAlready')
+                    : t('achievements.bonus', { points: openBadge.bonus })}
+                </ThemedText>
+              </View>
+
+              <Pressable style={styles.sheetClose} onPress={() => setOpenBadge(null)}>
+                <ThemedText type="smallBold">{t('common.close')}</ThemedText>
+              </Pressable>
+            </ThemedView>
+          )}
+        </SheetRoot>
+      </Modal>
     </ThemedView>
   );
 }
@@ -444,6 +524,22 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   tileEarned: { borderColor: AMBER },
+  tilePressed: { opacity: 0.6 },
+  sheet: {
+    borderTopLeftRadius: Spacing.three,
+    borderTopRightRadius: Spacing.three,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  sheetTitle: { flex: 1 },
+  sheetNeed: { lineHeight: 21 },
+  /* Same track the "closest to done" rows use, so one badge does not look
+     like a different kind of thing in two places on one screen. */
+  sheetBarTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(127,127,127,0.25)', overflow: 'hidden' },
+  sheetBarFill: { height: '100%', borderRadius: 3, backgroundColor: AMBER },
+  sheetFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sheetClose: { alignSelf: 'flex-end', paddingVertical: Spacing.two, paddingHorizontal: Spacing.three },
   tileGlyph: {
     width: 30,
     height: 30,

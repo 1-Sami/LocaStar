@@ -21,6 +21,8 @@ export interface AchievementCopy {
   atTheTop: string;
   closest: string;
   earnedOf: string;
+  /** On a badge already collected, in its info sheet. */
+  earnedAlready: string;
   bonus: string;
   howPoints: string;
   fromBadges: string;
@@ -44,6 +46,7 @@ export const ACHIEVEMENT_COPY: Record<"en" | "sv", AchievementCopy> = {
     atTheTop: "You have reached the top level. Everything from here is for the map, not for the number.",
     closest: "Closest to done",
     earnedOf: "{{earned}} of {{total}} earned",
+    earnedAlready: "Earned",
     bonus: "+{{points}}",
     howPoints: "How points work",
     fromBadges: "Badges earned",
@@ -103,6 +106,7 @@ export const ACHIEVEMENT_COPY: Record<"en" | "sv", AchievementCopy> = {
     atTheTop: "Du har nått den högsta nivån. Härifrån handlar det om kartan, inte om siffran.",
     closest: "Närmast att bli klar",
     earnedOf: "{{earned}} av {{total}} uppnådda",
+    earnedAlready: "Klarad",
     bonus: "+{{points}}",
     howPoints: "Så räknas poängen",
     fromBadges: "Uppnådda utmärkelser",

@@ -1,5 +1,12 @@
 ---
-import { fetchFeedback, fetchProfile } from '@locastar/shared';
+import {
+  deleteFeedback,
+  fetchFeedback,
+  fetchFeedbackAssignees,
+  fetchProfile,
+  setFeedbackAssignee,
+  setFeedbackDone,
+} from '@locastar/shared';
 import AdminNav from '../../components/AdminNav.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -9,15 +16,18 @@ import { longDate } from '../../lib/format';
 import { currentUser } from '../../lib/auth';
 
 /*
- * What people have said about the app, on a screen wide enough to read it.
+ * What people have said about the app, and what is being done about it.
  *
- * Read-only on purpose. Feedback is not a queue — there is nothing to resolve,
- * no state to move it through, and the useful action is usually a change to
- * the app rather than a click here.
+ * It used to be read-only, on the reasoning that feedback is not a queue —
+ * nothing to resolve, no state to move through. That held while there were
+ * four messages. It stopped holding once the same request started arriving
+ * twice and there was no way to say "handled" or "Chrille is on this", so the
+ * screen became a list you reread instead of one you worked.
  *
- * Admin rather than moderator, matching the app: a superuser moderates
- * content, they do not need the product suggestions. RLS says the same, so
- * this check only decides whether to render the page.
+ * Superusers can reach it now, which 0120 deliberately prevented. The line
+ * moved only as far as it had to: a superuser sees the items assigned to them
+ * and nothing else, enforced by RLS rather than by this page. The queue as a
+ * whole is still admin-only, which is what that decision was protecting.
  */
 export const prerender = false;
 
@@ -29,9 +39,42 @@ const { user, supabase } = await currentUser(Astro.cookies, Astro.request.header
 if (!user) return Astro.redirect(p('/auth/sign-in'));
 
 const profile = await fetchProfile(supabase, user.id).catch(() => null);
-if ((profile?.role ?? 'user') !== 'admin') return Astro.redirect(p('/account'));
+const role = profile?.role ?? 'user';
+const isAdmin = role === 'admin';
+if (!isAdmin && role !== 'superuser') return Astro.redirect(p('/account'));
+
+let actionError: string | null = null;
+
+/*
+ * Plain form posts, like the rest of /admin. No script to ship, it works
+ * before hydration, and every action is one round trip that ends in a fresh
+ * read — so what is on screen afterwards is what the database actually holds
+ * rather than what the page hoped it would.
+ */
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const intent = String(form.get('intent') ?? '');
+  const id = String(form.get('id') ?? '');
+  try {
+    if (intent === 'done') await setFeedbackDone(supabase, id, true);
+    else if (intent === 'reopen') await setFeedbackDone(supabase, id, false);
+    else if (intent === 'assign' && isAdmin) {
+      const to = String(form.get('assignedTo') ?? '');
+      await setFeedbackAssignee(supabase, id, to === '' ? null : to);
+    } else if (intent === 'delete' && isAdmin) await deleteFeedback(supabase, id);
+  } catch (error) {
+    // RLS refusing is the expected failure here, not an outage. Say so and
+    // re-read, rather than leaving a half-applied screen.
+    console.error('Feedback action failed', error);
+    actionError = t('mod.fbActionFailed');
+  }
+}
 
 const entries = await fetchFeedback(supabase).catch(() => []);
+const assignees = isAdmin ? await fetchFeedbackAssignees(supabase).catch(() => []) : [];
+
+const open = entries.filter((entry) => entry.doneAt === null);
+const done = entries.filter((entry) => entry.doneAt !== null);
 
 /*
  * Grouped by what people asked for, because the same request arriving five
@@ -43,7 +86,9 @@ const groups = [
   { key: 'general', label: t('mod.fbGeneral') },
 ].map((group) => ({
   ...group,
-  items: entries.filter((entry) => entry.category === group.key),
+  // Open only. A handled item answered its question and should stop competing
+  // for attention with the ones that have not.
+  items: open.filter((entry) => entry.category === group.key),
 }));
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
@@ -65,7 +110,11 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
       <p class="empty">{t('mod.fbEmpty')}</p>
     ) : (
       <>
-        <p class="mono total">{t('mod.fbCount', { count: String(entries.length) })}</p>
+        <p class="mono total">
+          {t('mod.fbOpenCount', { count: String(open.length) })} · {t('mod.fbCount', { count: String(entries.length) })}
+        </p>
+        {actionError && <p class="action-error">{actionError}</p>}
+        {!isAdmin && <p class="mono scope-note">{t('mod.fbMineOnly')}</p>}
         {groups.map((group) =>
           group.items.length === 0 ? null : (
             <section class="group">
@@ -76,12 +125,92 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                     <p class="message">{entry.message}</p>
                     <p class="mono meta">
                       {longDate(entry.createdAt, lang)} · {entry.platform} · v{entry.appRelease}
+                      {entry.assignedToName && <> · {t('mod.fbAssignedTo', { name: entry.assignedToName })}</>}
                     </p>
+                    <div class="actions">
+                      {isAdmin && (
+                        <form method="POST" class="inline">
+                          <input type="hidden" name="intent" value="assign" />
+                          <input type="hidden" name="id" value={entry.id} />
+                          <label class="mono assign-label" for={`as-${entry.id}`}>{t('mod.fbAssign')}</label>
+                          <select id={`as-${entry.id}`} name="assignedTo" onchange="this.form.submit()">
+                            <option value="" selected={entry.assignedTo === null}>{t('mod.fbUnassigned')}</option>
+                            {assignees.map((person) => (
+                              <option value={person.id} selected={entry.assignedTo === person.id}>{person.name}</option>
+                            ))}
+                          </select>
+                          {/* Submits on change, so the select is the control rather than a
+                              thing you set and then have to remember to confirm. The button
+                              is the fallback where scripting is off. */}
+                          <noscript><button type="submit" class="btn">{t('mod.fbAssign')}</button></noscript>
+                        </form>
+                      )}
+                      <form method="POST" class="inline">
+                        <input type="hidden" name="intent" value={entry.doneAt ? 'reopen' : 'done'} />
+                        <input type="hidden" name="id" value={entry.id} />
+                        <button type="submit" class="btn">{entry.doneAt ? t('mod.fbReopen') : t('mod.fbDone')}</button>
+                      </form>
+                      {isAdmin && (
+                        <form method="POST" class="inline" onsubmit={`return confirm(${JSON.stringify(t('mod.fbDeleteConfirm'))})`}>
+                          <input type="hidden" name="intent" value="delete" />
+                          <input type="hidden" name="id" value={entry.id} />
+                          <button type="submit" class="btn danger">{t('mod.fbDelete')}</button>
+                        </form>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
             </section>
           )
+        )}
+
+        {done.length > 0 && (
+          <section class="group done-group">
+            <h2>{t('mod.fbDoneGroup')} <span class="mono n">{done.length}</span></h2>
+            <ul class="items">
+              {done.map((entry) => (
+                <li class="item is-done">
+                  <p class="message">{entry.message}</p>
+                  <p class="mono meta">
+                    {t('mod.fbDoneOn', { date: longDate(entry.doneAt!, lang) })} · {entry.platform} · v{entry.appRelease}
+                    {entry.assignedToName && <> · {t('mod.fbAssignedTo', { name: entry.assignedToName })}</>}
+                  </p>
+                  <div class="actions">
+                    {isAdmin && (
+                      <form method="POST" class="inline">
+                        <input type="hidden" name="intent" value="assign" />
+                        <input type="hidden" name="id" value={entry.id} />
+                        <label class="mono assign-label" for={`as-${entry.id}`}>{t('mod.fbAssign')}</label>
+                        <select id={`as-${entry.id}`} name="assignedTo" onchange="this.form.submit()">
+                          <option value="" selected={entry.assignedTo === null}>{t('mod.fbUnassigned')}</option>
+                          {assignees.map((person) => (
+                            <option value={person.id} selected={entry.assignedTo === person.id}>{person.name}</option>
+                          ))}
+                        </select>
+                        {/* Submits on change, so the select is the control rather than a
+                            thing you set and then have to remember to confirm. The button
+                            is the fallback where scripting is off. */}
+                        <noscript><button type="submit" class="btn">{t('mod.fbAssign')}</button></noscript>
+                      </form>
+                    )}
+                    <form method="POST" class="inline">
+                      <input type="hidden" name="intent" value={entry.doneAt ? 'reopen' : 'done'} />
+                      <input type="hidden" name="id" value={entry.id} />
+                      <button type="submit" class="btn">{entry.doneAt ? t('mod.fbReopen') : t('mod.fbDone')}</button>
+                    </form>
+                    {isAdmin && (
+                      <form method="POST" class="inline" onsubmit={`return confirm(${JSON.stringify(t('mod.fbDeleteConfirm'))})`}>
+                        <input type="hidden" name="intent" value="delete" />
+                        <input type="hidden" name="id" value={entry.id} />
+                        <button type="submit" class="btn danger">{t('mod.fbDelete')}</button>
+                      </form>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </>
     )}
@@ -123,4 +252,49 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   /* Somebody's own words, so they get the room and the weight. */
   .message { margin: 0; color: var(--text); white-space: pre-wrap; }
   .meta { margin: 0; font-size: 11px; letter-spacing: .06em; color: var(--text-42); }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+  .assign-label { font-size: 11px; letter-spacing: .06em; color: var(--text-42); }
+
+  .btn {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--hairline);
+    background: var(--surface-alt);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--text-42); }
+  /* Outlined, not filled: deleting is rare and should not be the loudest
+     thing on a card whose point is the sentence above it. */
+  .btn.danger { color: #c0392b; border-color: rgba(192, 57, 43, 0.4); }
+  .btn.danger:hover { border-color: #c0392b; }
+
+  select {
+    font: inherit;
+    font-size: 13px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--fieldBorder, var(--hairline));
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  /* Handled, and still readable — greyed rather than hidden, because the
+     reason to keep it is that somebody will ask "did we ever do anything
+     about X". */
+  .done-group { opacity: 0.72; }
+  .item.is-done .message { color: var(--text-70); }
+
+  .action-error { margin: 0; color: #c0392b; }
+  .scope-note { margin: 0; font-size: 11px; letter-spacing: .06em; color: var(--text-42); }
 </style>

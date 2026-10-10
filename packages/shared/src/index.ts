@@ -80,8 +80,12 @@ export {
   FEEDBACK_CATEGORIES,
   FEEDBACK_DAILY_LIMIT,
   FEEDBACK_MAX_LENGTH,
+  setFeedbackDone,
+  setFeedbackAssignee,
+  deleteFeedback,
+  fetchFeedbackAssignees,
 } from "./api/feedback";
-export type { FeedbackCategory, FeedbackInput, FeedbackRow } from "./api/feedback";
+export type { FeedbackCategory, FeedbackInput, FeedbackRow, FeedbackAssignee } from "./api/feedback";
 export type { Session, User } from "@supabase/supabase-js";
 
 export {
