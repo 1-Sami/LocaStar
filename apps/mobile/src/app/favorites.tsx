@@ -27,7 +27,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
-import { OfflineNotice } from '@/components/offline-notice';
 import { SavedCard } from '@/components/saved-card';
 import { SectionBadge } from '@/components/section-badge';
 import { ThemedText } from '@/components/themed-text';
@@ -35,8 +34,6 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSaves } from '@/hooks/use-saves';
-import { SAVED_CACHE, readCache, writeCache } from '@/lib/offline-cache';
-import { withTimeout } from '@/lib/with-timeout';
 import { useAuth } from '@/lib/auth-context';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { confirmAsync } from '@/lib/confirm';
@@ -163,21 +160,6 @@ function FavoritesSection({
   );
 }
 
-/**
- * The whole screen, as it is written to and read from the device.
- *
- * Plain data only — what the five sections render, nothing derived and nothing
- * about where the person was standing. See lib/offline-cache: places may be
- * cached, positions never.
- */
-type SavedScreen = {
-  favorites: CardLocation[];
-  bucketList: CardLocation[];
-  shares: LocationShare[];
-  sharedLists: SharedList[];
-  savedLists: PublicList[];
-};
-
 export default function FavoritesScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -200,29 +182,7 @@ export default function FavoritesScreen() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  /** When the copy on screen was saved, or null while it is live. */
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
-  /**
-   * Whether anything is on screen yet, cached or fresh.
-   *
-   * A ref, not state: reload reads it and would otherwise have to list it as a
-   * dependency, which would rebuild the callback and re-fire the focus effect
-   * every time it flipped.
-   */
-  const painted = useRef(false);
   const theme = useTheme();
-
-  /*
-   * One place that fills the five sections, so the live path and the cached
-   * path cannot drift into setting different subsets of the screen.
-   */
-  const applySaved = useCallback((next: SavedScreen) => {
-    setFavorites(next.favorites);
-    setBucketList(next.bucketList);
-    setShares(next.shares);
-    setSharedLists(next.sharedLists);
-    setSavedLists(next.savedLists);
-  }, []);
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Partial<Record<string, number>>>({});
@@ -260,84 +220,38 @@ export default function FavoritesScreen() {
 
   const reload = useCallback(async () => {
     if (!session) return;
+    setLoading(true);
     setLoadFailed(false);
-
-    /*
-     * The saved copy goes up before the network is touched.
-     *
-     * Reading it only in the catch — which is what this did first — meant
-     * waiting for an offline request to give up before anything appeared, and
-     * nothing here times out, so on a phone with no signal that is tens of
-     * seconds of empty screen. Offline this paint is the whole screen; online
-     * it is the few hundred milliseconds before fresh rows replace it.
-     */
-    if (!painted.current) {
-      setLoading(true);
-      const saved = await readCache<SavedScreen>(SAVED_CACHE, session.user.id);
-      if (saved) {
-        applySaved(saved.data);
-        setCachedAt(saved.savedAt);
-        setHasLoadedOnce(true);
-        setLoading(false);
-        painted.current = true;
-      }
-    }
-
     try {
-      const [favoriteRows, bucketListRows, shareRows, sharedListRows, savedListRows] = await withTimeout(
-        Promise.all([
-          fetchSavedLocations(supabase, session.user.id, 'favorite'),
-          fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
-          fetchMyShares(supabase, session.user.id),
-          fetchMyListShares(supabase, session.user.id),
-          fetchSavedLists(supabase, session.user.id),
-        ])
-      );
-      const next = {
-        favorites: favoriteRows.map(savedLocationToCard),
-        bucketList: bucketListRows.map(savedLocationToCard),
-        shares: shareRows,
-        sharedLists: sharedListRows,
-        savedLists: savedListRows,
-      };
-      applySaved(next);
+      const [favoriteRows, bucketListRows, shareRows, sharedListRows, savedListRows] = await Promise.all([
+        fetchSavedLocations(supabase, session.user.id, 'favorite'),
+        fetchSavedLocations(supabase, session.user.id, 'bucket_list'),
+        fetchMyShares(supabase, session.user.id),
+        fetchMyListShares(supabase, session.user.id),
+        fetchSavedLists(supabase, session.user.id),
+      ]);
+      setFavorites(favoriteRows.map(savedLocationToCard));
+      setBucketList(bucketListRows.map(savedLocationToCard));
+      setShares(shareRows);
+      setSharedLists(sharedListRows);
+      setSavedLists(savedListRows);
       setHasLoadedOnce(true);
-      setCachedAt(null);
-      painted.current = true;
-      /*
-       * All five sections, not only the two that matter offline.
-       *
-       * Caching favourites alone would leave the other three rendering their
-       * "nothing here yet" copy from a cache that simply does not hold them —
-       * the same lie the catch below exists to avoid, arriving by a tidier
-       * route. They are all this person's own screen, and together they are
-       * tens of kilobytes.
-       */
-      void writeCache(SAVED_CACHE, session.user.id, next);
     } catch (err) {
       /*
        * Five sections of somebody's own saved places, and every one of them has
        * an empty message written as a statement about them — "Nothing saved yet
        * — tap the heart on a location". Rendering that because a request failed
        * tells them their saves are gone.
-       *
-       * The saved copy is already on screen by now if there was one — see the
-       * paint above — so this only has to decide what to do when there was
-       * not. The failure state is for that case alone; otherwise the cached
-       * rows stand, with the bar above them saying when they were last true.
        */
       console.error('Failed to load saved places', err);
-      if (!painted.current) setLoadFailed(true);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [session, applySaved]);
+  }, [session]);
 
-  /*
-   * The spinner is cleared where the request settles, in reload's finally —
-   * clearing it here would stop it a frame after it started.
-   */
+  /* The spinner is cleared in reload's finally, where the request settles. */
   const onPullToRefresh = useCallback(() => {
     setRefreshing(true);
     reload().catch((err) => console.error('Reload failed', err));
@@ -456,16 +370,15 @@ export default function FavoritesScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onPullToRefresh}
-                // Both are needed: iOS draws the spinner in tintColor, Android
-                // in colors, and the default is a dark grey that disappears on
-                // the dark theme.
+                // Both are needed: iOS draws the spinner in tintColor, Android in
+                // colors, and the default is a dark grey that disappears on the
+                // dark theme.
                 tintColor={theme.primary}
                 colors={[theme.primary]}
                 progressBackgroundColor={theme.backgroundElement}
               />
             }
           >
-            {cachedAt && <OfflineNotice savedAt={cachedAt} />}
             <FavoritesSection
               items={favorites}
               favoriteIds={favoriteIds}

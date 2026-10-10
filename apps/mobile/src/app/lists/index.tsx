@@ -1,6 +1,6 @@
 import { createList, fetchLists, fetchProfile, setListLiked, type LocationList } from '@locastar/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -16,20 +16,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard } from '@/components/list-card';
-import { OfflineNotice } from '@/components/offline-notice';
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { LISTS_CACHE, readCache, writeCache } from '@/lib/offline-cache';
-import { withTimeout } from '@/lib/with-timeout';
 import { writeFailureMessage } from '@/lib/restriction';
 import { supabase } from '@/lib/supabase';
-
-/** What this screen renders, as it is stored on the device. */
-type ListsScreen = { lists: LocationList[]; username: string };
 
 export default function MyListsScreen() {
   const { t } = useTranslation();
@@ -48,75 +42,38 @@ export default function MyListsScreen() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  /** When the copy on screen was saved, or null while it is live. */
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
-  /**
-   * Whether anything is on screen yet, cached or fresh. A ref so reload need
-   * not depend on it and re-fire the focus effect each time it flips.
-   */
-  const painted = useRef(false);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(() => {
     if (!session) return;
+    setLoading(true);
     setLoadFailed(false);
-
-    /*
-     * The saved copy first, before the network is touched. Reading it only in
-     * the catch meant waiting for an offline request to give up, and nothing
-     * here times out — tens of seconds of empty screen with no signal.
-     */
-    if (!painted.current) {
-      setLoading(true);
-      const saved = await readCache<ListsScreen>(LISTS_CACHE, session.user.id);
-      if (saved) {
-        setLists(saved.data.lists);
-        setUsername(saved.data.username);
-        setCachedAt(saved.savedAt);
+    Promise.all([fetchLists(supabase, session.user.id), fetchProfile(supabase, session.user.id).catch(() => null)])
+      .then(([listRows, profile]) => {
+        setLists(listRows);
+        setUsername(profile?.username ?? profile?.display_name ?? 'you');
+      })
+      .catch((err) => {
+        // "No lists yet. Create one to start organizing places you love." is a
+        // sentence about this person, and a failed request is not entitled to
+        // say it over lists they have already made.
+        console.error('Failed to load your lists', err);
+        setLoadFailed(true);
+      })
+      .finally(() => {
         setLoading(false);
-        painted.current = true;
-      }
-    }
-
-    try {
-      const [listRows, profile] = await withTimeout(
-        Promise.all([
-          fetchLists(supabase, session.user.id),
-          fetchProfile(supabase, session.user.id).catch(() => null),
-        ])
-      );
-      const next = {
-        lists: listRows,
-        username: profile?.username ?? profile?.display_name ?? 'you',
-      };
-      setLists(next.lists);
-      setUsername(next.username);
-      setCachedAt(null);
-      painted.current = true;
-      void writeCache(LISTS_CACHE, session.user.id, next);
-    } catch (err) {
-      // "No lists yet. Create one to start organizing places you love." is a
-      // sentence about this person, and a failed request is not entitled to
-      // say it over lists they have already made. The copy on the device says
-      // it better than the failure state does, when there is one.
-      console.error('Failed to load your lists', err);
-      // Already painted from the device if there was a copy; this only decides
-      // what to show when there was not.
-      if (!painted.current) setLoadFailed(true);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+        setRefreshing(false);
+      });
   }, [session]);
 
   /* The spinner is cleared in reload's finally, where the request settles. */
   const onPullToRefresh = useCallback(() => {
     setRefreshing(true);
-    reload().catch((err) => console.error('Reload failed', err));
+    reload();
   }, [reload]);
 
   useFocusEffect(
     useCallback(() => {
-      reload().catch((err) => console.error('Reload failed', err));
+      reload();
     }, [reload])
   );
 
@@ -174,7 +131,6 @@ export default function MyListsScreen() {
               />
             }
           >
-            {cachedAt && <OfflineNotice savedAt={cachedAt} />}
             <Pressable style={styles.newListButton} onPress={() => setCreateVisible(true)}>
               <ThemedText type="smallBold" style={styles.newListButtonText}>
                 {t('lists.newListButton')}

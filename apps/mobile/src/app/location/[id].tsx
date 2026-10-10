@@ -39,13 +39,10 @@ import { ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, Scr
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useBlockAndReport } from '@/lib/block-and-report';
-import { readPlace, writePlace } from '@/lib/offline-cache';
-import { withTimeout } from '@/lib/with-timeout';
 import { useBlockedUsers } from '@/lib/blocked-users-context';
 import { AddToListModal } from '@/components/add-to-list-modal';
 import { ClaimBusinessModal } from '@/components/claim-business-modal';
 import { LevelBadge } from '@/components/level-badge';
-import { OfflineNotice } from '@/components/offline-notice';
 import { LocationPhoto } from '@/components/location-photo';
 import { ReportModal } from '@/components/report-modal';
 import { ShareModal } from '@/components/share-modal';
@@ -187,12 +184,6 @@ const REVIEW_SORT_OPTIONS = [
 ] as const;
 type ReviewSort = (typeof REVIEW_SORT_OPTIONS)[number]['key'];
 
-/**
- * A place as it is kept on the device: what it is and what it looks like.
- * Reviews are left out on purpose — see lib/offline-cache.
- */
-type CachedPlace = { location: LocationDetail; photos: GalleryPhoto[] };
-
 export default function LocationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -212,8 +203,6 @@ export default function LocationDetailScreen() {
   const [allPhotos, setAllPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  /** When the copy on screen was saved, or null while it is live. */
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const [locationReportVisible, setLocationReportVisible] = useState(false);
   const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
@@ -296,58 +285,19 @@ export default function LocationDetailScreen() {
     useCallback(() => {
       if (!id) return;
       let cancelled = false;
-      let painted = false;
-      let fromCache = false;
       setLoading(true);
       setLoadFailed(false);
       setActivePhotoIndex(0);
-      setCachedAt(null);
-
-      /*
-       * The copy from the last time this place was open, before the network.
-       *
-       * Without this, opening a saved place with no signal sat on the loading
-       * view — which is a ThemedView and nothing else, so on the dark theme it
-       * reads as a black screen — until the request gave up, and nothing here
-       * times out. Reported as "I press one of my saved locations and I get a
-       * black screen", which it was.
-       *
-       * Photos come with it, but reviews do not: they are other people's words
-       * and a report withdraws one instantly, which a copy on a phone would
-       * outlive.
-       */
-      // viewerId, not userId: the reviewer filter below binds its own userId,
-      // and two different ids under one name in one closure is how 0077 happened.
-      const viewerId = session?.user.id;
-      if (viewerId) {
-        void readPlace<CachedPlace>(viewerId, id).then((saved) => {
-          if (cancelled || painted || !saved) return;
-          fromCache = true;
-          setLocation(saved.data.location);
-          setAllPhotos(saved.data.photos);
-          setReviews([]);
-          setCachedAt(saved.savedAt);
-          setLoading(false);
-        });
-      }
-
-      withTimeout(
-        Promise.all([
-          fetchLocationById(supabase, id),
-          fetchReviews(supabase, id, session?.user.id),
-          fetchLocationPhotos(supabase, id, isModerator),
-        ])
-      )
+      Promise.all([
+        fetchLocationById(supabase, id),
+        fetchReviews(supabase, id, session?.user.id),
+        fetchLocationPhotos(supabase, id, isModerator),
+      ])
         .then(([locationResult, reviewsResult, photosResult]) => {
           if (cancelled) return;
-          painted = true;
-          setCachedAt(null);
           setLocation(locationResult);
           setReviews(reviewsResult);
           setAllPhotos(photosResult);
-          if (viewerId && locationResult) {
-            void writePlace(viewerId, id, { location: locationResult, photos: photosResult });
-          }
 
           // After the reviews are on screen, not alongside them: the badges are
           // decoration on content that has already arrived, and holding the
@@ -372,15 +322,12 @@ export default function LocationDetailScreen() {
           // to render "This location couldn't be found", so anyone opening a
           // shared link on a bad connection was told the place was gone.
           console.error('Failed to load the location', err);
-          if (cancelled) return;
-          // The cached copy, if there is one, is already on screen and keeps
-          // its bar. Clearing it here to show "something went wrong" would
-          // throw away the address somebody is standing in a field to read.
-          if (fromCache) return;
-          setLocation(null);
-          setReviews([]);
-          setAllPhotos([]);
-          setLoadFailed(true);
+          if (!cancelled) {
+            setLocation(null);
+            setReviews([]);
+            setAllPhotos([]);
+            setLoadFailed(true);
+          }
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -927,11 +874,6 @@ export default function LocationDetailScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {cachedAt && (
-            <View style={styles.offlineBarWrap}>
-              <OfflineNotice savedAt={cachedAt} />
-            </View>
-          )}
           <View style={styles.heroWrapper} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
             {illustration ? (
               <View>
@@ -1898,12 +1840,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: Spacing.six,
-  },
-  /* The hero sets its own side margin; the bar above it has to match, or it
-     runs to the screen edge while everything below it does not. */
-  offlineBarWrap: {
-    marginHorizontal: Spacing.three,
-    marginTop: Spacing.three,
   },
   heroWrapper: {
     position: 'relative',
