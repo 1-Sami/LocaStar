@@ -865,7 +865,20 @@
     "thanksBody": "We read everything that comes in. There's no reply coming — but it all feeds into what gets built next.",
     "tooMany": "You've sent a few already today. Try again tomorrow.",
     "failed": "That didn't send. Check your connection and try again.",
-    "empty": "Nobody has sent any feedback yet."
+    "empty": "Nobody has sent any feedback yet.",
+    "inboxDone": "Mark done",
+    "inboxReopen": "Reopen",
+    "inboxDelete": "Delete",
+    "inboxDeleteTitle": "Delete this feedback?",
+    "inboxDeleteBody": "It cannot be brought back.",
+    "inboxAssign": "Assign",
+    "inboxAssignTitle": "Who is dealing with this?",
+    "inboxUnassigned": "Nobody",
+    "inboxAssignedTo": "With {{name}}",
+    "inboxDoneGroup": "Done",
+    "inboxOpenGroup": "Open",
+    "inboxMineOnly": "You are seeing only the feedback assigned to you.",
+    "inboxActionFailed": "That did not work. Try again."
   },
   "placeCount": {
     "label_one": "place",

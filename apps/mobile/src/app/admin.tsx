@@ -15,7 +15,16 @@ import { markAdminSurfaceSeen, useAdminAlerts } from '@/lib/use-admin-alerts';
 const MODERATOR_MENU_ITEMS: MenuId[] = ['reports', 'peopleAndBans', 'moderationLog'];
 // Admin-only: superusers moderate content, they do not need to know which
 // build is throwing or read the raw feedback queue.
-const ADMIN_ONLY_MENU_ITEMS: MenuId[] = ['crashes', 'feedbackInbox'];
+const ADMIN_ONLY_MENU_ITEMS: MenuId[] = ['crashes'];
+/*
+ * Feedback sits apart from both groups.
+ *
+ * Not moderator work, so it is not in the first group; not admin-only either,
+ * since 0160 lets an item be handed to a Superuser and a queue you cannot open
+ * is not a queue. They see only what is assigned to them — RLS decides that,
+ * not this list.
+ */
+const FEEDBACK_MENU_ITEMS: MenuId[] = ['feedbackInbox'];
 
 export default function AdminMenuScreen() {
   const router = useRouter();
@@ -56,6 +65,19 @@ export default function AdminMenuScreen() {
                   key={item}
                   item={item}
                   badgeCount={item === 'reports' ? alerts.reports : undefined}
+                  onPress={() => handlePress(item)}
+                />
+              ))}
+            </View>
+          )}
+
+          {(role === 'admin' || role === 'superuser') && (
+            <View style={[styles.menu, styles.menuGroupGap]}>
+              {FEEDBACK_MENU_ITEMS.map((item) => (
+                <MenuRow
+                  key={item}
+                  item={item}
+                  badgeCount={alerts.feedbackInbox}
                   onPress={() => handlePress(item)}
                 />
               ))}

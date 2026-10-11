@@ -24,7 +24,10 @@ const links = [
   { key: 'reports', href: '/admin/reports', label: t('mod.navReports'), adminOnly: false },
   { key: 'log', href: '/admin/log', label: t('mod.navLog'), adminOnly: false },
   { key: 'people', href: '/admin/people', label: t('mod.navPeople'), adminOnly: false },
-  { key: 'feedback', href: '/admin/feedback', label: t('mod.navFeedback'), adminOnly: true },
+  // Not adminOnly since 0160: an item can be handed to a Superuser, and they
+  // need a way in to the one assigned to them. The page shows them that and
+  // nothing else.
+  { key: 'feedback', href: '/admin/feedback', label: t('mod.navFeedback'), adminOnly: false },
   { key: 'crashes', href: '/admin/crashes', label: t('mod.navCrashes'), adminOnly: true },
 ].filter((link) => isAdmin || !link.adminOnly);
 ---

@@ -865,7 +865,20 @@
     "thanksBody": "Vi läser allt som kommer in. Något svar kommer inte — men allt påverkar vad som byggs härnäst.",
     "tooMany": "Du har redan skickat några i dag. Försök igen i morgon.",
     "failed": "Det gick inte att skicka. Kontrollera din anslutning och försök igen.",
-    "empty": "Ingen har skickat någon feedback än."
+    "empty": "Ingen har skickat någon feedback än.",
+    "inboxDone": "Markera klar",
+    "inboxReopen": "Återöppna",
+    "inboxDelete": "Ta bort",
+    "inboxDeleteTitle": "Ta bort denna feedback?",
+    "inboxDeleteBody": "Den går inte att få tillbaka.",
+    "inboxAssign": "Tilldela",
+    "inboxAssignTitle": "Vem tar hand om den här?",
+    "inboxUnassigned": "Ingen",
+    "inboxAssignedTo": "Hos {{name}}",
+    "inboxDoneGroup": "Klara",
+    "inboxOpenGroup": "Öppna",
+    "inboxMineOnly": "Du ser bara den feedback som tilldelats dig.",
+    "inboxActionFailed": "Det gick inte. Försök igen."
   },
   "placeCount": {
     "label_one": "plats",
