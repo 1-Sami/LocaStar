@@ -520,7 +520,10 @@ export default function HomeScreen() {
                 </ThemedText>
                 <View style={styles.tileGrid}>
                   {statTiles(stats).map((tile) => (
-                    <Pressable key={tile.id} style={styles.statTile} onPress={() => handleStatPress(tile.id)}>
+                    <Pressable
+                      key={tile.id}
+                      style={[styles.statTile, { borderColor: theme.fieldBorder }]}
+                      onPress={() => handleStatPress(tile.id)}>
                       <ThemedText style={[styles.statValue, { color: tile.color }]}>{tile.value}</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel} numberOfLines={1}>
                         {t(STAT_LABELS[tile.id])}
@@ -666,25 +669,38 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  /*
+   * Matched to the Profile tiles, which were already legible while these were
+   * not — same component, same numbers, two different treatments.
+   *
+   * hairlineWidth is half a pixel on most screens, and 40% grey against the
+   * dark background put the edge below the point where you can tell a box is
+   * there. theme.fieldBorder is the colour the rest of the app uses when an
+   * outline has to be seen rather than merely implied, and it is the one the
+   * Profile tiles already use.
+   *
+   * Width stays 78: it decides how many tiles fit a row before wrapping, and
+   * changing it moves the 4/3 split without a device here to check it on.
+   */
   statTile: {
     width: 78,
-    height: 62,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(128,128,128,0.4)',
+    height: 66,
+    borderWidth: 1,
     borderRadius: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.half,
   },
   statValue: {
-    fontSize: 15,
-    lineHeight: 17,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: '700',
   },
   statLabel: {
     textAlign: 'center',
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: '600',
   },
   ctaGrid: {
     gap: Spacing.two,
