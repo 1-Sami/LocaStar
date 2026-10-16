@@ -6,9 +6,10 @@ import {
   removeLocationFromList,
   type LocationList,
 } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { SheetRoot } from '@/components/sheet-root';
 import { ThemedText } from '@/components/themed-text';
@@ -36,6 +37,10 @@ export function AddToListModal({
   const [newListName, setNewListName] = useState('');
   const [creating, setCreating] = useState(false);
   const [busyListId, setBusyListId] = useState<string | null>(null);
+
+  /* Counted against the lists actually on screen, not the raw set: a
+     membership row can outlive a list somebody deleted elsewhere. */
+  const chosenCount = lists.filter((list) => memberListIds.has(list.id)).length;
 
   useEffect(() => {
     if (!visible) return;
@@ -118,16 +123,40 @@ export function AddToListModal({
             </ThemedText>
           )}
 
-          {lists.map((list) => (
-            <Pressable
-              key={list.id}
-              style={styles.listRow}
-              disabled={busyListId === list.id}
-              onPress={() => handleToggle(list.id)}>
-              <ThemedText type="default">{list.name}</ThemedText>
-              <ThemedText type="default">{memberListIds.has(list.id) ? '✓' : ''}</ThemedText>
-            </Pressable>
-          ))}
+          {lists.map((list) => {
+            const chosen = memberListIds.has(list.id);
+            return (
+              <Pressable
+                key={list.id}
+                style={[
+                  styles.listRow,
+                  { borderColor: chosen ? theme.primary : theme.backgroundSelected },
+                  chosen && { backgroundColor: theme.backgroundSelected },
+                ]}
+                disabled={busyListId === list.id}
+                /* checkbox, not button: a place belongs to as many lists as you
+                   like, and the row says so to a screen reader too. */
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: chosen }}
+                onPress={() => handleToggle(list.id)}>
+                <ThemedText type="default" style={styles.listName} numberOfLines={2}>
+                  {list.name}
+                </ThemedText>
+                {busyListId === list.id ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  /* An empty circle rather than nothing: a blank space on the
+                     right said "this row does not do anything", which is the
+                     opposite of true. */
+                  <Ionicons
+                    name={chosen ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={22}
+                    color={chosen ? theme.primary : theme.textSecondary}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
 
           <View style={styles.newListRow}>
             <TextInput
@@ -147,8 +176,18 @@ export function AddToListModal({
             </Pressable>
           </View>
 
-          <Pressable style={styles.doneButton} onPress={onClose}>
-            <ThemedText type='smallBold'>{t('form.done')}</ThemedText>
+          {/*
+            Done always closes the sheet — the add already happened on the tap
+            — so a permanent grey slab was describing a disabled control that
+            was not disabled. It fills once at least one list is ticked, which
+            is the confirmation the sheet never gave.
+          */}
+          <Pressable
+            style={[styles.doneButton, chosenCount > 0 && { backgroundColor: theme.primary }]}
+            onPress={onClose}>
+            <ThemedText type="smallBold" style={chosenCount > 0 ? styles.doneTextOn : undefined}>
+              {t('form.done')}
+            </ThemedText>
           </Pressable>
         </ThemedView>
       </SheetRoot>
@@ -173,9 +212,15 @@ const styles = StyleSheet.create({
   },
   listRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.two,
+    gap: Spacing.two,
+    paddingVertical: Spacing.two + 2,
+    paddingHorizontal: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
   },
+  listName: { flex: 1 },
   newListRow: {
     flexDirection: 'row',
     gap: Spacing.two,
@@ -210,4 +255,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(128,128,128,0.25)',
     marginTop: Spacing.two,
   },
+  doneTextOn: { color: '#ffffff' },
 });
