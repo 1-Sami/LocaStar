@@ -1,5 +1,6 @@
 ---
 import {
+  LEVELS,
   achievementCopy,
   categoryName,
   fetchMyAchievementCounts,
@@ -727,7 +728,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                   <span class="level-name">
                     {ach.level[achievements.level.id]}
                     <span class="mono level-of">
-                      {fillCopy(ach.levelOf, { number: achievements.level.number, total: 8 })}
+                      {fillCopy(ach.levelNumber, { number: achievements.level.number })}
                     </span>
                   </span>
                   <span class="level-points">
@@ -837,9 +838,16 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                 </section>
 
                 <section class="group">
-                  <div class="group-head">
-                    <h2>{ach.howPoints}</h2>
-                  </div>
+                  {/*
+                    <details>, not a scripted toggle: it opens and closes with
+                    no JavaScript, keyboard and screen readers already know it,
+                    and the browser handles the state. Closed by default — both
+                    of these are reference, and the card above already answers
+                    the only urgent question, which is how far to the next
+                    level.
+                  */}
+                  <details class="disclosure">
+                    <summary><h2>{ach.howPoints}</h2></summary>
                   <table class="points-table">
                     <tbody>
                       {achievements.lines.map((entry) => (
@@ -856,6 +864,33 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
                       </tr>
                     </tbody>
                   </table>
+                  </details>
+
+                  <details class="disclosure">
+                    <summary><h2>{ach.levelsTitle}</h2></summary>
+                    <table class="points-table levels-table">
+                      <thead>
+                        <tr>
+                          <th>{ach.levelsLevel}</th>
+                          <th class="num">{ach.levelsPoints}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {LEVELS.map((entry, index) => (
+                          <tr class={index + 1 === achievements.level.number ? 'level-here' : undefined}>
+                            <td>
+                              {fillCopy(ach.levelNumber, { number: index + 1 })} · {ach.level[entry.id]}
+                              {index + 1 === achievements.level.number && (
+                                <span class="mono you-are-here">{ach.levelsYouAreHere}</span>
+                              )}
+                            </td>
+                            <td class="mono num strong">{entry.from}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </details>
+
                   <p class="empty-line">{ach.footnote}</p>
                 </section>
               </>
@@ -1449,6 +1484,78 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
   .badge-meta {
     font-size: 10.5px;
     color: var(--text-42);
+  }
+
+  .disclosure {
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* The whole row is the control, so it gets the pointer and the focus ring,
+     not just the triangle. */
+  .disclosure > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 0;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* A chevron that turns, drawn rather than imported — one character, and it
+     inherits the text colour in both themes. */
+  .disclosure > summary::after {
+    content: '⌄';
+    margin-left: auto;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--text-55);
+    transform: translateY(-3px);
+    transition: transform 0.15s ease;
+  }
+
+  .disclosure[open] > summary::after {
+    transform: rotate(180deg) translateY(-1px);
+  }
+
+  .disclosure > summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .disclosure > summary h2 {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .levels-table th {
+    padding: 0 0 8px;
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-42);
+    font-weight: 600;
+  }
+
+  .levels-table th.num {
+    text-align: right;
+  }
+
+  /* Tinted rather than outlined: an outline inside a bordered table reads as a
+     second table. */
+  .levels-table .level-here td {
+    background: var(--surface-alt);
+  }
+
+  .you-are-here {
+    margin-left: 8px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: #e8a93b;
   }
 
   .points-table {

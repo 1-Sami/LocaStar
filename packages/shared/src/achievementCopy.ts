@@ -15,7 +15,13 @@
 import type { BadgeGroup, BadgeId, LevelId, ScoreLineId } from "./achievements";
 
 export interface AchievementCopy {
-  levelOf: string;
+  /** "Level 4". The total is in the levels table now, not beside the number. */
+  levelNumber: string;
+  levelsTitle: string;
+  levelsLevel: string;
+  levelsPoints: string;
+  /** Marks the row the reader is standing on. */
+  levelsYouAreHere: string;
   points: string;
   toNext: string;
   atTheTop: string;
@@ -40,7 +46,11 @@ export interface AchievementCopy {
 export const ACHIEVEMENT_COPY: Record<"en" | "sv", AchievementCopy> = {
   en: {
     title: "Achievements",
-    levelOf: "Level {{number}} of {{total}}",
+    levelNumber: "Level {{number}}",
+    levelsTitle: "Levels",
+    levelsLevel: "Level",
+    levelsPoints: "Points",
+    levelsYouAreHere: "You are here",
     points: "points",
     toNext: "{{points}} to {{level}}",
     atTheTop: "You have reached the top level. Everything from here is for the map, not for the number.",
@@ -100,7 +110,11 @@ export const ACHIEVEMENT_COPY: Record<"en" | "sv", AchievementCopy> = {
   },
   sv: {
     title: "Utmärkelser",
-    levelOf: "Nivå {{number}} av {{total}}",
+    levelNumber: "Nivå {{number}}",
+    levelsTitle: "Nivåer",
+    levelsLevel: "Nivå",
+    levelsPoints: "Poäng",
+    levelsYouAreHere: "Du är här",
     points: "poäng",
     toNext: "{{points}} till {{level}}",
     atTheTop: "Du har nått den högsta nivån. Härifrån handlar det om kartan, inte om siffran.",

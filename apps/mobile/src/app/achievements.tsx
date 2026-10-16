@@ -1,4 +1,5 @@
 import {
+  LEVELS,
   fetchMyAchievementCounts,
   hasAchievements,
   summarise,
@@ -90,6 +91,37 @@ function Bar({ fraction, height = 6 }: { fraction: number; height?: number }) {
   );
 }
 
+/**
+ * A section header that opens and closes what follows it.
+ *
+ * Both the points breakdown and the level ladder are reference — worth having,
+ * not worth the height they take every time the screen opens. Closed by
+ * default for that reason: the card at the top already answers the only
+ * urgent question, which is how far it is to the next level.
+ */
+function Disclosure({
+  label,
+  open,
+  onToggle,
+  tint,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  tint: string;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
+      style={styles.disclosure}>
+      <ThemedText type="smallBold">{label}</ThemedText>
+      <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={tint} />
+    </Pressable>
+  );
+}
+
 export default function AchievementsScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -114,6 +146,8 @@ export default function AchievementsScreen() {
    * — have, need, bonus, tier — so this is presentation, not new data.
    */
   const [openBadge, setOpenBadge] = useState<BadgeState | null>(null);
+  const [pointsOpen, setPointsOpen] = useState(false);
+  const [levelsOpen, setLevelsOpen] = useState(false);
 
   const gridWidth = Math.min(windowWidth, MaxContentWidth) - Spacing.three * 2;
   const tileWidth = Math.floor((gridWidth - Spacing.two * 2) / 3);
@@ -212,7 +246,7 @@ export default function AchievementsScreen() {
                   {t(`achievements.level.${level.id}`)}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {t('achievements.levelOf', { number: level.number, total: 8 })}
+                  {t('achievements.levelNumber', { number: level.number })}
                 </ThemedText>
               </View>
               <View style={styles.pointsBlock}>
@@ -331,9 +365,13 @@ export default function AchievementsScreen() {
             </View>
           ))}
 
-          <ThemedText type="smallBold" style={styles.sectionLabel}>
-            {t('achievements.howPoints')}
-          </ThemedText>
+          <Disclosure
+            label={t('achievements.howPoints')}
+            open={pointsOpen}
+            onToggle={() => setPointsOpen((was) => !was)}
+            tint={theme.textSecondary}
+          />
+          {pointsOpen && (
           <ThemedView type="backgroundElement" style={styles.card}>
             {LINE_ORDER.map((id) => {
               const entry = lines.find((candidate) => candidate.id === id);
@@ -361,6 +399,52 @@ export default function AchievementsScreen() {
               </ThemedText>
             </View>
           </ThemedView>
+          )}
+
+          <Disclosure
+            label={t('achievements.levelsTitle')}
+            open={levelsOpen}
+            onToggle={() => setLevelsOpen((was) => !was)}
+            tint={theme.textSecondary}
+          />
+          {levelsOpen && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <View style={[styles.levelRow, styles.levelHeadRow, { borderBottomColor: theme.backgroundSelected }]}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.levelCol}>
+                  {t('achievements.levelsLevel')}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {t('achievements.levelsPoints')}
+                </ThemedText>
+              </View>
+              {LEVELS.map((entry, index) => {
+                const here = index + 1 === level.number;
+                return (
+                  <View
+                    key={entry.id}
+                    style={[
+                      styles.levelRow,
+                      here && { backgroundColor: theme.backgroundSelected, borderRadius: Spacing.one },
+                    ]}>
+                    <View style={styles.levelCol}>
+                      <ThemedText type={here ? 'smallBold' : 'small'}>
+                        {t('achievements.levelNumber', { number: index + 1 })} ·{' '}
+                        {t(`achievements.level.${entry.id}`)}
+                      </ThemedText>
+                      {here && (
+                        <ThemedText type="small" style={styles.youAreHere}>
+                          {t('achievements.levelsYouAreHere')}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <ThemedText type={here ? 'smallBold' : 'small'} themeColor={here ? 'text' : 'textSecondary'}>
+                      {entry.from}
+                    </ThemedText>
+                  </View>
+                );
+              })}
+            </ThemedView>
+          )}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
             {t('achievements.footnote')}
@@ -525,6 +609,24 @@ const styles = StyleSheet.create({
   },
   tileEarned: { borderColor: AMBER },
   tilePressed: { opacity: 0.6 },
+  disclosure: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingVertical: Spacing.one + 2,
+    paddingHorizontal: Spacing.one,
+  },
+  levelHeadRow: { borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: Spacing.half },
+  levelCol: { flex: 1 },
+  youAreHere: { color: AMBER, marginTop: 1 },
   sheet: {
     borderTopLeftRadius: Spacing.three,
     borderTopRightRadius: Spacing.three,
