@@ -599,7 +599,8 @@
     "renameTitle": "Rename list",
     "namePlaceholder": "List name",
     "created": "Created {{date}}",
-    "updatedSuffix": " · Updated {{date}}"
+    "updatedSuffix": " · Updated {{date}}",
+    "addPlacesLabel": "Add places to this list"
   },
   "admin": {
     "noAccess": "You don’t have access to this page.",

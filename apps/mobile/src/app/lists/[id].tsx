@@ -289,9 +289,25 @@ export default function ListDetailScreen() {
                 )}
               </View>
             ) : (
-              <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList} hitSlop={8}>
-                <Ionicons name="trash-outline" size={16} color="#ffffff" />
-              </Pressable>
+              <View style={styles.headerActions}>
+                {/*
+                  Straight to Search, and no further. Adding a place to a list
+                  already works from the place itself, so this only has to
+                  close the gap that was actually missing: standing in a list
+                  with no way to go and find the next one.
+                */}
+                <Pressable
+                  style={[styles.headerAddButton, { backgroundColor: theme.primary }]}
+                  onPress={() => router.push('/search')}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('listDetail.addPlacesLabel')}
+                  hitSlop={8}>
+                  <Ionicons name="add" size={20} color="#ffffff" />
+                </Pressable>
+                <Pressable style={styles.headerDeleteButton} onPress={handleDeleteList} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={16} color="#ffffff" />
+                </Pressable>
+              </View>
             ),
         }}
       />
@@ -569,6 +585,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  /* The delete button carries the row's right margin, so this one only needs
+     the gap between the two. */
+  headerAddButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.two,
   },
   headerDeleteButton: {
     width: 32,

@@ -599,7 +599,8 @@
     "renameTitle": "Byt namn på listan",
     "namePlaceholder": "Listnamn",
     "created": "Skapad {{date}}",
-    "updatedSuffix": " · Uppdaterad {{date}}"
+    "updatedSuffix": " · Uppdaterad {{date}}",
+    "addPlacesLabel": "Lägg till platser i listan"
   },
   "admin": {
     "noAccess": "Du har inte behörighet till den här sidan.",
