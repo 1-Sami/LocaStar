@@ -576,7 +576,22 @@ export default function SearchScreen() {
         */}
         {showScrollTop && (
           <Pressable
-            style={styles.scrollTopButton}
+            /*
+             * The home indicator has to be added here, not baked into the
+             * style.
+             *
+             * BottomTabInset is 50 on iOS, which is a tab bar on a phone with
+             * a home button. Every iPhone since the X puts roughly 34pt of
+             * safe area under that bar, so a button pinned 58pt up sat inside
+             * it — reported on an iPhone 13, invisible on an SE, which is why
+             * it survived. It is absolutely positioned, so unlike the four
+             * paddingBottom uses of the same constant it can never be scrolled
+             * out from behind the bar.
+             *
+             * insets.bottom is 0 where there is no indicator, so the older
+             * phones are unchanged.
+             */
+            style={[styles.scrollTopButton, { bottom: BottomTabInset + insets.bottom + Spacing.two }]}
             accessibilityLabel={t('search.backToTop')}
             accessibilityRole="button"
             onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
@@ -891,7 +906,7 @@ const createStyles = (c: SearchPaletteColors) =>
   scrollTopButton: {
     position: 'absolute',
     right: Spacing.three,
-    bottom: BottomTabInset + Spacing.two,
+    /* bottom is applied at the call site — it needs the safe-area inset. */
     width: 44,
     height: 44,
     borderRadius: 22,
