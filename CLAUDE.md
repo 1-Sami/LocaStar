@@ -160,6 +160,30 @@ what reading could not:
 Also: adding a column can silently break a SQL function that has a parameter of
 the same name — the column wins, with no error. See migration `0077`.
 
+**A new table needs its own `GRANT` from 2026-10-30.** Supabase stops
+auto-granting Data API access to tables created in `public` on that date.
+Existing tables keep what they have, so nothing in the live project changes —
+but a `create table` migration written from now on has to say who may reach it,
+or PostgREST answers `permission denied` for a table whose RLS reads perfectly:
+
+```sql
+grant select on public.new_table to anon;
+grant select, insert, update, delete on public.new_table to authenticated, service_role;
+```
+
+**Do not aim that template at `profiles`.** Table-level `select` was revoked
+there deliberately in `0066` and replaced by a column list — that list is the
+only thing keeping `notification_preferences` private, and a blanket
+`grant select` silently un-hides it. Bookkeeping tables want the opposite:
+`location_city_corrections` and the `location_*_backfill` pair grant nothing to
+`anon` or `authenticated`, which is why `0133`, `0137` and `0139` each end in a
+`revoke`.
+
+Twenty of the twenty-two migrations that create tables predate this and carry
+no grant, relying on the old automatic behaviour. Replaying
+`supabase/migrations/` into a fresh project will therefore rebuild the whole
+schema with no API access to any of it.
+
 Credentials belong in the Supabase dashboard only. `supabase/config.toml` is
 committed.
 
