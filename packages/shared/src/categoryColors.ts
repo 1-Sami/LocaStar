@@ -38,6 +38,7 @@ export const CategoryColors: Record<string, string> = {
   'race-tracks-vehicle': '#3A3F4A',
   'rc-race-track': '#4A5568',
   'horse-track': '#6B4A2E',
+  'riding-school': '#8A6240',
 
   // Nature & trails
   'bike-trails': '#2E4A1F',
