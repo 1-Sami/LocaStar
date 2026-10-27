@@ -188,6 +188,16 @@ const CATEGORIES = {
   'rc-race-track': { filters: ['["sport"="rc_car"]', '["leisure"="track"]["sport"="rc_car"]'] },
   // Racing and trotting tracks, not riding schools — "track" is the word.
   'horse-track': { filters: ['["sport"="horse_racing"]', '["leisure"="track"]["sport"="equestrian"]'] },
+  /*
+   * A ridskola, which is a different errand from the track above: stables, an
+   * arena and horses you are taught on, rather than an oval you race round.
+   * leisure=horse_riding is the OSM tag for exactly that.
+   *
+   * Deliberately not sport=equestrian on its own. That value is tagged on
+   * anything horse-related including the racing tracks, so it would both
+   * collide with horse-track and drag in paddocks that teach nobody.
+   */
+  'riding-school': { filters: ['["leisure"="horse_riding"]'] },
   // sport=motocross specifically, not sport=motor — that value is already
   // race-tracks-vehicle and the two tags don't overlap in practice.
   'motocross-atv-tracks': { filters: ['["leisure"="track"]["sport"="motocross"]'] },
