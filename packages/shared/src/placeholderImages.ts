@@ -71,6 +71,7 @@ const IMAGES: Record<string, { file: string; focusY: number }> = {
   "public-art": { file: "public-art.webp", focusY: 62 },
   "race-tracks-vehicle": { file: "race-track.webp", focusY: 75 },
   "rc-race-track": { file: "rc-race-track.webp", focusY: 85 },
+  "riding-school": { file: "riding-school.webp", focusY: 78 },
   roads: { file: "road.webp", focusY: 78 },
   "scenic-place": { file: "viewpoint.webp", focusY: 70 },
   "shooting-range": { file: "shooting-range.webp", focusY: 80 },
