@@ -131,7 +131,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.38)',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -146,8 +147,8 @@ const styles = StyleSheet.create({
   hoursCard: {
     backgroundColor: '#ffffff',
     borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0,0,0,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.38)',
     padding: Spacing.three,
     gap: Spacing.two,
   },

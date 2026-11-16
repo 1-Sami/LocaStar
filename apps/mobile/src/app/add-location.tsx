@@ -795,15 +795,16 @@ export default function AddLocationScreen() {
                 value={publishDate}
                 onChange={setPublishDate}
                 placeholder={t('addLocation.publishDatePlaceholder')}
+                help={t('addLocation.publishDateHint')}
               />
-              <ThemedText type="small" themeColor="textSecondary" style={styles.publishHint}>
-                {t('addLocation.publishDateHint')}
-              </ThemedText>
-              {/* Said here rather than discovered later. An activity and
-                  everything posted on it goes when it ends, which is the right
+              {/* Folded into the question mark above: how a publish date
+                  behaves, which is mechanics and costs nothing to miss.
+                  Deliberately left on the page: that an activity and
+                  everything posted on it goes when it ends. That is the right
                   behaviour — a festival's reviews are for people deciding
                   whether to go this week — but being surprised by it is what
-                  costs you the person who wrote them. */}
+                  costs you the person who wrote them, and a warning folded
+                  behind a tap is a warning nobody read. */}
               <ThemedText type="small" themeColor="textSecondary" style={styles.publishHint}>
                 {t('addLocation.endsAndDisappears')}
               </ThemedText>
@@ -954,7 +955,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -966,7 +967,7 @@ const styles = StyleSheet.create({
   },
   lightInput: {
     backgroundColor: '#ffffff',
-    borderColor: 'rgba(0,0,0,0.15)',
+    borderColor: 'rgba(0,0,0,0.38)',
     color: '#000000',
   },
   lightPlaceholderText: {

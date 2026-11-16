@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { FieldHelp } from '@/components/field-help';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useThemeMode } from '@/lib/theme-mode-context';
@@ -17,12 +18,15 @@ export function DateField({
   onChange,
   minimumDate,
   placeholder,
+  help,
 }: {
   label: string;
   value: Date | null;
   onChange: (date: Date | null) => void;
   minimumDate?: Date;
   placeholder?: string;
+  /** Folded behind a question mark beside the label, rather than printed under the field. */
+  help?: string;
 }) {
   const { t } = useTranslation();
   const { resolvedScheme } = useThemeMode();
@@ -35,9 +39,17 @@ export function DateField({
 
   return (
     <View style={styles.container}>
-      <ThemedText type="smallBold" style={styles.label}>
-        {label}
-      </ThemedText>
+      {help ? (
+        <FieldHelp text={help}>
+          <ThemedText type="smallBold" style={styles.label}>
+            {label}
+          </ThemedText>
+        </FieldHelp>
+      ) : (
+        <ThemedText type="smallBold" style={styles.label}>
+          {label}
+        </ThemedText>
+      )}
       <View style={styles.row}>
         <Pressable style={styles.field} onPress={() => setShowPicker(true)}>
           <ThemedText type="default" style={value ? styles.valueText : styles.placeholderText}>
@@ -86,12 +98,12 @@ const styles = StyleSheet.create({
   },
   field: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     backgroundColor: '#ffffff',
-    borderColor: 'rgba(0,0,0,0.15)',
+    borderColor: 'rgba(0,0,0,0.38)',
   },
   valueText: {
     color: '#000000',
