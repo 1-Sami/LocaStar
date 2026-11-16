@@ -771,12 +771,15 @@ export default function AddLocationScreen() {
 
           {isActivity && (
             <>
+              {/* The explanation is folded away; the warning below about the
+                  event and its reviews being removed is deliberately not. */}
               <YesNoRow
                 label={t('addLocation.publicOrPrivate')}
                 value={isPrivate}
                 onChange={setIsPrivate}
                 yesLabel={t('addLocation.private')}
                 noLabel={t('addLocation.public')}
+                help={t('addLocation.publicOrPrivateHelp')}
               />
 
               <DateField label={t('addLocation.startDate')} value={startDate} onChange={setStartDate} placeholder={t('addLocation.startDatePlaceholder')} />

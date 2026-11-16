@@ -41,7 +41,8 @@
     "public": "Public",
     "continue": "Continue",
     "openApp": "Open LocaStar",
-    "close": "Close"
+    "close": "Close",
+    "whatIsThis": "What is this?"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -386,7 +387,7 @@
       "place": "*Are you the owner of the place?",
       "activity": "*Are you the owner of the event?"
     },
-    "publicOrPrivate": "*Should this event be public or private? Private is only visible to people you share it with (e.g. a party or wedding).",
+    "publicOrPrivate": "*Should this event be public or private?",
     "private": "PRIVATE",
     "public": "PUBLIC",
     "startDate": "*Start date",
@@ -438,7 +439,8 @@
       "activity": "Submit event"
     },
     "submitting": "Submitting…",
-    "endsAndDisappears": "When the event ends it is removed, along with any reviews and photos people added to it."
+    "endsAndDisappears": "When the event ends it is removed, along with any reviews and photos people added to it.",
+    "publicOrPrivateHelp": "Private is only visible to people you share the event with — a wedding invite, a party, a poker night. Public means anyone can find it."
   },
   "editLocation": {
     "saveError": "Something went wrong saving your changes. Try again.",
@@ -812,7 +814,9 @@
     "shareLocation": "Share this location",
     "shareError": "Something went wrong sharing this location. Try again.",
     "reportOtherNeedsWords": "Say what is wrong in at least {{count}} words.",
-    "reportPlaceholderOther": "What is wrong with it?"
+    "reportPlaceholderOther": "What is wrong with it?",
+    "moreDays": "Show the other days",
+    "fewerDays": "Hide the other days"
   },
   "validation": {
     "passwordTooShort": "Use at least {{count}} characters.",

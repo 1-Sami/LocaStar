@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { FieldHelp } from '@/components/field-help';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,18 +24,27 @@ export function YesNoRow({
   onChange,
   yesLabel,
   noLabel,
+  help,
 }: {
   label: string;
   value: boolean | null;
   onChange: (value: boolean) => void;
   yesLabel?: string;
   noLabel?: string;
+  /** Folded behind a question mark rather than printed under the question. */
+  help?: string;
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
   return (
     <View style={styles.row}>
-      <ThemedText type="default">{label}</ThemedText>
+      {help ? (
+        <FieldHelp text={help}>
+          <ThemedText type="default">{label}</ThemedText>
+        </FieldHelp>
+      ) : (
+        <ThemedText type="default">{label}</ThemedText>
+      )}
       <View style={styles.options}>
         <Pressable
           style={styles.option}

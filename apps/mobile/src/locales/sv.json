@@ -41,7 +41,8 @@
     "public": "Offentlig",
     "continue": "Fortsätt",
     "openApp": "Öppna LocaStar",
-    "close": "Stäng"
+    "close": "Stäng",
+    "whatIsThis": "Vad betyder det här?"
   },
   "auth": {
     "alreadyHaveAccount": "Har du redan ett konto?",
@@ -386,7 +387,7 @@
       "place": "*Är du ägare till platsen?",
       "activity": "*Är du ägare till evenemanget?"
     },
-    "publicOrPrivate": "*Ska evenemanget vara offentligt eller privat? Ett privat evenemang syns bara för dem du delar det med (t.ex. en fest eller ett bröllop).",
+    "publicOrPrivate": "*Ska evenemanget vara offentligt eller privat?",
     "private": "PRIVAT",
     "public": "OFFENTLIG",
     "startDate": "*Startdatum",
@@ -438,7 +439,8 @@
       "activity": "Skicka in evenemang"
     },
     "submitting": "Skickar…",
-    "endsAndDisappears": "När evenemanget är slut tas det bort, tillsammans med de recensioner och bilder som lagts till på det."
+    "endsAndDisappears": "När evenemanget är slut tas det bort, tillsammans med de recensioner och bilder som lagts till på det.",
+    "publicOrPrivateHelp": "Ett privat evenemang syns bara för dem du delar det med — en bröllopsinbjudan, en fest, en pokerkväll. Offentligt betyder att vem som helst kan hitta det."
   },
   "editLocation": {
     "saveError": "Något gick fel när ändringarna sparades. Försök igen.",
@@ -812,7 +814,9 @@
     "shareLocation": "Dela den här platsen",
     "shareError": "Något gick fel när platsen skulle delas. Försök igen.",
     "reportOtherNeedsWords": "Beskriv vad som är fel med minst {{count}} ord.",
-    "reportPlaceholderOther": "Vad är det som är fel?"
+    "reportPlaceholderOther": "Vad är det som är fel?",
+    "moreDays": "Visa övriga dagar",
+    "fewerDays": "Dölj övriga dagar"
   },
   "validation": {
     "passwordTooShort": "Använd minst {{count}} tecken.",

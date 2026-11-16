@@ -1,9 +1,12 @@
 import { ALWAYS_OPEN, isAlwaysOpen, type DayKey, type OpeningHours } from '@locastar/shared';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 const LIGHT_PLACEHOLDER = '#6B6B6B';
 
@@ -18,6 +21,8 @@ export function OpeningHoursEditor({
   onChange: (next: OpeningHours) => void;
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
   const toggleDay = (day: DayKey) => {
     const next = { ...hours };
     if (next[day]) {
@@ -29,6 +34,19 @@ export function OpeningHoursEditor({
   };
 
   const alwaysOpen = isAlwaysOpen(hours);
+
+  /*
+   * Seven days is seven rows before anyone has said anything, and each one
+   * that gets ticked grows two more fields — so the common case, a place open
+   * the same hours most days, scrolled past everything below it.
+   *
+   * Collapsed shows Monday *and anything already filled in*. Showing only
+   * Monday would have been simpler and would have hidden Tuesday's hours from
+   * somebody who set them, which reads as having lost them. That also makes
+   * this safe on the edit form, where the hours arrive already populated.
+   */
+  const visibleDays = expanded ? DAYS : DAYS.filter((day) => day === 'mon' || hours[day]);
+  const foldedAway = DAYS.length - visibleDays.length;
 
   return (
     <View style={styles.hoursCard}>
@@ -47,7 +65,7 @@ export function OpeningHoursEditor({
       </Pressable>
 
       {!alwaysOpen &&
-        DAYS.map((day) => {
+        visibleDays.map((day) => {
         const entry = hours[day];
         const isOpen = Boolean(entry);
         return (
@@ -82,11 +100,36 @@ export function OpeningHoursEditor({
           </View>
         );
       })}
+
+      {/* Only when there is something to unfold, and it doubles as the way
+          back — otherwise opening the list would be a one-way door. */}
+      {!alwaysOpen && (foldedAway > 0 || expanded) && (
+        <Pressable
+          onPress={() => setExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={expanded ? t('components.fewerDays') : t('components.moreDays')}
+          hitSlop={8}
+          style={styles.foldToggle}>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={theme.textSecondary}
+          />
+        </Pressable>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  /* Centred under the days rather than beside them: it belongs to the whole
+     list, not to Sunday. */
+  foldToggle: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.four,
+  },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Spacing.two,
