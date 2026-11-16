@@ -24,7 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CategoryChip } from '@/components/category-chip';
 import { categoryLabel } from '@/lib/categories';
 import { LocationCard } from '@/components/location-card';
-import { BottomTabInset, Fonts, MaxContentWidth, type SearchPaletteColors, Spacing } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, type SearchPaletteColors, Spacing, TabBarHeight } from '@/constants/theme';
 import { useSearchPalette } from '@/hooks/use-search-palette';
 import { useSaves } from '@/hooks/use-saves';
 import { useUserLocation } from '@/hooks/use-user-location';
@@ -577,21 +577,20 @@ export default function SearchScreen() {
         {showScrollTop && (
           <Pressable
             /*
-             * The home indicator has to be added here, not baked into the
-             * style.
+             * Measured against the tab bar, not against what the list pads by.
              *
-             * BottomTabInset is 50 on iOS, which is a tab bar on a phone with
-             * a home button. Every iPhone since the X puts roughly 34pt of
-             * safe area under that bar, so a button pinned 58pt up sat inside
-             * it — reported on an iPhone 13, invisible on an SE, which is why
-             * it survived. It is absolutely positioned, so unlike the four
-             * paddingBottom uses of the same constant it can never be scrolled
-             * out from behind the bar.
+             * This used BottomTabInset, which is 80 on Android. That is the
+             * right number for padding under a scrolling list, where too much
+             * is invisible — but absolutely positioned it left the button
+             * floating 39pt clear of a bar nowhere near that tall.
              *
-             * insets.bottom is 0 where there is no indicator, so the older
-             * phones are unchanged.
+             * TabBarHeight is the 49 the vendored BottomTabBar actually
+             * returns, so this is the bar plus one Spacing.two gap on both
+             * platforms. The home indicator still has to be added here rather
+             * than baked into the style: insets.bottom is 0 on a phone that
+             * has none, and an iPhone 13 pinned 8pt too low sat inside the bar.
              */
-            style={[styles.scrollTopButton, { bottom: BottomTabInset + insets.bottom + Spacing.two }]}
+            style={[styles.scrollTopButton, { bottom: TabBarHeight + insets.bottom + Spacing.two }]}
             accessibilityLabel={t('search.backToTop')}
             accessibilityRole="button"
             onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
@@ -913,8 +912,15 @@ const createStyles = (c: SearchPaletteColors) =>
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: c.card,
+    /*
+     * c.text, not c.hairline. The hairline is meant to separate two surfaces
+     * of almost the same colour; on a button that floats over cards painted
+     * c.card it vanished. This is the one border on the screen that has to be
+     * seen rather than felt, and c.text is already the arrow's own colour —
+     * near-white on dark, near-black on light, which is what was asked for.
+     */
     borderWidth: 1,
-    borderColor: c.hairline,
+    borderColor: c.text,
     // It floats over cards painted the same colour it is, so without a shadow
     // it reads as one of them that has come loose.
     elevation: 4,

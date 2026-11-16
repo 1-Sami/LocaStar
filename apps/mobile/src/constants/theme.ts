@@ -125,4 +125,21 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80, web: 80 }) ?? 0;
+
+/*
+ * What the tab bar actually measures, as opposed to what content pads for.
+ *
+ * BottomTabInset above is deliberately generous — it is padding under a
+ * scrolling list, where too much is invisible and too little clips the last
+ * card. An absolutely positioned element cannot use it: 80 on Android left the
+ * back-to-top button floating 39pt above a bar that is nowhere near that tall.
+ *
+ * expo-router 57 vendors its own react-navigation, and its BottomTabBar
+ * returns `TABBAR_HEIGHT_UIKIT + inset` with TABBAR_HEIGHT_UIKIT = 49 on both
+ * platforms. The inset is the caller's to add, because only the screen knows
+ * whether it has one. Read rather than imported: useBottomTabBarHeight is not
+ * on expo-router's public entry, and deep-importing a build path to get it is
+ * a crash on launch waiting for a patch release.
+ */
+export const TabBarHeight = 49;
 export const MaxContentWidth = 800;
