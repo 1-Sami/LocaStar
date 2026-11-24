@@ -53,6 +53,34 @@ async function fetchContributionCount(client: SupabaseClient, userId: string): P
   return (data as { contribution_count: number } | null)?.contribution_count ?? 0;
 }
 
+/**
+ * Shares this person is part of, in either direction, counting only the ones
+ * whose location they can still open.
+ *
+ * Two separate bugs met in one number.
+ *
+ * It filtered on recipient_id alone, so sharing a place with somebody added
+ * nothing to your own count — Zahi1 had sent an event and a place and the
+ * tile read 0, while the Shared screen listed both. That screen has always
+ * read `.or(sender_id, recipient_id)`; the stat simply never agreed with it.
+ *
+ * And a share row outlives its location becoming unreadable. maimai kept a
+ * count of 1 for an event that ended on 2026-11-21, had been marked `past`
+ * by the retire job, and had already gone from the list she was counting.
+ *
+ * `!inner` is the same instrument fetchReadableItemCounts uses on list items,
+ * for the same reason: under RLS the join does not resolve, PostgREST drops
+ * the row, and the number matches the screen it sits above.
+ */
+async function countShares(client: SupabaseClient, userId: string): Promise<number> {
+  const { count, error } = await client
+    .from("location_shares")
+    .select("id, locations!inner(id)", { count: "exact", head: true })
+    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function fetchProfileStats(
   client: SupabaseClient,
   userId: string
@@ -60,7 +88,7 @@ export async function fetchProfileStats(
   const [favorites, bucketList, shared, reviews, added, lists, activities, contributions] = await Promise.all([
     countRows(client, "saves", { user_id: userId, kind: "favorite" }),
     countRows(client, "saves", { user_id: userId, kind: "bucket_list" }),
-    countRows(client, "location_shares", { recipient_id: userId }),
+    countShares(client, userId),
     countRows(client, "reviews", { user_id: userId }),
     // import_batch is null keeps bulk-imported rows out of a person's own
     // numbers. Imports are created by a real account, so without this the
