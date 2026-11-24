@@ -77,10 +77,20 @@ module the installed app lacks **crashes it on launch**, which then blocks every
 further OTA until everyone reinstalls. Check `apps/mobile/package.json` before
 importing anything new.
 
-Two version numbers, deliberately: `app.json`'s `version` is the native/store
-one and drives `runtimeVersion`, so bumping it stops existing installs receiving
-updates. `APP_RELEASE` in `src/constants/release.ts` is what users see and moves
-once per OTA. `npm run release` handles it.
+Three version strings, deliberately separate:
+
+- `APP_RELEASE` in `src/constants/release.ts` is what users see and moves once
+  per OTA. `npm run release` handles it.
+- `app.json`'s `version` is the store name (Android versionName, iOS
+  CFBundleShortVersionString). Set it to the current `APP_RELEASE` before a store
+  build so Play and the App Store show the same number users see. It only
+  takes effect in the next binary, so it lags between builds; that is fine.
+- `runtimeVersion` is **pinned to the literal `"1.0.51"`** in `app.json`. It
+  used to be `policy: appVersion`, which tied it to `version`: bumping the store
+  name would have stranded every install. Pinned on 2026-11-24 to the value
+  every live build already had, so nothing moved. **Only change it when a
+  build adds or changes native code**, and accept that installs on the old
+  runtime stop receiving updates until they get the new binary.
 
 **`APP_RELEASE` counts, it does not judge.** The last number runs all the way
 to 99 before the middle one moves: 1.3.98, 1.3.99, **1.4.0**. There is no
