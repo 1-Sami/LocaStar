@@ -98,29 +98,18 @@ patch/minor/major choice any more, and the script refuses one — v1.2.0 became
 v1.3.0 a day later purely because the change felt like a feature, which is not
 what these digits are for.
 
-## ⚠ Undo this when Google Play approves the app
+## Feedback needs an account again
 
-**Anyone can send feedback without an account right now.** It is on for the
-closed test only, because five of the twelve testers installed the app and
-never signed up — and requiring an account to report why you have not made one
-is a closed loop.
+Google Play granted production access on **2026-11-26**. For the closed test
+only, feedback could be sent signed out (migration `0155`), because testers who
+never signed up had no way to say why. That is now undone in both places:
+`anonymous_feedback` in `app_flags` is **off**, and the signed-out Profile
+screen no longer shows Send feedback. The database is what enforces it — a
+signed-out `submit_feedback` call answers "Sign in to send feedback", proven
+with a rollback probe the same day.
 
-It is not spam-proof and is not meant to be: a signed-out caller has no
-`auth.uid()`, PostgREST hides the client IP, and any identity the client sends
-it can forge. What makes it acceptable is that feedback is private, the volume
-is capped at ten an hour, and the undo is one statement.
-
-**On the day production access is granted:**
-
-```sql
-update app_flags set enabled = false where flag = 'anonymous_feedback';
-```
-
-Then move `FEEDBACK_MENU_ITEMS` in `apps/mobile/src/app/(tabs)/profile.tsx`
-back out of the signed-out branch and publish. See migration `0155`.
-
-Check it is still on with:
-`select * from app_flags where flag = 'anonymous_feedback';`
+Feedback is stored with nothing identifying on it, so the login *is* the spam
+defence. Don't turn the flag back on without a replacement for that.
 
 ## Working on the database
 
