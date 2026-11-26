@@ -39,6 +39,7 @@ import { categoryColor, coverStyle, longDate, longDateRange, metaDescription, ra
 import { isUuid } from '../../lib/ids';
 import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const prerender = false;
 
@@ -48,6 +49,15 @@ if (!isUuid(id)) return new Response(null, { status: 404 });
 
 const supabase = anonClient();
 const lang = Astro.locals.lang ?? 'en';
+
+/*
+ * Only a request carrying a session cookie ever asks Supabase who it is, so a
+ * signed-out reader — and a crawler — pays nothing. Asked at most once per
+ * request: both the read below and the viewer's own state further down need it.
+ */
+const hasSession = (Astro.request.headers.get('cookie') ?? '').includes('sb-');
+let sessionLookup: ReturnType<typeof currentUser> | null = null;
+const session = () => (sessionLookup ??= currentUser(Astro.cookies, Astro.request.headers));
 const t = useTranslations(lang);
 const p = (href: string) => localePath(href, lang);
 
@@ -59,8 +69,29 @@ const p = (href: string) => localePath(href, lang);
  * 404, not an error.
  */
 let location;
+/*
+ * Who the place's own content is read as. Anonymous for anything public, which
+ * is nearly every request. For a place only the visitor may see — their own
+ * private or finished event, one scheduled for later, one shared with them —
+ * the anonymous read finds nothing, so it is asked again as them, exactly as
+ * the app always asks. RLS (can_view_location) decides either way; this only
+ * stops the website being stricter than the database. Before it, a creator
+ * opening their own private event from the app's "Copy link" got a 404.
+ */
+let readClient: SupabaseClient = supabase;
+let readerId: string | null = null;
 try {
   location = await fetchLocationById(supabase, id);
+  if (!location && hasSession) {
+    const { user, supabase: authed } = await session();
+    if (user) {
+      location = await fetchLocationById(authed, id);
+      if (location) {
+        readClient = authed;
+        readerId = user.id;
+      }
+    }
+  }
 } catch (error) {
   /*
    * A failed request is not a missing page.
@@ -81,9 +112,32 @@ try {
 if (!location) return new Response(null, { status: 404 });
 
 const [photos, reviews] = await Promise.all([
-  fetchLocationPhotos(supabase, location.id).catch(() => []),
-  fetchReviews(supabase, location.id).catch(() => []),
+  fetchLocationPhotos(readClient, location.id).catch(() => []),
+  fetchReviews(readClient, location.id).catch(() => []),
 ]);
+
+/*
+ * Visible only because of who is looking. Such a page says why it is not
+ * public, so its owner is not left wondering whether everyone can see it, and
+ * is kept out of search engines whatever else it has.
+ */
+const membersOnly = readClient !== supabase;
+// The notes that say "only you" are true only for the creator; a moderator or
+// a share recipient looking at somebody else's gets the plain version.
+const readerIsCreator = readerId !== null && readerId === location.created_by;
+const stateNote = !membersOnly
+  ? null
+  : !readerIsCreator && location.status !== 'removed'
+    ? t('loc.stateNotPublic')
+  : location.status === 'removed'
+    ? t('loc.stateRemoved')
+    : location.status === 'past'
+      ? t('loc.stateEnded')
+      : location.visibility === 'private'
+        ? t('loc.statePrivate')
+        : new Date(location.publish_at).getTime() > Date.now()
+          ? t('loc.stateScheduled', { date: new Date(location.publish_at).toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB') })
+          : t('loc.stateShared');
 
 /*
  * The level beside each reviewer's name, in one request for the whole page.
@@ -266,8 +320,6 @@ const jsonLd: Record<string, unknown>[] = [
  * and which of their lists could it go in. Only asked for when a session cookie
  * exists, so a signed-out reader — and a crawler — pays nothing.
  */
-const hasSession = (Astro.request.headers.get('cookie') ?? '').includes('sb-');
-
 /*
  * Read a POST body once, here, before anything decides whether to act on it.
  *
@@ -304,6 +356,12 @@ let isModerator = false;
  * things down with the reversible status changes instead.
  */
 let isAdmin = false;
+/*
+ * The app also lets a creator delete their own event once it is private or has
+ * ended, and the database allows exactly that (the two "creator deletes own …"
+ * policies on locations). Nothing public, and nothing anybody else made.
+ */
+let canDeleteOwn = false;
 let canSetCover = false;
 let canEditThis = false;
 let modPhotos: GalleryPhoto[] = [];
@@ -324,12 +382,14 @@ let myLists: { id: string; name: string; has: boolean }[] = [];
 let inListCount = 0;
 
 if (hasSession) {
-  const { user, supabase: authed } = await currentUser(Astro.cookies, Astro.request.headers);
+  const { user, supabase: authed } = await session();
   if (user) {
     viewerId = user.id;
     const profile = await fetchProfile(authed, user.id).catch(() => null);
     isModerator = isModeratorRole(profile?.role ?? 'user');
     isAdmin = profile?.role === 'admin';
+    canDeleteOwn =
+      location.created_by === user.id && (location.visibility === 'private' || location.status === 'past');
     // A partner looks after a place's facts, which includes which photo leads
     // it — but not taking anybody's photo or review down. That stays moderation.
     canSetCover = canEditAnyLocation(profile?.role ?? 'user');
@@ -341,7 +401,8 @@ if (hasSession) {
     if (postForm) {
       const form = postForm;
       const intent = String(form.get('intent') ?? '');
-      const allowed = intent === 'cover' ? canSetCover : intent === 'delete-location' ? isAdmin : isModerator;
+      const allowed =
+        intent === 'cover' ? canSetCover : intent === 'delete-location' ? isAdmin || canDeleteOwn : isModerator;
       if (!allowed) return new Response(null, { status: 403 });
 
       try {
@@ -350,7 +411,9 @@ if (hasSession) {
           // cannot reach. The page no longer exists afterwards, so go home —
           // the same as the app, which simply goes back.
           await deleteLocation(authed, location.id);
-          return Astro.redirect(p('/'));
+          // A creator goes back to their account, where their places are
+          // listed; an admin to the home page, as before.
+          return Astro.redirect(canDeleteOwn ? p('/account') : p('/'));
         }
         if (intent === 'cover') {
           await makeCoverPhoto(authed, location.id, String(form.get('photoId') ?? ''));
@@ -544,7 +607,7 @@ const seasonLabel =
   canonical={canonical}
   image={photos[0]?.url ?? null}
   jsonLd={jsonLd}
-  noindex={!indexable}
+  noindex={!indexable || membersOnly}
 >
   <SiteHeader />
 
@@ -698,6 +761,7 @@ const seasonLabel =
           </div>
 
           <h1>{location.name}</h1>
+          {stateNote && <p class="state-note">{stateNote}</p>}
 
           <div class="meta">
             {
@@ -1055,7 +1119,7 @@ const seasonLabel =
           </div>
         )}
 
-        {isAdmin && (
+        {(isAdmin || canDeleteOwn) && (
           <form class="panel quiet admin-delete" method="POST">
             <input type="hidden" name="intent" value="delete-location" />
             <button
@@ -1063,7 +1127,9 @@ const seasonLabel =
               type="submit"
               data-confirm={t(location.kind === 'activity' ? 'loc.adminDeleteEventConfirm' : 'loc.adminDeletePlaceConfirm', { name: location.name })}
             >
-              {t(location.kind === 'activity' ? 'loc.adminDeleteEvent' : 'loc.adminDeletePlace')}
+              {canDeleteOwn
+                ? t(location.kind === 'activity' ? 'loc.deleteOwnEvent' : 'loc.deleteOwnPlace')
+                : t(location.kind === 'activity' ? 'loc.adminDeleteEvent' : 'loc.adminDeletePlace')}
             </button>
           </form>
         )}
@@ -1746,6 +1812,19 @@ const seasonLabel =
   .hairline {
     height: 1px;
     background: var(--hairline);
+  }
+
+  /* Why a page only its viewer can see is not public. */
+  .state-note {
+    margin: 6px 0 0;
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(232, 169, 59, 0.45);
+    background: rgba(232, 169, 59, 0.12);
+    color: #c98b1d;
+    font-size: 13.5px;
+    font-weight: 500;
   }
 
   /* ---- admin: delete the place ---- */

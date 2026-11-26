@@ -31,6 +31,7 @@ const ACTION_LABELS: Record<string, string> = {
   photo_deleted: 'Photo taken down',
   photo_removal_changed: 'Photo visibility changed',
   list_deleted: 'List deleted',
+  location_deleted: 'Place deleted',
   location_edited: 'Place edited',
 };
 
@@ -45,6 +46,8 @@ const ACTION_COLORS: Record<string, string> = {
   photo_deleted: '#C34CE8',
   photo_removal_changed: '#C34CE8',
   list_deleted: '#C34CE8',
+  // Red, like a ban: the one takedown with no undo.
+  location_deleted: '#E05252',
   location_edited: '#3AB7B0',
 };
 
@@ -57,7 +60,7 @@ const ACTION_COLORS: Record<string, string> = {
  */
 const FILTERS: { key: string; label: string; actions: string[] }[] = [
   { key: 'all', label: 'All', actions: [] },
-  { key: 'takedowns', label: 'Takedowns', actions: ['location_status_changed', 'review_status_changed', 'photo_deleted'] },
+  { key: 'takedowns', label: 'Takedowns', actions: ['location_status_changed', 'review_status_changed', 'photo_deleted', 'location_deleted'] },
   { key: 'reports', label: 'Reports', actions: ['report_resolved'] },
   { key: 'people', label: 'People', actions: ['ban_issued', 'ban_reviewed', 'warning_issued', 'role_changed'] },
   { key: 'edits', label: 'Edits', actions: ['location_edited'] },
