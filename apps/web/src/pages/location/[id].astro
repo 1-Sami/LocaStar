@@ -20,6 +20,7 @@ import {
   isModeratorRole,
   isTemporarilyClosed,
   canEditAnyLocation,
+  deleteLocation,
   makeCoverPhoto,
   placeholderFocusY,
   placeholderImageUrl,
@@ -296,6 +297,13 @@ let viewerId: string | null = null;
  * regardless — the flag chooses what to draw, not what is permitted.
  */
 let isModerator = false;
+/*
+ * Deleting a place outright is an admin power, as in the app ("Delete this
+ * place (admin)"), and the only one here that cannot be undone: every review,
+ * photo, save and list entry goes with it by cascade. A superuser takes
+ * things down with the reversible status changes instead.
+ */
+let isAdmin = false;
 let canSetCover = false;
 let canEditThis = false;
 let modPhotos: GalleryPhoto[] = [];
@@ -321,6 +329,7 @@ if (hasSession) {
     viewerId = user.id;
     const profile = await fetchProfile(authed, user.id).catch(() => null);
     isModerator = isModeratorRole(profile?.role ?? 'user');
+    isAdmin = profile?.role === 'admin';
     // A partner looks after a place's facts, which includes which photo leads
     // it — but not taking anybody's photo or review down. That stays moderation.
     canSetCover = canEditAnyLocation(profile?.role ?? 'user');
@@ -332,9 +341,17 @@ if (hasSession) {
     if (postForm) {
       const form = postForm;
       const intent = String(form.get('intent') ?? '');
-      if (!(intent === 'cover' ? canSetCover : isModerator)) return new Response(null, { status: 403 });
+      const allowed = intent === 'cover' ? canSetCover : intent === 'delete-location' ? isAdmin : isModerator;
+      if (!allowed) return new Response(null, { status: 403 });
 
       try {
+        if (intent === 'delete-location') {
+          // deleteLocation also clears the stored photo files that cascade
+          // cannot reach. The page no longer exists afterwards, so go home —
+          // the same as the app, which simply goes back.
+          await deleteLocation(authed, location.id);
+          return Astro.redirect(p('/'));
+        }
         if (intent === 'cover') {
           await makeCoverPhoto(authed, location.id, String(form.get('photoId') ?? ''));
         } else if (intent === 'photo') {
@@ -1038,6 +1055,19 @@ const seasonLabel =
           </div>
         )}
 
+        {isAdmin && (
+          <form class="panel quiet admin-delete" method="POST">
+            <input type="hidden" name="intent" value="delete-location" />
+            <button
+              class="admin-delete-btn"
+              type="submit"
+              data-confirm={t(location.kind === 'activity' ? 'loc.adminDeleteEventConfirm' : 'loc.adminDeletePlaceConfirm', { name: location.name })}
+            >
+              {t(location.kind === 'activity' ? 'loc.adminDeleteEvent' : 'loc.adminDeletePlace')}
+            </button>
+          </form>
+        )}
+
         <div class="panel quiet">
           {t('loc.wrong')} <a href={p(`/report?location=${location.id}`)}>{t('loc.reportIt')}</a>
         </div>
@@ -1716,6 +1746,26 @@ const seasonLabel =
   .hairline {
     height: 1px;
     background: var(--hairline);
+  }
+
+  /* ---- admin: delete the place ---- */
+  .admin-delete {
+    border-color: rgba(224, 82, 82, 0.35);
+  }
+
+  .admin-delete-btn {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #e05252;
+  }
+
+  .admin-delete-btn:hover {
+    text-decoration: underline;
   }
 
   /* ---- writing a review ---- */
