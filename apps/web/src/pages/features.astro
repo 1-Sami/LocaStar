@@ -117,11 +117,6 @@ const whereLabel = (item: FeatureItem) => (item.where === 'app' ? detail.whereAp
           <StoreBadge store="apple" over={t('features.appStoreOver')} name="App Store" href={STORE_LINKS.appStore} ready={appStoreReady} />
           <StoreBadge store="google" over={t('features.googlePlayOver')} name="Google Play" href={STORE_LINKS.googlePlay} ready={googlePlayReady} />
         </div>
-        {/* Same note the home page carries, and for the same reason: a greyed
-            badge with no sentence beside it reads as a broken app rather than
-            an unreleased one. It hides itself the moment STORE_LINKS.googlePlay
-            is filled in — so does the one on the home page. */}
-        {!googlePlayReady && <span class="android-note">{t('home.androidNotYet')}</span>}
       </div>
     </section>
   </main>
@@ -322,12 +317,6 @@ const whereLabel = (item: FeatureItem) => (item.where === 'app' ? detail.whereAp
     gap: 10px;
     flex-wrap: wrap;
     margin-top: 6px;
-  }
-
-  .android-note {
-    font-size: 14px;
-    line-height: 1.4;
-    color: var(--accent);
   }
 
   .store {

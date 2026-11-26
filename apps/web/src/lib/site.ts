@@ -21,17 +21,18 @@ export const STORE_LINKS = {
      to their own storefront, and the Swedish one resolves to the localised
      name, which is the listing Swedish search will find. */
   appStore: 'https://apps.apple.com/app/locastar/id6800435437',
-  /* Filling this in also hides the home page's "Android app not yet released"
-     note. Delete that note (home.androidNotYet) in the same change. */
-  googlePlay: '',
+  /* Live 2026-11-26, after Google Play granted production access on the third
+     application. No hl= parameter, for the same reason as Apple: Play picks
+     the visitor's own language. */
+  googlePlay: 'https://play.google.com/store/apps/details?id=se.locastar.app',
 } as const;
 
 /*
  * Judged per store, not once for both.
  *
  * They were a single flag while neither was public. iOS went live on
- * 2026-09-02 while Android is still in a closed test, so one flag would have
- * meant either holding back a link that works or shipping one that 404s.
+ * 2026-09-02 and Android on 2026-11-26, and for those months one flag would
+ * have meant either holding back a link that works or shipping one that 404s.
  */
 /* Judged per store; there is no longer a combined flag, because the two
    stores went live months apart. */
