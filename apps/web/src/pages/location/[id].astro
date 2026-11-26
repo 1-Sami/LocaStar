@@ -10,6 +10,7 @@ import {
   fetchLocationById,
   fetchLocationPhotos,
   fetchNearbyLocationsBrief,
+  fetchReviewPhotos,
   fetchReviews,
   fetchListMembershipForLocation,
   fetchLists,
@@ -26,6 +27,7 @@ import {
   updateReviewStatus,
   type GalleryPhoto,
   type LevelState,
+  type ReviewPhoto,
 } from '@locastar/shared';
 import SiteFooter from '../../components/SiteFooter.astro';
 import SiteHeader from '../../components/SiteHeader.astro';
@@ -298,6 +300,15 @@ let canSetCover = false;
 let canEditThis = false;
 let modPhotos: GalleryPhoto[] = [];
 let modError: string | null = null;
+/*
+ * The viewer's own review here, if any, so the form opens filled in. Read
+ * through their own session rather than picked out of `reviews`: that list is
+ * visible reviews only, and somebody whose review a moderator hid would
+ * otherwise be offered a blank form that quietly edits the hidden one.
+ */
+type OwnReview = { id: string; rating: number; title: string | null; body: string | null; status: string };
+let myReview: OwnReview | null = null;
+let myReviewPhotos: ReviewPhoto[] = [];
 let isFavourite = false;
 let isBookmarked = false;
 let myLists: { id: string; name: string; has: boolean }[] = [];
@@ -370,6 +381,15 @@ if (hasSession) {
        */
       fetchListMembershipForLocation(authed, user.id, location.id).catch(() => new Set<string>()),
     ]);
+    const { data: ownReview } = await authed
+      .from('reviews')
+      .select('id, rating, title, body, status')
+      .eq('location_id', location.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    myReview = (ownReview as OwnReview | null) ?? null;
+    if (myReview) myReviewPhotos = await fetchReviewPhotos(authed, myReview.id).catch(() => []);
+
     isFavourite = favIds.has(location.id);
     isBookmarked = bucketIds.has(location.id);
     myLists = lists.map((l) => ({ id: l.id, name: l.name, has: inLists.has(l.id) }));
@@ -430,6 +450,33 @@ const reportByUrl = Object.fromEntries(
 const backHere = p(`/location/${location.id}`);
 const saved = Astro.url.searchParams.get('saved');
 const moderated = Astro.url.searchParams.get('moderated') === '1';
+const reviewDone = Astro.url.searchParams.get('review');
+const reviewError = Astro.url.searchParams.get('reviewError');
+const restrictedUntil = Astro.url.searchParams.get('until');
+const reviewErrorText = (() => {
+  switch (reviewError) {
+    case null:
+      return null;
+    case 'rating':
+      return t('rev.errRating');
+    case 'photoType':
+      return t('rev.errPhotoType');
+    case 'photoSize':
+      return t('rev.errPhotoSize');
+    case 'tooManyPhotos':
+      return t('rev.errTooManyPhotos', { max: '6' });
+    case 'photos':
+      return t('rev.errPhotos');
+    case 'restricted': {
+      const until = restrictedUntil ? new Date(restrictedUntil) : null;
+      return until && !Number.isNaN(until.getTime())
+        ? t('rev.errRestrictedUntil', { date: until.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB') })
+        : t('rev.errRestricted');
+    }
+    default:
+      return t('rev.errSave');
+  }
+})();
 
 /*
  * Where the add form lands. Says how the pin was placed, because from an
@@ -716,11 +763,103 @@ const seasonLabel =
 
         <div class="hairline" />
 
-        <section class="reviews">
+        <section class="reviews" id="reviews">
           <div class="reviews-head">
             <h2>{t('loc.reviews')}</h2>
             {reviews.length > 1 && <span class="mono soft">{t('loc.mostRecent')}</span>}
           </div>
+
+          {reviewErrorText && <p class="rev-note bad" role="alert">{reviewErrorText}</p>}
+          {!reviewErrorText && reviewDone === 'saved' && <p class="rev-note done">{t('rev.saved')}</p>}
+          {!reviewErrorText && reviewDone === 'deleted' && <p class="rev-note done">{t('rev.deleted')}</p>}
+
+          {/*
+            Writing a review. The same fields as the app's write-review screen
+            — stars required, title, text and photos optional — and the same
+            rule underneath: one review per person per place, so writing again
+            edits the first. Folded away by default so a page that is mostly
+            read is not opened by a form; it opens on its own when something
+            needs fixing.
+          */}
+          {
+            viewerId ? (
+              <details class="composer" open={reviewError ? true : undefined}>
+                <summary class="composer-toggle">{myReview ? t('rev.edit') : t('rev.write')}</summary>
+                <form class="composer-form" method="post" action="/api/review" enctype="multipart/form-data" data-review-form>
+                  <input type="hidden" name="action" value="save" />
+                  <input type="hidden" name="locationId" value={location.id} />
+                  <input type="hidden" name="back" value={backHere} />
+
+                  {location.kind === 'activity' && <p class="composer-sub">{t('rev.activityNote')}</p>}
+                  {myReview && myReview.status !== 'visible' && <p class="composer-sub">{t('rev.hiddenNote')}</p>}
+
+                  {/* Highest first in the markup so that, laid out right to
+                      left, a hovered or chosen star lights every star before
+                      it with plain sibling selectors. */}
+                  <fieldset class="stars-pick">
+                    <legend>{t('rev.rating')}</legend>
+                    <div class="stars-row">
+                      {[5, 4, 3, 2, 1].map((n) => (
+                        <>
+                          <input type="radio" name="rating" id={`rate-${n}`} value={n} checked={myReview?.rating === n} required />
+                          <label for={`rate-${n}`} title={t('rev.stars', { n })}>
+                            <span aria-hidden="true">★</span>
+                            <span class="visually-hidden">{t('rev.stars', { n })}</span>
+                          </label>
+                        </>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <input class="field" name="title" value={myReview?.title ?? ''} placeholder={t('rev.titlePh')} aria-label={t('rev.titlePh')} />
+                  <textarea class="field" name="body" rows="5" placeholder={t('rev.bodyPh')} aria-label={t('rev.bodyPh')}>{myReview?.body ?? ''}</textarea>
+
+                  {
+                    myReviewPhotos.length > 0 && (
+                      <fieldset class="own-photos">
+                        <legend>{t('rev.yourPhotos')}</legend>
+                        <div class="own-photo-grid">
+                          {myReviewPhotos.map((photo) => (
+                            <label class="own-photo" style={`background-image:url("${photo.url}")`}>
+                              <input type="checkbox" name="removePhoto" value={photo.id} />
+                              <span>{t('rev.removePhoto')}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    )
+                  }
+
+                  <label class="composer-photos">
+                    <span>{t('rev.photos')}</span>
+                    <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple data-review-photos />
+                  </label>
+                  <p class="composer-sub">{t('rev.photoRights')}</p>
+
+                  <button class="cta composer-submit" type="submit" data-submitting={t('rev.submitting')}>
+                    {myReview ? t('rev.update') : t('rev.submit')}
+                  </button>
+                </form>
+
+                {
+                  myReview && (
+                    <form class="composer-delete" method="post" action="/api/review">
+                      <input type="hidden" name="action" value="delete" />
+                      <input type="hidden" name="locationId" value={location.id} />
+                      <input type="hidden" name="back" value={backHere} />
+                      <button class="mono composer-delete-btn" type="submit" data-confirm={t('rev.deleteConfirm')}>
+                        {t('rev.delete')}
+                      </button>
+                    </form>
+                  )
+                }
+              </details>
+            ) : (
+              <a class="composer-signin" href={`${p('/auth/sign-in')}?next=${encodeURIComponent(backHere + '#reviews')}`}>
+                {t('rev.signIn')} →
+              </a>
+            )
+          }
 
           {
             reviews.length === 0 ? (
@@ -1026,6 +1165,51 @@ const seasonLabel =
   }
 
 <script is:inline>
+  /*
+   * The review form: shrink photos before they upload, and one submission,
+   * not two. The same steps as the add form (add.astro) — longest side
+   * 1600px, JPEG — because a browser hands over a phone photo at full size and
+   * a review thumbnail is never shown anywhere near it. A file the browser
+   * cannot decode goes up as it is, and the server says why if it refuses it.
+   */
+  (function () {
+    var form = document.querySelector('[data-review-form]');
+    if (!form) return;
+    var input = form.querySelector('[data-review-photos]');
+    var MAX_SIDE = 1600;
+    function shrink(file) {
+      return createImageBitmap(file)
+        .then(function (bitmap) {
+          var scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(bitmap.width * scale);
+          canvas.height = Math.round(bitmap.height * scale);
+          canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/jpeg', 0.82); });
+        })
+        .then(function (blob) {
+          return blob ? new File([blob], file.name.replace(/.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+        })
+        .catch(function () { return file; });
+    }
+    if (input && typeof DataTransfer !== 'undefined' && typeof createImageBitmap === 'function') {
+      input.addEventListener('change', function () {
+        if (!input.files || !input.files.length) return;
+        Promise.all(Array.prototype.map.call(input.files, shrink)).then(function (files) {
+          var transfer = new DataTransfer();
+          files.forEach(function (f) { transfer.items.add(f); });
+          input.files = transfer.files;
+        });
+      });
+    }
+    form.addEventListener('submit', function () {
+      var button = form.querySelector('button[type=submit]');
+      if (!button) return;
+      button.disabled = true;
+      button.textContent = button.getAttribute('data-submitting') || button.textContent;
+    });
+  })();
+
   /* Ask before anything destructive. Bound once, and it reads the attribute at
      click time rather than at load, so a button whose prompt is set later —
      the viewer's, as it pages between photos — is still covered. */
@@ -1532,6 +1716,214 @@ const seasonLabel =
   .hairline {
     height: 1px;
     background: var(--hairline);
+  }
+
+  /* ---- writing a review ---- */
+  .rev-note {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--hairline);
+  }
+
+  .rev-note.done {
+    color: var(--ok);
+  }
+
+  .rev-note.bad {
+    color: #e05252;
+    border-color: rgba(224, 82, 82, 0.4);
+  }
+
+  .composer {
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    background: var(--surface);
+  }
+
+  .composer-toggle {
+    cursor: pointer;
+    padding: 14px 18px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--accent);
+  }
+
+  .composer[open] .composer-toggle {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .composer-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .composer-sub {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-55);
+  }
+
+  .stars-pick {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .stars-pick legend {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .stars-row {
+    display: inline-flex;
+    flex-direction: row-reverse;
+    gap: 4px;
+  }
+
+  .stars-row input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .stars-row label {
+    cursor: pointer;
+    font-size: 32px;
+    line-height: 1;
+    color: rgba(var(--ink-rgb), 0.22);
+    transition: color 0.1s;
+  }
+
+  /* Row-reversed, so "after" in the markup is "before" on screen. */
+  .stars-row label:hover,
+  .stars-row label:hover ~ label,
+  .stars-row input:checked ~ label {
+    color: #e8a93b;
+  }
+
+  .stars-row input:focus-visible + label {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .field {
+    background: var(--surface-alt);
+    border: 1px solid rgba(var(--ink-rgb), 0.22);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 11px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  textarea.field {
+    resize: vertical;
+    line-height: 1.55;
+  }
+
+  .own-photos {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .own-photos legend {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .own-photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .own-photo {
+    width: 96px;
+    height: 72px;
+    border-radius: 6px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: flex-end;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .own-photo span {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 6px;
+    font-size: 11.5px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .own-photo:has(input:checked) {
+    outline: 2px solid #e05252;
+    opacity: 0.6;
+  }
+
+  .composer-photos {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .composer-photos input {
+    font-weight: 400;
+    font-size: 13.5px;
+  }
+
+  .composer-submit {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .composer-submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .composer-delete {
+    padding: 0 18px 16px;
+  }
+
+  .composer-delete-btn {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
+  }
+
+  .composer-delete-btn:hover {
+    color: #e05252;
+  }
+
+  .composer-signin {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--accent);
   }
 
   /* ---- reviews ---- */

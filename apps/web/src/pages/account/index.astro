@@ -44,6 +44,7 @@ if (!user) return Astro.redirect(p('/auth/sign-in'));
 const section = Astro.url.searchParams.get('show') ?? 'saved';
 const listError = Astro.url.searchParams.get('listError');
 const created = Astro.url.searchParams.get('created');
+const listDeleted = Astro.url.searchParams.get('deleted') === '1';
 const avatarSaved = Astro.url.searchParams.get('avatar') === '1';
 const avatarRemoved = Astro.url.searchParams.get('avatar') === 'removed';
 const avatarError = Astro.url.searchParams.get('avatarError');
@@ -443,6 +444,7 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
             <h1>{t('acct.myLists')}</h1>
 
             {created && <p class="ok-line">{t('acct.listCreated')}</p>}
+            {listDeleted && <p class="ok-line">{t('acct.listDeleted')}</p>}
             {listError === 'name' && <p class="err-line">{t('acct.listNeedsName')}</p>}
             {listError === '1' && <p class="err-line">{t('acct.listFailed')}</p>}
 

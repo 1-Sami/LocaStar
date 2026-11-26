@@ -6,6 +6,7 @@ import Base from '../../layouts/Base.astro';
 import { categoryColor, ratingLabel } from '../../lib/format';
 import { isUuid } from '../../lib/ids';
 import { useTranslations, localePath } from '../../i18n/ui';
+import { currentUser } from '../../lib/auth';
 import { anonClient } from '../../lib/supabase';
 
 /*
@@ -19,10 +20,31 @@ const { id } = Astro.params;
 // A string that cannot be an id is a page that does not exist, not an outage.
 if (!isUuid(id)) return new Response(null, { status: 404 });
 
-const supabase = anonClient();
 const lang = Astro.locals.lang ?? 'en';
 const t = useTranslations(lang);
 const p = (href: string) => localePath(href, lang);
+
+/*
+ * Read as the visitor when they are signed in.
+ *
+ * Everything here used to go through the anonymous client, which is right for
+ * a stranger and wrong for the owner: RLS hides a private list from `anon`,
+ * so the account page's own link to somebody's private list landed them on a
+ * 404. Through their session the same RLS lets them see their own lists and
+ * anything shared with them, and still nothing else.
+ *
+ * The cookie check first, so an anonymous visitor costs no auth round trip —
+ * the place page does the same.
+ */
+let supabase = anonClient();
+let viewerId: string | null = null;
+if ((Astro.request.headers.get('cookie') ?? '').includes('sb-')) {
+  const { user, supabase: authed } = await currentUser(Astro.cookies, Astro.request.headers);
+  if (user) {
+    viewerId = user.id;
+    supabase = authed;
+  }
+}
 
 let meta;
 try {
@@ -57,6 +79,23 @@ const [items, likes, categories] = await Promise.all([
 
 const categoryName = new Map(categories.map((c) => [c.slug, c.name]));
 
+/*
+ * The owner gets the app's list controls: rename, public or private, take a
+ * place out, delete. Drawn only for them; api/list.ts checks ownership again
+ * and RLS decides regardless.
+ */
+const isOwner = viewerId !== null && viewerId === meta.ownerId;
+const backHere = p(`/lists/${meta.id}`);
+const listDone = Astro.url.searchParams.get('listDone');
+const listError = Astro.url.searchParams.get('listError');
+const doneText =
+  listDone === 'renamed' ? t('list.doneRenamed')
+  : listDone === 'public' ? t('list.donePublic')
+  : listDone === 'private' ? t('list.donePrivate')
+  : listDone === 'removed' ? t('list.doneRemoved')
+  : null;
+const errorText = listError === 'name' ? t('list.errName') : listError ? t('list.errFailed') : null;
+
 const owner = meta.ownerUsername ?? meta.ownerDisplayName ?? 'someone on LocaStar';
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const canonical = `${origin}/lists/${meta.id}`;
@@ -82,7 +121,9 @@ const jsonLd = [
 ];
 ---
 
-<Base title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
+{/* A private list is only ever seen by its owner or somebody it was shared
+    with, and has no business in a search index even if a link escapes. */}
+<Base title={title} description={description} canonical={canonical} jsonLd={jsonLd} noindex={!meta.isPublic}>
   <SiteHeader current="community" />
 
   <main id="main">
@@ -105,6 +146,42 @@ const jsonLd = [
             )
           }
         </div>
+
+        {doneText && <p class="list-note done">{doneText}</p>}
+        {errorText && <p class="list-note bad" role="alert">{errorText}</p>}
+
+        {
+          isOwner && (
+            <details class="manage" open={listError ? true : undefined}>
+              <summary>{t('list.manage')}</summary>
+              <div class="manage-body">
+                <form class="manage-row" method="post" action="/api/list">
+                  <input type="hidden" name="action" value="rename" />
+                  <input type="hidden" name="listId" value={meta.id} />
+                  <input type="hidden" name="back" value={backHere} />
+                  <input class="field" name="name" value={meta.name} required aria-label={t('list.nameLabel')} />
+                  <button class="btn" type="submit">{t('list.rename')}</button>
+                </form>
+
+                <form class="manage-row" method="post" action="/api/list">
+                  <input type="hidden" name="action" value="visibility" />
+                  <input type="hidden" name="listId" value={meta.id} />
+                  <input type="hidden" name="back" value={backHere} />
+                  <input type="hidden" name="isPublic" value={meta.isPublic ? '0' : '1'} />
+                  <p class="manage-sub">{meta.isPublic ? t('list.publicExplainer') : t('list.privateExplainer')}</p>
+                  <button class="btn" type="submit">{meta.isPublic ? t('list.makePrivate') : t('list.makePublic')}</button>
+                </form>
+
+                <form method="post" action="/api/list">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="listId" value={meta.id} />
+                  <input type="hidden" name="back" value={backHere} />
+                  <button class="mono danger" type="submit" data-confirm={t('list.deleteConfirm')}>{t('list.delete')}</button>
+                </form>
+              </div>
+            </details>
+          )
+        }
       </div>
     </header>
 
@@ -146,6 +223,17 @@ const jsonLd = [
                     </div>
                     <span class="view">{t('list.view')}</span>
                   </a>
+                  {/* Beside the row rather than inside it: a form cannot sit
+                      inside a link. */}
+                  {isOwner && (
+                    <form class="remove-item" method="post" action="/api/list">
+                      <input type="hidden" name="action" value="remove-item" />
+                      <input type="hidden" name="listId" value={meta.id} />
+                      <input type="hidden" name="locationId" value={item.locationId} />
+                      <input type="hidden" name="back" value={backHere} />
+                      <button class="mono danger" type="submit" data-confirm={t('list.removeConfirm')}>{t('list.remove')}</button>
+                    </form>
+                  )}
                 </li>
               );
             })}
@@ -157,6 +245,14 @@ const jsonLd = [
 
   <SiteFooter />
 </Base>
+
+<script is:inline>
+  /* Ask before deleting the list or taking a place out of it. */
+  document.addEventListener('click', function (event) {
+    var el = event.target.closest('[data-confirm]');
+    if (el && !window.confirm(el.getAttribute('data-confirm'))) event.preventDefault();
+  });
+</script>
 
 <style>
   /* The blue family the app uses for lists, not the teal used everywhere else. */
@@ -316,6 +412,104 @@ const jsonLd = [
     font-size: 13px;
     color: var(--link);
     flex: none;
+  }
+
+  /* ---- owner controls ---- */
+  .list-note {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .list-note.done {
+    color: var(--ok);
+  }
+
+  .list-note.bad {
+    color: #e05252;
+  }
+
+  .manage {
+    border: 1px solid rgba(var(--ink-rgb), 0.18);
+    border-radius: 11px;
+    background: var(--surface);
+    max-width: 560px;
+  }
+
+  .manage summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+
+  .manage-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 4px 16px 16px;
+  }
+
+  .manage-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .manage-sub {
+    flex: 1 1 220px;
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-55);
+  }
+
+  .field {
+    flex: 1 1 220px;
+    min-width: 0;
+    background: var(--surface-alt);
+    border: 1px solid rgba(var(--ink-rgb), 0.22);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14.5px;
+    padding: 9px 11px;
+  }
+
+  .btn {
+    border: 1px solid rgba(var(--ink-rgb), 0.22);
+    background: none;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .danger {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-42);
+  }
+
+  .danger:hover {
+    color: #e05252;
+  }
+
+  .remove-item {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
   }
 
   .empty {
