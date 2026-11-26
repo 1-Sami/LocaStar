@@ -1,0 +1,13 @@
+-- The closed test is over: Google Play granted production access on
+-- 2026-11-26, and the owner had asked for the tester pushes to stop the moment
+-- that happened. claim_tester_nudges() treats every Android install as a tester
+-- ("the closed test is the only way onto an Android device"), which stops being
+-- true once the app is public: every new Android user would get
+-- "Dag 1 av 15 · Välkommen som testare!" and fourteen more days of tasks. It had
+-- already started on Google's pre-launch robot devices from 24 Nov.
+--
+-- Only the schedule goes. The function, the copy in tester_nudge_days and the
+-- send history in tester_nudge_sends stay as the record of the test. To run a
+-- campaign again, re-schedule as in 0151, but give it a real enrolment list
+-- first: "every Android device" will never mean "testers" again.
+select cron.unschedule('tester-nudges');
