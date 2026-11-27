@@ -451,7 +451,6 @@ const origin = Astro.site?.origin ?? Astro.url.origin;
             <form method="post" action="/api/list" class="new-list">
               <input type="hidden" name="back" value={p('/account')} />
               <input name="name" placeholder={t('acct.nameNewList')} aria-label={t('acct.listName')} required />
-              <input name="description" placeholder={t('acct.listPurpose')} aria-label={t('acct.description')} />
               <label class="public-toggle">
                 <input type="checkbox" name="isPublic" value="1" />
                 <span>{t('acct.public')}</span>

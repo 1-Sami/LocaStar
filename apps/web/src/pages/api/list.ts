@@ -39,13 +39,18 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (action === 'create') {
     const name = String(form.get('name') ?? '').trim();
-    const description = String(form.get('description') ?? '').trim();
     const isPublic = String(form.get('isPublic') ?? '') === '1';
 
     if (!name) return redirect(`${account}?show=lists&listError=name`);
 
     try {
-      await createList(supabase, user.id, name, description || null, isPublic);
+      /*
+       * No description. The app never asked for one, and nothing in either
+       * product can edit or clear one once written. On 2026-11-27 that left a
+       * public list captioned "Test place 2" until it was cleared by hand.
+       * A list page without one gets an automatic summary instead.
+       */
+      await createList(supabase, user.id, name, null, isPublic);
     } catch (error) {
       console.error('Failed to create list', error);
       return redirect(`${account}?show=lists&listError=1`);
