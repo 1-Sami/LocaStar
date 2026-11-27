@@ -459,6 +459,12 @@ verify_jwt = false
 [functions.notify-feedback]
 verify_jwt = false
 
+# The monthly backup reminder (0164). pg_cron again, with the anon key. An
+# outsider calling it gets nothing: claim_backup_reminder() sends at most once
+# every 20 days, to support@, whoever asks.
+[functions.backup-reminder]
+verify_jwt = false
+
 [experimental]
 # Configures Postgres storage engine to use OrioleDB (S3)
 orioledb_version = ""
