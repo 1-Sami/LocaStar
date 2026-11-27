@@ -114,16 +114,24 @@ export function partUrls(part: SitemapPart, entries: Entries): SitemapEntry[] {
   }
 }
 
+/*
+ * The image namespace is declared on every child, used or not: it is one
+ * attribute, and one renderer is worth more than a sitemap that only sometimes
+ * declares it. Only place pages carry <image:image> — see SitemapEntry.
+ */
 export const renderUrlset = (origin: string, urls: SitemapEntry[]) =>
   `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls
-  .map(({ path, lastmod }) => {
+  .map(({ path, lastmod, images }) => {
     const loc = `  <url>\n    <loc>${escapeXml(origin + path)}</loc>`;
     const mod = lastmod
       ? `\n    <lastmod>${escapeXml(new Date(lastmod).toISOString().slice(0, 10))}</lastmod>`
       : '';
-    return `${loc}${mod}\n  </url>`;
+    const pics = (images ?? [])
+      .map((src) => `\n    <image:image>\n      <image:loc>${escapeXml(src)}</image:loc>\n    </image:image>`)
+      .join('');
+    return `${loc}${mod}${pics}\n  </url>`;
   })
   .join('\n')}
 </urlset>

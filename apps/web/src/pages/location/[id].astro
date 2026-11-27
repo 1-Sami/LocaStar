@@ -249,9 +249,14 @@ function websiteLink(raw: string | null): { href: string; host: string } | null 
 }
 const website = websiteLink(location.website);
 
-const title =
-  [location.name, category ? `— ${category}` : null, city ? t('loc.inCity', { city }) : null].filter(Boolean).join(' ') +
-  ' | LocaStar';
+/* "Nydalastigen — Basketball in Malmö": the title without the site name, and
+   the alt text of the place's photos, because a street name alone tells
+   Google Images nothing about what is in the picture. */
+const heading = [location.name, category ? `— ${category}` : null, city ? t('loc.inCity', { city }) : null]
+  .filter(Boolean)
+  .join(' ');
+const title = `${heading} | LocaStar`;
+const photoAlt = (index: number) => (index === 0 ? heading : `${heading} · ${t('loc.photoNumber', { n: String(index + 1) })}`);
 const description = metaDescription(location.description, { name: location.name, category, city });
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const canonical = new URL(`/location/${location.id}`, origin).href;
@@ -632,62 +637,75 @@ const seasonLabel =
     {
       photos.length > 0 ? (
         <>
+        {/*
+          Real <img> elements, not background-image: Google Images only lists
+          what is an image in the markup, so as backgrounds none of these could
+          be found there (2026-11-27). object-fit gives the same crop the
+          background did. The alt is the place's own heading, which says what
+          and where; the button keeps its "Open the photo" label, which is
+          what a screen reader announces for it.
+        */}
         <div class={`mosaic count-${Math.min(photos.length, 4)}`}>
           <button
             class="shot main"
             type="button"
-            style={`background-image:url("${photos[0].url}")`}
             data-open-gallery="place"
             data-index="0"
             aria-label={t('loc.openGallery')}
-          />
+          >
+            <img src={photos[0].url} alt={photoAlt(0)} fetchpriority="high" decoding="async" />
+          </button>
           {photos.length === 2 && (
             <button
               class="shot"
               type="button"
-              style={`background-image:url("${photos[1].url}")`}
               data-open-gallery="place"
               data-index="1"
               aria-label={t('loc.openGallery')}
-            />
+            >
+              <img src={photos[1].url} alt={photoAlt(1)} decoding="async" />
+            </button>
           )}
           {photos.length >= 3 && (
             <div class="mosaic-side">
               <button
                 class="shot"
                 type="button"
-                style={`background-image:url("${photos[1].url}")`}
                 data-open-gallery="place"
                 data-index="1"
                 aria-label={t('loc.openGallery')}
-              />
+              >
+                <img src={photos[1].url} alt={photoAlt(1)} decoding="async" />
+              </button>
               {photos.length === 3 ? (
                 <button
                   class="shot"
                   type="button"
-                  style={`background-image:url("${photos[2].url}")`}
                   data-open-gallery="place"
                   data-index="2"
                   aria-label={t('loc.openGallery')}
-                />
+                >
+                  <img src={photos[2].url} alt={photoAlt(2)} decoding="async" />
+                </button>
               ) : (
                 <div class="mosaic-pair">
                   <button
                     class="shot"
                     type="button"
-                    style={`background-image:url("${photos[2].url}")`}
                     data-open-gallery="place"
                     data-index="2"
                     aria-label={t('loc.openGallery')}
-                  />
+                  >
+                    <img src={photos[2].url} alt={photoAlt(2)} decoding="async" />
+                  </button>
                   <button
                     class="shot last"
                     type="button"
-                    style={`background-image:url("${photos[3].url}")`}
                     data-open-gallery="place"
                     data-index="3"
                     aria-label={t('loc.openGallery')}
                   >
+                    <img src={photos[3].url} alt={photoAlt(3)} decoding="async" />
                     {photos.length > 4 && <span class="mono more">+{photos.length - 4}</span>}
                   </button>
                 </div>
@@ -999,11 +1017,17 @@ const seasonLabel =
                             <button
                               class="thumb"
                               type="button"
-                              style={`background-image:url("${url}")`}
                               data-open-gallery={`review-${review.id}`}
                               data-index={index}
                               aria-label={t('loc.openGallery')}
-                            />
+                            >
+                              <img
+                                src={url}
+                                alt={t('loc.reviewPhotoAlt', { place: location.name })}
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </button>
                           ))}
                           <script
                             type="application/json"
@@ -1590,13 +1614,34 @@ const seasonLabel =
   }
 
   .shot.last {
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
+  /* The photo fills its tile and crops like the background-image it replaced.
+     The tile clips it, so the rounded corners still apply. */
+  .shot,
+  .thumb {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shot > img,
+  .thumb > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+
+  /* Positioned, or the absolutely placed photo paints over the "+N". */
   .more {
+    position: relative;
+    z-index: 1;
     font-size: 15px;
     letter-spacing: 0.1em;
     color: var(--text);

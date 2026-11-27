@@ -194,6 +194,13 @@ export async function fetchCategoryCounts(client: SupabaseClient): Promise<Categ
 export type SitemapEntry = {
   path: string;
   lastmod: string | null;
+  /**
+   * Public URLs of the photos shown on the page, for the sitemap's
+   * <image:image> entries. Place pages only. This is how Google is told which
+   * page an image belongs to, so a photo is listed in Google Images against
+   * its place rather than against whatever list or card it also appears on.
+   */
+  images?: string[];
 };
 
 /**
@@ -241,7 +248,7 @@ type LocationSitemapRow = {
   city: string | null;
   description: string | null;
   review_count: number | null;
-  location_photos: { id: string }[] | null;
+  location_photos: { storage_path: string; hidden_at: string | null; removed_at: string | null }[] | null;
   location_categories: { categories: { slug: string } | null }[] | null;
 };
 
@@ -301,11 +308,16 @@ export async function fetchSitemapEntries(
         // The three facts isIndexablePlace needs come too. Every row is still
         // fetched, indexable or not, because the category and town lastmods are
         // computed from all of them — it is only the `locations` list below
-        // that is filtered. location_photos is embedded rather than counted so
-        // RLS can do its job: a hidden or removed photo is not readable by
-        // `anon`, so it simply does not arrive, and a reported photo stops
-        // propping up a page the moment it is hidden.
-        .select("id, created_at, city, description, review_count, location_photos(id), location_categories(categories(slug))")
+        // that is filtered.
+        //
+        // location_photos comes with its hidden and removed stamps, and those
+        // are filtered below. This comment used to say RLS kept them out, and
+        // it does not: the policy only asks whether the *place* is visible
+        // (checked 2026-11-27), which is why fetchLocationPhotos filters
+        // hidden_at itself. Trusting RLS here would have listed a reported
+        // photo in the sitemap, and let it alone keep a page indexable that
+        // the page itself already serves as noindex.
+        .select("id, created_at, city, description, review_count, location_photos(storage_path, hidden_at, removed_at), location_categories(categories(slug))")
         .order("created_at", { ascending: false })
         // Tiebreak on the primary key, or the paging is unsound: the import
         // wrote 6,857 rows across 97 timestamps, so hundreds share one value
@@ -361,24 +373,30 @@ export async function fetchSitemapEntries(
     }
   }
 
+  // The same photos the place page shows of the place itself. Review photos
+  // are left out: the page has them too, but they come from a second table
+  // and Google finds them on the page regardless.
+  const visiblePhotos = (row: LocationSitemapRow) =>
+    (row.location_photos ?? [])
+      .filter((photo) => photo.hidden_at === null && photo.removed_at === null)
+      .map((photo) => client.storage.from("media").getPublicUrl(photo.storage_path).data.publicUrl);
+
   return {
     /*
      * Only the places that have something to read. See isIndexablePlace — the
      * page serves noindex to exactly the ones left out here, and the two must
      * not drift.
      */
-    locations: locationRows
-      .filter((row) =>
-        isIndexablePlace({
-          description: row.description,
-          review_count: row.review_count,
-          photoCount: row.location_photos?.length ?? 0,
-        })
-      )
-      .map((row) => ({
-        path: `/location/${row.id}`,
-        lastmod: row.created_at,
-      })),
+    locations: locationRows.flatMap((row) => {
+      const images = visiblePhotos(row);
+      const indexable = isIndexablePlace({
+        description: row.description,
+        review_count: row.review_count,
+        photoCount: images.length,
+      });
+      if (!indexable) return [];
+      return [{ path: `/location/${row.id}`, lastmod: row.created_at, ...(images.length ? { images } : {}) }];
+    }),
     lists: listRows.map((row) => ({
       path: `/lists/${row.id}`,
       lastmod: row.updated_at,
