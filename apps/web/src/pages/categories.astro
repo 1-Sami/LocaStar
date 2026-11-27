@@ -23,8 +23,41 @@ try {
   return new Response('Temporarily unavailable', { status: 503, headers: { 'Retry-After': '60' } });
 }
 
-const withPlaces = counts.filter((row) => row.count > 0);
-const empty = counts.filter((row) => row.count === 0);
+/*
+ * "Events" means every upcoming event, not only the ones filed under it.
+ *
+ * Events is an ordinary category (0141), and an event is filed under whatever
+ * fits: a festival under Festival, a match under its sport. So the Events
+ * category itself can be empty while events are on, and this page used to say
+ * "nobody has added anywhere" for Events with a festival a week away. A
+ * visitor reads that as "there are no events".
+ *
+ * So Events counts upcoming events of any category (RLS hands anon only active,
+ * public, already-published ones) and links to search filtered to events, which
+ * lists exactly those. max() rather than a sum, because events filed under
+ * Events are counted by both numbers.
+ */
+let upcomingEvents = 0;
+try {
+  const { count } = await supabase.from('locations').select('id', { count: 'exact', head: true }).eq('kind', 'activity');
+  upcomingEvents = count ?? 0;
+} catch (error) {
+  console.error('Failed to count upcoming events', error);
+}
+const rows = counts
+  .map((row) =>
+    row.slug === 'events'
+      ? {
+          ...row,
+          count: Math.max(row.count, upcomingEvents),
+          href: upcomingEvents > 0 ? `${p('/search')}?kind=activity` : p('/activity/events'),
+        }
+      : { ...row, href: p(`/activity/${row.slug}`) }
+  )
+  .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+const withPlaces = rows.filter((row) => row.count > 0);
+const empty = rows.filter((row) => row.count === 0);
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 const title = t('cats.title', { count: withPlaces.length });
@@ -64,7 +97,7 @@ const jsonLd = [
     <div class="grid">
       {
         withPlaces.map((row) => (
-          <a class="cat" href={p(`/activity/${row.slug}`)} style={`background:${categoryColor(row.slug)}`}>
+          <a class="cat" href={row.href} style={`background:${categoryColor(row.slug)}`}>
             <span class="cat-name">{categoryName(row.slug, lang) ?? row.name}</span>
             <span class="mono cat-count">{row.count}</span>
           </a>
