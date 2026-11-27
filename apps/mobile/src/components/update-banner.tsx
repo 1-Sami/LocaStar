@@ -6,6 +6,7 @@ import { useUpdates } from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -32,6 +33,7 @@ const RECHECK_AFTER_MS = 30 * 60 * 1000;
 export function UpdateBanner() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { isUpdatePending, isRestarting } = useUpdates();
   const [restartFailed, setRestartFailed] = useState(false);
   /*
@@ -86,7 +88,21 @@ export function UpdateBanner() {
   };
 
   return (
-    <View style={[styles.bar, { backgroundColor: theme.backgroundElement, borderTopColor: theme.backgroundSelected }]}>
+    <View
+      style={[
+        styles.bar,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderTopColor: theme.backgroundSelected,
+          /*
+           * The bar is the last thing on the screen, below the tab bar, so it
+           * owns the bottom inset. Without it, phones with on-screen
+           * Back/Home/Recents buttons drew them over Restart; gesture-bar
+           * phones only lost a sliver, so it went unnoticed until 2026-11-27.
+           */
+          paddingBottom: Spacing.three + insets.bottom,
+        },
+      ]}>
       <Ionicons name="arrow-down-circle" size={20} color={theme.primary} />
       <View style={styles.textColumn}>
         <ThemedText type='smallBold'>{t('components.updateReady')}</ThemedText>
