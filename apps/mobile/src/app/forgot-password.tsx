@@ -68,7 +68,7 @@ export default function ForgotPasswordScreen() {
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
 
         {error && (

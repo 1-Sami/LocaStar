@@ -83,7 +83,7 @@ export default function ChangePasswordScreen() {
             }}
             placeholder={t('settings.currentPassword')}
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
           />
 
           <PasswordInput
@@ -94,7 +94,7 @@ export default function ChangePasswordScreen() {
             }}
             placeholder={t('settings.newPassword')}
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
           />
           {showPasswordProblem && (
             <ThemedText type="small" style={styles.errorText}>
@@ -109,7 +109,7 @@ export default function ChangePasswordScreen() {
             }}
             placeholder={t('settings.confirmNewPassword')}
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
           />
 
           {mismatch && (

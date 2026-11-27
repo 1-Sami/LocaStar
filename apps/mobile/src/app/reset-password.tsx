@@ -182,7 +182,7 @@ export default function ResetPasswordScreen() {
           onChangeText={setPassword}
           placeholder={t('settings.newPassword')}
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
         {showPasswordProblem && (
           <ThemedText type="small" style={styles.error}>
@@ -194,7 +194,7 @@ export default function ResetPasswordScreen() {
           onChangeText={setConfirmPassword}
           placeholder={t('settings.confirmNewPassword')}
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
 
         {mismatch && (

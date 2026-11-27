@@ -181,7 +181,7 @@ export default function MyListsScreen() {
               onChangeText={setName}
               placeholder={t('lists.namePlaceholder')}
               placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
             />
             <View style={styles.visibilityRow}>
               <View style={styles.visibilityRowText}>

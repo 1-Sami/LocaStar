@@ -40,11 +40,7 @@ export function DateField({
   return (
     <View style={styles.container}>
       {help ? (
-        <FieldHelp text={help}>
-          <ThemedText type="smallBold" style={styles.label}>
-            {label}
-          </ThemedText>
-        </FieldHelp>
+        <FieldHelp text={help} label={label} type="smallBold" style={styles.label} />
       ) : (
         <ThemedText type="smallBold" style={styles.label}>
           {label}

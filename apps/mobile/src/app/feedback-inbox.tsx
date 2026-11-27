@@ -188,7 +188,7 @@ export default function FeedbackInboxScreen() {
 
       <View style={styles.actions}>
         <Pressable
-          style={[styles.btn, { borderColor: theme.backgroundSelected }]}
+          style={[styles.btn, { borderColor: theme.fieldBorder }]}
           disabled={busyId === row.id}
           onPress={() => toggleDone(row)}>
           <ThemedText type="small">
@@ -198,7 +198,7 @@ export default function FeedbackInboxScreen() {
 
         {isAdmin && (
           <Pressable
-            style={[styles.btn, { borderColor: theme.backgroundSelected }]}
+            style={[styles.btn, { borderColor: theme.fieldBorder }]}
             disabled={busyId === row.id}
             onPress={() => setAssigning(row)}>
             <ThemedText type="small">{t('feedback.inboxAssign')}</ThemedText>

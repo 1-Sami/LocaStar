@@ -492,7 +492,7 @@ export default function ListDetailScreen() {
               onChangeText={setRenameInput}
               placeholder={t('listDetail.namePlaceholder')}
               placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
               autoFocus
             />
             {renameError && (

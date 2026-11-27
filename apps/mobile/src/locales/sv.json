@@ -374,6 +374,7 @@
   },
   "addLocation": {
     "disclaimerPlace": "Platser publiceras direkt när du skickar in dem och modereras i efterhand. Vem som helst kan anmäla en plats som är vilseledande, olaglig eller felplacerad, och anmälda platser granskas och kan döljas eller tas bort. Att lägga till platser i strid med reglerna ger en varning — upprepade felaktiga inlägg gör att ditt konto blockeras från att skapa nya platser.",
+    "rulesLabel": "Regler och moderering",
     "disclaimerActivity": "Evenemang som är olagliga eller inte skapade av rättmätig ägare leder till blockering från att skapa framtida evenemang. Alla evenemang måste följa reglerna — överträdelser kan leda till spärr och till rättsliga åtgärder från den rättmätiga ägaren.",
     "alreadyHere": "Redan på kartan här",
     "alreadyHereBody": "Om någon av dem är samma ställe, öppna den och skriv en recension i stället — då hålls alla betyg och foton samlade.",

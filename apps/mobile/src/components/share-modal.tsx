@@ -154,7 +154,7 @@ export function ShareModal({
                     placeholder={t('components.searchByUsername')}
                     placeholderTextColor={theme.textSecondary}
                     autoCapitalize="none"
-                    style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                    style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
                   />
                   {visibleResults.map((candidate) => (
                     <Pressable key={candidate.id} style={styles.resultRow} onPress={() => setSelected(candidate)}>
@@ -185,7 +185,7 @@ export function ShareModal({
                   onChangeText={setNote}
                   placeholder={t('components.addNote')}
                   placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, styles.noteInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                  style={[styles.input, styles.noteInput, { color: theme.text, borderColor: theme.fieldBorder }]}
                   multiline
                 />
               )}

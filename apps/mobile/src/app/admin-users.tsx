@@ -276,7 +276,7 @@ export default function AdminUsersScreen() {
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             {/* Outside every loading branch on purpose — see the note on
                 debouncedQuery. Unmounting this is what shut the keyboard. */}
-            <View style={[styles.searchBar, { borderColor: theme.backgroundSelected }]}>
+            <View style={[styles.searchBar, { borderColor: theme.fieldBorder }]}>
               <Ionicons name="search" size={16} color={theme.textSecondary} />
               <TextInput
                 value={query}
@@ -461,7 +461,7 @@ export default function AdminUsersScreen() {
                     key={String(option.days)}
                     style={[
                       styles.durationChip,
-                      { borderColor: theme.backgroundSelected },
+                      { borderColor: theme.fieldBorder },
                       banDays === option.days && styles.durationChipActive,
                     ]}
                     onPress={() => setBanDays(option.days)}>
@@ -486,7 +486,7 @@ export default function AdminUsersScreen() {
                 placeholder={t('admin.reasonPlaceholder')}
                 placeholderTextColor={theme.textSecondary}
                 multiline
-                style={[styles.reasonInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                style={[styles.reasonInput, { color: theme.text, borderColor: theme.fieldBorder }]}
               />
 
               {banError && (

@@ -67,7 +67,7 @@ export function ModerationActionModal({
             placeholder={t('components.explainDecision')}
             placeholderTextColor={theme.textSecondary}
             multiline
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
           />
 
           <View style={styles.buttonRow}>

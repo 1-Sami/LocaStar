@@ -1129,7 +1129,7 @@ export default function LocationDetailScreen() {
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                style={[styles.squareActionButton, { borderColor: theme.fieldBorder, backgroundColor: theme.backgroundElement }]}
                 onPress={() => toggleBucketList(location.id)}
                 accessibilityLabel={t('location.wantToGo')}>
                 <Ionicons
@@ -1148,7 +1148,7 @@ export default function LocationDetailScreen() {
                   theme.backgroundElement, not the dark scrim, and the white
                   the photo needed was invisible in light mode. */}
               <Pressable
-                style={[styles.squareActionButton, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                style={[styles.squareActionButton, { borderColor: theme.fieldBorder, backgroundColor: theme.backgroundElement }]}
                 onPress={() => setMenuVisible(true)}
                 accessibilityLabel={t('location.moreOptions')}>
                 <Ionicons name="ellipsis-horizontal" size={22} color={theme.text} />
@@ -1156,7 +1156,7 @@ export default function LocationDetailScreen() {
             </View>
 
             {location.description && (
-              <View style={[styles.infoCard, { borderColor: theme.backgroundSelected }]}>
+              <View style={[styles.infoCard, { borderColor: theme.fieldBorder }]}>
                 <ThemedText
                   type="default"
                   themeColor="textSecondary"
@@ -1184,7 +1184,7 @@ export default function LocationDetailScreen() {
             )}
 
             {location.hours_not_applicable ? (
-              <View style={[styles.infoCard, styles.hoursNaCard, { borderColor: theme.backgroundSelected }]}>
+              <View style={[styles.infoCard, styles.hoursNaCard, { borderColor: theme.fieldBorder }]}>
                 <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
                 <ThemedText type="default" themeColor="textSecondary">
                   {t('location.hoursNotSpecified')}
@@ -1193,7 +1193,7 @@ export default function LocationDetailScreen() {
             ) : (
               hasHours &&
               hoursStatus && (
-                <View style={[styles.infoCard, { borderColor: theme.backgroundSelected }]}>
+                <View style={[styles.infoCard, { borderColor: theme.fieldBorder }]}>
                   <Pressable style={styles.hoursRow} onPress={() => setHoursExpanded((v) => !v)}>
                     <View style={styles.hoursRowLeft}>
                       <Ionicons name="time-outline" size={16} color={theme.text} />
@@ -1303,7 +1303,7 @@ export default function LocationDetailScreen() {
                 {sortedReviews.map((review) => (
                   <View
                     key={review.id}
-                    style={[styles.reviewCard, { borderColor: theme.backgroundSelected }]}>
+                    style={[styles.reviewCard, { borderColor: theme.fieldBorder }]}>
                     {/* Reporting your own review achieves nothing — it would
                         only put your own words in front of a moderator. Your
                         own gets a delete instead, and a moderator gets the

@@ -97,7 +97,7 @@ export function ClaimBusinessModal({
                 onChangeText={setNotes}
                 placeholder={t('components.verificationDetails')}
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
                 multiline
               />
               <ThemedText

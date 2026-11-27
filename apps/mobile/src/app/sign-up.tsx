@@ -107,7 +107,7 @@ export default function SignUpScreen() {
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
 
         {showEmailProblem && (
@@ -133,7 +133,7 @@ export default function SignUpScreen() {
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
         <ThemedText type="small" themeColor="textSecondary">
           {t('auth.usernameHint')}
@@ -150,7 +150,7 @@ export default function SignUpScreen() {
           onChangeText={setPassword}
           placeholder={t('auth.password')}
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
 
         {showPasswordProblem && (
@@ -164,7 +164,7 @@ export default function SignUpScreen() {
           onChangeText={setConfirmPassword}
           placeholder={t('auth.repeatPassword')}
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
 
         {passwordsMismatch && (

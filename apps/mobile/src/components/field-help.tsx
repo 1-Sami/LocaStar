@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { ThemedText, type ThemedTextProps } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -27,31 +27,46 @@ import { useTheme } from '@/hooks/use-theme';
  * sentence nobody read, which is fine for "you can leave this blank" and not
  * fine for "this deletes the reviews".
  */
-export function FieldHelp({ text, children }: { text: string; children: React.ReactNode }) {
+export function FieldHelp({
+  text,
+  label,
+  type = 'default',
+  style,
+}: {
+  text: string;
+  label: string;
+  type?: ThemedTextProps['type'];
+  style?: ThemedTextProps['style'];
+}) {
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
   const theme = useTheme();
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.labelRow}>
-        <View style={styles.labelSlot}>{children}</View>
-        <Pressable
-          onPress={() => setOpen((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open }}
-          accessibilityLabel={t('common.whatIsThis')}
-          /* The icon is 18px; the row it sits in is not, so the target is
-             padded out rather than the glyph grown. */
-          hitSlop={10}
-          style={[styles.button, { borderColor: theme.fieldBorder }]}>
-          <Ionicons
-            name={open ? 'close' : 'help'}
-            size={13}
-            color={theme.textSecondary}
-          />
-        </Pressable>
-      </View>
+      {/*
+       * The icon is part of the label's text run, not a separate column. It
+       * used to sit at the far right of the row, where the owner missed it
+       * themselves (2026-11-27); inline it follows the last word, wherever a
+       * long question wraps. The whole label is the button, which also gives
+       * a target far bigger than the glyph.
+       */}
+      <ThemedText
+        type={type}
+        style={style}
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={t('common.whatIsThis')}>
+        {label}
+        {/* A no-break space, so the icon never wraps onto a line alone. */}
+        {' '}
+        <Ionicons
+          name={open ? 'close-circle' : 'help-circle'}
+          size={20}
+          color={theme.primary}
+        />
+      </ThemedText>
 
       {open && (
         <View style={[styles.panel, { backgroundColor: theme.backgroundElement }]}>
@@ -66,21 +81,6 @@ export function FieldHelp({ text, children }: { text: string; children: React.Re
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-  },
-  /* The label takes the room and wraps; the button never shrinks. */
-  labelSlot: { flex: 1 },
-  button: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   panel: {
     borderRadius: Spacing.two,
     padding: Spacing.two,

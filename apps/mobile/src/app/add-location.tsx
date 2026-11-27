@@ -19,6 +19,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DateField } from '@/components/date-field';
+import { FieldHelp } from '@/components/field-help';
 import { MapPinPicker, type MapCoords } from '@/components/map-pin-picker';
 import { OpeningHoursEditor } from '@/components/opening-hours-editor';
 import { HeaderBackButton } from '@/components/header-back-button';
@@ -519,14 +520,15 @@ export default function AddLocationScreen() {
       />
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ThemedText type="smallBold" style={styles.photoLabel}>
-            {photoOptional ? t('form.picturesAdmin') : t('form.picturesRequired')}
-          </ThemedText>
-          {/* Above the picker, not below it: after the photo is chosen is too
-              late to be told what may not be chosen. */}
-          <ThemedText type="small" themeColor="textSecondary" style={styles.photoRights}>
-            {t('common.photoRights')}
-          </ThemedText>
+          {/* The photo rules sit on the label above the picker, not below it:
+              after the photo is chosen is too late to be told what may not be
+              chosen. Folded since 2026-11-27, like the form's other help. */}
+          <FieldHelp
+            text={t('common.photoRights')}
+            label={photoOptional ? t('form.picturesAdmin') : t('form.picturesRequired')}
+            type="smallBold"
+            style={styles.photoLabel}
+          />
 
           <PhotoPicker uris={photoUris} onChange={setPhotoUris} />
 
@@ -839,9 +841,16 @@ export default function AddLocationScreen() {
             </ThemedText>
           </Pressable>
 
-          <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
-            {isActivity ? t('addLocation.disclaimerActivity') : t('addLocation.disclaimerPlace')}
-          </ThemedText>
+          {/* Under the submit button, so it was always read after deciding
+              rather than before; folded it costs nothing and shortens the
+              form's tail by a whole screen on a small phone. */}
+          <View style={styles.disclaimer}>
+            <FieldHelp
+              text={isActivity ? t('addLocation.disclaimerActivity') : t('addLocation.disclaimerPlace')}
+              label={t('addLocation.rulesLabel')}
+              type="small"
+            />
+          </View>
         </ScrollView>
       </SafeAreaView>
 
@@ -855,7 +864,7 @@ export default function AddLocationScreen() {
               {t('form.categories')}
             </ThemedText>
 
-            <View style={[styles.categorySearchBar, { borderColor: theme.backgroundSelected }]}>
+            <View style={[styles.categorySearchBar, { borderColor: theme.fieldBorder }]}>
               <Ionicons name="search-sharp" size={15} color={theme.textSecondary} />
               <TextInput
                 value={categoryQuery}
@@ -932,11 +941,6 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     gap: Spacing.three,
-  },
-  photoRights: {
-    marginTop: -Spacing.two,
-    marginBottom: Spacing.one,
-    lineHeight: 17,
   },
   photoLabel: {
     marginTop: -Spacing.one,

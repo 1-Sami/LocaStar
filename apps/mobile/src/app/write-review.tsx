@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FieldHelp } from '@/components/field-help';
 import { PhotoPicker } from '@/components/photo-picker';
 import { STAR_COLOR } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
@@ -155,23 +156,18 @@ export default function WriteReviewScreen() {
             onChangeText={setTitleValue}
             placeholder={t('review.titlePlaceholder')}
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
           />
           <TextInput
             value={bodyValue}
             onChangeText={setBodyValue}
             placeholder={t('review.bodyPlaceholder')}
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, styles.bodyInput, { color: theme.text, borderColor: theme.backgroundElement }]}
+            style={[styles.input, styles.bodyInput, { color: theme.text, borderColor: theme.fieldBorder }]}
             multiline
           />
 
-          <ThemedText type="smallBold" style={styles.photoLabel}>
-            {t('review.addPhotos')}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.photoRights}>
-            {t('common.photoRights')}
-          </ThemedText>
+          <FieldHelp text={t('common.photoRights')} label={t('review.addPhotos')} type="smallBold" style={styles.photoLabel} />
           <PhotoPicker uris={displayUris} onChange={handlePhotosChange} />
 
           {error && (
@@ -207,11 +203,6 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     gap: Spacing.three,
-  },
-  photoRights: {
-    marginTop: -Spacing.two,
-    marginBottom: Spacing.one,
-    lineHeight: 17,
   },
   photoLabel: {
     marginTop: -Spacing.one,

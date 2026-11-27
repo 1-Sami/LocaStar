@@ -45,14 +45,14 @@ export default function SignInScreen() {
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
         <PasswordInput
           value={password}
           onChangeText={setPassword}
           placeholder={t('auth.password')}
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
         />
 
         <Link href="/forgot-password" style={styles.forgotPasswordLink}>

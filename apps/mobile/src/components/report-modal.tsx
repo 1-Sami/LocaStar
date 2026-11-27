@@ -165,7 +165,7 @@ export function ReportModal({
                 in-place list needs none of that.
               */}
               <Pressable
-                style={[styles.input, styles.reasonSelect, { borderColor: theme.backgroundSelected }]}
+                style={[styles.input, styles.reasonSelect, { borderColor: theme.fieldBorder }]}
                 onPress={() => setReasonPickerOpen((open) => !open)}>
                 <ThemedText
                   type="default"
@@ -180,7 +180,7 @@ export function ReportModal({
                 />
               </Pressable>
               {reasonPickerOpen && (
-                <View style={[styles.reasonList, { borderColor: theme.backgroundSelected }]}>
+                <View style={[styles.reasonList, { borderColor: theme.fieldBorder }]}>
                   {reasons.map((r) => (
                     <Pressable
                       key={r.value}
@@ -200,7 +200,7 @@ export function ReportModal({
                 onChangeText={setDetails}
                 placeholder={t(needsExplanation ? 'components.reportPlaceholderOther' : 'components.reportPlaceholder')}
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
                 multiline
               />
               {needsExplanation && countWords(details) < MIN_OTHER_WORDS && (

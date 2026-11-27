@@ -164,7 +164,7 @@ export function AddToListModal({
               onChangeText={setNewListName}
               placeholder={t('components.newListName')}
               placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+              style={[styles.input, { color: theme.text, borderColor: theme.fieldBorder }]}
             />
             <Pressable
               style={[styles.createButton, (!newListName.trim() || creating) && styles.createButtonDisabled]}

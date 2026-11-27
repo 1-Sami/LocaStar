@@ -39,9 +39,7 @@ export function YesNoRow({
   return (
     <View style={styles.row}>
       {help ? (
-        <FieldHelp text={help}>
-          <ThemedText type="default">{label}</ThemedText>
-        </FieldHelp>
+        <FieldHelp text={help} label={label} />
       ) : (
         <ThemedText type="default">{label}</ThemedText>
       )}
