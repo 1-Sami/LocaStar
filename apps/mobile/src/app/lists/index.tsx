@@ -36,7 +36,6 @@ export default function MyListsScreen() {
   const [loading, setLoading] = useState(true);
   const [createVisible, setCreateVisible] = useState(false);
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -82,10 +81,15 @@ export default function MyListsScreen() {
     setCreating(true);
     setError(null);
     try {
-      await createList(supabase, session.user.id, name.trim(), description.trim() || null, isPublic);
+      /*
+       * No description. This screen used to ask for one, save it, and then
+       * never show it anywhere in the app — it surfaced only on the website,
+       * where nothing could edit or clear it. On 2026-11-27 that left a public
+       * list captioned "Test place 2". The website stopped asking the same day.
+       */
+      await createList(supabase, session.user.id, name.trim(), null, isPublic);
       setCreateVisible(false);
       setName('');
-      setDescription('');
       setIsPublic(false);
       reload();
     } catch {
@@ -179,14 +183,6 @@ export default function MyListsScreen() {
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
             />
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder={t('lists.descriptionPlaceholder')}
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, styles.descriptionInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
-              multiline
-            />
             <View style={styles.visibilityRow}>
               <View style={styles.visibilityRowText}>
                 <ThemedText type="default">{t('lists.publicList')}</ThemedText>
@@ -268,10 +264,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
-  },
-  descriptionInput: {
-    height: 70,
-    textAlignVertical: 'top',
   },
   visibilityRow: {
     flexDirection: 'row',
